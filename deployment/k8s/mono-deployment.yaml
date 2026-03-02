@@ -1,0 +1,64 @@
+# ============================================================================
+#  mono — .NET 8 Gateway Web 服务
+#  镜像：docker build --target mono
+#  端口：80 (HTTP)
+#  依赖：redis (缓存/SignalR)、idgen (gRPC ID 生成)
+#  环境变量：由 Secret mono-env 注入，env 块可覆盖
+#  入口：由 gateway-ingress.yaml 中的 NGINX Ingress 统一暴露
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mono
+  labels:
+    app: mono
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mono
+  template:
+    metadata:
+      labels:
+        app: mono
+    spec:
+      containers:
+        - name: mono
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/mono:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          envFrom:
+            - secretRef:
+                name: mono-env
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:80"
+            - name: Grpc__RemoteHello__Address
+              value: "http://idgen:50051"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 80
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5

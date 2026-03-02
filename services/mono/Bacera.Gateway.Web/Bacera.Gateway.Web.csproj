@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>Bacera.Gateway.Web-DAF1E09B-6D46-4E82-AC5B-168153B82B5F</UserSecretsId>
+        <PreserveCompilationContext>true</PreserveCompilationContext>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AutoMapper" Version="13.0.1">
+            <NoWarn>NU1608</NoWarn>
+        </PackageReference>
+        <PackageReference Include="AWS.Logger.SeriLog" Version="3.2.0" />
+        <PackageReference Include="AWSSDK.SQS" Version="3.7.300.52" />
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+        <PackageReference Include="Hangfire.AspNetCore" Version="1.8.5" />
+        <PackageReference Include="Hangfire.Core" Version="1.8.5" />
+        <PackageReference Include="Hangfire.Dashboard.BasicAuthorization" Version="1.0.2" />
+        <PackageReference Include="Hangfire.PostgreSql" Version="1.20.0" />
+        <PackageReference Include="hashids.net" Version="1.7.0" />
+        <PackageReference Include="libphonenumber-csharp" Version="8.13.18" />
+        <PackageReference Include="MediatR" Version="12.1.1" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="8.0.8" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="8.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.0-preview.4.24267.6" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="9.0.2" />
+        <PackageReference Include="NETCore.Encrypt" Version="2.1.1" />
+        <PackageReference Include="OpenIddict.AspNetCore" Version="7.2.0" />
+        <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.2.0" />
+        <PackageReference Include="OpenIddict.Quartz" Version="7.2.0" />
+        <PackageReference Include="Serilog" Version="4.0.2" />
+        <PackageReference Include="Serilog.AspNetCore" Version="7.0.0" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="7.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+        <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.1.1" />
+        <PackageReference Include="Serilog.Sinks.Seq" Version="8.0.0" />
+        <PackageReference Include="Serilog.Sinks.Slack" Version="2.2.2" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.9.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta.9" />
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />
+        <PackageReference Include="ShellProgressBar" Version="5.2.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.5.0" />
+        <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
+        <PackageReference Include="Grpc.AspNetCore.Web" Version="2.67.0" />
+        <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.67.0" />
+        <PackageReference Include="Google.Api.CommonProtos" Version="2.15.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.67.0" PrivateAssets="All" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Protobuf Include="..\..\..\proto\api\v1\hello.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
+        <Protobuf Include="..\..\..\proto\api\v1\service.proto" ProtoRoot="..\..\..\proto" GrpcServices="Both" />
+        <Protobuf Include="..\..\..\proto\api\v1\auth.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\google\api\annotations.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
+        <Protobuf Include="..\..\..\proto\google\api\http.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Bacera.Gateway.Infrastructure\Bacera.Gateway.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="BackgroundJobs\Hosting\Utils\" />
+        <Folder Include="Data\Migrations\" />
+        <Folder Include="Data\Migrations\OpenIddict\" />
+        <None Remove="logs\**" />
+        <None Remove="Resources\GeoLite2-Country_20230606\GeoLite2-Country.mmdb" />
+        <Folder Include="logs\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="Resources\GeoLite2-Country_20230606\GeoLite2-Country.mmdb">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+</Project>

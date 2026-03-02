@@ -1,0 +1,9 @@
+managedNodeGroups:
+  - name: arm-node-pool
+    instanceTypes: ["c6g.large"] # 使用 Graviton 实例
+    amiType: AL2_ARM_64          # 必须指定 ARM 64位 AMI
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 2
+    # ... 其他配置
+

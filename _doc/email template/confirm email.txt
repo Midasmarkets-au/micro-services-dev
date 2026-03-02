@@ -1,0 +1,8 @@
+@{
+  _Layout = "10004";
+}
+
+@model Bacera.Gateway.ConfirmEmailViewModel
+
+  <h3>@Model.UserName</h3>
+  <p>@Model.CallbackUrl</p>

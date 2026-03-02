@@ -1,0 +1,3 @@
+INSERT INTO auth."_Role" ("Id", "Name", "NormalizedName", "ConcurrencyStamp") VALUES (110::bigint, 'Rep'::varchar(256), 'REP'::varchar(256), 'a88582db-1bf2-490d-bada-1312ea369311'::text) on conflict do nothing;
+INSERT INTO auth."_Role" ("Id", "Name", "NormalizedName", "ConcurrencyStamp") VALUES (20::bigint, 'Compliance'::varchar(256), 'COMPLIANCE'::varchar(256), 'a88582db-1bf2-490d-bada-1312ea369320'::text) on conflict do nothing;
+INSERT INTO auth."_Role" ("Id", "Name", "NormalizedName", "ConcurrencyStamp") VALUES (21::bigint, 'KycOfficer'::varchar(256), 'KYCOFFICER'::varchar(256), 'a88582db-1bf2-490d-bada-1312ea369321'::text) on conflict do nothing;

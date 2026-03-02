@@ -1,0 +1,421 @@
+{
+    "To": "2023-07-25T00:00:00Z",
+    "From": "2023-07-24T00:00:00Z",
+    "Name": "AU BCR",
+    "Items": [
+      {
+        "Name": "SH",
+        "Group": "USD",
+        "CurrencyId": 840,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "SH0%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [
+          52191681,
+          52190004,
+          52190133,
+          59990738,
+          52191029,
+          52191055,
+          59992098,
+          52192601,
+          52190449,
+          52191226,
+          52191121,
+          59991093,
+          52190206,
+          52193019,
+          52191533,
+          52191853,
+          59990815,
+          59990832,
+          59991251,
+          52191166,
+          59990729,
+          52191370,
+          59991257,
+          59992155,
+          52192162,
+          59991123,
+          52192393,
+          52191793,
+          59991613,
+          59991565,
+          59990980,
+          52191716,
+          52291287,
+          52190523,
+          59991237,
+          59990932,
+          52190629,
+          59991111,
+          52190221,
+          52190226,
+          59991723,
+          52190952,
+          52191212,
+          52190378,
+          52191999,
+          59991331,
+          52190238,
+          59990928,
+          52190972,
+          52190047,
+          52191595,
+          52191277,
+          52191268,
+          52191768,
+          52190459,
+          59990925,
+          59990636,
+          59990495,
+          59991309,
+          59991091,
+          52191628,
+          59991267,
+          59991028,
+          52190054,
+          52191369,
+          52190616,
+          52192113,
+          59991056,
+          59990835,
+          59991030,
+          52190246,
+          52191783,
+          59991299,
+          52191858,
+          59990461,
+          52190001,
+          59991698,
+          59991135,
+          52191757,
+          59991689,
+          59991616,
+          59990927,
+          59991298,
+          59991160,
+          59991051,
+          59991256,
+          59991589,
+          59990730,
+          59991272,
+          59990930,
+          59990462,
+          59990631,
+          52190950,
+          59992338,
+          59991380,
+          59990933,
+          52190294,
+          52191909,
+          59991678,
+          52190087,
+          52190107,
+          52190218,
+          52191528,
+          52191981,
+          59990476,
+          59990615,
+          59990660,
+          59990737,
+          59990963,
+          59991376,
+          59992100
+        ],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "NSY_USD",
+        "Group": "USD",
+        "CurrencyId": 840,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "AU0%",
+          "AU1%",
+          "AUSZ%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [
+          63415092
+        ],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "NSY_AUD",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [
+          "AU0042",
+          "AU0046",
+          "AU0049",
+          "AU0055"
+        ],
+        "IncludeSalesCode": [
+          "AU0%",
+          "AU1%"
+        ],
+        "ExcludeAccountType": 10,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [
+          "BKKO"
+        ],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "NSY_AUD(Wsales)",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [
+          "AU0042",
+          "AU0046",
+          "AU0049",
+          "AU0055"
+        ],
+        "IncludeSalesCode": [
+          "AU0%",
+          "AU1%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": 10,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [
+          "BKKO"
+        ],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "NSY_MEL",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "AU0042",
+          "AU0046",
+          "AU0049",
+          "AU0055"
+        ],
+        "ExcludeAccountType": 10,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "NSY_MEL(Wsales)",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "AU0042",
+          "AU0046",
+          "AU0049",
+          "AU0055"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": 10,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "KRT (KKEa)",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "AU0%",
+          "AU1%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": [
+          "BKKO"
+        ]
+      },
+      {
+        "Name": "AU_AUD",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "AU21%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [
+          56192296
+        ],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "BA-AUD",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "BA1000"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [
+          55165283
+        ],
+        "IncludeAccountNumber": [
+          55717340
+        ],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "HK",
+        "Group": "EUR",
+        "CurrencyId": 978,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "BA1000"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "NSY EUR",
+        "Group": "EUR",
+        "CurrencyId": 978,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "AU0%",
+          "AU1%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "RT",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "RT0002",
+          "RT0003",
+          "RT0004",
+          "RT0005"
+        ],
+        "ExcludeAccountType": 10,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "RT(Wsales)",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "RT0002",
+          "RT0003",
+          "RT0004",
+          "RT0005"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": 10,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "EA",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "EA%"
+        ],
+        "ExcludeAccountType": 10,
+        "IncludeAccountType": null,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      },
+      {
+        "Name": "EA(Wsales)",
+        "Group": "AUD",
+        "CurrencyId": 36,
+        "Description": "",
+        "ExcludeSalesCode": [],
+        "IncludeSalesCode": [
+          "EA%"
+        ],
+        "ExcludeAccountType": null,
+        "IncludeAccountType": 10,
+        "ExcludeAccountNumber": [],
+        "IncludeAccountNumber": [],
+        "ExcludeGroupStartWith": [],
+        "IncludeGroupStartWith": []
+      }
+    ],
+    "MailCc": [
+        "equitydealing@gmail.com",
+        "lui.lam@bacera.com",
+        "alan.cheung@bacera.com",
+        "hung.lau@bacera.com",
+        "aaronwong@bacera.com",
+        "alfred.lam@bacera.com",
+        "vringor@bacera.com",
+        "chunyi.yang@bacera.com",
+        "rex.tam@bacera.com",
+        "elvis.chan@bacera.com",
+        "dennis.pak@bacera.com",
+        "kaz.tsang@bacera.com",
+        "jiehe@bacera.com"
+    ],
+    "MailTo": [
+      "mwong@bacera.com"
+    ],
+    "Description": "",
+    "TimezoneOffset": "00:00:00"
+  }

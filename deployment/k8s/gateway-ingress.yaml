@@ -1,0 +1,78 @@
+# ============================================================================
+#  NGINX Ingress Controller
+#
+#  前置条件：
+#    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
+#
+#  流量路径：
+#    Internet → ingress-nginx (LoadBalancer :80/:443)
+#              → /(api|connect|hub|live|swagger)/  → mono:80
+#              → 其余所有路径                       → front-* / mono:80
+#
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bacera-ingress
+  labels:
+    app: bacera
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    # WebSocket upgrade headers（SignalR /hub/ /live/）
+    nginx.ingress.kubernetes.io/proxy-set-headers: "ingress-nginx/custom-headers"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: portal.trademdm.com
+      http:
+        paths:
+          - path: /(api|connect|hub|live|swagger|.well-known/openid-configuration)/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-client
+                port:
+                  number: 80
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /(api|connect|hub|live|swagger|.well-known/openid-configuration)/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-tenant
+                port:
+                  number: 80
+    - http:
+        paths:
+          - path: /(api|connect|hub|live|swagger)/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 80

@@ -1,0 +1,55 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Core Launch (web)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/services/mono/Bacera.Gateway.Web/bin/Debug/net8.0/Bacera.Gateway.Web.dll",
+            "args": ["local-dev"],
+            "cwd": "${workspaceFolder}/services/mono/Bacera.Gateway.Web",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "sourceFileMap": {
+            },
+            "launchBrowser": {
+              "enabled": true,
+              "args": "https://localhost:5001/swagger/index.html"
+            }
+        },
+        {
+            "name": ".NET Core Launch (cmd test local-dev)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/services/mono/Bacera.Gateway.Web/bin/Debug/net8.0/Bacera.Gateway.Web.dll",
+            "args": ["cmd", "test", "local-dev"],
+            "cwd": "${workspaceFolder}/services/mono/Bacera.Gateway.Web",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "sourceFileMap": {
+            }
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}

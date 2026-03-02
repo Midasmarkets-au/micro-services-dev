@@ -1,0 +1,42 @@
+﻿namespace Bacera.Gateway
+{
+    public enum ConfigurationTypes
+    {
+        Public = 0,
+        Account = 1,
+        Party = 2,
+
+        FundTypeAvailable = 10,
+        DefaultFundType = 11,
+        DefaultEmailAddress = 12,
+        DefaultEmailDisplayName = 13,
+        MultipleSiteIdEnabled = 14,
+        AutoConfirmEmailEnabled = 15,
+        RebateEnabled = 20,
+        IbEnabled = 30,
+        LeverageAvailable = 40,
+        LeverageForWholesaleAvailable = 41,
+        AccountTypeAvailable = 50,
+        CurrencyAvailable = 60,
+        TradingPlatformAvailable = 70,
+        WebTraderEnabled = 80,
+        DemoTradingPlatformAvailable = 90,
+        Logo = 100,
+        SmsValidationEnabled = 101,
+        VerificationQuizEnabled = 102,
+        QuizFailLockEnabled = 103,
+        ContactInfo = 110,
+        CheaterIp = 120,
+        DefaultTradeService = 130,
+        HighDollarValue = 140,
+        IpSetting = 150,
+        RebateCalculateFrom = 160,
+        OffsetCheck = 170,
+        TrackMt4TradeOpenFrom = 182,
+        TrackMt5TradeOpenFrom = 183,
+        AccountDailyReportEnabled = 190,
+        DefaultRebateLevelSetting = 200,
+        NewYearEvent = 210,
+        WholesaleEnabled = 220,
+    }
+}

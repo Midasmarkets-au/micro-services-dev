@@ -1,0 +1,22 @@
+[package]
+name = "idgen"
+version = "0.1.0"
+edition = "2024"
+description = "Protobuf API - 生成 Rust 与 C# 的 gRPC/HTTP 接口"
+
+[dependencies]
+tonic = { workspace = true }
+tonic-reflection = { workspace = true }
+prost = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+snowflaked = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }
+reqwest = { workspace = true }
+

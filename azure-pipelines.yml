@@ -1,0 +1,73 @@
+# ASP.NET
+# Build and test ASP.NET projects.
+# Add steps that publish symbols, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - develop
+  paths:
+    exclude:
+      - /*
+
+pool:
+  name: 'bcrpro-staging'
+  vmImage: 'ubuntu-20.04'
+
+variables:
+  proiect: 'services/mono/Bacera.Gateway.Web/Bacera.Gateway.Web.csproj'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release --os linux'
+  buildDirectory: './release'
+
+steps:
+- checkout: self
+  clean: false
+  path: 's'
+  displayName: 'pull Branch: $(Build.SourceBranchName)'
+
+- task: UseDotNet@2
+  displayName: Use .NET 7.0
+  inputs:
+    packageType: 'sdk'
+    version: '7.0.x'
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build Portal $(buildConfiguration)'
+  inputs:
+    command: 'build'
+    projects: '$(proiect)'
+    arguments: '-nowarn:nu1503 --nologo --configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: "dotnet publish Portal $(buildConfiguration)"
+  inputs:
+    command: 'publish'
+    projects: '$(proiect)'
+    publishWebProjects: false
+    arguments: '--nologo --configuration $(buildConfiguration) --output $(buildDirectory)/'
+    zipAfterPublish: false
+    
+- task: CopyFiles@2
+  displayName: "move file to public"
+  inputs:
+    SourceFolder: './release'
+    Contents: '**'
+    TargetFolder: './dist'
+    CleanTargetFolder: true
+
+- task: CopyFiles@2
+  displayName: "move env file to public"
+  inputs:
+    SourceFolder: './'
+    Contents: '.env'
+    TargetFolder: './dist'
+
+- task: CopyFiles@2
+  displayName: "move appsettings file to public"
+  inputs:
+    SourceFolder: './'
+    Contents: 'appsettings.json'
+    TargetFolder: './dist'

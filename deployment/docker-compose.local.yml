@@ -1,0 +1,156 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bacera-postgres
+    environment:
+      POSTGRES_DB: portal_central
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: qazwsx1@3
+      # Ensure proper authentication setup for new databases
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=trust"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Auto-create required databases (EF migrations handle schemas)
+      # - ./init_databases.sql:/docker-entrypoint-initdb.d/01_init_databases.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d portal_central"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: bacera-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    # ElastiCache-compatible Redis configuration
+    command: >
+      redis-server 
+      --appendonly yes 
+      --requirepass qazwsx13
+      --timeout 300
+      --tcp-keepalive 60
+      --maxmemory-policy allkeys-lru
+      --save 900 1 --save 300 10 --save 60 10000
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "qazwsx13", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mysql:
+    image: mysql:8.0
+    container_name: bacera-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_WEBSITE_PASSWORD:-qazwsx1@3}
+      MYSQL_DATABASE: website
+      MYSQL_USER: website_user
+      MYSQL_PASSWORD: ${MYSQL_WEBSITE_PASSWORD:-qazwsx1@3}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: bash -c 'mysqladmin ping -h localhost -p"$MYSQL_WEBSITE_PASSWORD"'
+      interval: 30s
+      retries: 5
+
+  seq:
+    image: datalust/seq:latest
+    container_name: bacera-seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:-qazwsx1@3} # new qazwsx13
+    ports:
+      - "5341:5341"  # HTTP ingestion
+      - "5342:80"    # Web UI
+    volumes:
+      - seq_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5341/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    container_name: bacera-pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASES_HOST: postgres
+      DATABASES_PORT: 5432
+      DATABASES_USER: postgres
+      DATABASES_PASSWORD: qazwsx1@3
+      DATABASES_DBNAME: portal_central
+      POOL_MODE: transaction
+      SERVER_RESET_QUERY: DISCARD ALL
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 20
+    ports:
+      - "6432:5432"
+    depends_on:
+      - postgres
+
+  # Gateway Web（mono .NET 服务）
+  gateway-web:
+    build:
+      context: ..
+      dockerfile: services/mono/Dockerfile
+    image: bacera-gateway-web:local
+    container_name: bacera-gateway-web
+    restart: unless-stopped
+    ports:
+      - "9000:80"
+    environment:
+      ASPNETCORE_URLS: "http://+:80"
+      ASPNETCORE_ENVIRONMENT: Development
+      REDIS_CONNECTION: "redis:6379"
+      REDIS_PASSWORD: "qazwsx13"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: qazwsx1@3
+      DB_DATABASE: portal_central
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # ID Generator（Rust gRPC + HTTP 服务）
+  idgen:
+    build:
+      context: ..
+      dockerfile: services/idgen/Dockerfile
+    image: bacera-idgen:local
+    container_name: bacera-idgen
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+      - "8080:8080"
+    environment:
+      GRPC_ADDR: "[::]:50051"
+      HTTP_ADDR: "[::]:8080"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  mysql_data:
+    driver: local
+  seq_data:
+    driver: local

@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package api.v1;
+
+option csharp_namespace = "Api.V1";
+option go_package = "api/v1";
+
+// ============================================================================
+//  AuthService — 由 mono 实现，供 auth service 在登录流程中回调
+//
+//  调用方向：
+//    auth service  ──gRPC──►  mono (AuthService)
+//
+//  覆盖的跨库操作（原 PasswordGrantHandler 中依赖 TenantDbContext 的部分）：
+//    1. VerifyAuthCode       — 验证 2FA 邮件验证码（读写 TenantDbContext.AuthCodes）
+//    2. SendAuthCode         — 生成并发送 2FA 邮件验证码（Hangfire job）
+//    3. GetTwoFactorSetting  — 读取租户 2FA 配置（ConfigService + TenantDbContext）
+//    4. GetRecentUserAgents  — 读取最近登录 UA（TenantDbContext.LoginLogs，用于设备识别）
+//    5. WriteLoginLog        — 写入登录日志（TenantDbContext.LoginLogs + Party.LastLoginIp）
+// ============================================================================
+service AuthService {
+
+  // 验证 2FA 邮件验证码，验证成功后将该 code 标记为已使用
+  rpc VerifyAuthCode(VerifyAuthCodeRequest) returns (VerifyAuthCodeResponse);
+
+  // 生成 2FA 邮件验证码并发送邮件（异步，fire-and-forget）
+  rpc SendAuthCode(SendAuthCodeRequest) returns (SendAuthCodeResponse);
+
+  // 读取租户/用户的 2FA 配置
+  rpc GetTwoFactorSetting(GetTwoFactorSettingRequest) returns (GetTwoFactorSettingResponse);
+
+  // 读取用户最近 N 条登录 UA（用于判断是否为新设备）
+  rpc GetRecentUserAgents(GetRecentUserAgentsRequest) returns (GetRecentUserAgentsResponse);
+
+  // 写入登录成功日志，同时更新 Party.LastLoginIp（fire-and-forget，允许失败）
+  rpc WriteLoginLog(WriteLoginLogRequest) returns (WriteLoginLogResponse);
+}
+
+// ----------------------------------------------------------------------------
+//  VerifyAuthCode
+// ----------------------------------------------------------------------------
+message VerifyAuthCodeRequest {
+  int64  tenant_id = 1;
+  string email     = 2;  // 验证码绑定的邮箱
+  string code      = 3;  // 用户输入的验证码（已去除空格和连字符）
+}
+
+message VerifyAuthCodeResponse {
+  bool   valid         = 1;  // true = 验证通过且已标记为已使用
+  string error_code    = 2;  // 验证失败时的错误码，如 "__2FA_CODE_INVALID__"
+}
+
+// ----------------------------------------------------------------------------
+//  SendAuthCode
+// ----------------------------------------------------------------------------
+message SendAuthCodeRequest {
+  int64  tenant_id   = 1;
+  string email       = 2;
+  string event_label = 3;  // AuthCode.EventLabel，如 "TwoFactor"
+}
+
+message SendAuthCodeResponse {
+  bool sent = 1;  // 是否成功入队（不代表邮件已送达）
+}
+
+// ----------------------------------------------------------------------------
+//  GetTwoFactorSetting
+// ----------------------------------------------------------------------------
+message GetTwoFactorSettingRequest {
+  int64 tenant_id = 1;
+  int64 party_id  = 2;
+}
+
+message GetTwoFactorSettingResponse {
+  bool login_code_enabled = 1;  // 是否启用邮件 2FA
+}
+
+// ----------------------------------------------------------------------------
+//  GetRecentUserAgents
+// ----------------------------------------------------------------------------
+message GetRecentUserAgentsRequest {
+  int64 tenant_id = 1;
+  int64 party_id  = 2;
+  int32 limit     = 3;  // 取最近几条，通常为 3
+}
+
+message GetRecentUserAgentsResponse {
+  repeated string user_agents = 1;  // 原始 UA 字符串列表，由 auth service 自行做 MD5 比对
+}
+
+// ----------------------------------------------------------------------------
+//  WriteLoginLog
+// ----------------------------------------------------------------------------
+message WriteLoginLogRequest {
+  int64  tenant_id  = 1;
+  int64  party_id   = 2;
+  string ip         = 3;
+  string user_agent = 4;
+  string referer    = 5;
+}
+
+message WriteLoginLogResponse {
+  bool ok = 1;
+}

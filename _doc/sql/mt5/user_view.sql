@@ -1,0 +1,46 @@
+drop view if exists user_view;
+create definer = snps@`%` view user_view as
+select u.`Login`                    AS `LOGIN`,
+       u.`Group`                    AS `GROUP`,
+       1                            AS `ENABLE`,
+       1                            AS `ENABLE_CHANGE_PASS`,
+       1                            AS `ENABLE_READONLY`,
+       1                            AS `ENABLE_OTP`,
+       u.`PhonePassword`            AS `PASSWORD_PHONE`,
+       u.`Name`                     AS `NAME`,
+       u.`Country`                  AS `COUNTRY`,
+       u.`City`                     AS `City`,
+       u.`State`                    AS `STATE`,
+       u.`ZipCode`                  AS `ZIPCODE`,
+       u.`Address`                  AS `ADDRESS`,
+       u.`LeadSource`               AS `LEAD_SOURCE`,
+       u.`Phone`                    AS `PHONE`,
+       u.`Email`                    AS `EMAIL`,
+       u.`Comment`                  AS `COMMENT`,
+       u.`ID`                       AS `ID`,
+       u.`Status`                   AS `STATUS`,
+       u.`Registration`             AS `REGDATE`,
+       u.`LastAccess`               AS `LASTDATE`,
+       u.`Leverage`                 AS `LEVERAGE`,
+       u.`Agent`                    AS `AGENT_ACCOUNT`,
+       u.`Timestamp`                AS `TIMESTAMP`, # 18 digit 'Windows NT time format'
+       u.`Balance`                  AS `BALANCE`,
+       u.`BalancePrevDay`           AS `PREVBALANCE`,
+       u.`BalancePrevMonth`         AS `PREVMONTHBALANCE`,
+       u.`Credit`                   AS `CREDIT`,
+       u.`InterestRate`             AS `INTERESTRATE`,
+       0                            AS `TAXES`,
+       0                            AS `SEND_REPORTS`,
+       u.`MQID`                     AS `MQID`,
+       0                            AS `USER_COLOR`,
+       a.`Equity`                   AS `EQUITY`,
+       a.`Margin`                   AS `MARGIN`,
+       a.`MarginLevel`              AS `MARGIN_LEVEL`,
+       a.`MarginFree`               AS `MARGIN_FREE`,
+       a.`CurrencyDigits`           AS `CURRENCY`,
+       u.`ApiData`                  AS `API_DATA`,
+       '1970-01-01 00:00:00'        AS `MODIFY_TIME`
+from `mt5_users` as u
+    join `mt5_accounts` as a 
+        on u.`Login` = a.`Login`
+;

@@ -1,0 +1,1 @@
+drop index core.core_referrals_referrer_party_id_referred_party_id_unique;

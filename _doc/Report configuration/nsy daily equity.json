@@ -1,0 +1,851 @@
+{
+    "To": "2023-07-14T00:00:00Z",
+    "From": "2023-07-13T00:00:00Z",
+    "Name": "AU BCR Nsy",
+    "Items": [
+        {
+            "Name": "AU000",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0000"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU001",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0001"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU002",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0002"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU003",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0003"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU005",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0005"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU006",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0006"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU007",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0007"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU008",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0008"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU013",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0013"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [
+                33488359,
+                33031472,
+                33107045,
+                33622883,
+                33042508,
+                33430700,
+                33187168,
+                33285094
+            ],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU014",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0014"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU015",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0015"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU016",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0016"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU017",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0017"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU024",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0024"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU026",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0026"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU028",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0028"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU032",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0032"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU033",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0033"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU036",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0036"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU040",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU040"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU040",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0040"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU041",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0041"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU042",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0042"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU046",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0046"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU047",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0047"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU052",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0052"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU055",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0055"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU059",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0059"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU060",
+            "Group": "AUD",
+            "CurrencyId": 36,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0060"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU000",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0000"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU001",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0001"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU013",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0013"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [
+                33399375,
+                33753331,
+                33061767,
+                33875167,
+                33849621,
+                33823657,
+                33243371,
+                33525041,
+                33298693,
+                33366394,
+                33153159,
+                33249782,
+                33285606,
+                33397432,
+                33323827,
+                33349233,
+                33361441,
+                33955706,
+                33008151,
+                33758585,
+                33103973,
+                33123517,
+                33307690,
+                33966788,
+                33255763,
+                33717397,
+                33428542,
+                33396161,
+                33364279,
+                33133179,
+                33537068,
+                33807341,
+                33236697,
+                33510757,
+                33419826,
+                33469014,
+                33934041,
+                33925139,
+                33261471,
+                33104182,
+                33555741,
+                33525214,
+                33584042,
+                33337385,
+                33656603,
+                33755337,
+                33364990,
+                33343927,
+                33246893,
+                33528872,
+                33293179,
+                33880153,
+                33938568,
+                33265274,
+                33482727,
+                33210304,
+                33765767,
+                33327330,
+                33641321,
+                33596372,
+                33151919,
+                33733988,
+                33161797,
+                33560755,
+                33085910,
+                33428529,
+                33264213,
+                33580490,
+                33599662,
+                33010626,
+                33625141,
+                33692522,
+                33149785,
+                33486998,
+                33752860,
+                33070125,
+                33252741,
+                33855855,
+                33068163,
+                33422795,
+                33848249,
+                33037905,
+                33764931,
+                33239361,
+                33002333,
+                33488359,
+                33031472,
+                33107045,
+                33622883,
+                33042508,
+                33430700,
+                33187168,
+                33285094
+            ],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU016",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0016"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU017",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0017"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU024",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0024"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU026",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0026"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU028",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0028"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU032",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0032"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU036",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0036"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU041",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0041"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU042",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0042"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU046",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0046"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU047",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0047"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU052",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0052"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        },
+        {
+            "Name": "AU059",
+            "Group": "USD",
+            "CurrencyId": 840,
+            "Description": "",
+            "ExcludeSalesCode": [],
+            "IncludeSalesCode": [
+                "AU0059"
+            ],
+            "ExcludeAccountType": null,
+            "IncludeAccountType": null,
+            "ExcludeAccountNumber": [],
+            "IncludeAccountNumber": [],
+            "ExcludeGroupStartWith": [],
+            "IncludeGroupStartWith": []
+        }
+    ],
+    "MailCc": [
+        "equitydealing@gmail.com",
+        "lui.lam@bacera.com",
+        "alan.cheung@bacera.com",
+        "hung.lau@bacera.com",
+        "aaronwong@bacera.com",
+        "alfred.lam@bacera.com",
+        "vringor@bacera.com",
+        "chunyi.yang@bacera.com",
+        "rex.tam@bacera.com",
+        "elvis.chan@bacera.com",
+        "dennis.pak@bacera.com",
+        "jiehe@bacera.com",
+        "kaz.tsang@bacera.com"
+    ],
+    "MailTo": [
+        "mwong@bacera.com",
+        "achen@thebcr.com"
+    ],
+    "Description": "",
+    "TimezoneOffset": "00:00:00"
+}

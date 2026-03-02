@@ -1,0 +1,58 @@
+# ============================================================================
+#  idgen — Rust gRPC + HTTP 服务
+#  镜像：docker build --target idgen
+#  端口：8080 (HTTP REST)、50051 (gRPC)
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idgen
+  labels:
+    app: idgen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: idgen
+  template:
+    metadata:
+      labels:
+        app: idgen
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      imagePullSecrets:
+        - name: ecr-registry
+      containers:
+        - name: idgen
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/idgen:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: grpc
+              containerPort: 50051
+          env:
+            - name: HTTP_ADDR
+              value: "[::]:8080"
+            - name: GRPC_ADDR
+              value: "[::]:50051"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5

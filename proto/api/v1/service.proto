@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package api.v1;
+
+import "api/v1/hello.proto";
+import "google/api/annotations.proto";
+import "google/api/http.proto";
+
+
+option csharp_namespace = "Api.V1";
+option go_package = "api/v1";
+
+// ApiService 提供 gRPC 与 HTTP (gRPC-Web) 接口
+service ApiService {
+  // 简单问候
+  rpc SayHello(HelloRequest) returns (HelloResponse){
+    option (google.api.http) = {
+      get: "/api/v1/hello"
+    };
+  }
+  // 健康检查
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse){
+    option (google.api.http) = {
+      get: "/api/v1/health"
+    };
+  }
+  // SnowFlakeID generate 
+  rpc GenerateID(GenerateIDRequest) returns (GenerateIDResponse){
+    option (google.api.http) = {
+      get: "/api/v1/generateid"
+    };
+  }
+}
+
+// Hello 请求
+message HelloRequest {
+  string name = 1;
+}
+
+// Hello 响应
+message HelloResponse {
+  string message = 1;
+}
+
+// 健康检查请求
+message HealthCheckRequest {}
+
+// 健康检查响应
+message HealthCheckResponse {
+  enum Status {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  Status status = 1;
+}
+
+// 健康检查请求
+message GenerateIDRequest {
+  uint32 workID = 1;
+}
+
+// 健康检查响应
+message GenerateIDResponse {
+  uint64 id = 1;
+}

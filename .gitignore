@@ -1,0 +1,140 @@
+# =============================================================================
+# OS / Editor
+# =============================================================================
+.DS_Store
+Thumbs.db
+
+.vs/
+*.code-workspace
+
+# Dotfiles catch-all with exceptions
+.*
+!.gitignore
+!.github/
+!.vscode/
+!.editorconfig
+
+# =============================================================================
+# .NET / C# Build
+# =============================================================================
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+project.lock.json
+project.fragment.lock.json
+
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+*.binlog
+*.log
+
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# =============================================================================
+# .NET User / IDE Files
+# =============================================================================
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.DotSettings.user
+
+# Mono auto generated files
+mono_crash.*
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+/_ReSharper.Caches/
+
+# JetBrains Rider
+*.sln.iml
+riderModule.iml
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# Visual Studio auto generated files
+Generated\ Files/
+
+# =============================================================================
+# .NET Test & Coverage
+# =============================================================================
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+*.dotCover
+
+OpenCover/
+BenchmarkDotNet.Artifacts/
+
+# =============================================================================
+# NuGet / Publish
+# =============================================================================
+*.pubxml
+*.publishproj
+*.[Pp]ublish.xml
+*.azurePubxml
+PublishScripts/
+publish/
+
+*.pfx
+*.publishsettings
+
+# =============================================================================
+# ASP.NET / App-specific
+# =============================================================================
+appsettings.json
+appsettings-*.json
+appsettings.*.json
+
+services/mono/Bacera.Gateway.Web/Properties/launchSettings.json
+services/mono/Bacera.Gateway.Web/Properties/launchSettings-*.json
+services/mono/Bacera.Gateway.Web/keys/*
+
+tempkey.jwk
+aws-logger-errors.txt
+healthchecksdb
+
+# =============================================================================
+# Rust
+# =============================================================================
+target/
+**/*.rs.bk
+
+# =============================================================================
+# Misc
+# =============================================================================
+node_modules/
+__pycache__/
+*.pyc
+~$*
+*~
+
+# Visual Studio cache files
+*.[Cc]ache
+!?*.[Cc]ache/
