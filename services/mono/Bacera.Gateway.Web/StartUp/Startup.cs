@@ -108,6 +108,9 @@ public static partial class Startup
         var idgenAddr = GetEnvValue("IDGEN_GRPC_ADDR", "http://idgen:50051");
         me.AddGrpcClient<Api.V1.ApiService.ApiServiceClient>(o => o.Address = new Uri(idgenAddr));
 
+        var boardcastAddr = GetEnvValue("BOARDCAST_GRPC_ADDR", "http://boardcast:50052");
+        me.AddGrpcClient<Api.V1.BoardcastService.BoardcastServiceClient>(o => o.Address = new Uri(boardcastAddr));
+
         me.AddHttpClient(HttpClientHandlerTypes.ManualCertificate, client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);

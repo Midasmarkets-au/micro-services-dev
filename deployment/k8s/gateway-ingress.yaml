@@ -4,11 +4,21 @@
 #  前置条件：
 #    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
 #
-#  流量路径：
-#    Internet → ingress-nginx (LoadBalancer :80/:443)
-#              → /(api|connect|hub|live|swagger)/  → mono:80
-#              → 其余所有路径                       → front-* / mono:80
+#  包含两个 Ingress 对象：
+#    1. bacera-ingress          — 主路由（mono / front-*）
+#    2. boardcast-event-ingress — SSE 路由，将 /api/v1/event 重写为 /event
 #
+#  流量路径：
+#    portal.trademdm.com/api/v1/event               → boardcast:8081/event（rewrite）
+#    portal.trademdm.com/(api|connect|hub|live|...)  → mono:80
+#    portal.trademdm.com/                            → front-client:80
+#    tenant.trademdm.com/(api|connect|hub|live|...)  → mono:80
+#    tenant.trademdm.com/                            → front-tenant:80
+#
+#  注意：portal 的 /api/ 路径使用负向前瞻排除 /api/v1/event，
+#  避免与 boardcast-event-ingress 冲突。
+#  nginx ingress controller 合并同一 host 的所有 Ingress 后按字母顺序排列
+#  location 块，bacera-ingress 的 /api/ 正则会先于 /api/v1/event 匹配。
 # ============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -29,7 +39,8 @@ spec:
     - host: portal.trademdm.com
       http:
         paths:
-          - path: /(api|connect|hub|live|swagger|.well-known/openid-configuration)/
+          # 负向前瞻排除 /api/v1/event，该路径由 boardcast-event-ingress 处理
+          - path: /(?!api/v1/event(/|$))(api|connect|hub|live|swagger|.well-known/openid-configuration)/
             pathType: ImplementationSpecific
             backend:
               service:
@@ -76,3 +87,42 @@ spec:
                 name: mono
                 port:
                   number: 80
+
+---
+# ============================================================================
+#  boardcast SSE Ingress — portal.trademdm.com/api/v1/event → boardcast:8081/event
+#
+#  独立对象的原因：proxy-buffering: off 作用于整个 Ingress 对象，
+#  不能与主 ingress 混用，否则会影响所有路由的缓冲行为。
+#
+#  rewrite-target 将 /api/v1/event 重写为 /event 再转发给 boardcast 服务。
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: boardcast-event-ingress
+  labels:
+    app: boardcast
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    # 禁用响应缓冲，确保 SSE 事件实时推送到客户端
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    # 将 /api/v1/event 重写为 /event 转发给 boardcast 服务
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /event
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: portal.trademdm.com
+      http:
+        paths:
+          - path: /api/v1/event(/|$)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: boardcast
+                port:
+                  number: 8081

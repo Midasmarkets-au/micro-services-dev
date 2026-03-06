@@ -2,6 +2,7 @@
 members = [
   "services/idgen",
   "services/auth",
+  "services/boardcast",
 ]
 resolver = "1"
 
@@ -36,3 +37,6 @@ sha2 = "0.10"
 hmac = "0.12"
 base64 = "0.22"
 harsh = "0.2"
+# Broadcast / SSE
+tokio-stream = { version = "0.1", features = ["sync"] }
+dashmap = "5"
