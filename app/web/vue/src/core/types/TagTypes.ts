@@ -1,0 +1,15 @@
+export enum TagNames {
+  Test = "Test",
+  DailyConfirmEmail = "DailyConfirmEmail",
+  NewRebateTest = "NewRebateTest",
+  AddPips = "AddPips",
+  AddCommission = "AddCommission",
+  DefaultAgentAccount = "DefaultAgentAccount",
+  DefaultSalesAccount = "DefaultSalesAccount",
+  AutoCreate = "AutoCreate",
+  AutoCreateConfirmed = "AutoCreateConfirmed",
+  HasClosedAccount = "HasClosedAccount",
+  DelayedReview = "DelayedReview",
+  EventShopActivity = "EventShopActivity",
+  Special = "Special",
+}

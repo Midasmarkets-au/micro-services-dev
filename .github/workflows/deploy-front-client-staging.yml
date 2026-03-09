@@ -1,0 +1,85 @@
+name: Deploy Client (Staging)
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - "app/web/vue/**"
+      - ".github/workflows/deploy-front-client-staging.yml"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-2
+  ECR_REGISTRY: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com
+  PROJECT_NAME: client
+
+jobs:
+  build-and-push:
+    name: Build and Push Client (Staging)
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate .env file
+        working-directory: app/web/vue
+        run: |
+          cat > .env.production << ENVEOF
+          VUE_APP_ENV=${{ vars.CLIENT_STAGING_VUE_APP_ENV }}
+          VUE_APP_API_URL=${{ vars.CLIENT_STAGING_VUE_APP_API_URL }}
+          VUE_APP_API_V2_URL=${{ vars.CLIENT_STAGING_VUE_APP_API_V2_URL }}
+          VUE_APP_URL=${{ vars.CLIENT_STAGING_VUE_APP_URL }}
+          VUE_APP_BASE_URL=${{ vars.CLIENT_STAGING_VUE_APP_BASE_URL }}
+          VUE_APP_BASE_CDN_URL=${{ vars.CLIENT_STAGING_VUE_APP_BASE_CDN_URL }}
+          VUE_APP_PATH=${{ vars.CLIENT_STAGING_VUE_APP_PATH }}
+          VUE_APP_SITE=${{ vars.CLIENT_STAGING_VUE_APP_SITE }}
+          VUE_APP_GA_ID=${{ vars.CLIENT_STAGING_VUE_APP_GA_ID }}
+          VUE_APP_GA_SIGNUP_EVENT=${{ vars.CLIENT_STAGING_VUE_APP_GA_SIGNUP_EVENT }}
+          VUE_APP_AU_ADDRESS_FINDER_KEY=${{ vars.CLIENT_STAGING_VUE_APP_AU_ADDRESS_FINDER_KEY }}
+          VUE_APP_TOKEN_VALIDITY_PERIOD=${{ vars.CLIENT_STAGING_VUE_APP_TOKEN_VALIDITY_PERIOD }}
+          VUE_APP_SERVICE_STATUS=${{ vars.CLIENT_STAGING_VUE_APP_SERVICE_STATUS }}
+          VUE_APP_SERVICE_IPS=${{ vars.CLIENT_STAGING_VUE_APP_SERVICE_IPS }}
+          VUE_APP_DEV=${{ vars.CLIENT_STAGING_VUE_APP_DEV }}
+          ENVEOF
+
+      - name: Debug .env.production
+        working-directory: app/web/vue
+        run: |
+          echo "=== .env.production contents ==="
+          cat .env.production
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: app/web/vue
+          push: true
+          platforms: linux/arm64
+          build-args: |
+            PROJECT_NAME=${{ env.PROJECT_NAME }}
+          tags: |
+            ${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}:latest
+            ${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}:latest-${{ github.sha }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Rollout restart deployment
+        run: kubectl rollout restart deployment front-${{ env.PROJECT_NAME }}

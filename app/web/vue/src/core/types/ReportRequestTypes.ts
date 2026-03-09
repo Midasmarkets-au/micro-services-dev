@@ -1,0 +1,17 @@
+export enum ReportRequestTypes {
+  TradeForClient = 1,
+  TradeForAgent = 2,
+  TradeForSales = 3,
+  TradeForTenant = 4,
+  Rebate = 5,
+  DepositForTenant = 6,
+  WithdrawForTenant = 7,
+  TransactionForTenant = 8,
+  WalletOverviewForTenant = 9,
+  WalletTransactionForTenant = 10,
+  WithdrawPendingForTenant = 11,
+  SalesRebateForTenant = 12,
+  SalesRebateSumByAccountForTenant = 13,
+  AccountSearchForTenant = 14,
+  DailyEquityReport = 23,
+}

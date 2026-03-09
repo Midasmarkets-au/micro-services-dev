@@ -1,0 +1,17 @@
+export enum AuditTypes {
+  Unknown = 0,
+  User = 10,
+  Account = 20,
+  TradeAccount = 21,
+  Wallet = 22,
+  PaymentService = 23,
+  TradeAccountBalance = 24,
+  ExternalTradeAccount = 100,
+  ExchangeRate = 120,
+  ClientRebateRule = 130,
+  RebateRule = 131,
+  RebateRuleItem = 132,
+  AgentRebateRule = 140,
+  BrokerRebateRule = 150,
+  Configuration = 160,
+}

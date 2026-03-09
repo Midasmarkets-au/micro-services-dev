@@ -1,6 +1,6 @@
 # MM-Back
 
-Monorepo backend containing two services: **mono** (.NET 8 gateway) and **idgen** (Rust gRPC/HTTP ID generator).
+Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth** (.NET 8 auth), **idgen** (Rust gRPC/HTTP ID generator), **auth_rust** (Rust auth), **boardcast** (broadcast), and **app/web/vue** (Vue 3 frontend — client & tenant portals).
 
 ## Prerequisites
 
@@ -38,7 +38,9 @@ Monorepo backend containing two services: **mono** (.NET 8 gateway) and **idgen*
 │   │   ├── Bacera.Gateway.TradingData/
 │   │   ├── Bacera.Gateway.Web/          # ASP.NET entry point
 │   │   └── proto/                       # Generated C# gRPC stubs
-│   └── auth/                   # (reserved)
+│   ├── auth/                   # .NET 8 — Auth service (OAuth2 / JWT)
+│   ├── auth_rust/              # Rust — Auth service (Axum, separate workspace)
+│   └── boardcast/              # Broadcast service (placeholder)
 ├── tests/                      # .NET test projects
 ├── tools/                      # CLI utilities (Poster, Cleaner, Register, etc.)
 ├── deployment/
@@ -74,23 +76,60 @@ cp services/mono/Bacera.Gateway.Web/appsettings.Sample.json \
 
 Edit `appsettings.json` with your local DB/Redis connection strings.
 
-### 3. Run mono (.NET Gateway)
+### 3. Run Services
+
+#### mono — .NET 8 Gateway
 
 ```bash
 dotnet restore
 dotnet run --project services/mono/Bacera.Gateway.Web
 ```
 
-The API starts on `http://localhost:5000` (or the port configured in launch settings).
+API starts on `http://localhost:5000`.
 
-### 4. Run idgen (Rust ID Generator)
+#### auth — .NET 8 Auth Service
 
 ```bash
-cargo build -p idgen
+dotnet run --project services/auth/Bacera.Gateway.Auth.csproj
+```
+
+#### idgen — Rust ID Generator (gRPC + HTTP)
+
+```bash
 cargo run -p idgen
 ```
 
 Exposes gRPC on `:50051` and HTTP on `:8080`.
+
+#### auth_rust — Rust Auth Service
+
+> Note: `auth_rust` has its own Cargo workspace separate from the root workspace.
+
+```bash
+cd services/auth_rust
+cargo run
+```
+
+#### boardcast — Broadcast Service
+
+> Note: `boardcast` is a placeholder service directory (no source yet).
+
+### 4. Run Vue Web App (app/web/vue)
+
+```bash
+cd app/web/vue
+npm install
+```
+
+| Command | Description |
+|---|---|
+| `npm run serve.client` | Dev server — Client portal |
+| `npm run serve.tenant` | Dev server — Tenant portal |
+| `npm run serve.backend` | Dev server — Backend admin |
+| `npm run build.client` | Production build — Client portal |
+| `npm run build.client.prod` | Production build — Client (prod mode) |
+| `npm run build.tenant` | Production build — Tenant portal |
+| `npm run build.backend` | Production build — Backend admin |
 
 ### 5. Run Tests
 
@@ -98,8 +137,12 @@ Exposes gRPC on `:50051` and HTTP on `:8080`.
 # .NET tests
 dotnet test
 
-# Rust tests
+# Rust tests (root workspace)
 cargo test -p idgen
+cargo test -p auth
+
+# Rust tests (auth_rust)
+cd services/auth_rust && cargo test
 ```
 
 ## Docker Build

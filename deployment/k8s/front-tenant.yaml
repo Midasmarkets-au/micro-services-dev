@@ -1,0 +1,55 @@
+# ============================================================================
+#  front-tenant — Vue 3 租户门户
+#  镜像：docker build --build-arg PROJECT_NAME=tenant -f app/web/vue/Dockerfile app/web/vue
+#  端口：80 (HTTP)
+#  入口：tenant.trademdm.com / 由 gateway-ingress 路由到此服务
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-tenant
+  labels:
+    app: front-tenant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-tenant
+  template:
+    metadata:
+      labels:
+        app: front-tenant
+    spec:
+      containers:
+        - name: front-tenant
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+# ============================================================================
+#  front-tenant Service — ClusterIP，由 NGINX Ingress 统一暴露
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-tenant
+  labels:
+    app: front-tenant
+spec:
+  type: ClusterIP
+  selector:
+    app: front-tenant
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

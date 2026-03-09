@@ -1,0 +1,213 @@
+import { computed } from "vue";
+import store from "@/store/index";
+
+/**
+ * Returns layout config
+ * @returns {object}
+ */
+export const config = computed(() => {
+  return store.getters.layoutConfig();
+});
+
+/**
+ * Set the sidebar display
+ * @returns {boolean}
+ */
+export const displaySidebar = computed(() => {
+  return store.getters.layoutConfig("sidebar.display");
+});
+
+/**
+ * Check if footer container is fluid
+ * @returns {boolean}
+ */
+export const footerWidthFluid = computed(() => {
+  if (window.innerWidth > 1512) {
+    return store.getters.layoutConfig("footer.width") === "fluid";
+  } else {
+    return true;
+  }
+});
+
+/**
+ * Check if header container is fluid
+ * @returns {boolean}
+ */
+export const headerWidthFluid = computed(() => {
+  if (window.innerWidth > 1512) {
+    return store.getters.layoutConfig("header.width") === "fluid";
+  } else {
+    return true;
+  }
+});
+
+/**
+ * Returns header left part type
+ * @returns {string}
+ */
+export const headerLeft = computed(() => {
+  return store.getters.layoutConfig("header.left");
+});
+
+/**
+ * Returns header fixed on desktop
+ * @returns {boolean}
+ */
+export const headerFixed = computed(() => {
+  return store.getters.layoutConfig("header.fixed.desktop");
+});
+
+/**
+ * Returns header fixed on tablet and mobile
+ * @returns {boolean}
+ */
+export const headerFixedOnMobile = computed(() => {
+  return store.getters.layoutConfig("header.fixed.tabletAndMobile");
+});
+
+/**
+ * Set the aside display
+ * @returns {boolean}
+ */
+export const asideDisplay = computed(() => {
+  return store.getters.layoutConfig("aside.display") === true;
+});
+
+/**
+ * Check if toolbar width is fluid
+ * @returns {boolean}
+ */
+export const toolbarWidthFluid = computed(() => {
+  if (window.innerWidth > 1512) {
+    return store.getters.layoutConfig("toolbar.width") === "fluid";
+  } else {
+    return true;
+  }
+});
+
+/**
+ * Set the toolbar display
+ * @returns {boolean}
+ */
+export const toolbarDisplay = computed(() => {
+  return store.getters.layoutConfig("toolbar.display");
+});
+
+/**
+ * Page title display
+ * @returns {boolean}
+ */
+export const pageTitleDisplay = computed(() => {
+  return store.getters.layoutConfig("pageTitle.display");
+});
+
+/**
+ * Page title breadcrumb display
+ * @returns {boolean}
+ */
+export const pageTitleBreadcrumbDisplay = computed(() => {
+  return store.getters.layoutConfig("pageTitle.breadcrumb");
+});
+
+/**
+ * Page title direction display
+ * @returns { "row" | "column" }
+ */
+export const pageTitleDirection = computed(() => {
+  return store.getters.layoutConfig("pageTitle.direction");
+});
+
+/**
+ * Check if the page loader is enabled
+ * @returns {boolean}
+ */
+export const loaderEnabled = computed(() => {
+  return store.getters.layoutConfig("loader.display");
+});
+
+/**
+ * Check if container width is fluid
+ * @returns {boolean}
+ */
+export const contentWidthFluid = computed(() => {
+  //修改逻辑
+  console.log(" window.innerWidth", window.innerWidth);
+  if (window.innerWidth > 1512) {
+    return store.getters.layoutConfig("content.width") === "fluid";
+  } else {
+    return true;
+  }
+  return store.getters.layoutConfig("content.width") === "fluid";
+});
+
+/**
+ * Page loader logo image
+ * @returns {string}
+ */
+export const loaderLogo = computed(() => {
+  return process.env.BASE_URL + store.getters.layoutConfig("loader.logo");
+});
+
+/**
+ * Check if the aside menu is enabled
+ * @returns {boolean}
+ */
+export const asideEnabled = computed(() => {
+  return !!store.getters.layoutConfig("aside.display");
+});
+
+/**
+ * Set the aside theme
+ * @returns {string}
+ */
+export const asideTheme = computed(() => {
+  return store.getters.layoutConfig("aside.theme");
+});
+
+/**
+ * Set the subheader display
+ * @returns {boolean}
+ */
+export const subheaderDisplay = computed(() => {
+  return store.getters.layoutConfig("toolbar.display");
+});
+
+/**
+ * Set the aside menu icon type
+ * @returns {string}
+ */
+export const asideMenuIcons = computed(() => {
+  return store.getters.layoutConfig("aside.menuIcon");
+});
+
+/**
+ * Light theme logo image
+ * @returns {string}
+ */
+export const themeLightLogo = computed(() => {
+  return store.getters.layoutConfig("main.logo.light");
+});
+
+/**
+ * Dark theme logo image
+ * @returns {string}
+ */
+export const themeDarkLogo = computed(() => {
+  return store.getters.layoutConfig("main.logo.dark");
+});
+
+/**
+ * Set the header menu icon type
+ * @returns {string}
+ */
+export const headerMenuIcons = computed(() => {
+  return store.getters.layoutConfig("header.menuIcon");
+});
+
+/**
+ * Illustrations set
+ * @returns {string}
+ */
+export const illustrationsSet = computed(() => {
+  return store.getters.layoutConfig("illustrations.set");
+});

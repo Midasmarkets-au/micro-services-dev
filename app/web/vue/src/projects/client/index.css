@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .log-input {
+    @apply h-[3.21rem];
+  }
+  .auth-page-wrapper {
+    @apply min-h-screen w-full flex items-center justify-center bg-no-repeat bg-cover bg-center px-4;
+  }
+  .auth-box {
+    @apply w-full max-w-[648px] shadow-lg bg-white rounded-[20px] text-black;
+  }
+  .auth-form {
+    @apply space-y-4 mb-6 flex items-center justify-center;
+  }
+  .auth-box-header {
+    @apply mx-20 h-[22vh] bg-[url('/images/auth/login-form-bg.png')] bg-contain bg-no-repeat bg-center flex items-center justify-center;
+  }
+  .btn-default {
+    @apply border border-[#f2f4f7] bg-[#fafbfd];
+  }
+  .round-tl-tr {
+    @apply md:rounded-tl-none md:rounded-tr-none;
+  }
+  .round-bl-br {
+    @apply md:rounded-bl-none md:rounded-br-none;
+  }
+  .card-table {
+    @apply border-b border-[#ECEDF4] font-medium text-black leading-[43px];
+  }
+}
+
+.container-xxl {
+  max-width: 128rem;
+}
+
+.container-fluid {
+  max-width: 100rem;
+}

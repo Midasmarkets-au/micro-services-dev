@@ -1,0 +1,271 @@
+.top-right {
+  top: 3em !important;
+}
+
+.pe-8 {
+  padding-right: 2em !important;
+}
+
+.pe-6 {
+  padding-right: 1.5em !important;
+}
+
+.col-fix-100 {
+  -ms-flex: 0 0 100px;
+  flex: 0 0 100px;
+}
+
+.col-fix-140 {
+  -ms-flex: 0 0 140px;
+  flex: 0 0 140px;
+}
+
+.customer-activate-bg {
+  background-color: $gray-100;
+}
+
+.auth-language-dropdown {
+  position: absolute;
+  top: 57px;
+  right: 105px;
+}
+
+.language-item:hover {
+  color: #0275d8;
+}
+
+.card {
+  border: 1px solid #e4e6ef !important;
+}
+
+.btn-bcr {
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.btn-bcr:hover {
+  background: #e2e8f0;
+}
+
+.b-date-range-picker {
+  width: 220px !important;
+}
+
+#walletCard:hover {
+  cursor: pointer;
+  border-radius: 20px;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}
+
+.walletCardActive {
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}
+
+.wallet-card {
+  margin: 0px 16px 16px 16px;
+  /* background-color: white; */
+  border-radius: 10px;
+  position: relative;
+  height: 160px;
+  // background: rgba(228, 230, 239, 0.5) url("/images/logos/logo-wallet-bg.png") no-repeat;
+  background: linear-gradient(111.72deg, #fbfbfb 1.51%, #e4e6ef 100%) no-repeat;
+  overflow: hidden;
+  // background-size: 67px;
+  // background-position: top right;
+}
+
+.wallet-card-active {
+  margin: 0px 0px 16px 0px;
+  /* background-color: #ffd400; */
+  border: 1px solid #ffd400 !important;
+  box-shadow: rgba(242, 201, 0, 0.25) 0px 4px 4px;
+  background: #ffd400 url("/images/logos/logo-wallet-bg.png") no-repeat;
+  background-size: 67px;
+  background-position: top right;
+}
+
+.wallet-card .wallet-card-arrow {
+  display: none;
+}
+
+.wallet-card-active .wallet-card-arrow {
+  display: block;
+  position: absolute;
+  right: -30px;
+  top: 50px;
+  width: 30px;
+}
+
+// sub menu
+.sub-menu {
+  margin-bottom: 40px;
+}
+
+.sub-menu-item {
+  border: 0;
+
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-right: 20px;
+  color: rgba(136, 152, 169, 1);
+}
+
+.sub-menu-item.active {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.sub-menu-item:hover {
+  color: white;
+}
+
+.account-tabs {
+  background-color: rgba(246, 246, 246, 1);
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.account-tabs .account-tab {
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 0px;
+  background: none;
+  font-size: 14px;
+}
+
+.account-tabs .active {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.tabBtn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  border-radius: 5px 5px 0 0;
+  width: 150px;
+  height: 40px;
+  margin-right: 6px;
+  cursor: pointer;
+  border: 2px solid #ffd400;
+  margin-bottom: -2px;
+}
+
+.tabActive {
+  background-color: #ffd400;
+}
+
+.tabLine {
+  width: 98%;
+  height: 3px;
+  background-color: #ffd400;
+  margin-top: -1px;
+  margin-left: 10px;
+}
+
+.badge-pending {
+  background: rgba(255, 205, 147, 0.3);
+  color: #ff8a00;
+}
+
+.badge-completed {
+  background: rgba(97, 200, 166, 0.3);
+  color: #009262;
+}
+
+.badge-refused {
+  background: rgba(232, 158, 152, 0.3);
+  color: #e02b1d;
+}
+
+.verify-card .btn-check:checked + .btn {
+  background-color: rgba(0, 83, 173, 1);
+  color: #fff !important;
+}
+.verify-card {
+  padding: 32px 60px;
+}
+
+.verify-card .card-body {
+  padding: 0;
+}
+
+/* modal backdrop fix */
+.modal:nth-of-type(even) {
+  z-index: 2052 !important;
+}
+.modal-backdrop.show:nth-of-type(even) {
+  z-index: 1051 !important;
+}
+
+.swal2-container {
+  z-index: 3060;
+}
+
+.table-tenant {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  vertical-align: middle;
+  tr {
+    border-bottom-width: 1px;
+    border-bottom-style: dashed;
+    border-bottom-color: #eff2f5;
+  }
+  thead {
+    th {
+      font-weight: 600;
+      color: #a1a5b7;
+      border: 0;
+      padding: 0.75rem;
+      text-transform: uppercase;
+    }
+  }
+  tbody {
+    td {
+      font-size: 1.075rem;
+      padding: 0.75rem;
+      border: 0;
+    }
+  }
+}
+.table-tenant-sm {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  vertical-align: middle;
+  tr {
+    border-bottom-width: 1px;
+    border-bottom-style: dashed;
+    border-bottom-color: #eff2f5;
+  }
+  thead {
+    th {
+      font-weight: 600;
+      color: #a1a5b7;
+      border: 0;
+      padding: 0.75rem;
+      text-transform: uppercase;
+    }
+  }
+  tbody {
+    td {
+      font-size: 1.075rem;
+      padding: 0.75rem;
+      border: 0;
+    }
+  }
+}
+.my-swal-overlay {
+  z-index: 9000 !important;
+}
+
+.tr-select {
+  background-color: rgba(254, 215, 215, 0.5) !important;
+}
