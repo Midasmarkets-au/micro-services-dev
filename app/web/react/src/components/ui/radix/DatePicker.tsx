@@ -23,8 +23,8 @@ export function formatDateForApi(date: Date | undefined): string | undefined {
 type DatePickerSize = 'sm' | 'md';
 
 const SIZE_CLASS: Record<DatePickerSize, string> = {
-  sm: 'h-9 rounded px-3 text-sm',
-  md: 'h-12 rounded-xl px-3 py-2 text-sm',
+  sm: 'h-9! px-3!',
+  md: '',
 };
 
 interface DatePickerBaseProps {
@@ -138,13 +138,10 @@ export function DatePicker(props: DatePickerProps) {
           type="button"
           disabled={disabled}
           className={cn(
-            'flex w-full items-center gap-2 border text-left',
+            'input-field flex items-center gap-2 text-left',
             SIZE_CLASS[size],
-            'bg-input-bg text-text-primary',
-            'border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            'transition-colors duration-200',
-            error && 'border-error-border',
+            error && 'error-border',
             !displayText && 'text-text-placeholder',
             className
           )}

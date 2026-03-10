@@ -2,23 +2,32 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
-import { Button, Skeleton } from '@/components/ui';
+import { Button, Skeleton, Input, SimpleSelect } from '@/components/ui';
+import type { SelectOption } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useSalesStore } from '@/stores/salesStore';
 import { useToast } from '@/hooks/useToast';
-import { salesOpenTradeAccount, getSalesIBAccountConfig, getSalesAvailableAccountTypes } from '@/actions';
+import {
+  salesOpenTradeAccount,
+  getSalesIBAccountConfig,
+  getReferralCodeSupplement,
+} from '@/actions';
 import type { SalesClientAccount } from '@/types/sales';
+import { AccountRoleTypes, CurrencyTypes } from '@/types/accounts';
 
-interface AccountTypeOption {
-  id: number;
-  name: string;
-}
+const CurrencyNames: Record<number, string> = {
+  [CurrencyTypes.AUD]: 'AUD',
+  [CurrencyTypes.CNY]: 'CNY',
+  [CurrencyTypes.USD]: 'USD',
+  [CurrencyTypes.USC]: 'USC',
+};
 
 interface OpenTradeAccountModalProps {
   open: boolean;
@@ -29,70 +38,138 @@ interface OpenTradeAccountModalProps {
 
 export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }: OpenTradeAccountModalProps) {
   const t = useTranslations('sales');
+  const tAccounts = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const { showToast } = useToast();
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isConfigLoading, setIsConfigLoading] = useState(true);
+  const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [accountTypes, setAccountTypes] = useState<AccountTypeOption[]>([]);
-  const [leverages, setLeverages] = useState<number[]>([]);
-  const [currencies, setCurrencies] = useState<{ id: number; name: string }[]>([]);
-  const [platforms, setPlatforms] = useState<{ id: number; name: string }[]>([]);
 
-  const [selectedAccountType, setSelectedAccountType] = useState<number | ''>('');
-  const [selectedCurrency, setSelectedCurrency] = useState<number | ''>('');
-  const [selectedLeverage, setSelectedLeverage] = useState<number | ''>('');
-  const [selectedPlatform, setSelectedPlatform] = useState<number | ''>('');
+  const [referCode, setReferCode] = useState('');
+  const [referCodeValid, setReferCodeValid] = useState(false);
+  const [referCodeRole, setReferCodeRole] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
-  const initData = useCallback(async () => {
+  const [accountTypeOptions, setAccountTypeOptions] = useState<SelectOption[]>([]);
+  const [leverageOptions, setLeverageOptions] = useState<SelectOption[]>([]);
+  const [currencyOptions, setCurrencyOptions] = useState<SelectOption[]>([]);
+  const [platformOptions, setPlatformOptions] = useState<SelectOption[]>([]);
+
+  const [selectedAccountType, setSelectedAccountType] = useState('');
+  const [selectedCurrency, setSelectedCurrency] = useState('');
+  const [selectedLeverage, setSelectedLeverage] = useState('');
+  const [selectedPlatform, setSelectedPlatform] = useState('');
+
+  const resetForm = useCallback(() => {
+    setReferCode('');
+    setReferCodeValid(false);
+    setReferCodeRole('');
+    setShowForm(false);
+    setAccountTypeOptions([]);
+    setSelectedAccountType('');
+    setSelectedCurrency('');
+    setSelectedLeverage('');
+    setSelectedPlatform('');
+  }, []);
+
+  const loadConfig = useCallback(async () => {
     if (!salesAccount || !account) return;
-    setIsLoading(true);
+    setIsConfigLoading(true);
     try {
-      const [configResult, typesResult] = await Promise.all([
-        execute(getSalesIBAccountConfig, salesAccount.uid, account.uid),
-        execute(getSalesAvailableAccountTypes, salesAccount.uid),
-      ]);
-
-      if (configResult.success && configResult.data) {
-        const config = configResult.data as Record<string, unknown>;
-        if (Array.isArray(config.leverages)) setLeverages(config.leverages as number[]);
+      const result = await execute(getSalesIBAccountConfig, salesAccount.uid, account.uid);
+      if (result.success && result.data) {
+        const config = result.data as Record<string, unknown>;
+        if (Array.isArray(config.leverages)) {
+          const opts = (config.leverages as number[]).map((lev) => ({
+            value: String(lev),
+            label: `1:${lev}`,
+          }));
+          setLeverageOptions(opts);
+          if (opts.length > 0) setSelectedLeverage(opts[0].value);
+        }
         if (Array.isArray(config.currencies)) {
-          setCurrencies((config.currencies as { id: number; name: string }[]).map((c) => ({
-            id: c.id ?? (c as unknown as number),
-            name: c.name ?? String(c.id ?? c),
-          })));
+          const opts = (config.currencies as (number | { id: number })[]).map((c) => {
+            const id = typeof c === 'number' ? c : c.id;
+            return { value: String(id), label: CurrencyNames[id] || String(id) };
+          });
+          setCurrencyOptions(opts);
+          if (opts.length > 0) setSelectedCurrency(opts[0].value);
         }
         if (Array.isArray(config.platforms)) {
-          setPlatforms((config.platforms as { id: number; name: string }[]).map((p) => ({
-            id: p.id ?? (p as unknown as number),
-            name: p.name ?? String(p.id ?? p),
-          })));
+          const opts = (config.platforms as { id: number; name: string }[]).map((p) => ({
+            value: String(p.id ?? p),
+            label: p.name ?? String(p.id ?? p),
+          }));
+          setPlatformOptions(opts);
+          if (opts.length > 0) setSelectedPlatform(opts[0].value);
         }
       }
-
-      if (typesResult.success && Array.isArray(typesResult.data)) {
-        setAccountTypes(
-          (typesResult.data as { id?: number; accountType?: number; name?: string }[]).map((at) => ({
-            id: at.id ?? at.accountType ?? 0,
-            name: at.name ?? String(at.id ?? at.accountType ?? 0),
-          }))
-        );
-      }
     } finally {
-      setIsLoading(false);
+      setIsConfigLoading(false);
     }
   }, [salesAccount, account, execute]);
 
   useEffect(() => {
     if (open && account) {
-      setSelectedAccountType('');
-      setSelectedCurrency('');
-      setSelectedLeverage('');
-      setSelectedPlatform('');
-      initData();
+      resetForm();
+      loadConfig();
     }
-  }, [open, account, initData]);
+  }, [open, account, resetForm, loadConfig]);
+
+  const getRoleLabel = (serviceType: number): string => {
+    switch (serviceType) {
+      case AccountRoleTypes.IB: return 'IB';
+      case AccountRoleTypes.Sales: return 'Sales';
+      case AccountRoleTypes.Client: return 'Client';
+      default: return String(serviceType);
+    }
+  };
+
+  const handleCheckReferCode = async () => {
+    if (!referCode.trim()) return;
+    setIsCheckingCode(true);
+    try {
+      const result = await execute(getReferralCodeSupplement, referCode.trim());
+      if (result.success && result.data) {
+        const data = result.data as { serviceType: number; summary?: { schema?: { accountType: number }[]; allowAccountTypes?: { accountType: number }[] } };
+        setReferCodeValid(true);
+        setShowForm(true);
+        setReferCodeRole(getRoleLabel(data.serviceType));
+
+        let types: { accountType: number }[] = [];
+        switch (data.serviceType) {
+          case AccountRoleTypes.IB:
+            types = data.summary?.schema ?? [];
+            break;
+          case AccountRoleTypes.Client:
+            types = data.summary?.allowAccountTypes ?? [];
+            break;
+          default:
+            types = data.summary?.schema ?? data.summary?.allowAccountTypes ?? [];
+            break;
+        }
+
+        const opts = types.map((item) => ({
+          value: String(item.accountType),
+          label: tAccounts(`accountTypes.${item.accountType}`),
+        }));
+        setAccountTypeOptions(opts);
+        if (opts.length > 0) setSelectedAccountType(opts[0].value);
+
+        showToast({ message: t('openAccount.referCodeValid'), type: 'success' });
+      } else {
+        setReferCodeValid(false);
+        setShowForm(false);
+      }
+    } catch {
+      setReferCodeValid(false);
+      setShowForm(false);
+    } finally {
+      setIsCheckingCode(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!salesAccount || !account) return;
@@ -101,11 +178,12 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
     setIsSubmitting(true);
     try {
       const formData: Record<string, unknown> = {
-        accountType: selectedAccountType,
-        currencyId: selectedCurrency,
-        leverage: selectedLeverage,
+        referCode: referCode.trim(),
+        accountType: Number(selectedAccountType),
+        currencyId: Number(selectedCurrency),
+        leverage: Number(selectedLeverage),
       };
-      if (selectedPlatform) formData.platform = selectedPlatform;
+      if (selectedPlatform) formData.serviceId = Number(selectedPlatform);
 
       const result = await execute(salesOpenTradeAccount, salesAccount.uid, account.uid, formData);
       if (result.success) {
@@ -119,6 +197,8 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   };
 
   const userName = account?.user?.displayName || account?.user?.nativeName || '';
+  const formDisabled = !referCodeValid || isCheckingCode;
+  const canSubmit = referCodeValid && selectedAccountType && selectedCurrency && selectedLeverage;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,7 +207,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
           <DialogTitle>{t('openAccount.title')} - {userName}</DialogTitle>
         </DialogHeader>
 
-        {isLoading ? (
+        {isConfigLoading ? (
           <div className="space-y-4 py-4">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
@@ -135,76 +215,139 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
           </div>
         ) : (
           <div className="space-y-4 py-2">
+            {/* 推荐码输入 */}
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-text-primary">{t('openAccount.accountType')}</label>
-              <select
-                value={selectedAccountType}
-                onChange={(e) => setSelectedAccountType(e.target.value ? Number(e.target.value) : '')}
-                className="input-field w-full rounded px-3 py-2.5 text-sm"
-              >
-                <option value="">{t('openAccount.selectAccountType')}</option>
-                {accountTypes.map((at) => (
-                  <option key={at.id} value={at.id}>{at.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-text-primary">{t('openAccount.currency')}</label>
-              <select
-                value={selectedCurrency}
-                onChange={(e) => setSelectedCurrency(e.target.value ? Number(e.target.value) : '')}
-                className="input-field w-full rounded px-3 py-2.5 text-sm"
-              >
-                <option value="">{t('openAccount.selectCurrency')}</option>
-                {currencies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-text-primary">{t('openAccount.leverage')}</label>
-              <select
-                value={selectedLeverage}
-                onChange={(e) => setSelectedLeverage(e.target.value ? Number(e.target.value) : '')}
-                className="input-field w-full rounded px-3 py-2.5 text-sm"
-              >
-                <option value="">{t('openAccount.selectLeverage')}</option>
-                {leverages.map((lev) => (
-                  <option key={lev} value={lev}>1:{lev}</option>
-                ))}
-              </select>
-            </div>
-
-            {platforms.length > 0 && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-text-primary">{t('openAccount.platform')}</label>
-                <select
-                  value={selectedPlatform}
-                  onChange={(e) => setSelectedPlatform(e.target.value ? Number(e.target.value) : '')}
-                  className="input-field w-full rounded px-3 py-2.5 text-sm"
+              <label className="mb-1.5 block text-sm text-text-secondary">
+                {t('openAccount.referCode')}
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    value={referCode}
+                    onChange={(e) => {
+                      setReferCode(e.target.value);
+                      if (referCodeValid) {
+                        setReferCodeValid(false);
+                        setShowForm(false);
+                        setAccountTypeOptions([]);
+                        setSelectedAccountType('');
+                      }
+                    }}
+                    placeholder={t('openAccount.referCodePlaceholder')}
+                    disabled={isCheckingCode}
+                    inputSize="sm"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCheckReferCode();
+                    }}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCheckReferCode}
+                  disabled={!referCode.trim() || isCheckingCode}
+                  loading={isCheckingCode}
+                  className="shrink-0"
                 >
-                  <option value="">{t('openAccount.selectPlatform')}</option>
-                  {platforms.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                  <MagnifyingGlassIcon className="size-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* 推荐码角色信息 */}
+            {showForm && referCodeRole && (
+              <div>
+                <label className="mb-1.5 block text-sm text-text-secondary">
+                  {t('openAccount.role')}
+                </label>
+                <Input value={referCodeRole} disabled inputSize="sm" />
               </div>
             )}
 
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="primary"
-                size="md"
-                loading={isSubmitting}
-                onClick={handleSubmit}
-                disabled={!selectedAccountType || !selectedCurrency || !selectedLeverage}
-                className="w-60"
-              >
-                {t('action.submit')}
-              </Button>
-            </div>
+            {/* 表单字段 - 仅在推荐码验证通过后显示 */}
+            {showForm && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm text-text-secondary">
+                      {t('openAccount.accountType')}
+                    </label>
+                    <SimpleSelect
+                      value={selectedAccountType}
+                      onChange={setSelectedAccountType}
+                      options={accountTypeOptions}
+                      placeholder={t('openAccount.selectAccountType')}
+                      disabled={formDisabled}
+                      triggerSize="sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm text-text-secondary">
+                      {t('openAccount.currency')}
+                    </label>
+                    <SimpleSelect
+                      value={selectedCurrency}
+                      onChange={setSelectedCurrency}
+                      options={currencyOptions}
+                      placeholder={t('openAccount.selectCurrency')}
+                      disabled={formDisabled}
+                      triggerSize="sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm text-text-secondary">
+                      {t('openAccount.leverage')}
+                    </label>
+                    <SimpleSelect
+                      value={selectedLeverage}
+                      onChange={setSelectedLeverage}
+                      options={leverageOptions}
+                      placeholder={t('openAccount.selectLeverage')}
+                      disabled={formDisabled}
+                      triggerSize="sm"
+                    />
+                  </div>
+                  {platformOptions.length > 0 && (
+                    <div>
+                      <label className="mb-1.5 block text-sm text-text-secondary">
+                        {t('openAccount.platform')}
+                      </label>
+                      <SimpleSelect
+                        value={selectedPlatform}
+                        onChange={setSelectedPlatform}
+                        options={platformOptions}
+                        placeholder={t('openAccount.selectPlatform')}
+                        disabled={formDisabled}
+                        triggerSize="sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenChange(false)}
+                    disabled={isSubmitting}
+                  >
+                    {t('action.cancel')}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={isSubmitting}
+                    onClick={handleSubmit}
+                    disabled={!canSubmit}
+                  >
+                    {t('action.submit')}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </DialogContent>
