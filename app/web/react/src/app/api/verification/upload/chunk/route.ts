@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     // 使用 apiClient v2 版本上传文件切片
-    const data = await apiClient.v2.postFormData('/client/media/upload/chunk', formData, token);
+    const data = await apiClient.postFormData('/client/media/upload/chunk', formData, token, 'v2');
 
     return NextResponse.json({ success: true, data });
   } catch (error) {

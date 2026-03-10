@@ -358,7 +358,7 @@ export async function getIBRebateRuleByAccount(
 export async function updateIBRebateRule(
   agentUid: number,
   ruleId: number,
-  formData: { rules: IBRebateRuleItem[] }
+  formData: unknown
 ): Promise<ActionResponse<unknown>> {
   try {
     const response = await apiClient.v1.put<unknown>(
@@ -552,7 +552,7 @@ export async function createIBLinkForClient(
 
 export async function updateIBLink(
   agentUid: number,
-  codeId: number,
+  codeId: string | number,
   formData: Record<string, unknown>
 ): Promise<ActionResponse<unknown>> {
   try {

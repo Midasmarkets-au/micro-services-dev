@@ -102,9 +102,9 @@ export function AccountRebateRelationModal({ open, onOpenChange, account }: Acco
         return;
       }
 
-      const referPath = Array.isArray(pathResult.data)
-        ? pathResult.data as ReferralPathItem[]
-        : (pathResult.data as any).data ?? [];
+      const referPath: ReferralPathItem[] = Array.isArray(pathResult.data)
+        ? (pathResult.data as ReferralPathItem[])
+        : ((pathResult.data as Record<string, unknown>).data as ReferralPathItem[]) ?? [];
 
       if (referPath.length === 0) {
         setRows([]);

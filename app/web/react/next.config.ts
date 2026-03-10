@@ -3,11 +3,11 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
-const isDev = process.env.NODE_ENV === 'development';
-
 const nextConfig: NextConfig = {
   // 关闭 React Strict Mode（开发环境不再双重渲染）
   reactStrictMode: true,
+  // 生产容器化部署使用 standalone 模式
+  output: 'standalone',
   // Server Actions 请求体大小限制（默认 1MB，增加到 5MB 支持文件上传）
   experimental: {
     serverActions: {
@@ -29,17 +29,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // 本地开发环境：将 /images/* 反向代理到 S3
-  ...(isDev && {
-    async rewrites() {
-      return [
-        {
-          source: '/images/:path*',
-          destination: 'https://mm-front-public.s3.ap-southeast-2.amazonaws.com/images/:path*',
-        },
-      ];
-    },
-  }),
+  // 将 /images/* 代理到 S3（开发和生产均需要，next/image 优化时会向自身发起此路径请求）
+  async rewrites() {
+    return [
+      {
+        source: '/images/:path*',
+        destination: 'https://mm-front-public.s3.ap-southeast-2.amazonaws.com/images/:path*',
+      },
+    ];
+  },
   webpack(config) {
     // 找到处理 SVG 的现有规则并排除 @/assets/icons 目录
     const fileLoaderRule = config.module.rules.find((rule: { test?: RegExp }) =>

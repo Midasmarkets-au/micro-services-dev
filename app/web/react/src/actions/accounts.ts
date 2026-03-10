@@ -518,7 +518,8 @@ export async function cancelAccountWithdrawal(
 ): Promise<ActionResponse<void>> {
   try {
     await apiClient.v1.post<void>(
-      `/client/withdrawal/${hashId}/cancel`
+      `/client/withdrawal/${hashId}/cancel`,
+      null
     );
     return { success: true };
   } catch (error) {

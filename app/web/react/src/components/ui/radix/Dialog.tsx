@@ -37,22 +37,20 @@ const DialogContent = React.forwardRef<
     return target?.closest('.toast-backdrop') !== null;
   };
 
-  const handleInteractOutside = (event: Event) => {
-    // 如果点击的是 Toast，不阻止交互
-    if (isToastTarget(event)) {
+  const handleInteractOutside: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>['onInteractOutside'] = (event) => {
+    if (isToastTarget(event as unknown as Event)) {
       event.preventDefault();
       return;
     }
-    onInteractOutside?.(event as React.FocusEvent | React.MouseEvent | React.TouchEvent);
+    onInteractOutside?.(event);
   };
 
-  const handlePointerDownOutside = (event: Event) => {
-    // 如果点击的是 Toast，不阻止交互
-    if (isToastTarget(event)) {
+  const handlePointerDownOutside: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>['onPointerDownOutside'] = (event) => {
+    if (isToastTarget(event as unknown as Event)) {
       event.preventDefault();
       return;
     }
-    onPointerDownOutside?.(event as React.PointerEvent);
+    onPointerDownOutside?.(event);
   };
 
   return (

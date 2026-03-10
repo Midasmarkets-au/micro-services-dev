@@ -72,6 +72,7 @@ export interface ShopItem {
   hashId: string;
   title: string;
   name: string;
+  description?: string;
   images: string[];
   point: number;
   status: number;
