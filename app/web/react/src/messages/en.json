@@ -1866,6 +1866,10 @@
     },
     "openAccount": {
       "title": "Create Trade Account",
+      "referCode": "Refer Code",
+      "referCodePlaceholder": "Enter refer code",
+      "referCodeValid": "Refer code is valid",
+      "role": "Role",
       "accountType": "Account Type",
       "currency": "Currency",
       "leverage": "Leverage",

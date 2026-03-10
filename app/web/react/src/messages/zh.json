@@ -1879,6 +1879,10 @@
     },
     "openAccount": {
       "title": "创建交易账户",
+      "referCode": "推荐码",
+      "referCodePlaceholder": "请输入推荐码",
+      "referCodeValid": "推荐码有效",
+      "role": "角色",
       "accountType": "账户类型",
       "currency": "货币",
       "leverage": "杠杆",
