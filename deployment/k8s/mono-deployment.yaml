@@ -39,10 +39,10 @@ spec:
               value: "http://idgen:50051"
           resources:
             requests:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "500m"
             limits:
-              memory: "1Gi"
+              memory: "2Gi"
               cpu: "1000m"
           startupProbe:
             httpGet:
