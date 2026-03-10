@@ -402,7 +402,9 @@
     "__SYSTEM_MAINTENANCE__": "系統維護中，請稍後重試",
     "networkError": "網路錯誤，請檢查網路連接",
     "unknownError": "發生未知錯誤",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能轉賬給自己"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能轉賬給自己",
+    "CODE_NOT_FOUND": "驗證碼不存在或已失效",
+    "CODE_ALREADY_SENT": "驗證碼已發送，請檢查您的郵箱"
   },
   "platforms": {
     "title": "交易平台",
@@ -1335,5 +1337,16 @@
       "client": "客戶",
       "ib": "代理"
     }
+  },
+  "unlockEmail": {
+    "title": "電子郵箱",
+    "needVerificationCode": "需要驗證碼才能查看郵箱",
+    "codeSentToEmail": "驗證碼已發送至您的郵箱",
+    "codeRequired": "請輸入驗證碼",
+    "sendCode": "發送驗證碼",
+    "resendCode": "重新發送",
+    "sendFailed": "驗證碼發送失敗",
+    "verifyFailed": "驗證失敗",
+    "codePlaceholder": "輸入驗證碼"
   }
 }

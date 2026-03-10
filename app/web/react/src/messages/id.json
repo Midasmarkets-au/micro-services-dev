@@ -402,7 +402,9 @@
     "__SYSTEM_MAINTENANCE__": "Sistem sedang dalam pemeliharaan. Silakan coba lagi nanti",
     "networkError": "Kesalahan jaringan, silakan periksa koneksi Anda",
     "unknownError": "Terjadi kesalahan yang tidak diketahui",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Anda tidak dapat mentransfer ke akun sendiri"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Anda tidak dapat mentransfer ke akun sendiri",
+    "CODE_NOT_FOUND": "Kode verifikasi tidak ditemukan atau telah kedaluwarsa",
+    "CODE_ALREADY_SENT": "Kode verifikasi sudah dikirim, silakan periksa email Anda"
   },
   "platforms": {
     "title": "Platform Trading",
@@ -1030,5 +1032,16 @@
       "editRule2": "Set rebate values for new product categories",
       "editRule5": "Set initial rebate values for the agent"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }

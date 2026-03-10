@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesClients, getSalesAccountDetail } from '@/actions';
+import { getSalesClients, getSalesAccountDetail, getSalesViewEmailCode, getSalesEmailByCode } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
 import { AccountRoleTypes } from '@/types/accounts';
 import {
@@ -30,6 +30,7 @@ import { AccountRebateRelationModal } from '../_components/modals/AccountRebateR
 import { IbLinksModal } from '../_components/modals/IbLinksModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
 import { NewIbReferralLinkModal } from '../_components/modals/NewIbReferralLinkModal';
+import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
 
 type RoleTab = 'ib' | 'client' | 'sales';
 
@@ -81,6 +82,10 @@ export default function SalesCustomersPage() {
   const [ibLinksOpen, setIbLinksOpen] = useState(false);
   const [editSchemaOpen, setEditSchemaOpen] = useState(false);
   const [newReferralOpen, setNewReferralOpen] = useState(false);
+  const [unlockEmailOpen, setUnlockEmailOpen] = useState(false);
+  const [unlockEmailUid, setUnlockEmailUid] = useState<number | null>(null);
+  const [unlockEmailAddress, setUnlockEmailAddress] = useState<string | undefined>(undefined);
+  const [unlockKey, setUnlockKey] = useState(0);
   const [selectedAccount, setSelectedAccount] = useState<SalesClientAccount | null>(null);
   const [editSchemaContext, setEditSchemaContext] = useState<{
     parentRole: number;
@@ -228,6 +233,13 @@ export default function SalesCustomersPage() {
     setNewReferralOpen(true);
   }, []);
 
+  const showUnlockEmailAddress = useCallback((uid: number, email?: string) => {
+    setUnlockEmailUid(uid);
+    setUnlockEmailAddress(email);
+    setUnlockKey((k) => k + 1);
+    setUnlockEmailOpen(true);
+  }, []);
+
   const showRoleColumn = activeTab === 'ib' || activeTab === 'sales';
 
   const columns = useMemo<DataTableColumn<SalesClientAccount>[]>(() => {
@@ -249,12 +261,13 @@ export default function SalesCustomersPage() {
             <Avatar src={item.user?.avatar} alt={getUserName(item)} size="xs" />
             <div className="flex flex-col">
               <span className="text-sm font-medium text-text-primary">{getUserName(item)}</span>
-              <span className="text-xs text-text-secondary">{item.user?.email}</span>
+              <span className="text-xs cursor-pointer text-text-secondary" onClick={() => showUnlockEmailAddress(item.uid,item.user?.email)}>{item.user?.email}</span>
             </div>
           </div>
         ),
       },
     ];
+ 
 
     if (showRoleColumn) {
       cols.push({
@@ -419,7 +432,7 @@ export default function SalesCustomersPage() {
     );
 
     return cols;
-  }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showOpenAccount, showRebateRelation, showIbLinks, showEditSchema, showNewReferral, siteConfig, ibChain.length]);
+  }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showOpenAccount, showRebateRelation, showIbLinks, showEditSchema, showNewReferral, showUnlockEmailAddress, siteConfig, ibChain.length]);
   const multiLevelOptions = [
     { value: 'false', label: t('fields.directLevel') },
     { value: 'true', label: t('fields.allLevels') },
@@ -550,6 +563,18 @@ export default function SalesCustomersPage() {
         onOpenChange={setNewReferralOpen}
         account={selectedAccount}
       />
+      {salesAccount && (
+        <UnlockEmailAddressModal
+          key={unlockKey}
+          open={unlockEmailOpen}
+          onOpenChange={setUnlockEmailOpen}
+          uid={unlockEmailUid}
+          email={unlockEmailAddress}
+          sendCodeAction={getSalesViewEmailCode}
+          verifyCodeAction={getSalesEmailByCode}
+          ownerUid={salesAccount.uid}
+        />
+      )}
     </div>
   );
 }

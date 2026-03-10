@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -101,16 +101,15 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     }
   }, [salesAccount, account, execute]);
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (nextOpen && account) {
+  useEffect(() => {
+    if (open && account) {
       setStats(null);
       setRebateList([]);
       setRebateTotal(null);
       setDateRange(undefined);
       fetchData(account.uid);
     }
-    onOpenChange(nextOpen);
-  }, [account, fetchData, onOpenChange]);
+  }, [open, account, fetchData]);
 
   const handleSearch = () => {
     if (!account) return;
@@ -216,7 +215,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent >
         <DialogHeader>
           <div className="flex flex-wrap items-center gap-4">

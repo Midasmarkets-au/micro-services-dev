@@ -402,7 +402,9 @@
     "__SYSTEM_MAINTENANCE__": "Sistema en mantenimiento. Intente más tarde",
     "networkError": "Error de red, verifique su conexión",
     "unknownError": "Ocurrió un error desconocido",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "No puede transferir a su propia cuenta"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "No puede transferir a su propia cuenta",
+    "CODE_NOT_FOUND": "Código de verificación no encontrado o ha expirado",
+    "CODE_ALREADY_SENT": "El código de verificación ya ha sido enviado, por favor revise su correo electrónico"
   },
   "platforms": {
     "title": "Plataformas de Trading",
@@ -1301,5 +1303,16 @@
       "client": "Cliente",
       "ib": "IB"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }

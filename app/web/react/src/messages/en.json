@@ -469,7 +469,9 @@
     "unknownError": "An unknown error occurred",
     "Request failed": "An unexpected error occurred. Please try again later or contact customer service for assistance.",
     "__ALREADY_PARTICIPATED__": "You have already participated in this event",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "You cannot transfer to your own account"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "You cannot transfer to your own account",
+    "CODE_NOT_FOUND": "Verification code not found or has expired",
+    "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email"
   },
   "platforms": {
     "title": "Trading Platforms",
@@ -2094,5 +2096,16 @@
       "client": "Client",
       "ib": "IB"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }

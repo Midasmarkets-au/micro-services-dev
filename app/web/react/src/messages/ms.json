@@ -402,7 +402,9 @@
     "__SYSTEM_MAINTENANCE__": "Sistem dalam penyelenggaraan. Sila cuba lagi kemudian",
     "networkError": "Ralat rangkaian, sila semak sambungan anda",
     "unknownError": "Ralat tidak diketahui berlaku",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Anda tidak boleh memindahkan ke akaun sendiri"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Anda tidak boleh memindahkan ke akaun sendiri",
+    "CODE_NOT_FOUND": "Kod pengesahan tidak ditemui atau telah tamat tempoh",
+    "CODE_ALREADY_SENT": "Kod pengesahan telah dihantar, sila semak e-mel anda"
   },
   "platforms": {
     "title": "Platform Dagangan",
@@ -1335,5 +1337,16 @@
       "client": "Pelanggan",
       "ib": "IB"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }

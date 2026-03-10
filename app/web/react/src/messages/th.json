@@ -402,7 +402,9 @@
     "__SYSTEM_MAINTENANCE__": "ระบบอยู่ระหว่างการบำรุงรักษา กรุณาลองใหม่ภายหลัง",
     "networkError": "เครือข่ายผิดพลาด กรุณาตรวจสอบการเชื่อมต่อ",
     "unknownError": "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "คุณไม่สามารถโอนเงินให้กับตัวเองได้"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "คุณไม่สามารถโอนเงินให้กับตัวเองได้",
+    "CODE_NOT_FOUND": "ไม่พบรหัสยืนยันหรือหมดอายุแล้ว",
+    "CODE_ALREADY_SENT": "รหัสยืนยันถูกส่งแล้ว กรุณาตรวจสอบอีเมลของคุณ"
   },
   "platforms": {
     "title": "แพลตฟอร์มการซื้อขาย",
@@ -1335,5 +1337,16 @@
       "client": "ลูกค้า",
       "ib": "IB"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }

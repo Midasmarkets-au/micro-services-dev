@@ -402,7 +402,9 @@
     "__SYSTEM_MAINTENANCE__": "Hệ thống đang bảo trì. Vui lòng thử lại sau",
     "networkError": "Lỗi mạng, vui lòng kiểm tra kết nối",
     "unknownError": "Đã xảy ra lỗi không xác định",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Bạn không thể chuyển khoản cho chính mình"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Bạn không thể chuyển khoản cho chính mình",
+    "CODE_NOT_FOUND": "Không tìm thấy mã xác nhận hoặc đã hết hạn",
+    "CODE_ALREADY_SENT": "Mã xác nhận đã được gửi, vui lòng kiểm tra email của bạn"
   },
   "platforms": {
     "title": "Nền tảng giao dịch",
@@ -1030,5 +1032,16 @@
       "editRule2": "Set rebate values for new product categories",
       "editRule5": "Set initial rebate values for the agent"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }

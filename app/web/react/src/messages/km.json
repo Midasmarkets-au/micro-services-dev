@@ -384,7 +384,9 @@
     "__SYSTEM_MAINTENANCE__": "ប្រព័ន្ធកំពុងថែទាំ សូមព្យាយាមម្ដងទៀតពេលក្រោយ",
     "networkError": "កំហុសបណ្ដាញ សូមពិនិត្យការតភ្ជាប់របស់អ្នក",
     "unknownError": "កំហុសមិនស្គាល់បានកើតឡើង",
-    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "អ្នកមិនអាចផ្ទេរទៅគណនីរបស់អ្នកផ្ទាល់បានទេ"
+    "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "អ្នកមិនអាចផ្ទេរទៅគណនីរបស់អ្នកផ្ទាល់បានទេ",
+    "CODE_NOT_FOUND": "រកមិនឃើញលេខកូដផ្ទៀងផ្ទាត់ ឬផុតកំណត់ហើយ",
+    "CODE_ALREADY_SENT": "លេខកូដផ្ទៀងផ្ទាត់ត្រូវបានផ្ញើរួចហើយ សូមពិនិត្យអ៊ីមែលរបស់អ្នក"
   },
   "platforms": {
     "title": "វេទិកាជួញដូរ",
@@ -1012,5 +1014,16 @@
       "editRule2": "Set rebate values for new product categories",
       "editRule5": "Set initial rebate values for the agent"
     }
+  },
+  "unlockEmail": {
+    "title": "Email Address",
+    "needVerificationCode": "Verification code required to view email",
+    "codeSentToEmail": "Verification code has been sent to your email",
+    "codeRequired": "Please enter the verification code",
+    "sendCode": "Send Code",
+    "resendCode": "Resend",
+    "sendFailed": "Failed to send verification code",
+    "verifyFailed": "Verification failed",
+    "codePlaceholder": "Enter code"
   }
 }
