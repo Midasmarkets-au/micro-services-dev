@@ -19,7 +19,7 @@ import {
   getRebateSymbolCategory,
 } from '@/actions';
 import { AccountRoleTypes } from '@/types/accounts';
-import type { IBClientAccount } from '@/types/ib';
+import type { IBClientAccount, IBAllowedAccount } from '@/types/ib';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -135,7 +135,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
 
         newSettings[at] = {
           accountType: at,
-          optionName: acct.optionName,
+          optionName: acct.optionName ?? null,
           selected: hasEdit,
           defaultSelected: hasEdit,
           allowPips: acct.allowPips || [],
@@ -200,14 +200,16 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
             pcSel.schema = dl?.allowPipSetting?.[es.pips]?.items || {};
           }
         } else {
-          if ((acct.allowPips || []).length > 0) {
+          const allowPips = acct.allowPips || [];
+          const allowCommissions = acct.allowCommissions || [];
+          if (allowPips.length > 0) {
             pcSel.selectedPC = 'pips';
-            pcSel.pcValue = acct.allowPips[0];
-            pcSel.schema = dl?.allowPipSetting?.[acct.allowPips[0]]?.items || {};
-          } else if ((acct.allowCommissions || []).length > 0) {
+            pcSel.pcValue = allowPips[0];
+            pcSel.schema = dl?.allowPipSetting?.[allowPips[0]]?.items || {};
+          } else if (allowCommissions.length > 0) {
             pcSel.selectedPC = 'commission';
-            pcSel.pcValue = acct.allowCommissions[0];
-            pcSel.schema = dl?.allowCommissionSetting?.[acct.allowCommissions[0]]?.items || {};
+            pcSel.pcValue = allowCommissions[0];
+            pcSel.schema = dl?.allowCommissionSetting?.[allowCommissions[0]]?.items || {};
           }
         }
         newPcSelections[at] = pcSel;
@@ -254,7 +256,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
     setIsSubmitting(true);
 
     try {
-      const formData: any[] = [];
+      const formData: IBAllowedAccount[] = [];
 
       for (const [atStr, setting] of Object.entries(accountLevelSettings)) {
         if (!setting.selected) continue;
@@ -272,10 +274,10 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
         }
 
         formData.push({
-          optionName: setting.optionName,
+          optionName: setting.optionName ?? undefined,
           accountType: setting.accountType,
-          pips,
-          commission,
+          pips: pips ?? undefined,
+          commission: commission ?? undefined,
           percentage: percentages[at] ?? 100,
           items: rows.map((row) => ({ cid: row.cid, r: row.r })),
         });

@@ -201,6 +201,11 @@ export interface IBRebateRuleDetail {
     distributionType: number;
     levels?: number[];
   };
+  isRoot?: boolean;
+  schema?: IBAllowedAccount[];
+  calculatedLevelSetting?: {
+    allowedAccounts: IBAllowedAccount[];
+  };
 }
 
 export interface IBAllowedAccount {

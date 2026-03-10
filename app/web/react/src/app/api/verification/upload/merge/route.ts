@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
 
     // 使用 apiClient v2 版本合并文件切片
-    const data = await apiClient.v2.postFormData<MergeResponse>('/client/media/upload/merge', formData, token);
+    const data = await apiClient.postFormData<MergeResponse>('/client/media/upload/merge', formData, token, 'v2');
 
     return NextResponse.json({ 
       success: true, 
