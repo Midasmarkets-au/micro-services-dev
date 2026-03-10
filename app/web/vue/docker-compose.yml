@@ -1,0 +1,18 @@
+services:
+  client:
+    build:
+      context: .
+      args:
+        PROJECT_NAME: client
+    image: mm-front-client
+    ports:
+      - "8080:80"
+
+  tenant:
+    build:
+      context: .
+      args:
+        PROJECT_NAME: tenant
+    image: mm-front-tenant
+    ports:
+      - "8081:80"

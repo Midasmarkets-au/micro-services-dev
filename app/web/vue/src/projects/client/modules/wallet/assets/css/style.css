@@ -1,0 +1,67 @@
+
+#kt_modal_create_deposit .service-card {
+  cursor: pointer;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}
+
+#kt_modal_create_deposit .service-card:hover {
+  background-color: #f3f6f9;
+}
+
+#kt_modal_create_deposit .form-outer {
+  width: 100%;
+  overflow: hidden;
+}
+
+#kt_modal_create_deposit .form-outer form {
+  display: flex;
+  width: calc(100% * 3);
+}
+
+#kt_modal_create_deposit .form-outer form .page {
+  position: relative;
+  width: calc(100% / 3);
+  transition: margin-left 0.3s ease-in-out;
+  padding-top: 30px;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+#kt_modal_create_deposit hr {
+  margin-top: 50px;
+  margin-bottom: 30px;
+}
+
+
+#kt_modal_create_withdrawal .service-card {
+  cursor: pointer;
+  box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+}
+
+#kt_modal_create_withdrawal .service-card:hover {
+  background-color: #f3f6f9;
+}
+
+#kt_modal_create_withdrawal .form-outer {
+  width: 100%;
+  overflow: hidden;
+}
+
+#kt_modal_create_withdrawal .form-outer form {
+  display: flex;
+  width: calc(100% * 3);
+}
+
+#kt_modal_create_withdrawal .form-outer form .page {
+  position: relative;
+  width: calc(100% / 3);
+  transition: margin-left 0.3s ease-in-out;
+  padding-top: 30px;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+#kt_modal_create_withdrawal hr {
+  margin-top: 50px;
+  margin-bottom: 30px;
+}

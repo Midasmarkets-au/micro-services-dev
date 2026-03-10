@@ -1,0 +1,29 @@
+/* table Row Animation */
+.table-delete-fade-container {
+  position: relative;
+}
+
+/* 1. declare transition */
+.table-delete-fade-move,
+.table-delete-fade-enter-active,
+.table-delete-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+/* 2. declare enter from and leave to state */
+.table-delete-fade-enter-from,
+.table-delete-fade-leave-to {
+  opacity: 0;
+  transform: scaleY(0.01) translate(30px, 0);
+}
+
+/* 3. ensure leaving items are taken out of layout flow so that moving
+      animations can be calculated correctly. */
+.table-delete-fade-leave-active {
+  position: absolute;
+}
+
+.table-delete-fade-active {
+  opacity: 0;
+  transition: all 0.2s cubic-bezier(0.55, 0, 0.1, 1);
+}

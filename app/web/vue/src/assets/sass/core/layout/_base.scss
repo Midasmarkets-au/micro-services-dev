@@ -1,0 +1,71 @@
+//
+// Root
+//
+
+@font-face {
+	font-family: Lato;
+	src: url('/fonts/Lato-Regular.ttf') format('truetype');
+}
+
+@font-face {
+	font-family: LatoItalic;
+	src: url('/fonts/Lato-Italic.ttf') format('truetype');
+}
+
+@font-face {
+	font-family: BoldItalic;
+	src: url('/fonts/Lato-BoldItalic.ttf') format('truetype');
+}
+
+@font-face {
+	font-family: LatoBold;
+	src: url('/fonts/Lato-Bold.ttf') format('truetype');
+}
+
+html {
+  font-family: Lato;
+  text-size-adjust: 100%;
+  font-size: 14px;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0px;
+    padding: 0px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    // font-size: $root-font-size !important;
+    font-weight: $font-weight-base;
+    font-family: Lato;
+
+    // Tablet mode
+    @include media-breakpoint-down(lg) {
+        font-size: $root-font-size-lg !important;
+    }
+
+    // Mobile mode
+    @include media-breakpoint-down(md) {
+        font-size: $root-font-size-md !important;
+    }    
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    font-size: 1rem;
+    a:hover,
+    a:active,
+    a:focus {
+        text-decoration: none !important;
+    }
+}
+
+canvas {
+    user-select: none;
+}
+
+// Angular integration
+router-outlet {
+    display: none;
+}

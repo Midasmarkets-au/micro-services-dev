@@ -1,0 +1,140 @@
+/* 设置全局普通文字颜色 */
+:root {
+  --el-color-primary: #000f32;
+  --el-text-color-regular: #3a3e44;
+  --el-component-size: 40px;
+  --el-border-color: #f2f4f7;
+  --el-fill-color-blank: #fafbfd;
+  --el-color-primary-light-7: #000f32;
+  --el-color-primary-light-9: #fff;
+}
+.auth-page-wrapper {
+  .el-input__wrapper {
+    background-color: #fafbfd;
+  }
+}
+
+.el-input__wrapper {
+  background-color: #fff;
+  border-radius: 4px;
+  border: 1px solid #f2f4f7;
+  box-shadow: none;
+}
+.el-overlay-dialog {
+  @media (max-width: 768px) {
+    padding: 0px 22px;
+  }
+}
+.video_dialog {
+  background-color: #000f32 !important;
+  .el-dialog__header {
+    margin-top: 0px;
+    padding-top: 10px;
+    line-height: 20px;
+    .el-dialog__headerbtn {
+      color: #fff;
+      width: 35px;
+      height: 35px;
+      &:hover {
+        color: #fff;
+      }
+    }
+  }
+  .el-dialog__body {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+.el-dialog {
+  border-radius: 20px;
+}
+.el-dialog__body {
+  padding-top: 15px;
+}
+.el-dialog__header {
+  padding-right: 10px;
+  padding-top: 10px;
+  margin-right: 0px;
+  line-height: 50px;
+}
+.dialog-footer {
+}
+
+.card-select {
+  position: relative;
+  .el-input__wrapper {
+    padding-left: 30px;
+  }
+}
+//swith样式调整
+.order-switch {
+  padding-left: 10px;
+  &.is-checked {
+    .el-switch__action {
+      margin-left: -6px;
+      background-image: url("/images/icons/arrows/check_block.svg") !important;
+      background-size: contain;
+      background-color: #fff;
+    }
+    .el-switch__inner {
+      .is-text {
+        color: #fff !important;
+      }
+    }
+    .el-switch__core {
+      padding-left: 10px;
+    }
+  }
+  .el-switch__core {
+    height: 100%;
+    border-radius: 24px !important;
+    border: 1px solid #f2f4f7;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+  .el-switch__inner {
+    .is-text {
+      color: #3a3e44 !important;
+    }
+  }
+  .el-switch__action {
+    margin-left: 5px;
+    background-image: url("/images/icons/arrows/close_white.svg") !important;
+    background-size: contain;
+    color: #3a3e44 !important;
+    background-color: #000f32;
+    background-position: 20px 0px;
+  }
+}
+
+.el-radio {
+  &.is-bordered {
+    background-color: #fff;
+  }
+
+  .el-radio__input {
+    &.is-checked {
+      background-color: #fff;
+      .el-radio__inner {
+        border: 1px solid $primary-active;
+      }
+    }
+    .el-radio__inner {
+      background-color: #fff !important;
+      border: 1px solid #ccd3e0;
+      &::after {
+        background-color: $primary-active;
+        width: 6px;
+        height: 6px;
+      }
+    }
+  }
+}
+.el-checkbox {
+  &.is-bordered {
+    background-color: #fff;
+  }
+  .el-checkbox__inner {
+    border: 1px solid #000f32;
+  }
+}

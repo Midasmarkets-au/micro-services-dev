@@ -1,0 +1,55 @@
+# ============================================================================
+#  front-client — Vue 3 客户端门户
+#  镜像：docker build --build-arg PROJECT_NAME=client -f app/web/vue/Dockerfile app/web/vue
+#  端口：80 (HTTP)
+#  入口：portal.trademdm.com / 由 gateway-ingress 路由到此服务
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-client
+  labels:
+    app: front-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-client
+  template:
+    metadata:
+      labels:
+        app: front-client
+    spec:
+      containers:
+        - name: front-client
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-client:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+# ============================================================================
+#  front-client Service — ClusterIP，由 NGINX Ingress 统一暴露
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-client
+  labels:
+    app: front-client
+spec:
+  type: ClusterIP
+  selector:
+    app: front-client
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

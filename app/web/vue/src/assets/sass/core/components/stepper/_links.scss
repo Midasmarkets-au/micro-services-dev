@@ -1,0 +1,84 @@
+//
+// Stepper Links
+//
+
+// Base
+.stepper.stepper-links {
+  .stepper-nav {
+    display: flex;
+    margin: 0 auto;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1px 78px;
+    .stepper-item {
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      flex: 1;
+      align-items: center;
+      &:after {
+        content: " ";
+        position: absolute;
+        top: 2.3rem;
+        left: 0;
+        height: 2px;
+        width: 100%;
+        background-color: transparent;
+        transition: $transition-link;
+      }
+      &.last {
+        flex: none;
+      }
+      .stepper-title {
+        color: #868d98;
+        font-size: 1.26rem;
+      }
+      .line {
+        height: 1px;
+        border-bottom: 1px dashed #868d98;
+        flex: 1;
+        margin: 0 37px;
+      }
+      .icon {
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        border: 1px solid #868d98;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0px 10px;
+        color: #868d98;
+        cursor: pointer;
+      }
+      // Current
+      &.current {
+        transition: $transition-link;
+
+        .stepper-title {
+          color: #000;
+          font-weight: 500;
+        }
+
+        // &:after {
+        //   background-color: var(--kt-primary);
+        // }
+        .line {
+          border-bottom: 1px dashed #0a46aa;
+        }
+        .icon {
+          background-color: #0a46aa;
+          color: #fff;
+        }
+      }
+
+      &.current.mark-completed:last-child,
+      &.completed {
+        .stepper-title {
+          color: var(--kt-gray-400);
+        }
+      }
+    }
+  }
+}

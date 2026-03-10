@@ -1,0 +1,73 @@
+{
+  "domains": {
+    "client.localhost": "local",
+    "au.thebcr.com": "au",
+    "bvi.thebcr.com": "bvi",
+    "tw.thebcr.com": "tw",
+    "vn.thebcr.com": "vn",
+    "jp.thebcr.com": "jp",
+    "cn.thebcr.com": "cn",
+    "my.thebcr.com": "my",
+    "mn.thebcr.com": "mn",
+    "chnthebcr.com": "cn",
+    "cfds.chnthebcr.com": "cn",
+    "cfds1.chnthebcr.com": "cn",
+    "cfds2.chnthebcr.com": "cn",
+    "cfds.thebcrzh.com": "cn",
+    "thebcrzh.com": "cn",
+    "cfds.zhthebcr.com": "cn",
+    "cnthebcr.com": "cn",
+    "cfds.thebcr.co": "cn",
+    "chn1.thebcr.co": "cn",
+    "cfds.thebcrcn.com": "cn",
+    "thebcrcn.com": "cn"
+  },
+  "sites": {
+    "local": {
+      "siteId": 0,
+      "services": [
+        "https://demo.localhost:5100",
+        "https://pro.t.api.mybcr.dev"
+      ]
+    },
+    "bvi": {
+      "siteId": 1
+    },
+    "cn": {
+      "siteId": 3,
+      "services": [
+        "https://api.chnthebcr.com",
+        "https://api.thebcrzh.com",
+        "https://api.thebcr.co",
+        "https://api.zhthebcr.com"
+      ],
+      "ipService": "http://pv.sohu.com/cityjson?ie=utf-8"
+    },
+    "au": {
+      "siteId": 2,
+      "services": [
+        "https://api.au.thebcr.com"
+      ]
+    },
+    "mn": {
+      "siteId": 7,
+      "services": [
+        "https://api.thebcrmn.com"
+      ]
+    },
+    "tw": {
+      "siteId": 4
+    },
+    "vn": {
+      "siteId": 5
+    },
+    "jp": {
+      "siteId": 6
+    },
+    "my": {
+      "siteId": 8
+    },
+    "defaultService": "https://api.bvi.thebcr.com",
+    "defaultIPSservice": "https://api.bvi.thebcr.com/api/v1/geoip/country/current"
+  }
+}

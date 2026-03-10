@@ -1,0 +1,206 @@
+[
+  {
+    "_id": "5c99d8bf-515a-4df0-9d68-357e80779514",
+    "colName": "Bacera.Gateway.Web",
+    "created": "2023-02-14T00:04:09.614Z",
+    "sortNum": 10000,
+    "folders": [
+      {
+        "_id": "cb141115-afb0-4af1-a3f8-66cfdf2b85b5",
+        "name": "Account",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.616Z",
+        "sortNum": 260000
+      },
+      {
+        "_id": "4bd41845-bada-4929-9017-f88808968fd5",
+        "name": "Application",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.617Z",
+        "sortNum": 270000
+      },
+      {
+        "_id": "9c28f653-723c-413d-b135-b7b97bdb8573",
+        "name": "Audit",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.618Z",
+        "sortNum": 280000
+      },
+      {
+        "_id": "98b8efb2-91e5-462d-b422-4c3a12a44efd",
+        "name": "Comment",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.619Z",
+        "sortNum": 290000
+      },
+      {
+        "_id": "7732484f-6f34-4da8-a90e-89bef7d9a460",
+        "name": "CopyTrade",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.620Z",
+        "sortNum": 300000
+      },
+      {
+        "_id": "d13da06c-b4f1-4f13-9b86-3e1fbf4f782e",
+        "name": "Deposit",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.621Z",
+        "sortNum": 310000
+      },
+      {
+        "_id": "07ef08a1-e1f4-440e-851a-d2fceb38736c",
+        "name": "Group",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.622Z",
+        "sortNum": 320000
+      },
+      {
+        "_id": "cfc91ba5-c53c-40c2-88c5-592c4c7d6508",
+        "name": "Medium",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.623Z",
+        "sortNum": 330000
+      },
+      {
+        "_id": "7c687c79-0c5b-4844-bab7-cf46aea7cffe",
+        "name": "Permission",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.624Z",
+        "sortNum": 340000
+      },
+      {
+        "_id": "f10b66cd-eaa8-40a7-8a2c-7e0cbb51d3f9",
+        "name": "Rebate",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.625Z",
+        "sortNum": 350000
+      },
+      {
+        "_id": "39a63c8f-dbd9-405c-812e-c88cb4786eb8",
+        "name": "Referral",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.626Z",
+        "sortNum": 360000
+      },
+      {
+        "_id": "7208f84a-70e8-4636-9d51-2e7a03efcc1c",
+        "name": "Report",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.627Z",
+        "sortNum": 370000
+      },
+      {
+        "_id": "bf2ccb90-eb8f-4613-a2b2-4d4c09057820",
+        "name": "Role",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.628Z",
+        "sortNum": 380000
+      },
+      {
+        "_id": "9c015e6e-b4fe-452c-8241-6eb6ec8c7f3a",
+        "name": "Service",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.629Z",
+        "sortNum": 390000
+      },
+      {
+        "_id": "0a819265-cf56-4440-ab19-8bc22a34d429",
+        "name": "Status",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.630Z",
+        "sortNum": 400000
+      },
+      {
+        "_id": "f9f8be01-de2d-4bca-8216-9cee7e9e30c6",
+        "name": "Symbol",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.631Z",
+        "sortNum": 410000
+      },
+      {
+        "_id": "65ad9b8c-05eb-4f1f-a74e-6a8c7c323a45",
+        "name": "Tenant",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.632Z",
+        "sortNum": 420000
+      },
+      {
+        "_id": "e50fb676-2e9f-4bfd-9f6a-648b31e2e5f8",
+        "name": "Topic",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.633Z",
+        "sortNum": 430000
+      },
+      {
+        "_id": "3873b221-ec30-4371-9b74-cf5823ee9155",
+        "name": "TradeTransaction",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.634Z",
+        "sortNum": 440000
+      },
+      {
+        "_id": "2b7bd713-2583-4d7e-968a-7e6b25386498",
+        "name": "Transaction",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.635Z",
+        "sortNum": 450000
+      },
+      {
+        "_id": "55800e6c-ed79-40ee-a059-79ca3c436243",
+        "name": "TwoFactorAuthentication",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.636Z",
+        "sortNum": 460000
+      },
+      {
+        "_id": "d0a6ad4d-59f1-48b0-bed7-63da736fcaf9",
+        "name": "User",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.637Z",
+        "sortNum": 470000
+      },
+      {
+        "_id": "be2cb7f6-53c8-4c61-a1d2-07dc47f6cefb",
+        "name": "Verification",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.638Z",
+        "sortNum": 480000
+      },
+      {
+        "_id": "aa74c5a9-0de9-40e9-85ce-7cd8f20b88c7",
+        "name": "Wallet",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.639Z",
+        "sortNum": 490000
+      },
+      {
+        "_id": "d509e202-dde8-4ebd-b6ad-cb095d893654",
+        "name": "Withdrawal",
+        "containerId": "",
+        "created": "2023-02-14T00:04:09.640Z",
+        "sortNum": 500000
+      }
+    ],
+    "settings": {
+      "headers": [],
+      "auth": {
+        "type": "oauth2",
+        "oauth2": {
+          "grantType": "password",
+          "tokenUrl": "{{baseUrl}}/connect/token",
+          "clientId": "api",
+          "clientSecret": "",
+          "clientAuth": "in-header",
+          "scope": "{{scope}}",
+          "username": "{{username}}",
+          "password": "{{password}}"
+        }
+      },
+      "tests": [],
+      "options": {
+        "baseUrl": "{{baseUrl}}"
+      },
+      "envId": "547bcdab-c938-4f24-b591-fe1642193fc4"
+    }
+  }
+]

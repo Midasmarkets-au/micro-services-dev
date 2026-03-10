@@ -1,0 +1,307 @@
+<template>
+  <div class="">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">財務部門 審核</div>
+      </div>
+      <div class="card-body py-4">
+        <table
+          class="table align-middle table-row-dashed fs-6 gy-5"
+          id="table_accounts_requests"
+        >
+          <thead>
+            <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+              <th class="">{{ $t("fields.client") }}</th>
+              <th class="">{{ $t("fields.paymentStatus") }}</th>
+              <th class="">{{ $t("fields.paymentID") }}</th>
+              <th class="">{{ $t("fields.paymentMethod") }}</th>
+              <th class="">{{ $t("fields.currency") }}</th>
+              <th class="">{{ $t("fields.withdrawAmount") }}</th>
+              <th class="">{{ $t("fields.sourceBalance") }}</th>
+              <th class="">{{ $t("fields.createdOn") }}</th>
+              <th class="text-center cell-color">
+                {{ $t("fields.paymentInfo") }}
+              </th>
+              <th class="cell-color text-center">
+                {{ $t("fields.operatedBy") }}
+              </th>
+              <th class="cell-color text-center">
+                {{ $t("action.action") }}
+              </th>
+              <th class="cell-color text-center">
+                {{ $t("action.refund") }}
+              </th>
+            </tr>
+          </thead>
+
+          <tbody v-if="isLoading">
+            <LoadingRing />
+          </tbody>
+          <tbody v-else-if="!isLoading && transactions.length === 0">
+            <NoDataBox />
+          </tbody>
+
+          <tbody v-else class="fw-semibold text-gray-900">
+            <tr v-for="(item, index) in transactions" :key="index">
+              <td class="d-flex align-items-center">
+                <UserInfo v-if="item.user" :user="item.user" class="me-2" />
+              </td>
+              <td>
+                <span
+                  class="badge"
+                  :class="{
+                    'badge-primary':
+                      item.payment.status === PaymentStatusTypes.Pending,
+                    'badge-success':
+                      item.payment.status === PaymentStatusTypes.Completed,
+                    'badge-danger':
+                      item.payment.status === PaymentStatusTypes.Failed,
+                    'badge-warning':
+                      item.payment.status === PaymentStatusTypes.Executing,
+                  }"
+                  >{{ $t(`type.paymentStatus.${item.payment.status}`) }}</span
+                >
+              </td>
+              <td
+                class=""
+                @click="
+                  viewComments(
+                    CommentType.Withdrawal,
+                    item.id,
+                    item.payment.number.substring(3)
+                  )
+                "
+              >
+                {{ item.payment.id
+                }}<i
+                  v-if="item.hasComment"
+                  class="fa-regular fa-comment-dots text-primary"
+                ></i>
+              </td>
+              <td class="">
+                {{ item.payment.paymentServiceName }}
+              </td>
+              <td class="">
+                {{ $t(`type.currency.${item.currencyId}`) }}
+              </td>
+              <td class="">
+                <BalanceShow
+                  :currency-id="item.currencyId"
+                  :balance="item.amount"
+                />
+              </td>
+              <td class="">
+                <div>
+                  <BalanceShow
+                    :currency-id="item.currencyId"
+                    :balance="item.source.balanceInCents"
+                  />
+                </div>
+                <div
+                  v-if="
+                    item.source.accountType === TransactionAccountType.Wallet
+                  "
+                  class="badge badge-primary"
+                >
+                  Wallet # {{ item.source.displayNumber }}
+                </div>
+                <div
+                  v-if="
+                    item.source.accountType ===
+                    TransactionAccountType.TradeAccount
+                  "
+                  class="badge badge-warning"
+                  @click="
+                    viewComments(
+                      CommentType.Account,
+                      item.source.id,
+                      item.source.displayNumber
+                    )
+                  "
+                >
+                  Account # {{ item.source.displayNumber }}
+                  <i
+                    v-if="item.source.hasComment"
+                    class="fa-regular fa-comment-dots text-info ms-3 cursor-pointer"
+                  ></i>
+                </div>
+              </td>
+              <td class="">
+                <TimeShow :date-iso-string="item.payment.createdOn" />
+              </td>
+
+              <td class="text-center cell-color">
+                <a
+                  href="#"
+                  class="btn btn-sm btn-light-info fw-bold ms-2 fs-8 py-1 px-3"
+                  @click="showWithdrawInfo(item)"
+                >
+                  {{ $t("action.showPaymentInfo") }}
+                </a>
+              </td>
+
+              <td class="cell-color text-center">
+                {{ item.operatorName }}
+              </td>
+
+              <td class="text-center cell-color">
+                <button
+                  v-if="item.payment.status === PaymentStatusTypes.Pending"
+                  class="btn btn-light btn-success btn-sm me-3"
+                  @click="
+                    openConfirmPanel(ActionType.StartExecution, item.payment.id)
+                  "
+                >
+                  {{ $t("action.startProcess") }}
+                </button>
+
+                <button
+                  v-else-if="
+                    item.payment.status === PaymentStatusTypes.Executing
+                  "
+                  class="btn btn-light btn-info btn-sm me-3"
+                  @click="
+                    openConfirmPanel(
+                      ActionType.CompletePayment,
+                      item.id,
+                      item.payment.id
+                    )
+                  "
+                >
+                  {{ $t("action.complete") }}
+                </button>
+              </td>
+
+              <td class="text-center cell-color">
+                <button
+                  v-if="$can('TenantAdmin') || $can('SuperAdmin')"
+                  class="btn btn-light btn-light-danger btn-sm me-3"
+                  @click="openConfirmPanel(ActionType.Refund, item.id)"
+                >
+                  {{ $t("action.refund") }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <TableFooter @page-change="pageChange" :criteria="criteria" />
+      </div>
+    </div>
+    <WithdrawInfo ref="WithdrawInfoRef" />
+    <CommentsView ref="commentsRef" type="" id="0" />
+  </div>
+</template>
+<script setup lang="ts">
+import { ref, onMounted, watch, inject } from "vue";
+import TableFooter from "@/components/TableFooter.vue";
+import svc from "../../services/PaymentService";
+import {
+  TransactionAccountType,
+  TransactionStateType,
+} from "@/core/types/StateInfos";
+import { ActionType } from "@/core/types/Actions";
+import WithdrawInfo from "../../modal/WithdrawInfo.vue";
+import BalanceShow from "@/components/BalanceShow.vue";
+import { PaymentStatusTypes } from "@/core/types/PaymentTypes";
+import { useRoute } from "vue-router";
+import InjectKeys from "@/core/types/TenantGlobalInjectionKeys";
+import MsgPrompt from "@/core/plugins/MsgPrompt";
+
+import CommentsView from "@/projects/tenant/components/CommentView.vue";
+import { CommentType } from "@/core/types/CommentType";
+import PaymentInjectionKeys from "@/projects/tenant/modules/Payment/types/PaymentInjectionKeys";
+
+const isLoading = ref(false);
+const isSubmitting = ref(false);
+
+// current chosen tab: Pending, Approved, Rejected
+const transactions = ref(Array<any>());
+const WithdrawInfoRef = ref<InstanceType<typeof WithdrawInfo>>();
+const commentsRef = ref<InstanceType<typeof CommentsView>>();
+
+const criteria = ref({
+  page: 1,
+  size: 10,
+  stateId: TransactionStateType.WithdrawalTenantApproved,
+});
+
+const refresher = inject<any>("refresher");
+const route = useRoute();
+watch(
+  () => route.query.id,
+  () => fetchData(1)
+);
+
+const topCriteria = inject(PaymentInjectionKeys.WITHDRAWAL_CRITERIA);
+watch(refresher, () => {
+  criteria.value = {
+    ...topCriteria.value,
+    stateId: TransactionStateType.WithdrawalTenantApproved,
+  };
+  fetchData(1);
+});
+
+onMounted(async () => {
+  await fetchData(criteria.value.page);
+});
+
+const fetchData = async (_page: number) => {
+  criteria.value.page = _page;
+  isLoading.value = true;
+  const res = await svc.queryWithdrawals(criteria.value);
+  criteria.value = res.criteria;
+  transactions.value = res.data;
+  isLoading.value = false;
+};
+
+const pageChange = (page: number) => {
+  fetchData(page);
+};
+
+const processTransaction = ref(() => Promise.resolve());
+const action = ref(ActionType.Cancel);
+
+const openConfirmBox = inject<any>(InjectKeys.OPEN_CONFIRM_MODAL);
+
+const openConfirmPanel = (
+  _action: ActionType,
+  id: number,
+  paymentID?: number
+) => {
+  action.value = _action;
+  const _handler = {
+    [ActionType.CompletePayment]: () =>
+      svc
+        .completePaymentById(paymentID!)
+        .then(() => svc.completeWithdrawalByPaymentId(id)),
+    [ActionType.StartExecution]: () => svc.executePaymentById(id),
+    [ActionType.Refund]: () => svc.refundWithdrawById(id),
+  }[_action];
+  if (!_handler) {
+    MsgPrompt.error("fail");
+    return;
+  }
+  openConfirmBox(() =>
+    _handler()
+      .then(() => MsgPrompt.success())
+      .then(() => {
+        fetchData(criteria.value.page);
+        refresher.value = !refresher.value;
+      })
+  );
+};
+
+const showWithdrawInfo = async (_item: any) => {
+  WithdrawInfoRef.value?.show(_item);
+};
+
+const viewComments = (type: CommentType, id: number, title: string) => {
+  commentsRef.value?.show(type, id, title);
+};
+</script>
+
+<style scoped>
+.cell-color {
+  background-color: rgb(255, 255, 224);
+}
+</style>
