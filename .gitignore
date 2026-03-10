@@ -9,6 +9,7 @@ Thumbs.db
 
 # Dotfiles catch-all with exceptions
 .*
+test-*
 !.gitignore
 !.github/
 !.vscode/

@@ -1,0 +1,22 @@
+[package]
+name = "boardcast"
+version = "0.1.0"
+edition = "2024"
+description = "Boardcast Service - SSE message push + gRPC broadcast interface"
+
+[dependencies]
+tonic = { workspace = true }
+tonic-reflection = { workspace = true }
+prost = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio-stream = { workspace = true }
+dashmap = { workspace = true }
+chrono = { workspace = true }
+
+[build-dependencies]
+tonic-build = { workspace = true }

@@ -4,11 +4,21 @@
 #  前置条件：
 #    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
 #
-#  流量路径：
-#    Internet → ingress-nginx (LoadBalancer :80/:443)
-#              → /(api|connect|hub|live|swagger)/  → mono:80
-#              → 其余所有路径                       → front-* / mono:80
+#  包含两个 Ingress 对象：
+#    1. bacera-ingress          — 主路由（mono / front-*）
+#    2. boardcast-event-ingress — SSE 路由，将 /api/v1/event 重写为 /event
 #
+#  流量路径：
+#    portal.trademdm.com/api/v1/event               → boardcast:8081/event（rewrite）
+#    portal.trademdm.com/(api|connect|hub|live|...)  → mono:80
+#    portal.trademdm.com/                            → front-client:80
+#    tenant.trademdm.com/(api|connect|hub|live|...)  → mono:80
+#    tenant.trademdm.com/                            → front-tenant:80
+#
+#  注意：portal 的 /api/ 路径使用负向前瞻排除 /api/v1/event，
+#  避免与 boardcast-event-ingress 冲突。
+#  nginx ingress controller 合并同一 host 的所有 Ingress 后按字母顺序排列
+#  location 块，bacera-ingress 的 /api/ 正则会先于 /api/v1/event 匹配。
 # ============================================================================
 ---
 # ============================================================================
@@ -78,7 +88,8 @@ spec:
     - host: portal.trademdm.com
       http:
         paths:
-          - path: /(api|connect|hub|live|swagger|.well-known/openid-configuration)/
+          # 负向前瞻排除 /api/v1/event，该路径由 boardcast-event-ingress 处理
+          - path: /(?!api/v1/event(/|$))(api|connect|hub|live|swagger|.well-known/openid-configuration)/
             pathType: ImplementationSpecific
             backend:
               service:
