@@ -1,0 +1,45 @@
+'use client';
+
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
+import type { EventDetail } from '@/types/eventshop';
+
+interface PointsRulesProps {
+  eventDetail: EventDetail;
+}
+
+export function PointsRules({ eventDetail }: PointsRulesProps) {
+  const t = useTranslations('eventshop');
+
+  const pointsRule = eventDetail.instruction?.pointsRule;
+  const content = pointsRule?.client || pointsRule?.all || '';
+
+  return (
+    <div className="flex-1 bg-surface rounded flex flex-col gap-5 overflow-hidden p-5 min-w-0">
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/images/eventshop/shield-icon.svg"
+            alt=""
+            width={26}
+            height={26}
+            className="shrink-0"
+          />
+          <h2 className="text-xl font-semibold text-text-primary">
+            {t('pointsRuleTitle')}
+          </h2>
+        </div>
+        <div className="h-px bg-border" />
+      </div>
+
+      {content ? (
+        <div
+          className="text-sm leading-relaxed text-text-secondary [&_a]:text-primary [&_a]:underline [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:px-4 [&_th]:py-2 [&_th]:text-center [&_th]:bg-surface-secondary [&_td]:border [&_td]:border-border [&_td]:px-4 [&_td]:py-2 [&_td]:text-center [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      ) : (
+        <p className="text-text-tertiary text-sm">{t('noData')}</p>
+      )}
+    </div>
+  );
+}
