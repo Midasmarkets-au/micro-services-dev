@@ -1792,7 +1792,8 @@
       "viewRebateRelation": "View Rebate Relations",
       "referralCodeList": "Referral Code List",
       "newIBReferralCode": "New IB Referral Code",
-      "action": "Action"
+      "action": "Action",
+      "close": "Close"
     },
     "dashboard": {
       "title": "Dashboard",

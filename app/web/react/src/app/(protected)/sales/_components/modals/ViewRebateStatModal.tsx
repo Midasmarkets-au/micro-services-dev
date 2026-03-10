@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
-import { Button, BalanceShow, DatePicker, DataTable } from '@/components/ui';
+import { Button, BalanceShow, DatePicker, DataTable, Icon } from '@/components/ui';
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useSalesStore } from '@/stores/salesStore';
@@ -34,6 +34,7 @@ interface ViewRebateStatModalProps {
   onOpenChange: (open: boolean) => void;
   account: SalesClientAccount | null;
 }
+
 
 export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateStatModalProps) {
   const t = useTranslations('sales');
@@ -153,14 +154,14 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
         <BalanceShow
           balance={row.amount}
           currencyId={row.currencyId}
-          className={row.amount <= 0 ? 'text-red-500' : ''}
+          className={row.amount <= 0 ? 'error-text' : ''}
         />
       ),
     },
   ], [t]);
 
   const footerRow = rebateTotal ? (
-    <tr className="border-t-2 border-border font-bold text-green-600">
+    <tr className="border-t-2 border-border font-bold text-(--color-success)">
       <td className="px-5 py-4 uppercase">{t('dashboard.rebateAmount')}</td>
       <td className="px-5 py-4">{getCurrencySymbol(rebateTotal.currencyId)}</td>
       <td className="px-5 py-4">{rebateTotal.volume.toFixed(2)}</td>
@@ -168,7 +169,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
         <BalanceShow
           balance={rebateTotal.amount}
           currencyId={rebateTotal.currencyId}
-          className={rebateTotal.amount <= 0 ? 'text-red-500' : ''}
+          className={rebateTotal.amount <= 0 ? 'error-text' : ''}
         />
       </td>
     </tr>
@@ -182,7 +183,10 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       for (const [currencyId, amounts] of Object.entries(stats.depositAmounts)) {
         const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
         tags.push(
-          <span key={`dep-${currencyId}`} className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs text-white">
+          <span
+            key={`dep-${currencyId}`}
+            className="inline-flex items-center gap-1 rounded bg-(--color-tag-deposit-bg) px-3 py-1 text-xs text-(--color-tag-deposit)"
+          >
             <span>{t('menu.deposit')}:</span>
             <BalanceShow balance={val} currencyId={Number(currencyId)} />
           </span>
@@ -193,7 +197,10 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       for (const [currencyId, amounts] of Object.entries(stats.withdrawalAmounts)) {
         const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
         tags.push(
-          <span key={`wd-${currencyId}`} className="inline-flex items-center gap-1 rounded bg-[#E6A700] px-3 py-1 text-xs text-white">
+          <span
+            key={`wd-${currencyId}`}
+            className="inline-flex items-center gap-1 rounded bg-(--color-tag-withdrawal-bg) px-3 py-1 text-xs text-(--color-tag-withdrawal)"
+          >
             <span>{t('menu.withdrawal')}:</span>
             <BalanceShow balance={val} currencyId={Number(currencyId)} />
           </span>
@@ -204,47 +211,78 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       for (const [currencyId, amounts] of Object.entries(stats.rebateAmounts)) {
         const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
         tags.push(
-          <span key={`rb-${currencyId}`} className="inline-flex items-center gap-1 rounded bg-green-600 px-3 py-1 text-xs text-white">
+          <span
+            key={`rb-${currencyId}`}
+            className="inline-flex items-center gap-1 rounded bg-(--color-tag-rebate-bg) px-3 py-1 text-xs text-(--color-tag-rebate)"
+          >
             <span>{t('menu.rebate')}:</span>
             <BalanceShow balance={val} currencyId={Number(currencyId)} />
           </span>
         );
       }
     }
-    return tags.length > 0 ? <div className="mb-4 flex flex-wrap gap-2">{tags}</div> : null;
+    return tags.length > 0 ? <div className="flex flex-wrap gap-5">{tags}</div> : null;
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent >
-        <DialogHeader>
-          <div className="flex flex-wrap items-center gap-4">
-            <DialogTitle className="shrink-0">{title}</DialogTitle>
-            <DatePicker
-              mode="range"
-              value={dateRange}
-              onChange={(val) => setDateRange(val as DateRange | undefined)}
-            />
-            <Button variant="outline" size="sm" onClick={handleSearch}>
-              {t('action.search')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleClear}>
-              {t('action.clear')}
-            </Button>
-          </div>
-        </DialogHeader>
+      <DialogContent className="flex flex-col gap-10">
+        {/* 内容主体 */}
+        <div className="flex flex-col gap-10">
+          {/* 头部行：标题+日期选择器 | 清除+搜索 */}
+          <DialogHeader className="flex-row items-center justify-between space-y-0">
+            <div className="flex items-center gap-5" >
+              <DialogTitle className="shrink-0">{title}</DialogTitle>
+              <DatePicker
+                mode="range"
+                 size="sm"
+                value={dateRange}
+                className="w-auto"
+                onChange={(val) => setDateRange(val as DateRange | undefined)}
+              />
+            </div>
+            <div className="flex items-center gap-5">
+              <Button
+                size="sm"
+                className="bg-(--color-btn-dark) text-white hover:bg-(--color-btn-dark)/80"
+                onClick={handleClear}
+              >
+                <Icon name="reset-line" />
+                {t('action.clear')}
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleSearch}>
+              <Icon name="search-line" />
+                {t('action.search')}
+              </Button>
+            </div>
+          </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-auto">
+          {/* 统计标签 */}
           {renderAmountTags()}
 
-          <DataTable<RebateSymbolRow>
-            columns={columns}
-            data={rebateList}
-            rowKey={(_, idx) => idx}
-            loading={isLoading}
-            skeletonRows={5}
-            footer={footerRow}
-          />
+          {/* 数据表格 */}
+          <div className="max-h-[50vh] overflow-auto">
+            <DataTable<RebateSymbolRow>
+              columns={columns}
+              data={rebateList}
+              rowKey={(_, idx) => idx}
+              loading={isLoading}
+              skeletonRows={5}
+              footer={footerRow}
+            />
+          </div>
+        </div>
+
+        {/* 底部关闭按钮 */}
+        <div className="flex justify-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-[120px] border border-border"
+            onClick={() => onOpenChange(false)}
+          >
+            {t('action.close')}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

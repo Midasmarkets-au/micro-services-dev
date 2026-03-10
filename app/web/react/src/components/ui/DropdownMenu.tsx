@@ -123,7 +123,7 @@ export function DropdownMenu({ trigger, items, align = 'right', className }: Dro
                 'flex w-full items-center px-4 py-2 text-left text-sm text-text-primary transition-colors',
                 item.disabled
                   ? 'cursor-not-allowed opacity-50'
-                  : 'hover:bg-surface-secondary cursor-pointer'
+                  : 'hover:bg-(--color-surface-secondary) cursor-pointer'
               )}
             >
               {item.label}

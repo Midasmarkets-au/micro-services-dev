@@ -1793,7 +1793,8 @@
       "viewRebateRelation": "查看返佣关系",
       "referralCodeList": "推荐码列表",
       "newIBReferralCode": "新建IB推荐码",
-      "action": "操作"
+      "action": "操作",
+      "close": "关闭"
     },
     "dashboard": {
       "title": "仪表盘",
