@@ -1,0 +1,77 @@
+# ============================================================================
+#  front-portal — Next.js AU 客户门户
+#  镜像：docker build -f app/web/react/Dockerfile app/web/react
+#  端口：3000 (HTTP, Next.js standalone)
+#  入口：au-portal.trademdm.com / 由 gateway-ingress 路由到此服务
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-portal
+  labels:
+    app: front-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-portal
+  template:
+    metadata:
+      labels:
+        app: front-portal
+    spec:
+      containers:
+        - name: front-portal
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+          # envFrom:
+          #   - secretRef:
+          #       name: front-portal-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# ============================================================================
+#  front-portal Service — ClusterIP，由 NGINX Ingress 统一暴露
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-portal
+  labels:
+    app: front-portal
+spec:
+  type: ClusterIP
+  selector:
+    app: front-portal
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

@@ -1,0 +1,88 @@
+'use client';
+
+import { useMemo } from 'react';
+import { useLocale } from 'next-intl';
+import { CURRENCY_CODE_MAP } from '@/types/wallet';
+
+export { CURRENCY_CODE_MAP as CurrencyCodeMap };
+
+const LOCALE_MAP: Record<string, string> = {
+  en: 'en-US',
+  zh: 'zh-CN',
+  'zh-tw': 'zh-TW',
+  vi: 'vi-VN',
+  th: 'th-TH',
+  ja: 'ja-JP',
+  id: 'id-ID',
+  ms: 'ms-MY',
+  ko: 'ko-KR',
+  km: 'km-KH',
+  es: 'es-ES',
+};
+
+export interface BalanceShowProps {
+  balance: number;
+  currencyId?: number;
+  locale?: string;
+  sign?: '+' | '-' | '';
+  className?: string;
+}
+
+/**
+ * 金额显示组件，完全匹配旧项目逻辑：
+ * - 数据源：旧项目 BalanceShow.vue + filters.toCurrency
+ * - balance 已经过 normalizeAmountList(÷10000) 处理，单位为"分"
+ * - toCurrency: value / 100 → Intl.NumberFormat 格式化
+ * - 有小数部分时显示4位，否则2位
+ * - currencyId == -1 时回退为 USD
+ */
+export function BalanceShow({
+  balance,
+  currencyId = 840,
+  locale: localeProp,
+  sign = '',
+  className,
+}: BalanceShowProps) {
+  const nextIntlLocale = useLocale();
+  const locale = localeProp || LOCALE_MAP[nextIntlLocale] || nextIntlLocale || 'en-US';
+  const effectiveCurrencyId = currencyId === -1 ? 840 : currencyId;
+
+  const displayBalance = sign ? Math.abs(balance) : balance;
+
+  const formatted = useMemo(
+    () => formatBalance(displayBalance, effectiveCurrencyId, locale),
+    [displayBalance, effectiveCurrencyId, locale]
+  );
+
+  return (
+    <span className={className}>
+      {sign}{formatted}
+    </span>
+  );
+}
+
+/**
+ * 纯函数版本，完全对应旧项目 filters.toCurrency
+ */
+export function formatBalance(
+  balance: number,
+  currencyId: number = 840,
+  locale: string = 'en-US'
+): string {
+  const id = currencyId === -1 ? 840 : currencyId;
+  const value = balance / 100;
+  const hasDecimal = value % 1 !== 0;
+  const fractionDigits = hasDecimal ? 4 : 2;
+  const code = CURRENCY_CODE_MAP[id] || 'USD';
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(value);
+  } catch {
+    return `${code} ${value.toFixed(fractionDigits)}`;
+  }
+}
