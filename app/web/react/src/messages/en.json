@@ -843,6 +843,14 @@
       "21": "SEA PRO",
       "22": "Elite"
     },
+    "accountRole": {
+      "0": "Desconocido",
+      "100": "Ventas",
+      "110": "Revisión",
+      "200": "BI",
+      "300": "BI",
+      "400": "Cliente"
+    },
     "noData": "No accounts",
     "detail": {
       "backToAccountList": "Back to Account List",
@@ -1878,7 +1886,7 @@
       "selectCurrency": "Select Currency",
       "selectLeverage": "Select Leverage",
       "selectPlatform": "Select Platform",
-      "createSuccess": "Trade account created",
+      "createSuccess": "Application submitted successfully",
       "creating": "Creating..."
     },
     "rebateRelation": {
@@ -1891,7 +1899,71 @@
       "commission": "Commission",
       "percentage": "Percentage",
       "noData": "No data",
-      "loading": "Loading..."
+      "loading": "Loading...",
+      "allowPips": "Allow Pips",
+      "allowCommissions": "Allow Commissions",
+      "howMuchTake": "How much I take"
+    },
+    "type": {
+      "account": {
+        "0": "Unknown",
+        "1": "Individual",
+        "2": "Joint",
+        "3": "Corp",
+        "4": "Standard",
+        "5": "Pro",
+        "6": "Raw",
+        "7": "Swap Free Standard",
+        "8": "Swap Free Pro",
+        "9": "Swap Free Raw",
+        "10": "Wholesale",
+        "11": "Advantage",
+        "12": "Affiliate",
+        "13": "SEA STD",
+        "14": "Raw Plus",
+        "15": "JpSTDCFD",
+        "16": "JpSTDIND",
+        "17": "JpSTDFX",
+        "18": "JpALPCFD",
+        "19": "JpALPIND",
+        "20": "JpALPFX",
+        "21": "SEA PRO",
+        "22": "Elite"
+      },
+      "roleType": {
+        "100": "Sales",
+        "110": "Rep",
+        "200": "Broker",
+        "300": "IB",
+        "310": "Wholesale",
+        "400": "Client",
+        "1000": "Guest"
+      },
+      "shortAccount": {
+        "0": "Unknown",
+        "1": "Idv",
+        "2": "Jont",
+        "3": "Corp",
+        "4": "Std",
+        "5": "Pro",
+        "6": "Raw",
+        "7": "Swap Free Standard",
+        "8": "Swap Free Pro",
+        "9": "Swap Free Raw",
+        "10": "Wholesale",
+        "11": "Adv",
+        "12": "Aff",
+        "13": "SEA",
+        "14": "Raw Plus",
+        "15": "JP STD CFD",
+        "16": "JP STD IND",
+        "17": "JP STD FX",
+        "18": "JP ALP CFD",
+        "19": "JP ALP IND",
+        "20": "JP ALP FX",
+        "21": "SEA Pro",
+        "22": "Elite"
+      }
     },
     "ibLinks": {
       "title": "Referral Code List",

@@ -542,11 +542,12 @@ export async function updateSalesTopIBRebateRule(
 }
 
 export async function getSalesAgentRules(
-  salesUid: number
+  salesUid: number,
+  params?: { agentUids?: number[] }
 ): Promise<ActionResponse<unknown>> {
   try {
     const response = await apiClient.v1.get<unknown>(
-      `/sales/${salesUid}/rebate-rule/agent`
+      `/sales/${salesUid}/rebate-rule/agent${buildQuery(params as Record<string, unknown>)}`
     );
     return { success: true, data: unwrapData<unknown>(response) };
   } catch (error) {

@@ -844,6 +844,14 @@
       "21": "SEA PRO",
       "22": "精英"
     },
+    "accountRole": {
+      "0": "未知",
+      "100": "销售",
+      "110": "代表",
+      "200": "Top IB",
+      "300": "IB",
+      "400": "Client"
+    },
     "noData": "暂无账户数据",
     "detail": {
       "backToAccountList": "返回账户列表",
@@ -1772,11 +1780,12 @@
       "allLevels": "所有等级"
     },
     "action": {
+      "cancel": "取消",
       "search": "搜索",
       "reset": "重置",
       "viewDetails": "查看详情",
       "viewAccounts": "查看账户",
-      "viewRebateStatistics": "查看返佣统计",
+      "viewRebateStatistics": "查看交易统计",
       "editSchema": "编辑方案",
       "clear": "清除",
       "copy": "复制",
@@ -1891,7 +1900,7 @@
       "selectCurrency": "选择货币",
       "selectLeverage": "选择杠杆",
       "selectPlatform": "选择平台",
-      "createSuccess": "交易账户创建成功",
+      "createSuccess": "申请提交成功",
       "creating": "创建中..."
     },
     "rebateRelation": {
@@ -1904,7 +1913,71 @@
       "commission": "手续费",
       "percentage": "分成比例",
       "noData": "暂无数据",
-      "loading": "加载中..."
+      "loading": "加载中...",
+      "allowPips": "能开哪些加点",
+      "allowCommissions": "能开哪些加佣",
+      "howMuchTake": "我拿多少"
+    },
+    "type": {
+      "account": {
+        "0": "Unknown",
+        "1": "Individual",
+        "2": "Joint",
+        "3": "Corp",
+        "4": "标准",
+        "5": "Pro",
+        "6": "裸点",
+        "7": "Swap Free Standard",
+        "8": "Swap Free Pro",
+        "9": "Swap Free Raw",
+        "10": "Wholesale",
+        "11": "优选",
+        "12": "机构",
+        "13": "SEA STD",
+        "14": "裸点 Plus",
+        "15": "JpSTDCFD",
+        "16": "JpSTDIND",
+        "17": "JpSTDFX",
+        "18": "JpALPCFD",
+        "19": "JpALPIND",
+        "20": "JpALPFX",
+        "21": "SEA PRO",
+        "22": "精英"
+      },
+      "roleType": {
+        "100": "Sales",
+        "110": "Rep",
+        "200": "Broker",
+        "300": "IB",
+        "310": "Wholesale",
+        "400": "Client",
+        "1000": "Guest"
+      },
+      "shortAccount": {
+        "0": "Unknown",
+        "1": "Idv",
+        "2": "Jont",
+        "3": "Corp",
+        "4": "Std",
+        "5": "Pro",
+        "6": "Raw",
+        "7": "Swap Free Standard",
+        "8": "Swap Free Pro",
+        "9": "Swap Free Raw",
+        "10": "Wholesale",
+        "11": "Adv",
+        "12": "Aff",
+        "13": "SEA",
+        "14": "Raw Plus",
+        "15": "JpSTDCFD",
+        "16": "JpSTDIND",
+        "17": "JpSTDFX",
+        "18": "JpALPCFD",
+        "19": "JpALPIND",
+        "20": "JpALPFX",
+        "21": "SEA Pro",
+        "22": "精英"
+      }
     },
     "ibLinks": {
       "title": "推荐码列表",

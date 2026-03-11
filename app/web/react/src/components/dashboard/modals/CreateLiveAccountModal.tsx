@@ -8,10 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  
 } from '@/components/ui/radix/Dialog';
 import { Button } from '@/components/ui';
 import { Stepper } from '@/components/ui/Stepper';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/radix/Select';
+import { SimpleSelect } from '@/components/ui/radix/Select';
 import { Input } from '@/components/ui/radix/Input';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getLiveAccountConfig, createLiveAccount } from '@/actions';
@@ -238,18 +239,14 @@ export function CreateLiveAccountModal({
                   <span className="mr-1 text-primary">*</span>
                   {t('fields.type')}
                 </label>
-                <Select value={accountType} onValueChange={setAccountType} disabled={isLoadingConfig}>
-                  <SelectTrigger className="h-12 w-full bg-input-bg">
-                    <SelectValue placeholder={t('placeholder.selectType')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountTypeOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SimpleSelect
+                  value={accountType}
+                  onChange={setAccountType}
+                  options={accountTypeOptions}
+                  placeholder={t('placeholder.selectType')}
+                  disabled={isLoadingConfig}
+                  triggerSize="sm"
+                />
               </div>
 
               {/* 货币 */}
@@ -258,18 +255,14 @@ export function CreateLiveAccountModal({
                   <span className="mr-1 text-primary">*</span>
                   {t('fields.currency')}
                 </label>
-                <Select value={currency} onValueChange={setCurrency} disabled={isLoadingConfig}>
-                  <SelectTrigger className="h-12 w-full bg-input-bg">
-                    <SelectValue placeholder={t('placeholder.selectCurrency')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencyOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SimpleSelect
+                  value={currency}
+                  onChange={setCurrency}
+                  options={currencyOptions}
+                  placeholder={t('placeholder.selectCurrency')}
+                  disabled={isLoadingConfig}
+                  triggerSize="sm"
+                />
               </div>
 
               {/* 杠杆 */}
@@ -278,27 +271,23 @@ export function CreateLiveAccountModal({
                   <span className="mr-1 text-primary">*</span>
                   {t('fields.leverage')}
                 </label>
-                <Select value={leverage} onValueChange={setLeverage} disabled={isLoadingConfig}>
-                  <SelectTrigger className="h-12 w-full bg-input-bg">
-                    <SelectValue placeholder={t('placeholder.selectLeverage')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leverageOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SimpleSelect
+                  value={leverage}
+                  onChange={setLeverage}
+                  options={leverageOptions}
+                  placeholder={t('placeholder.selectLeverage')}
+                  disabled={isLoadingConfig}
+                  triggerSize="sm"
+                />
               </div>
 
               {/* 推荐代理（设计稿：请填写代理） */}
               <Input
-                label={t('fields.referAgent')}
+                label={t('fields.referCode')}
                 required
                 value={referCode}
                 onChange={(e) => setReferCode(e.target.value)}
-                placeholder={t('placeholder.referAgent')}
+                placeholder={t('placeholder.referCode')}
               />
             </div>
           )}

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import { useUserStore } from '@/stores/userStore';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import {
   getReferralCodeSupplement,
 } from '@/actions';
 import type { SalesClientAccount } from '@/types/sales';
-import { AccountRoleTypes, CurrencyTypes } from '@/types/accounts';
+import { AccountRoleTypes, CurrencyTypes, getPlatformName } from '@/types/accounts';
 
 const CurrencyNames: Record<number, string> = {
   [CurrencyTypes.AUD]: 'AUD',
@@ -41,6 +42,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   const tAccounts = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
+  const siteConfig = useUserStore((s) => s.siteConfig);
   const { showToast } = useToast();
 
   const [isConfigLoading, setIsConfigLoading] = useState(true);
@@ -53,9 +55,21 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   const [showForm, setShowForm] = useState(false);
 
   const [accountTypeOptions, setAccountTypeOptions] = useState<SelectOption[]>([]);
-  const [leverageOptions, setLeverageOptions] = useState<SelectOption[]>([]);
-  const [currencyOptions, setCurrencyOptions] = useState<SelectOption[]>([]);
-  const [platformOptions, setPlatformOptions] = useState<SelectOption[]>([]);
+  const [leverageOptions, setLeverageOptions] = useState<SelectOption[]>(() =>
+    (siteConfig?.leverageAvailable ?? []).map((lev) => ({ value: String(lev), label: `${lev}:1` }))
+  );
+  const [currencyOptions, setCurrencyOptions] = useState<SelectOption[]>(() =>
+    (siteConfig?.currencyAvailable ?? []).map((id) => ({
+      value: String(id),
+      label: CurrencyNames[id] ?? String(id),
+    }))
+  );
+  const [platformOptions, setPlatformOptions] = useState<SelectOption[]>(() =>
+    (siteConfig?.tradingPlatformAvailable ?? []).map((platformId) => ({
+      value: String(platformId),
+      label: getPlatformName(platformId),
+    }))
+  );
 
   const [selectedAccountType, setSelectedAccountType] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState('');
@@ -84,7 +98,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         if (Array.isArray(config.leverages)) {
           const opts = (config.leverages as number[]).map((lev) => ({
             value: String(lev),
-            label: `1:${lev}`,
+            label: `${lev}:1`,
           }));
           setLeverageOptions(opts);
           if (opts.length > 0) setSelectedLeverage(opts[0].value);
@@ -119,12 +133,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   }, [open, account, resetForm, loadConfig]);
 
   const getRoleLabel = (serviceType: number): string => {
-    switch (serviceType) {
-      case AccountRoleTypes.IB: return 'IB';
-      case AccountRoleTypes.Sales: return 'Sales';
-      case AccountRoleTypes.Client: return 'Client';
-      default: return String(serviceType);
-    }
+    return tAccounts(`accountRole.${serviceType}`);
   };
 
   const handleCheckReferCode = async () => {
@@ -158,7 +167,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         setAccountTypeOptions(opts);
         if (opts.length > 0) setSelectedAccountType(opts[0].value);
 
-        showToast({ message: t('openAccount.referCodeValid'), type: 'success' });
+        //showToast({ message: t('openAccount.referCodeValid'), type: 'success' });
       } else {
         setReferCodeValid(false);
         setShowForm(false);
@@ -182,6 +191,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         accountType: Number(selectedAccountType),
         currencyId: Number(selectedCurrency),
         leverage: Number(selectedLeverage),
+        platform: Number(selectedPlatform),
       };
       if (selectedPlatform) formData.serviceId = Number(selectedPlatform);
 
