@@ -474,10 +474,12 @@ export default function SignUpPage() {
       {/* 右侧表单 */}
       <div className="auth-card-form flex flex-col">
         {/* 标题 */}
-        <h1 className="mb-8 text-responsive-2xl font-semibold text-text-primary">
+        <h1 className="mb-8 text-responsive-2xl font-semibold text-text-primary text-center">
           {step === 3 ? t('verifyYourEmail') : t('createAccount')}
         </h1>
-
+        <div className="mb-6 flex justify-center md:hidden">
+          <AuthIllustration size={140} />
+        </div>
         {/* Tab 切换 - 仅第1、2步显示 */}
         {step !== 3 && (
           <div className="relative mb-10 flex gap-6">

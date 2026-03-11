@@ -501,10 +501,13 @@ export default function SignInPage() {
       {/* 右侧表单 */}
       <div className="auth-card-form flex flex-col">
         {/* 标题 */}
-        <h1 className="mb-8 text-responsive-2xl font-semibold text-text-primary">
+        <h1 className="mb-8 text-responsive-2xl font-semibold text-text-primary text-center">
           {t('welcomeLogin')}
         </h1>
-
+        {/* 移动端：标题下方 120px 动画区域，桌面端由左侧插图展示 */}
+        <div className="mb-6 flex justify-center md:hidden">
+          <AuthIllustration size={140} />
+        </div>
         {/* Tab 切换 - 仅在登录页面显示 */}
         {showPage === 'LoginPage' && (
           <div className="relative mb-10 flex gap-6">
