@@ -1,3 +1,9 @@
+'use client';
+
+import Lottie from "lottie-react";
+import loadingLight from "@/core/data/animation/loadingLight.json";
+import loadingDark from "@/core/data/animation/loadingDark.json";
+import { useTheme } from '@/hooks/useTheme';
 interface PageLoadingProps {
   /** 是否全屏显示 */
   fullscreen?: boolean;
@@ -8,9 +14,17 @@ interface PageLoadingProps {
 /**
  * MDM 品牌加载动画组件
  * 包含 MDM 字母动画和进度条
- * 注意：这是一个服务端组件，CSS 动画不依赖 JavaScript
+ * 注意：此为客户端组件，因需使用 useTheme 选择亮/暗 Lottie 动画
  */
 export function PageLoading({ fullscreen = true, className = '' }: PageLoadingProps) {
+  const { isDark, mounted } = useTheme();
+  if (!mounted) {
+    return (
+      <div className="relative flex h-full w-full max-h-150 max-w-150 items-center justify-center">
+        <div className="h-150 w-150" />
+      </div>
+    );
+  }
   return (
     <div
       className={`
@@ -19,31 +33,28 @@ export function PageLoading({ fullscreen = true, className = '' }: PageLoadingPr
         ${className}
       `}
     >
+      <div className="h-full w-full max-h-150 max-w-150 object-contain -translate-y-4">
+        <Lottie animationData={isDark ? loadingDark : loadingLight} loop={true} />
+      </div>
       {/* MDM Logo 动画 */}
-      <div className="flex items-center gap-1">
-        {/* M */}
+      {/* <div className="flex items-center gap-1">
         <span className="mdm-letter mdm-letter-1 font-brand text-5xl font-bold text-primary">
           M
         </span>
-        {/* D */}
         <span className="mdm-letter mdm-letter-2 font-brand text-5xl font-bold text-primary">
           D
         </span>
-        {/* M */}
         <span className="mdm-letter mdm-letter-3 font-brand text-5xl font-bold text-primary">
           M
         </span>
       </div>
-
-      {/* 进度条动画 */}
       <div className="loading-bar-container">
         <div className="loading-bar" />
       </div>
-
-      {/* 加载文字 */}
       <p className="loading-text text-sm text-text-secondary">
         Loading...
-      </p>
+      </p> */}
+
     </div>
   );
 }
