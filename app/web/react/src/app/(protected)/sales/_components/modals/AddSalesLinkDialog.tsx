@@ -343,7 +343,7 @@ export function AddSalesLinkDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col p-6!">
+      <DialogContent className="h-[700px]! overflow-hidden flex flex-col p-6!">
         <DialogHeader>
           <DialogTitle>{t('link.addNewLink')}</DialogTitle>
           <DialogDescription className="sr-only">

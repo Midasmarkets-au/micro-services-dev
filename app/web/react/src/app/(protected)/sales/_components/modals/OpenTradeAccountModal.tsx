@@ -21,14 +21,8 @@ import {
   getReferralCodeSupplement,
 } from '@/actions';
 import type { SalesClientAccount } from '@/types/sales';
-import { AccountRoleTypes, CurrencyTypes, getPlatformName } from '@/types/accounts';
-
-const CurrencyNames: Record<number, string> = {
-  [CurrencyTypes.AUD]: 'AUD',
-  [CurrencyTypes.CNY]: 'CNY',
-  [CurrencyTypes.USD]: 'USD',
-  [CurrencyTypes.USC]: 'USC',
-};
+import { AccountRoleTypes, getPlatformName } from '@/types/accounts';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 
 interface OpenTradeAccountModalProps {
   open: boolean;
@@ -40,6 +34,7 @@ interface OpenTradeAccountModalProps {
 export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }: OpenTradeAccountModalProps) {
   const t = useTranslations('sales');
   const tAccounts = useTranslations('accounts');
+  const getCurrencyName = useCurrencyName();
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
@@ -61,7 +56,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   const [currencyOptions, setCurrencyOptions] = useState<SelectOption[]>(() =>
     (siteConfig?.currencyAvailable ?? []).map((id) => ({
       value: String(id),
-      label: CurrencyNames[id] ?? String(id),
+      label: getCurrencyName(id),
     }))
   );
   const [platformOptions, setPlatformOptions] = useState<SelectOption[]>(() =>
@@ -106,7 +101,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         if (Array.isArray(config.currencies)) {
           const opts = (config.currencies as (number | { id: number })[]).map((c) => {
             const id = typeof c === 'number' ? c : c.id;
-            return { value: String(id), label: CurrencyNames[id] || String(id) };
+            return { value: String(id), label: getCurrencyName(id) };
           });
           setCurrencyOptions(opts);
           if (opts.length > 0) setSelectedCurrency(opts[0].value);
@@ -123,7 +118,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
     } finally {
       setIsConfigLoading(false);
     }
-  }, [salesAccount, account, execute]);
+  }, [salesAccount, account, execute, getCurrencyName]);
 
   useEffect(() => {
     if (open && account) {

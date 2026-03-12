@@ -40,15 +40,9 @@ import {
   TransferState,
   CurrencyTypes,
 } from '@/types/accounts';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport' | 'commissionReport';
-
-const CURRENCY_LABEL: Record<number, string> = {
-  [CurrencyTypes.AUD]: 'AUD',
-  [CurrencyTypes.CNY]: 'CNY',
-  [CurrencyTypes.USD]: 'USD',
-  [CurrencyTypes.USC]: 'USC',
-};
 
 const PENDING_STATES = new Set([
   DepositState.DepositCreated, DepositState.DepositPaymentCompleted, DepositState.DepositTenantApproved,
@@ -108,6 +102,7 @@ export default function IBCustomerDetailPage({
   const t = useTranslations('ib');
   const td = useTranslations('ib.customerDetail');
   const tState = useTranslations('accounts.transactionState');
+  const getCurrencyName = useCurrencyName();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
@@ -270,7 +265,7 @@ export default function IBCustomerDetailPage({
       title: td('columns.currency'),
       align: 'center',
       skeletonWidth: 'w-12',
-      render: (item) => <span className="text-sm">{CURRENCY_LABEL[item.currencyId] || 'USD'}</span>,
+      render: (item) => <span className="text-sm">{getCurrencyName(item.currencyId)}</span>,
     },
     {
       key: 'amount',
@@ -286,7 +281,7 @@ export default function IBCustomerDetailPage({
       skeletonWidth: 'w-28',
       render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
     },
-  ], [td, tState]);
+  ], [td, tState, getCurrencyName]);
 
   const withdrawalColumns = useMemo<DataTableColumn<IBWithdrawalRecord>[]>(() => [
     {
@@ -315,7 +310,7 @@ export default function IBCustomerDetailPage({
       title: td('columns.currency'),
       align: 'center',
       skeletonWidth: 'w-12',
-      render: (item) => <span className="text-sm">{CURRENCY_LABEL[item.currencyId] || 'USD'}</span>,
+      render: (item) => <span className="text-sm">{getCurrencyName(item.currencyId)}</span>,
     },
     {
       key: 'amount',
@@ -331,7 +326,7 @@ export default function IBCustomerDetailPage({
       skeletonWidth: 'w-28',
       render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
     },
-  ], [td, tState]);
+  ], [td, tState, getCurrencyName]);
 
   const transferColumns = useMemo<DataTableColumn<TransferItem>[]>(() => [
     {
@@ -352,7 +347,7 @@ export default function IBCustomerDetailPage({
       title: td('columns.currency'),
       align: 'center',
       skeletonWidth: 'w-12',
-      render: (item) => <span className="text-sm">{CURRENCY_LABEL[item.currencyId || 840] || 'USD'}</span>,
+      render: (item) => <span className="text-sm">{getCurrencyName(item.currencyId || 840)}</span>,
     },
     {
       key: 'amount',
@@ -368,7 +363,7 @@ export default function IBCustomerDetailPage({
       skeletonWidth: 'w-28',
       render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
     },
-  ], [td, tState]);
+  ], [td, tState, getCurrencyName]);
 
   const tradeColumns = useMemo<DataTableColumn<IBTradeRecord>[]>(() => [
     { key: 'ticket', title: td('columns.ticket'), skeletonWidth: 'w-16', render: (item) => item.ticket },

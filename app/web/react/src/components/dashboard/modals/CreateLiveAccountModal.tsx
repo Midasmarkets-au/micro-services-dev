@@ -18,7 +18,8 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { getLiveAccountConfig, createLiveAccount } from '@/actions';
 import { useToast } from '@/hooks/useToast';
 import type { AccountConfig, ServiceMap, CreateLiveAccountParams } from '@/types/accounts';
-import { CurrencyTypes, getPlatformName } from '@/types/accounts';
+import { getPlatformName } from '@/types/accounts';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 
 interface CreateLiveAccountModalProps {
   open: boolean;
@@ -29,13 +30,6 @@ interface CreateLiveAccountModalProps {
 
 type Step = 1 | 2;
 
-const CurrencyNames: Record<number, string> = {
-  [CurrencyTypes.AUD]: 'AUD',
-  [CurrencyTypes.CNY]: 'CNY',
-  [CurrencyTypes.USD]: 'USD',
-  [CurrencyTypes.USC]: 'USC',
-};
-
 export function CreateLiveAccountModal({
   open,
   onOpenChange,
@@ -43,6 +37,7 @@ export function CreateLiveAccountModal({
   serviceMap,
 }: CreateLiveAccountModalProps) {
   const t = useTranslations('accounts');
+  const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess } = useToast();
 
@@ -147,7 +142,7 @@ export function CreateLiveAccountModal({
   // 货币选项
   const currencyOptions = config?.currencyAvailable?.map((curr) => ({
     value: String(curr),
-    label: CurrencyNames[curr] || 'USD',
+    label: getCurrencyName(curr),
   })) || [];
 
   // 杠杆选项

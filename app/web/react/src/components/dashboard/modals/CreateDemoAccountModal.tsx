@@ -16,7 +16,8 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { getDemoAccountConfig, createDemoAccount } from '@/actions';
 import { useToast } from '@/hooks/useToast';
 import type { AccountConfig, ServiceMap, CreateDemoAccountParams } from '@/types/accounts';
-import { CurrencyTypes, getPlatformName, getCurrencySymbol } from '@/types/accounts';
+import { getPlatformName, getCurrencySymbol } from '@/types/accounts';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 
 interface CreateDemoAccountModalProps {
   open: boolean;
@@ -27,13 +28,6 @@ interface CreateDemoAccountModalProps {
 
 type Step = 1 | 2;
 
-const CurrencyNames: Record<number, string> = {
-  [CurrencyTypes.AUD]: 'AUD',
-  [CurrencyTypes.CNY]: 'CNY',
-  [CurrencyTypes.USD]: 'USD',
-  [CurrencyTypes.USC]: 'USC',
-};
-
 export function CreateDemoAccountModal({
   open,
   onOpenChange,
@@ -41,6 +35,7 @@ export function CreateDemoAccountModal({
   serviceMap,
 }: CreateDemoAccountModalProps) {
   const t = useTranslations('accounts');
+  const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess } = useToast();
 
@@ -131,7 +126,7 @@ export function CreateDemoAccountModal({
 
   const currencyOptions = config?.currencyAvailable?.map((curr) => ({
     value: String(curr),
-    label: CurrencyNames[curr] || 'USD',
+    label: getCurrencyName(curr),
   })) || [];
 
   const leverageOptions = config?.leverageAvailable?.map((lev) => ({

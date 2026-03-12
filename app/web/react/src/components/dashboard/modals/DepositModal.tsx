@@ -31,6 +31,7 @@ import type {
 } from '@/types/deposit';
 import { DepositActions } from '@/types/deposit';
 import { CurrencyTypes, getCurrencySymbol } from '@/types/accounts';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 
 interface DepositModalProps {
   open: boolean;
@@ -42,19 +43,9 @@ type Step = 1 | 2 | 3 | 4 | 5;
 
 const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId'];
 
-const CurrencyNames: Record<number, string> = {
-  [CurrencyTypes.AUD]: 'AUD',
-  [CurrencyTypes.CNY]: 'CNY/RMB',
-  [CurrencyTypes.USD]: 'USD',
-  [CurrencyTypes.USC]: 'USC',
-};
-
-function getCurrencyName(currencyId: number): string {
-  return CurrencyNames[currencyId] || 'USD';
-}
-
 export function DepositModal({ open, onOpenChange, account }: DepositModalProps) {
   const t = useTranslations('deposit');
+  const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess } = useToast();
 
