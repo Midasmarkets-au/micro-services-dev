@@ -614,7 +614,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="p-6! max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="p-6! h-[700px]! overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{t('addLink.title')}</DialogTitle>
           <DialogDescription className="sr-only">{t('addLink.title')}</DialogDescription>

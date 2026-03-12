@@ -183,6 +183,7 @@ export interface PaymentMethodGroup {
   description?: string;
   icon?: string;
   logo?: string;
+  isActive?: boolean;
 }
 
 export interface PaymentMethodGroupInfo {

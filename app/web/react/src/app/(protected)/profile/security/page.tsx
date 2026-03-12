@@ -202,6 +202,9 @@ export default function SecurityPage() {
             className="w-full"
             {...register('confirmPassword')}
           />
+          <p className="text-xs text-primary">
+            {t('passwordUpdateWithdrawalNotice')}
+          </p>
         </form>
       </div>
 

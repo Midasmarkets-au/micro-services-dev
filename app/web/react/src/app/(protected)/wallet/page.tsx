@@ -230,7 +230,9 @@ export default function WalletPage() {
             open={showWithdrawModal}
             onOpenChange={setShowWithdrawModal}
             wallet={wallet}
+            type='wallet'
             onSuccess={refreshAfterAction}
+             
           />
           <TransferModal
             open={showTransferModal}

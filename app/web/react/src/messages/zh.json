@@ -775,6 +775,7 @@
       "newPasswordPlaceholder": "请输入新密码",
       "confirmPassword": "确认密码",
       "confirmPasswordPlaceholder": "请再次输入密码",
+      "passwordUpdateWithdrawalNotice": "为保障资金安全，密码修改后24小时内将暂时限制出金。",
       "twoFactor": "双重认证",
       "twoFactorCode": "验证码",
       "twoFactorCodePlaceholder": "输入您的代码",
@@ -1250,6 +1251,7 @@
     "withdraw": {
       "selectMethod": "请选择出金方式",
       "selectChannel": "选择出金渠道以继续",
+      "passwordChangeRestrictionNotice": "为保障账户安全，若账户密码在近期被修改或重置，系统将在24小时内暂时限制出金功能。该限制将在24小时后自动解除。",
       "noMethods": "暂无可用的出金方式",
       "enterAmount": "请输入出金金额",
       "insufficientBalance": "余额不足",

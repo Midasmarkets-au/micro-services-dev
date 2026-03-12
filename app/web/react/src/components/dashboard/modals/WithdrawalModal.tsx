@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
+import { useUserStore } from '@/stores/userStore';
 import {
   getWalletWithdrawGroups,
   getWalletWithdrawGroupInfo,
@@ -76,6 +77,8 @@ interface WithdrawalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   wallet: Wallet;
+  type?: 'wallet' | 'account';
+  accountNumber?: string | number;
   onSuccess?: () => void;
 }
 
@@ -83,16 +86,48 @@ type Step = 1 | 2 | 3 | 4 | 5;
 
 const USDT_PLATFORM = 240;
 
+function resolvePaymentLogoSrc(logo: string | undefined, name: string): string {
+  const fallback = `/images/wallet/${encodeURIComponent(name)}.png`;
+  if (!logo) return fallback;
+
+  const src = logo.trim();
+  if (!src) return fallback;
+
+  if (src.startsWith('/') || src.startsWith('data:') || src.startsWith('blob:')) {
+    return src;
+  }
+
+  if (/^https?:\/\//i.test(src)) {
+    try {
+      new URL(src);
+      return src;
+    } catch {
+      return fallback;
+    }
+  }
+
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(src)) {
+    return fallback;
+  }
+
+  return `/${src.replace(/^\/+/, '')}`;
+}
+
 export function WithdrawalModal({
   open,
   onOpenChange,
   wallet,
+  type = 'wallet',
+  accountNumber,
   onSuccess,
 }: WithdrawalModalProps) {
   const t = useTranslations('wallet');
   const tCommon = useTranslations('common');
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess, showError } = useToast();
+  const isPasswordChangedWithin24h = useUserStore(
+    (s) => s.siteConfig?.passwordChangedWithinLast24h === true
+  );
 
   const [step, setStep] = useState<Step>(1);
 
@@ -125,12 +160,13 @@ export function WithdrawalModal({
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const withdrawalTargetId = type === 'account' ? accountNumber : wallet?.hashId;
 
   // Step 1: load groups
   useEffect(() => {
-    if (open && wallet) {
+    if (open && withdrawalTargetId) {
       setIsLoadingGroups(true);
-      execute(getWalletWithdrawGroups, wallet.hashId)
+      execute(getWalletWithdrawGroups, withdrawalTargetId, type)
         .then((result) => {
           if (result.success && result.data) {
             console.log('result.data', result.data);
@@ -140,7 +176,7 @@ export function WithdrawalModal({
         .finally(() => setIsLoadingGroups(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, wallet?.hashId]);
+  }, [open, withdrawalTargetId, type]);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
@@ -169,13 +205,14 @@ export function WithdrawalModal({
 
   // Step 1 -> 2: load group info
   const loadGroupInfo = useCallback(async () => {
-    if (!wallet || !selectedGroup) return;
+    if (isPasswordChangedWithin24h || !selectedGroup || !withdrawalTargetId) return;
     setIsLoadingInfo(true);
     try {
       const result = await execute(
         getWalletWithdrawGroupInfo,
         selectedGroup.hashId,
-        wallet.hashId
+        withdrawalTargetId,
+        type
       );
       if (result.success && result.data) {
         setGroupInfo(result.data);
@@ -184,7 +221,7 @@ export function WithdrawalModal({
     } finally {
       setIsLoadingInfo(false);
     }
-  }, [wallet, selectedGroup, execute]);
+  }, [selectedGroup, execute, withdrawalTargetId, type, isPasswordChangedWithin24h]);
 
   // Fetch and filter payment infos by service type
   const fetchPaymentInfos = useCallback(async () => {
@@ -476,6 +513,12 @@ export function WithdrawalModal({
             <DialogTitle>{t('action.withdraw')}</DialogTitle>
           </DialogHeader>
 
+          {isPasswordChangedWithin24h && (
+            <div className="text-primary rounded-lg bg-error/10 p-3 text-sm text-error">
+              {t('withdraw.passwordChangeRestrictionNotice')}
+            </div>
+          )}
+
           <Stepper
             steps={stepperSteps}
             currentStep={stepperCurrentStep}
@@ -502,16 +545,20 @@ export function WithdrawalModal({
                 ) : (
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     {groups.map((group) => {
-                      const isSelected = selectedGroup?.hashId === group.hashId;
-                      const logoSrc =
-                        group.logo ||
-                        `/images/wallet/${encodeURIComponent(group.name)}.png`;
+                      const isDisabled = group.isActive === false || isPasswordChangedWithin24h;
+                      const isSelected = !isDisabled && selectedGroup?.hashId === group.hashId;
+                      const logoSrc = resolvePaymentLogoSrc(group.logo, group.name);
                       return (
                         <button
                           key={group.hashId}
                           type="button"
+                          disabled={isDisabled}
                           onClick={() => setSelectedGroup(group)}
-                          className={`relative flex cursor-pointer items-start gap-4 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
+                          className={`relative flex items-start gap-4 overflow-hidden rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            isDisabled
+                              ? 'border-border bg-surface-secondary'
+                              : 'cursor-pointer'
+                          } ${
                             isSelected
                               ? 'border-primary bg-surface'
                               : 'border-border bg-surface hover:border-primary/50'
@@ -537,7 +584,7 @@ export function WithdrawalModal({
                               {t('withdraw.processing')}：{'< 1'}{t('withdraw.hour')}
                             </span>
                           </div>
-                          {isSelected && (
+                          {isSelected && !isDisabled && (
                             <svg
                               width="24"
                               height="24"
@@ -1106,7 +1153,7 @@ export function WithdrawalModal({
                 <Button
                   variant="primary"
                   onClick={loadGroupInfo}
-                  disabled={!selectedGroup || isLoadingInfo}
+                  disabled={!selectedGroup || isLoadingInfo || isPasswordChangedWithin24h}
                   loading={isLoadingInfo}
                   className="w-auto min-w-20 md:w-[120px]"
                 >

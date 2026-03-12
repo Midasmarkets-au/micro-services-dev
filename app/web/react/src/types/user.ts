@@ -82,6 +82,7 @@ export interface SiteConfiguration {
   };
   rebateCalculateFrom: string;
   twoFactorAuth: boolean;
+  passwordChangedWithinLast24h?: boolean;
   twoFactorAuthForTransactions: TwoFactorAuthForTransactions;
 }
 

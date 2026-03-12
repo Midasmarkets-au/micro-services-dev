@@ -666,6 +666,8 @@ export default function AccountDetailPage() {
           open={showWithdrawalModal}
           onOpenChange={setShowWithdrawalModal}
           wallet={wallet}
+          type='account'
+          accountNumber={tradeAccount.accountNumber}
           onSuccess={loadTabData}
         />
       )}

@@ -99,7 +99,7 @@ export function DashboardSidebar({ user: propUser }: DashboardSidebarProps) {
 
         {/* 用户信息 */}
         <div className="flex flex-col items-center gap-1">
-          <p className="text-xl font-semibold leading-6.5 text-text-primary px-2">
+          <p className="text-xl font-semibold text-center leading-6.5 text-text-primary px-2">
             {user.nickname || '-'}
           </p>
           <div className="flex items-center justify-center gap-1">

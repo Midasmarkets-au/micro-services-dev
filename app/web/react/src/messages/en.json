@@ -774,6 +774,7 @@
       "newPasswordPlaceholder": "Enter new password",
       "confirmPassword": "Confirm Password",
       "confirmPasswordPlaceholder": "Enter password again",
+      "passwordUpdateWithdrawalNotice": "For your fund security, withdrawals will be temporarily restricted for 24 hours after your password is changed.",
       "twoFactor": "Two-Factor Authentication",
       "twoFactorCode": "Verification Code",
       "twoFactorCodePlaceholder": "Enter your code",
@@ -1249,6 +1250,7 @@
     "withdraw": {
       "selectMethod": "Please select a withdrawal method",
       "selectChannel": "Select a withdrawal channel to continue",
+      "passwordChangeRestrictionNotice": "For account security, if your account password was recently changed or reset, withdrawals will be temporarily restricted for 24 hours. This restriction will be lifted automatically after 24 hours.",
       "noMethods": "No withdrawal methods available",
       "enterAmount": "Please enter the withdrawal amount",
       "insufficientBalance": "Insufficient balance",

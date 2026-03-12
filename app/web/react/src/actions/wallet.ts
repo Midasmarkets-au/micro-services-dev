@@ -212,11 +212,16 @@ export async function cancelWithdrawal(
 // ============================================
 
 export async function getWalletWithdrawGroups(
-  walletHashId: string
+  targetId: string | number,
+  type: 'wallet' | 'account' = 'wallet'
 ): Promise<ActionResponse<PaymentMethodGroup[]>> {
   try {
+    const path =
+      type === 'account'
+        ? `/client/payment-method/account/${targetId}/withdrawal`
+        : `/client/payment-method/wallet/${targetId}/withdrawal`;
     const response = await apiClient.v2.get<{ data: PaymentMethodGroup[] }>(
-      `/client/payment-method/wallet/${walletHashId}/withdrawal`
+      path
     );
     console.log('response', response);
     return { success: true, data: response.data || [] };
@@ -227,11 +232,16 @@ export async function getWalletWithdrawGroups(
 
 export async function getWalletWithdrawGroupInfo(
   serviceHashId: string,
-  walletHashId: string
+  targetId: string | number,
+  type: 'wallet' | 'account' = 'wallet'
 ): Promise<ActionResponse<PaymentMethodGroupInfo>> {
   try {
+    const path =
+      type === 'account'
+        ? `/client/payment-method/${serviceHashId}/account/${targetId}/withdrawal-info`
+        : `/client/payment-method/${serviceHashId}/wallet/${targetId}/withdrawal-info`;
     const response = await apiClient.v2.get<{ data: PaymentMethodGroupInfo }>(
-      `/client/payment-method/${serviceHashId}/wallet/${walletHashId}/withdrawal-info`
+      path
     );
     return { success: true, data: response.data };
   } catch (error) {
