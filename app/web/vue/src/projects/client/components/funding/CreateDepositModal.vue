@@ -129,7 +129,12 @@ provide("isSuccess", isSuccess);
 //function for step 4 and step 5
 const handleThirdPartyPay = () => {
   if (selectedThirdPartyService.value.action == "Redirect") {
-    window.open(selectedThirdPartyService.value.redirectUrl, "_blank");
+    const redirectUrl = selectedThirdPartyService.value.redirectUrl;
+    if (!redirectUrl) {
+      MsgPrompt.error(t("error.__REQUEST_FAIL__"));
+      return;
+    }
+    window.open(redirectUrl, "_blank");
     return;
   } else if (selectedThirdPartyService.value.action == "Post") {
     const form = document.createElement("form");

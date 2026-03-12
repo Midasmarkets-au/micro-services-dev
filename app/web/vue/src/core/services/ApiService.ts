@@ -20,7 +20,9 @@ class ApiService {
     ApiService.vueInstance = app;
     ApiService.vueInstance.use(VueAxios, axios);
     ApiService.vueInstance.axios.defaults.baseURL =
-      process.env.VUE_APP_ENV === "Development" ? process.env.VUE_APP_API_URL : "/";
+      process.env.VUE_APP_ENV === "Development"
+        ? process.env.VUE_APP_API_URL
+        : "/";
   }
 
   /**

@@ -112,9 +112,12 @@ const submit = async () => {
     currentStep.value += 1;
 
     emits("onCreated");
-  } catch (error) {
-    // MsgPrompt.error(t("error.__REQUEST_FAIL__"));
-    MsgPrompt.error(error);
+  } catch (error: any) {
+    if (error?.code === "ERR_CANCELED" || error?.message === "Load failed" || error?.message === "Network Error") {
+      isLoading.value = false;
+      return;
+    }
+    await MsgPrompt.error(error);
     isLoading.value = false;
   }
 };
