@@ -95,6 +95,8 @@ export interface DataTableProps<T> {
   className?: string;
   /** 表格边框圆角大小，默认 'sm'。可选 'sm' | 'md' | 'lg' | 'xl' | 'none' */
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  /** 是否拉伸表格高度填满父容器，默认 true */
+  stretchHeight?: boolean;
 }
 
 const ALIGN_CLASS = {
@@ -135,14 +137,16 @@ export function DataTable<T>({
   groupConfig,
   className,
   rounded = 'sm',
+  stretchHeight = true,
 }: DataTableProps<T>) {
   const colCount = columns.length;
   const r = ROUNDED_MAP[rounded];
+  const singleRowAutoHeight = !loading && data.length === 1;
+  const shouldStretch = stretchHeight && !singleRowAutoHeight;
 
   if (groupConfig) {
     return <GroupedDataTable columns={columns} data={data} rowKey={rowKey} loading={loading} skeletonRows={skeletonRows} onRowClick={onRowClick} emptyContent={emptyContent} footer={footer} groupConfig={groupConfig} className={className} />;
   }
-
   if (!loading && data.length === 0) {
     return (
       <div className={cn('flex flex-1 flex-col', className)}>
@@ -157,8 +161,19 @@ export function DataTable<T>({
 
   return (
     <div className={cn('flex flex-col', className)}>
-      <div className="flex flex-1 flex-col overflow-x-auto">
-        <table className={cn(TABLE_CLASS, 'flex-1 border-separate border-spacing-0')}>
+      <div
+        className={cn(
+          'flex flex-col overflow-x-auto',
+          shouldStretch && 'flex-1'
+        )}
+      >
+        <table
+          className={cn(
+            TABLE_CLASS,
+            'border-separate border-spacing-0',
+            shouldStretch && 'flex-1'
+          )}
+        >
           {/* Table Header — no border */}
           <thead>
             <tr className="text-sm text-text-secondary">
@@ -286,7 +301,6 @@ function GroupedDataTable<T>({
   className,
 }: DataTableProps<T> & { groupConfig: DataTableGroupConfig<T> }) {
   const totalCols = columns.length + 1;
-
   if (loading) {
     return (
       <div className={cn('flex flex-col gap-4', className)}>
@@ -296,7 +310,6 @@ function GroupedDataTable<T>({
       </div>
     );
   }
-
   if (!data.length) {
     return (
       <div className={cn('flex flex-1 items-center justify-center', className)}>

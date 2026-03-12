@@ -9,25 +9,10 @@ import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTit
 import type { DataTableColumn } from '@/components/ui';
 import type { IBLink, IBReferralSupplement } from '@/types/ib';
 import { useUserStore } from '@/stores/userStore';
+import { getLanguageLabel } from '@/core/types/LanguageTypes';
 import { RebateSettingsDialog } from './RebateSettingsDialog';
 import { AddLinkDialog } from './AddLinkDialog';
 import { EditLinkDialog } from './EditLinkDialog';
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  'en-us': 'English',
-  en: 'English',
-  'zh-cn': '简体中文',
-  zh: '简体中文',
-  'zh-tw': '繁體中文',
-  'vi-vn': 'Tiếng Việt',
-  'th-th': 'ภาษาไทย',
-  'jp-jp': '日本語',
-  'id-id': 'Bahasa Indonesia',
-  'ms-my': 'Bahasa Melayu',
-  ms: 'Bahasa Melayu',
-  es: 'Español',
-  th: 'ภาษาไทย',
-};
 
 const ROLE_TYPE_LABELS: Record<number, string> = {
   300: 'IB',
@@ -64,6 +49,7 @@ export default function IBLinkPage() {
   executeRef.current = execute;
 
   const agentAccount = useIBStore((s) => s.agentAccount);
+  const ibStoreInitialized = useIBStore((s) => s.isInitialized);
   const siteConfig = useUserStore((s) => s.siteConfig);
 
   const [data, setData] = useState<IBLink[]>([]);
@@ -99,9 +85,10 @@ export default function IBLinkPage() {
 
   const agentUid = agentAccount?.uid;
   useEffect(() => {
+    if (!ibStoreInitialized) return;
     if (agentUid) fetchData();
     else setIsLoading(false);
-  }, [agentUid]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentUid, ibStoreInitialized, fetchData]);
 
   const handleViewRebateSettings = useCallback(async (item: IBLink) => {
     setDialogOpen(true);
@@ -140,13 +127,14 @@ export default function IBLinkPage() {
       skeletonWidth: 'w-28',
       render: (item) => (
         <div className="flex items-center gap-2">
-          <span className="text-sm">{item.name || '-'}</span>
-          <span
-            className="cursor-pointer text-text-secondary hover:text-primary"
+        <span className="text-sm leading-4">{item.name || '-'}</span>
+          <button
+            type="button"
+            className="cursor-pointer inline-flex h-4 w-4 items-center justify-center text-text-secondary hover:text-primary"
             onClick={() => handleEditLink(item)}
           >
-            <Icon name="edit" size={14} />
-          </span>
+            <Icon name="edit" size={14} className="block w-full h-full" />
+          </button>
         </div>
       ),
     },
@@ -201,7 +189,7 @@ export default function IBLinkPage() {
       skeletonWidth: 'w-20',
       render: (item) => {
         const lang = item.summary?.language;
-        return LANGUAGE_LABELS[lang || ''] || lang || '-';
+        return getLanguageLabel(lang) || lang || '-';
       },
     },
     {
@@ -319,7 +307,7 @@ export default function IBLinkPage() {
               <div className="flex gap-2">
                 <span className="text-text-secondary">{t('link.language')}:</span>
                 <span className="text-text-primary">
-                  {LANGUAGE_LABELS[copyConfirmItem.summary?.language || ''] || copyConfirmItem.summary?.language || '-'}
+                  {getLanguageLabel(copyConfirmItem.summary?.language) || copyConfirmItem.summary?.language || '-'}
                 </span>
               </div>
               <div className="flex gap-2">

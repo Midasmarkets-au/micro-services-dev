@@ -162,4 +162,67 @@ export class LanguageTypes {
   ];
 }
 
- 
+const LANGUAGE_NAME_BY_CODE: Record<string, string> = LanguageTypes.all.reduce(
+  (acc, language) => {
+    acc[language.code.toLowerCase()] = language.name;
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+const LANGUAGE_CODE_ALIAS_TO_CANONICAL: Record<string, string> = {
+  en: LanguageCodes.enUS,
+  zh: LanguageCodes.zhCN,
+  th: LanguageCodes.thTh,
+  ms: LanguageCodes.msMY,
+  es: LanguageCodes.esES,
+};
+
+/**
+ * 统一语言文案读取：
+ * 1. 先按原始 code 匹配（如 en-us）
+ * 2. 再按短码别名匹配（如 en -> en-us）
+ */
+export function getLanguageLabel(code?: string | null): string | undefined {
+  if (!code) return undefined;
+  const normalizedCode = code.toLowerCase();
+  const exact = LANGUAGE_NAME_BY_CODE[normalizedCode];
+  if (exact) return exact;
+  const canonicalCode = LANGUAGE_CODE_ALIAS_TO_CANONICAL[normalizedCode];
+  if (!canonicalCode) return undefined;
+  return LANGUAGE_NAME_BY_CODE[canonicalCode.toLowerCase()];
+}
+
+const LINK_LANGUAGE_CODES = [
+  LanguageCodes.enUS,
+  LanguageCodes.zhCN,
+  LanguageCodes.zhTW,
+  LanguageCodes.viVN,
+  LanguageCodes.thTh,
+  LanguageCodes.jpJP,
+  LanguageCodes.idID,
+  LanguageCodes.msMY,
+] as const;
+
+const LANGUAGE_TYPE_BY_CODE: Record<string, ILanguage> = LanguageTypes.all.reduce(
+  (acc, language) => {
+    acc[language.code.toLowerCase()] = language;
+    return acc;
+  },
+  {} as Record<string, ILanguage>
+);
+
+export const LINK_LANGUAGE_OPTIONS = LINK_LANGUAGE_CODES.map((code) => {
+  const language = LANGUAGE_TYPE_BY_CODE[code.toLowerCase()];
+  if (!language) return { value: code, label: code };
+  if (language.englishName && language.englishName !== language.name) {
+    return {
+      value: language.code,
+      label: `${language.englishName} (${language.name})`,
+    };
+  }
+  return {
+    value: language.code,
+    label: language.name,
+  };
+});

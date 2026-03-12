@@ -22,18 +22,7 @@ import {
   createSalesLinkForClient,
 } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-
-const LANGUAGE_OPTIONS = [
-  { value: 'en-us', label: 'English' },
-  { value: 'zh-cn', label: 'Simplify Chinese (简体中文)' },
-  { value: 'zh-tw', label: 'Traditional Chinese (繁體中文)' },
-  { value: 'vi-vn', label: 'Vietnamese (Tiếng Việt Nam)' },
-  { value: 'th-th', label: 'Thai (ภาษาไทย)' },
-  { value: 'jp-jp', label: 'Japanese (日本語)' },
-  { value: 'id-id', label: 'Indonesian (Bahasa Indonesia)' },
-  { value: 'ms-my', label: 'Malay (Bahasa Melayu)' },
-];
-
+import { LINK_LANGUAGE_OPTIONS } from '@/core/types/LanguageTypes';
 const SERVICE_TYPE_IB = 300;
 const SERVICE_TYPE_CLIENT = 400;
 
@@ -427,7 +416,7 @@ export function AddSalesLinkDialog({
                     {t('link.chooseLanguage')}
                   </label>
                   <SearchableSelect
-                    options={LANGUAGE_OPTIONS}
+                    options={LINK_LANGUAGE_OPTIONS}
                     value={language}
                     onChange={(val) => setLanguage(val as string)}
                     placeholder={t('link.chooseLanguage')}

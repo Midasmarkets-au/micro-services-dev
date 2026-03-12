@@ -440,7 +440,7 @@ export default function SalesCustomersPage() {
   const multiLevel = criteria.multiLevel ?? false;
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
+    <div className="flex flex-1 min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
       {/* Tabs + 筛选区 同一行，移动端自动换行 */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <Tabs
@@ -519,6 +519,7 @@ export default function SalesCustomersPage() {
         data={customers}
         rowKey={(item) => item.uid}
         loading={isLoading}
+        stretchHeight={false}
       />
 
       {/* Pagination */}

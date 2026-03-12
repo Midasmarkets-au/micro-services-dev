@@ -205,7 +205,7 @@ export default function SalesTransactionPage() {
   const firstCurrencyId = data[0]?.currencyId;
 
   return (
-    <div className="flex min-h-full w-full flex-col gap-5 rounded bg-surface p-5">
+    <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">
       <TradeFilter
         type="trade"
         translationNamespace="sales"
@@ -242,7 +242,6 @@ export default function SalesTransactionPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       <Pagination page={page} total={total} size={pageSize} onPageChange={handlePageChange} />

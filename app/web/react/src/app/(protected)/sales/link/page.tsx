@@ -9,25 +9,10 @@ import { useUserStore } from '@/stores/userStore';
 import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { SalesLink } from '@/types/sales';
+import { getLanguageLabel } from '@/core/types/LanguageTypes';
 import { SalesRebateSettingsDialog } from '../_components/modals/SalesRebateSettingsDialog';
 import { EditSalesLinkDialog } from '../_components/modals/EditSalesLinkDialog';
 import { AddSalesLinkDialog } from '../_components/modals/AddSalesLinkDialog';
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  'en-us': 'English',
-  en: 'English',
-  'zh-cn': '简体中文',
-  zh: '简体中文',
-  'zh-tw': '繁體中文',
-  'vi-vn': 'Tiếng Việt',
-  'th-th': 'ภาษาไทย',
-  'jp-jp': '日本語',
-  'id-id': 'Bahasa Indonesia',
-  'ms-my': 'Bahasa Melayu',
-  ms: 'Bahasa Melayu',
-  es: 'Español',
-  th: 'ภาษาไทย',
-};
 
 const SERVICE_TYPE_LABELS: Record<number, string> = {
   200: 'IB',
@@ -54,7 +39,7 @@ function CopyLinkCell({
   return (
     <button
       type="button"
-      className={`flex items-center gap-1.5 text-sm font-medium ${
+      className={`cursor-pointer flex items-center gap-1.5 text-sm font-medium ${
         copied ? 'text-[#004EFF]' : 'text-text-primary'
       } hover:underline`}
       onClick={handleClick}
@@ -73,6 +58,7 @@ export default function SalesLinkPage() {
   executeRef.current = execute;
 
   const salesAccount = useSalesStore((s) => s.salesAccount);
+  const salesStoreInitialized = useSalesStore((s) => s.isInitialized);
   const siteConfig = useUserStore((s) => s.siteConfig);
   const rebateEnabled = siteConfig?.rebateEnabled ?? false;
 
@@ -114,9 +100,10 @@ export default function SalesLinkPage() {
 
   const salesUid = salesAccount?.uid;
   useEffect(() => {
+    if (!salesStoreInitialized) return;
     if (salesUid) fetchData();
     else setIsLoading(false);
-  }, [salesUid]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [salesUid, salesStoreInitialized, fetchData]);
 
   const handleViewRebateSettings = useCallback((item: SalesLink) => {
     setRebateDialogCode(item.code);
@@ -158,13 +145,14 @@ export default function SalesLinkPage() {
         skeletonWidth: 'w-28',
         render: (item) => (
           <div className="flex items-center gap-2">
-            <span className="text-sm">{item.name || '-'}</span>
-            <span
-              className="cursor-pointer text-text-secondary hover:text-primary"
+            <span className="text-sm leading-4">{item.name || '-'}</span>
+            <button
+              type="button"
+              className="cursor-pointer inline-flex h-4 w-4 items-center justify-center text-text-secondary hover:text-primary"
               onClick={() => handleEditLink(item)}
             >
-              <Icon name="edit" size={14} />
-            </span>
+              <Icon name="edit" size={14} className="block w-full h-full" />
+            </button>
           </div>
         ),
       },
@@ -174,45 +162,45 @@ export default function SalesLinkPage() {
         skeletonWidth: 'w-24',
         render: (item) => <span className="text-sm">{item.code}</span>,
       },
-      {
-        key: 'accountType',
-        title: t('link.accountType'),
-        skeletonWidth: 'w-20',
-        render: (item) => {
-          const schemas =
-            item.serviceType !== 400
-              ? item.summary?.schema
-              : item.summary?.allowAccountTypes;
-          if (!schemas?.length) return '-';
-          return (
-            <div className="flex flex-wrap gap-1">
-              {schemas.map((s, i) => (
-                <span
-                  key={i}
-                  className="rounded-md px-2 py-0.5 text-xs"
-                  style={{
-                    background: [
-                      'rgba(88,168,255,0.1)',
-                      'rgba(255,164,0,0.15)',
-                      'rgba(123,97,255,0.1)',
-                    ][i % 3],
-                    color: ['#4196f0', '#ffa400', '#7b61ff'][i % 3],
-                  }}
-                >
-                  {tAccount(`accountTypes.${s.accountType}`)}
-                </span>
-              ))}
-            </div>
-          );
-        },
-      },
+      // {
+      //   key: 'accountType',
+      //   title: t('link.accountType'),
+      //   skeletonWidth: 'w-20',
+      //   render: (item) => {
+      //     const schemas =
+      //       item.serviceType !== 400
+      //         ? item.summary?.schema
+      //         : item.summary?.allowAccountTypes;
+      //     if (!schemas?.length) return '-';
+      //     return (
+      //       <div className="flex flex-wrap gap-1">
+      //         {schemas.map((s, i) => (
+      //           <span
+      //             key={i}
+      //             className="rounded-md px-2 py-0.5 text-xs"
+      //             style={{
+      //               background: [
+      //                 'rgba(88,168,255,0.1)',
+      //                 'rgba(255,164,0,0.15)',
+      //                 'rgba(123,97,255,0.1)',
+      //               ][i % 3],
+      //               color: ['#4196f0', '#ffa400', '#7b61ff'][i % 3],
+      //             }}
+      //           >
+      //             {tAccount(`accountTypes.${s.accountType}`)}
+      //           </span>
+      //         ))}
+      //       </div>
+      //     );
+      //   },
+      // },
       {
         key: 'linkType',
         title: t('link.linkType'),
         skeletonWidth: 'w-16',
         render: (item) => (
           <span className="text-sm">
-            {SERVICE_TYPE_LABELS[item.serviceType ?? 0] || item.type || '-'}
+            {tAccount(`accountRole.${item.serviceType}`)}
           </span>
         ),
       },
@@ -225,7 +213,7 @@ export default function SalesLinkPage() {
             item.displaySummary?.language ?? item.summary?.language;
           return (
             <span className="text-sm">
-              {LANGUAGE_LABELS[lang || ''] || lang || '-'}
+              {getLanguageLabel(lang) || lang || '-'}
             </span>
           );
         },
@@ -266,7 +254,7 @@ export default function SalesLinkPage() {
   ]);
 
   return (
-    <div className="flex min-h-full w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
+    <div className="flex flex-1 min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-text-primary">
           {t('link.manageLinks')}
@@ -282,13 +270,11 @@ export default function SalesLinkPage() {
           </Button>
         )}
       </div>
-
       <DataTable<SalesLink>
         columns={columns}
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       {/* 返佣设置弹窗 */}
@@ -381,11 +367,10 @@ export default function SalesLinkPage() {
                   {t('link.language')}:
                 </span>
                 <span className="text-text-primary">
-                  {LANGUAGE_LABELS[
+                  {getLanguageLabel(
                     copyConfirmItem.displaySummary?.language ??
-                      copyConfirmItem.summary?.language ??
-                      ''
-                  ] ||
+                      copyConfirmItem.summary?.language
+                  ) ||
                     copyConfirmItem.summary?.language ||
                     '-'}
                 </span>
