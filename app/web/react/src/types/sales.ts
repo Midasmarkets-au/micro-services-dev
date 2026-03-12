@@ -134,6 +134,8 @@ export interface SalesLink {
   displaySummary?: {
     language?: string;
     isAutoCreatePaymentMethod?: number;
+    allowAccountTypes?: { accountType: number }[];
+    schema?: { accountType: number }[];
   };
   summary?: SalesLinkSummary;
 }

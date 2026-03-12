@@ -29,7 +29,7 @@ import { OpenTradeAccountModal } from '../_components/modals/OpenTradeAccountMod
 import { AccountRebateRelationModal } from '../_components/modals/AccountRebateRelationModal';
 import { IbLinksModal } from '../_components/modals/IbLinksModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
-import { NewIbReferralLinkModal } from '../_components/modals/NewIbReferralLinkModal';
+import { AddSalesLinkDialog } from '../_components/modals/AddSalesLinkDialog';
 import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
 
 type RoleTab = 'ib' | 'client' | 'sales';
@@ -558,10 +558,10 @@ export default function SalesCustomersPage() {
         context={editSchemaContext}
         onSuccess={() => fetchData(criteria)}
       />
-      <NewIbReferralLinkModal
-        open={newReferralOpen}
-        onOpenChange={setNewReferralOpen}
-        account={selectedAccount}
+      <AddSalesLinkDialog
+        isOpen={newReferralOpen}
+        onClose={() => setNewReferralOpen(false)}
+        onSuccess={() => fetchData(criteria)}
       />
       {salesAccount && (
         <UnlockEmailAddressModal
