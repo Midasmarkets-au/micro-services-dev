@@ -1210,6 +1210,16 @@ export function RebateRuleEditModal({
             </div>
           </div>
         )}
+        <div className="flex justify-end gap-3 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-auto min-w-20 md:w-[120px]"
+            onClick={() => onOpenChange(false)}
+          >
+            {t('action.close')}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

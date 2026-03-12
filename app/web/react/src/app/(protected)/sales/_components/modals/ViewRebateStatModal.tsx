@@ -228,30 +228,35 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex flex-col gap-10">
         {/* 内容主体 */}
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col flex-wrap gap-10">
           {/* 头部行：标题+日期选择器 | 清除+搜索 */}
-          <DialogHeader className="flex-row items-center justify-between space-y-0">
-            <div className="flex items-center gap-5" >
+          <DialogHeader className="flex-col items-stretch gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5">
               <DialogTitle className="shrink-0">{title}</DialogTitle>
               <DatePicker
                 mode="range"
-                 size="sm"
+                size="sm"
                 value={dateRange}
-                className="w-auto"
+                className="w-full sm:w-auto"
                 onChange={(val) => setDateRange(val as DateRange | undefined)}
               />
             </div>
-            <div className="flex items-center gap-5">
+            <div className="flex w-full items-center gap-3 sm:w-auto sm:gap-5">
               <Button
                 size="sm"
-                className="bg-(--color-btn-dark) text-white hover:bg-(--color-btn-dark)/80"
+                className="flex-1 bg-(--color-btn-dark) text-white hover:bg-(--color-btn-dark)/80 whitespace-nowrap sm:flex-none"
                 onClick={handleClear}
               >
                 <Icon name="reset-line" />
                 {t('action.clear')}
               </Button>
-              <Button variant="primary" size="sm" onClick={handleSearch}>
-              <Icon name="search-line" />
+              <Button
+                variant="primary"
+                size="sm"
+                className="flex-1 whitespace-nowrap sm:flex-none"
+                onClick={handleSearch}
+              >
+                <Icon name="search-line" />
                 {t('action.search')}
               </Button>
             </div>

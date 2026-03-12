@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
-import { Skeleton, Switch, Pagination, Icon } from '@/components/ui';
+import { Skeleton, Switch, Pagination, Icon, Button } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useSalesStore } from '@/stores/salesStore';
 import { useToast } from '@/hooks/useToast';
@@ -367,7 +367,7 @@ export function IbLinksModal({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-[80vh] overflow-auto">
+          <div className="max-h-[80vh] overflow-y-auto">
             {isLoading && data.length === 0 ? (
               <div className="space-y-3 py-4">
                 <Skeleton className="h-8 w-full" />
@@ -380,7 +380,8 @@ export function IbLinksModal({
               </div>
             ) : (
               <>
-                <table className="w-full table-auto border-collapse align-middle text-sm">
+                <div className="w-full overflow-x-auto">
+                  <table className="min-w-max border-collapse align-middle text-sm whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="px-3 py-3 text-center font-medium">
@@ -553,7 +554,8 @@ export function IbLinksModal({
                       ))}
                     </tbody>
                   )}
-                </table>
+                  </table>
+                </div>
 
                 {/* 分页 */}
                 <div className="mt-4">
@@ -566,6 +568,16 @@ export function IbLinksModal({
                 </div>
               </>
             )}
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-auto min-w-20 md:w-[120px]"
+              onClick={() => onOpenChange(false)}
+            >
+              {t('action.close')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
