@@ -22,10 +22,11 @@ export async function middleware(request: NextRequest) {
 
   // 获取 token（后端的 access_token）
   const token = request.cookies.get('auth-token')?.value;
+  const authMode = request.cookies.get('auth-mode')?.value;
 
-  // 简化认证检查：只检查 token 是否存在
-  // 真正的验证在 layout.tsx 中通过调用后端 API 完成
-  const hasToken = !!token;
+  // 兼容两种模式：token 模式或后端 cookie 模式
+  // 真正有效性验证在 layout.tsx 中通过后端 API 完成
+  const hasToken = !!token || authMode === 'cookie';
 
   // 检查是否访问受保护的路径
   const isProtectedPath = protectedPaths.some(

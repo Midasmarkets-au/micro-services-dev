@@ -4,10 +4,11 @@ export { signToken, verifyToken, getTokenExpiresMs } from './jwt';
 // Cookie 管理（简化版）
 export {
   setAuthCookie,
-  setRefreshCookie,
   getAuthCookie,
   getRefreshCookie,
+  getAuthMode,
   clearAuthCookies,
+  syncAuthCookies,
 } from './cookies';
 
 // 会话管理

@@ -142,10 +142,11 @@ export default function SignInPage() {
       return;
     }
 
-    // 登录成功，跳转到仪表盘
-    router.push('/dashboard');
+    // 登录成功，优先回跳 callbackUrl
+    const callbackUrl = searchParams.get('callbackUrl');
+    router.push(callbackUrl || '/dashboard');
     router.refresh();
-  }, [clearErrors, execute, router, t]);
+  }, [clearErrors, execute, router, searchParams, t]);
 
   // 表单提交
   const onSubmit = async (data: LoginFormData) => {

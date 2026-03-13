@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import type { User } from '@/types/auth';
 import type { UserInfo } from '@/types/user';
+import { syncAuthCookies } from '@/lib/auth/cookies';
 
 // ============================================
 // API 配置 - 统一管理（优先读取环境变量）
@@ -26,6 +27,11 @@ export const API_PREFIX = `/api/${API_VERSION}`;
 
 // 完整的 API 基础路径
 export const API_BASE = `${API_BASE_URL}${API_PREFIX}`;
+
+type BackendRequestAuthMode = 'token' | 'cookie';
+const envBackendRequestAuthMode = process.env.BACKEND_REQUEST_AUTH_MODE?.toLowerCase();
+export const BACKEND_REQUEST_AUTH_MODE: BackendRequestAuthMode =
+  envBackendRequestAuthMode === 'cookie' ? 'cookie' : 'token';
 
 // 获取指定版本的 API 前缀
 export const getApiPrefix = (version: ApiVersion = DEFAULT_API_VERSION): string => `/api/${version}`;
@@ -77,6 +83,24 @@ function needsAuth(endpoint: string): boolean {
   return !PUBLIC_ENDPOINTS.some(path => endpoint.includes(path));
 }
 
+async function resolveAuthTokenForEndpoint(endpoint: string): Promise<string | undefined> {
+  if (!needsAuth(endpoint)) return undefined;
+
+  if (BACKEND_REQUEST_AUTH_MODE === 'cookie') {
+    if (await hasCookieAuthContext()) {
+      return undefined;
+    }
+    throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
+  }
+
+  const token = await getAuthToken();
+  if (token) {
+    return token;
+  }
+
+  throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
+}
+
 /**
  * 自动从 cookies 获取 token
  * @returns token 或 undefined
@@ -89,6 +113,28 @@ async function getAuthToken(): Promise<string | undefined> {
     // 在非服务端环境中可能会失败，返回 undefined
     return undefined;
   }
+}
+async function getCookieHeader(): Promise<string | undefined> {
+  try {
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore.getAll()
+    .map(c => `${c.name}=${c.value}`)
+    .join('; ');
+    return cookieHeader;
+  } catch {
+    // 在非服务端环境中可能会失败，返回 undefined
+    return undefined;
+  }
+}
+
+async function hasCookieAuthContext(): Promise<boolean> {
+  const cookieHeader = await getCookieHeader();
+  return !!cookieHeader && cookieHeader.includes('=');
+}
+
+async function shouldSendAuthorization(token?: string): Promise<boolean> {
+  if (!token) return false;
+  return BACKEND_REQUEST_AUTH_MODE === 'token';
 }
 
 // OAuth Token 响应类型
@@ -155,14 +201,18 @@ async function request<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const cookieHeader =
+    BACKEND_REQUEST_AUTH_MODE === 'cookie' ? await getCookieHeader() : undefined;
   const config: RequestInit = {
     ...options,
     headers: {
       ...options.headers,
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
     },
   };
 
   const response = await fetch(url, config);
+  await syncAuthCookies({ response });
 
   // 打印请求日志
   const contentType = response.headers.get('content-type');
@@ -271,11 +321,15 @@ async function authenticatedRequest<T>(
     url,
     tokenPrefix: token?.substring(0, 50) + '...',
   });
+  
+
+  const sendAuthorization = await shouldSendAuthorization(token);
+
   return request<T>(url, {
     ...options,
     headers: {
       ...options.headers,
-      Authorization: `Bearer ${token}`,
+      ...(sendAuthorization ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 }
@@ -329,7 +383,8 @@ export const apiClient = {
         body: formData.toString(),
       });
 
-      const tokenData = tokenResponse.data;
+      const tokenData = tokenResponse.data || ({} as TokenResponse);
+      const accessToken = tokenData.access_token;
 
       // 检查是否需要2FA
       if (tokenData.twoFactorRequired) {
@@ -355,10 +410,9 @@ export const apiClient = {
       console.log('[API Client] Token 获取成功，准备获取用户信息');
 
       // 获取用户信息
-      const userInfoResponse = await authenticatedRequest<{ data: UserMeResponse }>(
-        USER_ME_ENDPOINT,
-        tokenData.access_token
-      );
+      const userInfoResponse = accessToken
+        ? await authenticatedRequest<{ data: UserMeResponse }>(USER_ME_ENDPOINT, accessToken)
+        : await request<{ data: UserMeResponse }>(USER_ME_ENDPOINT);
 
       const userInfo = userInfoResponse.data;
       console.log('[API Client] 用户信息获取成功:', { userId: userInfo.uid });
@@ -377,7 +431,7 @@ export const apiClient = {
 
       return {
         user,
-        accessToken: tokenData.access_token,
+        accessToken: accessToken || '',
         refreshToken: tokenData.refresh_token,
       };
     },
@@ -404,11 +458,10 @@ export const apiClient = {
     },
 
     // 获取当前用户信息 - 返回后端原始数据
-    async me(token: string): Promise<UserInfo> {
-      const response = await authenticatedRequest<{ data: UserMeResponse }>(
-        USER_ME_ENDPOINT,
-        token
-      );
+    async me(token?: string): Promise<UserInfo> {
+      const response = token
+        ? await authenticatedRequest<{ data: UserMeResponse }>(USER_ME_ENDPOINT, token)
+        : await request<{ data: UserMeResponse }>(USER_ME_ENDPOINT);
       return response.data;
     },
 
@@ -607,38 +660,23 @@ export const apiClient = {
    */
   v1: {
     async get<T>(endpoint: string): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.get<T>(endpoint, token, 'v1');
     },
     async post<T>(endpoint: string, data: unknown): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.post<T>(endpoint, data, token, 'v1');
     },
     async postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.postFormData<T>(endpoint, formData, token, 'v1');
     },
     async put<T>(endpoint: string, data: unknown): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.put<T>(endpoint, data, token, 'v1');
     },
     async delete<T>(endpoint: string): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.delete<T>(endpoint, token, 'v1');
     },
   },
@@ -648,38 +686,23 @@ export const apiClient = {
    */
   v2: {
     async get<T>(endpoint: string): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.get<T>(endpoint, token, 'v2');
     },
     async post<T>(endpoint: string, data: unknown): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.post<T>(endpoint, data, token, 'v2');
     },
     async postFormData<T>(endpoint: string, formData: FormData): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.postFormData<T>(endpoint, formData, token, 'v2');
     },
     async put<T>(endpoint: string, data: unknown): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.put<T>(endpoint, data, token, 'v2');
     },
     async delete<T>(endpoint: string): Promise<T> {
-      const token = needsAuth(endpoint) ? await getAuthToken() : undefined;
-      if (needsAuth(endpoint) && !token) {
-        throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
-      }
+      const token = await resolveAuthTokenForEndpoint(endpoint);
       return apiClient.delete<T>(endpoint, token, 'v2');
     },
   },

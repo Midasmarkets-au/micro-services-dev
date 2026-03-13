@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { getAuthCookie, clearAuthCookies } from './cookies';
+import { getAuthCookie, getAuthMode, clearAuthCookies } from './cookies';
 import { apiClient, ApiError } from '@/lib/api';
 import type { User, Role, Permission } from '@/types/auth';
 
@@ -15,14 +15,16 @@ let tokenInvalid = false;
  */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const token = await getAuthCookie();
-  
-  if (!token) {
+  const authMode = await getAuthMode();
+  const shouldTryCookieMode = authMode === 'cookie';
+
+  if (!token && !shouldTryCookieMode) {
     console.log('[Session] Token 为空，用户未登录');
     return null;
   }
 
-  // 如果缓存的 token 匹配，直接返回缓存的用户
-  if (userCache.token === token && userCache.user) {
+  // token 模式下，如果缓存的 token 匹配，直接返回缓存用户
+  if (token && userCache.token === token && userCache.user) {
     console.log('[Session] 使用缓存的用户');
     return userCache.user;
   }
@@ -45,8 +47,8 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
       updatedAt: userInfo.createdOn || new Date().toISOString(),
     };
 
-    // 更新缓存，重置无效标记
-    userCache = { user, token };
+    // 仅 token 模式做跨请求缓存，cookie 模式避免缓存污染
+    userCache = token ? { user, token } : { user: null, token: null };
     tokenInvalid = false;
     
     return user;
@@ -78,7 +80,8 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
  */
 export async function isAuthenticated(): Promise<boolean> {
   const token = await getAuthCookie();
-  return !!token;
+  const authMode = await getAuthMode();
+  return !!token || authMode === 'cookie';
 }
 
 /**

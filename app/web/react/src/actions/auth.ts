@@ -1,23 +1,11 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { apiClient, ApiError } from '@/lib/api/client';
-import { clearAuthCookies, setLocaleCookie } from '@/lib/auth/cookies';
+import { clearAuthCookies, setLocaleCookie, syncAuthCookies } from '@/lib/auth/cookies';
 import { getCurrentUser } from '@/lib/auth/session';
 import { locales } from '@/i18n/config';
 import type { ActionResponse } from '@/hooks/useServerAction';
-
-// Cookie 配置
-const AUTH_COOKIE_NAME = 'auth-token';
-const REFRESH_COOKIE_NAME = 'refresh-token';
-
-const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-};
 
 // ==================== Schema Definitions ====================
 
@@ -181,26 +169,20 @@ export async function login(data: LoginData): Promise<ActionResponse<LoginRespon
 
     const { user, accessToken, refreshToken } = backendResponse;
 
-    if (!user || !accessToken) {
+    if (!user) {
       return {
         success: false,
         error: '登录失败，用户信息不存在',
       };
     }
 
-    // 设置 Cookie
-    const cookieStore = await cookies();
-    const maxAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60;
-
-    cookieStore.set(AUTH_COOKIE_NAME, accessToken, {
-      ...cookieOptions,
-      maxAge,
-    });
-
-    if (refreshToken) {
-      cookieStore.set(REFRESH_COOKIE_NAME, refreshToken, {
-        ...cookieOptions,
-        maxAge: 30 * 24 * 60 * 60,
+    // 双模式兼容：后端返回 Set-Cookie 时，request 层已透传并切换 cookie 模式；
+    // 否则回退为 token 模式，写入 auth-token。
+    if (accessToken || refreshToken) {
+      await syncAuthCookies({
+        token: accessToken || undefined,
+        refreshToken: refreshToken || undefined,
+        rememberMe: !!rememberMe,
       });
     }
 
@@ -462,12 +444,7 @@ export async function setToken(data: { token: string }): Promise<ActionResponse>
     }
 
     const { token } = validationResult.data;
-    const cookieStore = await cookies();
-
-    cookieStore.set(AUTH_COOKIE_NAME, token, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60,
-    });
+    await syncAuthCookies({ token, rememberMe: true });
 
     return {
       success: true,
