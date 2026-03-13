@@ -24,6 +24,9 @@ public class DepositCreatedResponseModel
     public object? Form { get; set; }
 
     [JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
+    public long DepositId { get; set; }
+
+    [JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
     public Func<Deposit, Task> CreatedCbHandler { get; set; } = deposit => Task.CompletedTask;
 
     public object? Info { get; set; }

@@ -1,6 +1,5 @@
 using OpenIddict.Validation.AspNetCore;
 using Bacera.Gateway.Core.Types;
-using Bacera.Gateway.Data.Migrations.TenantDb;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Services.Acct;
@@ -28,7 +27,6 @@ public class TransactionController(
     AccountManageService accManSvc,
     AcctService acctSvc,
     TenantDbContext tenantCtx,
-    AuthDbContext authDbContext,
     ISendMailService sendMailService,
     UserService userSvc,
     ILogger<TransactionController> logger)

@@ -113,7 +113,11 @@ const submit = async () => {
 
     emits("onCreated");
   } catch (error: any) {
-    if (error?.code === "ERR_CANCELED" || error?.message === "Load failed" || error?.message === "Network Error") {
+    if (
+      error?.code === "ERR_CANCELED" ||
+      error?.message === "Load failed" ||
+      error?.message === "Network Error"
+    ) {
       isLoading.value = false;
       return;
     }

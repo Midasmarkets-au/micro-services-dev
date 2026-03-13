@@ -275,7 +275,18 @@ public class PasswordGrantHandler(
         var isTenantAdmin = userRoles.Any(r => r == UserRoleTypesString.TenantAdmin);
         var lifetime      = isTenantAdmin ? TimeSpan.FromDays(3650) : TimeSpan.FromHours(24);
 
-        var principal = BuildPrincipal(user, godPartyId: 0, userRoles, lifetime);
+        var accountNumbers = await tenantCtx.Accounts
+            .Where(x => x.PartyId == user.PartyId)
+            .Select(x => new { x.AccountNumber, x.Role })
+            .ToListAsync();
+
+        var salesAccountNumber = accountNumbers.FirstOrDefault(x => x.Role == (int)AccountRoleTypes.Sales)?.AccountNumber;
+        var agentAccountNumber = accountNumbers.FirstOrDefault(x => x.Role == (int)AccountRoleTypes.Agent)?.AccountNumber;
+        var repAccountNumber   = accountNumbers.FirstOrDefault(x => x.Role == (int)AccountRoleTypes.Rep)?.AccountNumber;
+
+        var userAgent = httpContextAccessor.HttpContext?.GetUserAgent() ?? "";
+        var principal = BuildPrincipal(user, godPartyId: 0, userRoles, lifetime, userAgent,
+            salesAccountNumber, agentAccountNumber, repAccountNumber);
         context.SignIn(principal);
     }
 
@@ -288,7 +299,10 @@ public class PasswordGrantHandler(
         long godPartyId,
         IList<string> roles,
         TimeSpan accessTokenLifetime,
-        string? userAgent = null)
+        string? userAgent = null,
+        long? salesAccountNumber = null,
+        long? agentAccountNumber = null,
+        long? repAccountNumber = null)
     {
         var identity = new ClaimsIdentity(
             authenticationType: "openiddict",
@@ -298,8 +312,15 @@ public class PasswordGrantHandler(
         // 标准 OIDC claims
         identity.AddClaim(new Claim(Claims.Subject, user.Id.ToString())
             .SetDestinations(Destinations.AccessToken));
+        identity.AddClaim(new Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString())
+            .SetDestinations(Destinations.AccessToken));
         identity.AddClaim(new Claim(Claims.Name, user.GuessUserName())
             .SetDestinations(Destinations.AccessToken));
+        identity.AddClaim(new Claim(System.Security.Claims.ClaimTypes.Name, $"{user.TenantId}_{user.Email}")
+            .SetDestinations(Destinations.AccessToken));
+        if (!string.IsNullOrEmpty(user.Email))
+            identity.AddClaim(new Claim(System.Security.Claims.ClaimTypes.Email, user.Email)
+                .SetDestinations(Destinations.AccessToken));
         identity.AddClaim(new Claim("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             .SetDestinations(Destinations.AccessToken));
         identity.AddClaim(new Claim("idp", "local")
@@ -320,6 +341,16 @@ public class PasswordGrantHandler(
         var ua = userAgent ?? "";
         identity.AddClaim(new Claim(UserClaimTypes.UserAgent, Utils.Md5Hash(ua + ".thebcr.com"))
             .SetDestinations(Destinations.AccessToken));
+
+        if (salesAccountNumber > 0)
+            identity.AddClaim(new Claim(UserClaimTypes.SalesAccount, salesAccountNumber.ToString()!)
+                .SetDestinations(Destinations.AccessToken));
+        if (agentAccountNumber > 0)
+            identity.AddClaim(new Claim(UserClaimTypes.AgentAccount, agentAccountNumber.ToString()!)
+                .SetDestinations(Destinations.AccessToken));
+        if (repAccountNumber > 0)
+            identity.AddClaim(new Claim(UserClaimTypes.RepAccount, repAccountNumber.ToString()!)
+                .SetDestinations(Destinations.AccessToken));
 
         foreach (var role in roles)
             identity.AddClaim(new Claim(Claims.Role, role)

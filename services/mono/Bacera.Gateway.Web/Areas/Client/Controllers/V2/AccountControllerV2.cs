@@ -360,6 +360,11 @@ public class AccountControllerV2(
         spec.Request["baseUrl"] = GetBaseUrl();
         var response = await depositSvc.CreateDepositForAccountAsync(method.Id, id, spec.Amount, spec.Request, spec.Note, GetPartyId());
         if (!response.IsSuccess) return BadRequest(response);
+
+        var deposit = await tenantCtx.Deposits.FindAsync(response.DepositId);
+        if (deposit != null)
+            await mediator.Publish(new DepositCreatedEvent(deposit));
+
         return Ok(response);
     }
 

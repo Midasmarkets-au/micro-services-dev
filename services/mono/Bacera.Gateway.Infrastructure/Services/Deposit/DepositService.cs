@@ -118,6 +118,7 @@ public partial class DepositService(
                 , operatorPartyId
                 , JsonConvert.SerializeObject(supplement));
 
+            result.DepositId = deposit.Id;
             await result.CreatedCbHandler(deposit);
             await transaction.CommitAsync();
             var user = await userSvc.GetPartyAsync(account.PartyId);

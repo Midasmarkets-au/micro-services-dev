@@ -200,7 +200,11 @@ const sendVerificationCode = async () => {
     MsgPrompt.success(t("tip.codeSentToEmail"));
   } catch (error: any) {
     console.error("Send verification code error:", error);
-    if (error?.code !== "ERR_CANCELED" && error?.message !== "Load failed" && error?.message !== "Network Error") {
+    if (
+      error?.code !== "ERR_CANCELED" &&
+      error?.message !== "Load failed" &&
+      error?.message !== "Network Error"
+    ) {
       await MsgPrompt.error(error);
     }
   } finally {
@@ -251,7 +255,11 @@ const submit = async () => {
     currentStep.value += 1;
     emits("onCreated");
   } catch (error: any) {
-    if (error?.code === "ERR_CANCELED" || error?.message === "Load failed" || error?.message === "Network Error") {
+    if (
+      error?.code === "ERR_CANCELED" ||
+      error?.message === "Load failed" ||
+      error?.message === "Network Error"
+    ) {
       return;
     }
     await MsgPrompt.error(error);
