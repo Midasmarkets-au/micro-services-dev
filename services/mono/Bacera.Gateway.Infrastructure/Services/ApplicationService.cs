@@ -24,7 +24,7 @@ public class ApplicationService(
     public async Task<M> CreateApplication(long partyId, ApplicationTypes type, IApplicationSupplement supplement, long referenceId = 0,
         ApplicationStatusTypes status = ApplicationStatusTypes.AwaitingApproval)
     {
-        var currencyId = ((Bacera.Gateway.ApplicationSupplement)supplement).CurrencyId;
+        var currencyId = (supplement as Bacera.Gateway.ApplicationSupplement)?.CurrencyId;
         // Validate USC Account: Only one USC account per user email
         if (currencyId == (int)CurrencyTypes.USC)
         {
