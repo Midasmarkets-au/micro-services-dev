@@ -1,4 +1,4 @@
-﻿using StackExchange.Redis;
+using StackExchange.Redis;
 
 namespace Bacera.Gateway.Services;
 
@@ -14,6 +14,7 @@ public interface IMyCache
     Task HSetDeleteByKeyAsync(string key);
     Task<string?> GetStringAsync(string key);
     Task<string?> HGetStringAsync(string key, string field);
+    Task<Dictionary<string, bool>> HGetManyAsBoolAsync(string key, IEnumerable<string> fields);
     Task<T?> HGetAsync<T>(string key, string field) where T : class, new();
 
     Task<T> HGetOrSetAsync<T>(string key, string field, Func<Task<T>> factory, TimeSpan? expiry = null)

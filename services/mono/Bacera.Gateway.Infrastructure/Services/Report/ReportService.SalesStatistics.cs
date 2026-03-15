@@ -86,68 +86,59 @@ partial class ReportService
             })
             .ToListAsync();
 
-        // Get role names mapping
-        var descendantRoleIds = descendantAccounts.Select(x => (long)x.Role).Distinct().ToList();
-        var descendantRoleNames = await authDbContext.Roles
+        // Derive filter sets from descendantAccounts (no extra DB query needed)
+        var descendantRoleIds    = descendantAccounts.Select(x => (long)x.Role).Distinct().ToList();
+        var descendantAccountIds = descendantAccounts.Select(x => x.Id).ToList();
+        var descendantPartyIds   = descendantAccounts.Select(x => x.PartyId).Distinct().ToList();
+
+        // Fan out all independent queries in parallel
+        var tRoleNames = authDbContext.Roles
             .Where(x => descendantRoleIds.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, x => x.Name ?? "Unknown");
 
-        // 4. Get deposits for all descendants
-        // Only include completed deposits: DepositCompleted (350) or DepositCallbackCompleted (345)
-        // Group by TargetAccountId (not PartyId) so each account gets its own deposit value
-        var descendantAccountIds = descendantAccounts.Select(x => x.Id).ToList();
-        var deposits = await tenantDbContext.Deposits
+        var tDeposits = tenantDbContext.Deposits
             .Where(d => descendantAccountIds.Contains(d.TargetAccountId!.Value))
-            .Where(d => d.IdNavigation.Type == (int)MatterTypes.Deposit) // Filter by MatterType for safety
+            .Where(d => d.IdNavigation.Type == (int)MatterTypes.Deposit)
             .Where(d => d.IdNavigation.StatedOn >= fromUtc && d.IdNavigation.StatedOn <= toUtc)
-            .Where(d => d.CurrencyId == 840 || d.CurrencyId == 841) // USD or USC
-            .Where(d => DepositCompletedStates.Contains(d.IdNavigation.StateId)) // Only completed deposits (money in wallet)
-            .GroupBy(d => d.TargetAccountId!.Value) // Group by AccountId, not PartyId
+            .Where(d => d.CurrencyId == 840 || d.CurrencyId == 841)
+            .Where(d => DepositCompletedStates.Contains(d.IdNavigation.StateId))
+            .GroupBy(d => d.TargetAccountId!.Value)
             .Select(g => new
             {
                 AccountId = g.Key,
-                TotalAmount = g.Sum(d => d.CurrencyId == 840 ? d.Amount : d.Amount * 100) // Convert USC to USD cents
+                TotalAmount = g.Sum(d => d.CurrencyId == 840 ? d.Amount : d.Amount * 100)
             })
             .ToListAsync();
 
-        // 5. Get withdrawals for all descendants (SourceAccountId)
-        // Only include completed withdrawals: WithdrawalCompleted (450)
-        var withdrawalsByAccount = await tenantDbContext.Withdrawals
+        var tWithdrawalsByAccount = tenantDbContext.Withdrawals
             .Where(w => w.SourceAccountId.HasValue && descendantAccountIds.Contains(w.SourceAccountId.Value))
-            .Where(w => w.IdNavigation.Type == (int)MatterTypes.Withdrawal) // Filter by MatterType for safety
+            .Where(w => w.IdNavigation.Type == (int)MatterTypes.Withdrawal)
             .Where(w => w.IdNavigation.StatedOn >= fromUtc && w.IdNavigation.StatedOn <= toUtc)
             .Where(w => w.CurrencyId == 840 || w.CurrencyId == 841)
-            .Where(w => w.IdNavigation.StateId == WithdrawalCompletedState) // Only completed withdrawals (final state)
+            .Where(w => w.IdNavigation.StateId == WithdrawalCompletedState)
             .GroupBy(w => w.SourceAccountId!.Value)
             .Select(g => new { AccountId = g.Key, TotalAmount = g.Sum(w => w.CurrencyId == 840 ? w.Amount : w.Amount * 100) })
             .ToListAsync();
 
-        // 5b. Get wallet withdrawals for all descendants
-        // Join withdrawals with accounts where PartyId matches AND SourceWalletId matches WalletId
-        // Only include completed withdrawals: WithdrawalCompleted (450)
-        var descendantPartyIds = descendantAccounts.Select(x => x.PartyId).Distinct().ToList();
-        var withdrawalsByWallet = await (from w in tenantDbContext.Withdrawals
+        var tWithdrawalsByWallet = (from w in tenantDbContext.Withdrawals
             join a in tenantDbContext.Accounts on w.PartyId equals a.PartyId
             where w.SourceWalletId.HasValue
                && w.SourceWalletId == a.WalletId
-               && w.IdNavigation.Type == (int)MatterTypes.Withdrawal // Filter by MatterType for safety
+               && w.IdNavigation.Type == (int)MatterTypes.Withdrawal
                && w.IdNavigation.StatedOn >= fromUtc && w.IdNavigation.StatedOn <= toUtc
                && (w.CurrencyId == 840 || w.CurrencyId == 841)
-               && w.IdNavigation.StateId == WithdrawalCompletedState // Only completed withdrawals (final state)
-               && descendantAccountIds.Contains(a.Id) // Only accounts that are descendants
+               && w.IdNavigation.StateId == WithdrawalCompletedState
+               && descendantAccountIds.Contains(a.Id)
             group w by a.Id into g
             select new { AccountId = g.Key, TotalAmount = g.Sum(w => w.CurrencyId == 840 ? w.Amount : w.Amount * 100) })
             .ToListAsync();
 
-        // 6. Get rebates for all descendants
-        // Only include completed rebates: RebateCompleted (550)
-        // Query Rebates table directly to access StateId via IdNavigation (similar to deposits/withdrawals)
-        var rebates = await tenantDbContext.Rebates
+        var tRebates = tenantDbContext.Rebates
             .Where(r => descendantAccountIds.Contains(r.AccountId))
-            .Where(r => r.IdNavigation.Type == (int)MatterTypes.Rebate) // Filter by MatterType for safety
+            .Where(r => r.IdNavigation.Type == (int)MatterTypes.Rebate)
             .Where(r => r.IdNavigation.StatedOn >= fromUtc && r.IdNavigation.StatedOn <= toUtc)
-            .Where(r => r.CurrencyId == 840 || r.CurrencyId == 841) // USD or USC
-            .Where(r => r.IdNavigation.StateId == RebateCompletedState) // Only completed rebates
+            .Where(r => r.CurrencyId == 840 || r.CurrencyId == 841)
+            .Where(r => r.IdNavigation.StateId == RebateCompletedState)
             .GroupBy(r => r.Account.ReferPath)
             .Select(g => new
             {
@@ -156,40 +147,63 @@ partial class ReportService
             })
             .ToListAsync();
 
-        // 7. Get trade data (accountIds already includes sales account)
-        // Only include completed trades: Status = Completed (2)
-        // Only include Buy (0) and Sell (1) actions (exclude other action types)
-        var tradeData = await (from tr in tenantDbContext.TradeRebates
+        var tTradeData = (from tr in tenantDbContext.TradeRebates
             join a in tenantDbContext.Accounts on tr.AccountId equals a.Id
             where descendantAccountIds.Contains(tr.AccountId!.Value)
                && tr.ClosedOn >= fromUtc && tr.ClosedOn <= toUtc
-               && tr.Status == TradeRebateCompletedStatus // Only completed trades
-               && (tr.Action == 0 || tr.Action == 1) // Only Buy (0) and Sell (1) trades
-               && a.IsClosed == 0 // Only active accounts (same as AccountTrade view)
+               && tr.Status == TradeRebateCompletedStatus
+               && (tr.Action == 0 || tr.Action == 1)
+               && a.IsClosed == 0
             group tr by new { tr.AccountId, a.ReferPath } into g
             select new
             {
                 g.Key.AccountId,
                 g.Key.ReferPath,
-                TradeCount = g.Count(), // Count all completed trades
+                TradeCount = g.Count(),
                 TotalVolume = g.Sum(t => t.Volume)
             })
             .ToListAsync();
 
-        // 7b. Get symbols separately (EF Core limitation workaround)
-        // Only include completed trades: Status = Completed (2)
-        // Only include Buy (0) and Sell (1) actions (exclude other action types)
-        // First materialize all the data, then do grouping and distinct in memory
-        var allTradeSymbols = await (from tr in tenantDbContext.TradeRebates
+        var tAllTradeSymbols = (from tr in tenantDbContext.TradeRebates
             join a in tenantDbContext.Accounts on tr.AccountId equals a.Id
             where descendantAccountIds.Contains(tr.AccountId!.Value)
                && tr.ClosedOn >= fromUtc && tr.ClosedOn <= toUtc
-               && tr.Status == TradeRebateCompletedStatus // Only completed trades
-               && (tr.Action == 0 || tr.Action == 1) // Only Buy (0) and Sell (1) trades
-               && a.IsClosed == 0 // Only active accounts
-               && tr.AccountId.HasValue // Ensure AccountId is not null
+               && tr.Status == TradeRebateCompletedStatus
+               && (tr.Action == 0 || tr.Action == 1)
+               && a.IsClosed == 0
+               && tr.AccountId.HasValue
             select new { AccountId = tr.AccountId!.Value, tr.Symbol })
             .ToListAsync();
+
+        var tProductDist = (from tr in tenantDbContext.TradeRebates
+            join a in tenantDbContext.Accounts on tr.AccountId equals a.Id
+            where descendantAccountIds.Contains(tr.AccountId!.Value)
+               && tr.ClosedOn >= fromUtc && tr.ClosedOn <= toUtc
+               && tr.Status == TradeRebateCompletedStatus
+               && (tr.Action == 0 || tr.Action == 1)
+               && a.IsClosed == 0
+            group tr by tr.Symbol into g
+            select new { Symbol = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(8)
+            .ToListAsync();
+
+        var tTimeSeriesData = GetTimeSeriesDataAsync(criteria, descendantAccountIds, descendantPartyIds, fromUtc, toUtc);
+
+        await Task.WhenAll(
+            tRoleNames, tDeposits, tWithdrawalsByAccount, tWithdrawalsByWallet,
+            tRebates, tTradeData, tAllTradeSymbols, tProductDist, tTimeSeriesData
+        );
+
+        var descendantRoleNames  = tRoleNames.Result;
+        var deposits             = tDeposits.Result;
+        var withdrawalsByAccount = tWithdrawalsByAccount.Result;
+        var withdrawalsByWallet  = tWithdrawalsByWallet.Result;
+        var rebates              = tRebates.Result;
+        var tradeData            = tTradeData.Result;
+        var allTradeSymbols      = tAllTradeSymbols.Result;
+        var productDist          = tProductDist.Result;
+        var timeSeriesData       = tTimeSeriesData.Result;
 
         var symbolsDict = allTradeSymbols
             .GroupBy(t => t.AccountId)
@@ -197,29 +211,6 @@ partial class ReportService
                 g => g.Key,
                 g => g.Select(x => x.Symbol).Distinct().ToList()
             );
-
-        // 8. Get time series data
-        var timeSeriesData = await GetTimeSeriesDataAsync(criteria, descendantAccountIds, descendantPartyIds, fromUtc, toUtc);
-
-        // 9. Get product distribution
-        // Only include completed trades: Status = Completed (2)
-        // Only include Buy (0) and Sell (1) actions (exclude other action types)
-        var productDist = await (from tr in tenantDbContext.TradeRebates
-            join a in tenantDbContext.Accounts on tr.AccountId equals a.Id
-            where descendantAccountIds.Contains(tr.AccountId!.Value)
-               && tr.ClosedOn >= fromUtc && tr.ClosedOn <= toUtc
-               && tr.Status == TradeRebateCompletedStatus // Only completed trades
-               && (tr.Action == 0 || tr.Action == 1) // Only Buy (0) and Sell (1) trades
-               && a.IsClosed == 0 // Only active accounts
-            group tr by tr.Symbol into g
-            select new
-            {
-                Symbol = g.Key,
-                Count = g.Count()
-            })
-            .OrderByDescending(x => x.Count)
-            .Take(8)
-            .ToListAsync();
 
         var totalProductTrades = productDist.Sum(x => x.Count);
         var productDistribution = productDist.Select(x => new SalesStatistics.ProductDistribution
@@ -292,106 +283,76 @@ partial class ReportService
             dateRange.Add(date);
         }
 
-        // Get daily deposits
-        // Only include completed deposits: DepositCompleted (350) or DepositCallbackCompleted (345)
-        var dailyDeposits = await tenantDbContext.Deposits
+        // Fan out all 5 independent time-series queries in parallel
+        var tDailyDeposits = tenantDbContext.Deposits
             .Where(d => accountIds.Contains(d.TargetAccountId!.Value))
-            .Where(d => d.IdNavigation.Type == (int)MatterTypes.Deposit) // Filter by MatterType for safety
+            .Where(d => d.IdNavigation.Type == (int)MatterTypes.Deposit)
             .Where(d => d.IdNavigation.StatedOn >= fromUtc && d.IdNavigation.StatedOn <= toUtc)
             .Where(d => d.CurrencyId == 840 || d.CurrencyId == 841)
-            .Where(d => DepositCompletedStates.Contains(d.IdNavigation.StateId)) // Only completed deposits (money in wallet)
+            .Where(d => DepositCompletedStates.Contains(d.IdNavigation.StateId))
             .GroupBy(d => d.IdNavigation.StatedOn.Date)
-            .Select(g => new
-            {
-                Date = g.Key,
-                Amount = g.Sum(d => d.CurrencyId == 840 ? d.Amount : d.Amount * 100)
-            })
+            .Select(g => new { Date = g.Key, Amount = g.Sum(d => d.CurrencyId == 840 ? d.Amount : d.Amount * 100) })
             .ToDictionaryAsync(x => x.Date, x => x.Amount);
 
-        // Get daily withdrawals
-        // Include both account withdrawals (SourceAccountId) and wallet withdrawals (SourceWalletId)
-        // Only include completed withdrawals: WithdrawalCompleted (450)
-        var dailyWithdrawalsByAccount = await tenantDbContext.Withdrawals
+        var tDailyWithdrawalsByAccount = tenantDbContext.Withdrawals
             .Where(w => w.SourceAccountId.HasValue && accountIds.Contains(w.SourceAccountId.Value))
-            .Where(w => w.IdNavigation.Type == (int)MatterTypes.Withdrawal) // Filter by MatterType for safety
+            .Where(w => w.IdNavigation.Type == (int)MatterTypes.Withdrawal)
             .Where(w => w.IdNavigation.StatedOn >= fromUtc && w.IdNavigation.StatedOn <= toUtc)
             .Where(w => w.CurrencyId == 840 || w.CurrencyId == 841)
-            .Where(w => w.IdNavigation.StateId == WithdrawalCompletedState) // Only completed withdrawals (final state)
+            .Where(w => w.IdNavigation.StateId == WithdrawalCompletedState)
             .GroupBy(w => w.IdNavigation.StatedOn.Date)
-            .Select(g => new
-            {
-                Date = g.Key,
-                Amount = g.Sum(w => w.CurrencyId == 840 ? w.Amount : w.Amount * 100)
-            })
+            .Select(g => new { Date = g.Key, Amount = g.Sum(w => w.CurrencyId == 840 ? w.Amount : w.Amount * 100) })
             .ToDictionaryAsync(x => x.Date, x => x.Amount);
 
-        // Get wallet withdrawals - match the same logic as main query (group by account, then sum)
-        // Note: If multiple accounts share same PartyId/WalletId, withdrawals will be counted per account to match main query behavior
-        var dailyWithdrawalsByWalletRaw = await (from w in tenantDbContext.Withdrawals
+        var tDailyWithdrawalsByWalletRaw = (from w in tenantDbContext.Withdrawals
             join a in tenantDbContext.Accounts on w.PartyId equals a.PartyId
             where w.SourceWalletId.HasValue
                && w.SourceWalletId == a.WalletId
-               && w.IdNavigation.Type == (int)MatterTypes.Withdrawal // Filter by MatterType for safety
+               && w.IdNavigation.Type == (int)MatterTypes.Withdrawal
                && w.IdNavigation.StatedOn >= fromUtc && w.IdNavigation.StatedOn <= toUtc
                && (w.CurrencyId == 840 || w.CurrencyId == 841)
-               && w.IdNavigation.StateId == WithdrawalCompletedState // Only completed withdrawals (final state)
-               && accountIds.Contains(a.Id) // Only accounts that are descendants
-            select new
-            {
-                Date = w.IdNavigation.StatedOn.Date,
-                Amount = w.CurrencyId == 840 ? w.Amount : w.Amount * 100
-            })
+               && w.IdNavigation.StateId == WithdrawalCompletedState
+               && accountIds.Contains(a.Id)
+            select new { Date = w.IdNavigation.StatedOn.Date, Amount = w.CurrencyId == 840 ? w.Amount : w.Amount * 100 })
             .ToListAsync();
 
-        // Group by date and sum (matching the behavior of main query where withdrawals are counted per account)
-        var dailyWithdrawalsByWallet = dailyWithdrawalsByWalletRaw
+        var tDailyRebates = tenantDbContext.Rebates
+            .Where(r => accountIds.Contains(r.AccountId))
+            .Where(r => r.IdNavigation.Type == (int)MatterTypes.Rebate)
+            .Where(r => r.IdNavigation.StatedOn >= fromUtc && r.IdNavigation.StatedOn <= toUtc)
+            .Where(r => r.CurrencyId == 840 || r.CurrencyId == 841)
+            .Where(r => r.IdNavigation.StateId == RebateCompletedState)
+            .GroupBy(r => r.IdNavigation.StatedOn.Date)
+            .Select(g => new { Date = g.Key, Amount = g.Sum(r => r.CurrencyId == 840 ? r.Amount : r.Amount * 100) })
+            .ToDictionaryAsync(x => x.Date, x => x.Amount);
+
+        var tDailyTradesList = (from tr in tenantDbContext.TradeRebates
+            join a in tenantDbContext.Accounts on tr.AccountId equals a.Id
+            where accountIds.Contains(tr.AccountId!.Value)
+               && tr.ClosedOn >= fromUtc && tr.ClosedOn <= toUtc
+               && tr.Status == TradeRebateCompletedStatus
+               && (tr.Action == 0 || tr.Action == 1)
+               && a.IsClosed == 0
+            group tr by tr.ClosedOn.Date into g
+            select new { Date = g.Key, Count = g.Count(), Volume = g.Sum(t => t.Volume) })
+            .ToListAsync();
+
+        await Task.WhenAll(tDailyDeposits, tDailyWithdrawalsByAccount, tDailyWithdrawalsByWalletRaw, tDailyRebates, tDailyTradesList);
+
+        var dailyDeposits            = tDailyDeposits.Result;
+        var dailyWithdrawalsByAccount = tDailyWithdrawalsByAccount.Result;
+        var dailyWithdrawalsByWallet = tDailyWithdrawalsByWalletRaw.Result
             .GroupBy(x => x.Date)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+        var dailyRebates = tDailyRebates.Result;
+        var dailyTrades  = tDailyTradesList.Result.ToDictionary(x => x.Date, x => new { x.Count, x.Volume });
 
-        // Merge account and wallet withdrawals by date
         var dailyWithdrawals = dailyWithdrawalsByAccount.Keys
             .Union(dailyWithdrawalsByWallet.Keys)
             .ToDictionary(
                 date => date,
                 date => dailyWithdrawalsByAccount.GetValueOrDefault(date, 0) + dailyWithdrawalsByWallet.GetValueOrDefault(date, 0)
             );
-
-        // Get daily rebates
-        // Only include completed rebates: RebateCompleted (550)
-        var dailyRebates = await tenantDbContext.Rebates
-            .Where(r => accountIds.Contains(r.AccountId))
-            .Where(r => r.IdNavigation.Type == (int)MatterTypes.Rebate) // Filter by MatterType for safety
-            .Where(r => r.IdNavigation.StatedOn >= fromUtc && r.IdNavigation.StatedOn <= toUtc)
-            .Where(r => r.CurrencyId == 840 || r.CurrencyId == 841)
-            .Where(r => r.IdNavigation.StateId == RebateCompletedState) // Only completed rebates
-            .GroupBy(r => r.IdNavigation.StatedOn.Date)
-            .Select(g => new
-            {
-                Date = g.Key,
-                Amount = g.Sum(r => r.CurrencyId == 840 ? r.Amount : r.Amount * 100)
-            })
-            .ToDictionaryAsync(x => x.Date, x => x.Amount);
-
-        // Get daily trades
-        // Only include completed trades: Status = Completed (2)
-        // Only include Buy (0) and Sell (1) actions (exclude other action types)
-        var dailyTradesList = await (from tr in tenantDbContext.TradeRebates
-            join a in tenantDbContext.Accounts on tr.AccountId equals a.Id
-            where accountIds.Contains(tr.AccountId!.Value)
-               && tr.ClosedOn >= fromUtc && tr.ClosedOn <= toUtc
-               && tr.Status == TradeRebateCompletedStatus // Only completed trades
-               && (tr.Action == 0 || tr.Action == 1) // Only Buy (0) and Sell (1) trades
-               && a.IsClosed == 0 // Only active accounts
-            group tr by tr.ClosedOn.Date into g
-            select new
-            {
-                Date = g.Key,
-                Count = g.Count(),
-                Volume = g.Sum(t => t.Volume)
-            })
-            .ToListAsync();
-
-        var dailyTrades = dailyTradesList.ToDictionary(x => x.Date, x => new { x.Count, x.Volume });
 
         // Build time series
         return dateRange.Select(date =>

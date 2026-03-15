@@ -147,21 +147,36 @@ public partial class TradingService(
         await FulfillAccountWizard(items);
         await FulfillAccountConfigurations(items);
 
+        var ipFields = items
+            .SelectMany(i =>
+            {
+                var s = i.User.LastLoginIp.Split('.');
+                return s.Length switch
+                {
+                    >= 4 => new[] { s[0], $"{s[0]}.{s[1]}", $"{s[0]}.{s[1]}.{s[2]}", i.User.LastLoginIp },
+                    3    => new[] { s[0], $"{s[0]}.{s[1]}", $"{s[0]}.{s[1]}.{s[2]}" },
+                    2    => new[] { s[0], $"{s[0]}.{s[1]}" },
+                    _    => new[] { s[0] }
+                };
+            });
+
+        var ipBlackList    = await myCache.HGetManyAsBoolAsync(_ipKey, ipFields);
+        var nameBlackList  = await myCache.HGetManyAsBoolAsync(_nameKey, items.Select(i => i.User.NativeName));
+        var phoneBlackList = await myCache.HGetManyAsBoolAsync(_phoneKey, items.Select(i => i.User.Phone));
+        var emailBlackList = await myCache.HGetManyAsBoolAsync(_emailKey, items.Select(i => i.User.Email));
+        var idBlackList    = await myCache.HGetManyAsBoolAsync(_idNumberKey, items.Select(i => i.User.IdNumber));
+
         foreach (var item in items)
         {
-            var splitIp = item.User.LastLoginIp.Split('.');
-            var count = splitIp.Length;
-
-            item.IsInIpBlackList = (count >= 1 && await myCache.HGetStringAsync(_ipKey, $"{splitIp[0]}") == "1")
-                                   || (count >= 2 &&
-                                       await myCache.HGetStringAsync(_ipKey, $"{splitIp[0]}.{splitIp[1]}") == "1")
-                                   || (count >= 3 && await myCache.HGetStringAsync(_ipKey,
-                                       $"{splitIp[0]}.{splitIp[1]}.{splitIp[2]}") == "1")
-                                   || await myCache.HGetStringAsync(_ipKey, item.User.LastLoginIp) == "1";
-            item.IsInUserBlackList = await myCache.HGetStringAsync(_nameKey, item.User.NativeName) == "1"
-                                     || await myCache.HGetStringAsync(_phoneKey, item.User.Phone) == "1"
-                                     || await myCache.HGetStringAsync(_emailKey, item.User.Email) == "1"
-                                     || await myCache.HGetStringAsync(_idNumberKey, item.User.IdNumber) == "1";
+            var s = item.User.LastLoginIp.Split('.');
+            item.IsInIpBlackList = (s.Length >= 1 && ipBlackList.GetValueOrDefault(s[0]))
+                                   || (s.Length >= 2 && ipBlackList.GetValueOrDefault($"{s[0]}.{s[1]}"))
+                                   || (s.Length >= 3 && ipBlackList.GetValueOrDefault($"{s[0]}.{s[1]}.{s[2]}"))
+                                   || ipBlackList.GetValueOrDefault(item.User.LastLoginIp);
+            item.IsInUserBlackList = nameBlackList.GetValueOrDefault(item.User.NativeName)
+                                     || phoneBlackList.GetValueOrDefault(item.User.Phone)
+                                     || emailBlackList.GetValueOrDefault(item.User.Email)
+                                     || idBlackList.GetValueOrDefault(item.User.IdNumber);
         }
 
         // *** Rollback above criterial change *** //

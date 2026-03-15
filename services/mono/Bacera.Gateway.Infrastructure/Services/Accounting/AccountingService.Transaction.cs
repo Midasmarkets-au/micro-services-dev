@@ -479,6 +479,11 @@ partial class AccountingService
             .Select(x => new { x.Amount, x.CurrencyId })
             .ToListAsync();
 
+        var foreignCurrencies = transactionsForSum
+            .Select(t => (CurrencyTypes)t.CurrencyId)
+            .Where(c => c != CurrencyTypes.USD && c != CurrencyTypes.USC);
+        var exchangeRates = await GetExchangeRatesForCurrenciesAsync(foreignCurrencies, CurrencyTypes.USD);
+
         decimal totalAmountInUSD = 0;
         foreach (var tx in transactionsForSum)
         {
@@ -487,29 +492,20 @@ partial class AccountingService
 
             if (currency == CurrencyTypes.USD)
             {
-                // USD: Amount is already scaled, convert to USD units
                 amountInUSD = tx.Amount / 1_000_000m;
             }
             else if (currency == CurrencyTypes.USC)
             {
-                // USC: scaled amount -> USC units -> USD
                 var uscUnits = tx.Amount.ToCentsFromScaled();
-                amountInUSD = uscUnits / 100m; // 1 USC = 0.01 USD
+                amountInUSD = uscUnits / 100m;
             }
             else
             {
-                // Other currencies: convert via exchange rate to USD
-                var exchangeRate = await GetExchangeRateAsync(currency, CurrencyTypes.USD);
-                if (exchangeRate?.SellingRate > 0)
-                {
-                    var amountInCurrencyUnits = tx.Amount / 1_000_000m; // scaled to units
-                    amountInUSD = amountInCurrencyUnits * exchangeRate.SellingRate;
-                }
-                else
-                {
-                    // Skip if no exchange rate available
+                if (!exchangeRates.TryGetValue(currency, out var exchangeRate) || exchangeRate.SellingRate <= 0)
                     continue;
-                }
+
+                var amountInCurrencyUnits = tx.Amount / 1_000_000m;
+                amountInUSD = amountInCurrencyUnits * exchangeRate.SellingRate;
             }
 
             totalAmountInUSD += amountInUSD;
