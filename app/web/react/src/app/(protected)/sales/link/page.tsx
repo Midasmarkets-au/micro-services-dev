@@ -387,7 +387,7 @@ export default function SalesLinkPage() {
           )}
           <div className="mt-6 flex justify-end gap-3 md:gap-5">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => setCopyConfirmOpen(false)}
               className="w-auto min-w-20 md:w-[120px]"
             >

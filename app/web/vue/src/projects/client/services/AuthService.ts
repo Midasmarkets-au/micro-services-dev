@@ -107,6 +107,7 @@ export async function loginStart(
 ): Promise<void> {
   store.dispatch(Actions.LOGIN, login.data);
   wsSignalR?.setup(JwtService.getToken());
+  wsSignalR?.connection?.start().catch((err) => console.warn("SignalR start failed:", err));
 
   // 优先级：自定义redirectTo > query.redirect > dashboard
   if (redirectTo) {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, SimpleSelect } from '@/components/ui';
 
 interface TradeFilterProps {
   onSearch: (params: { from?: string; to?: string; searchText?: string; size?: number }) => void;
@@ -88,16 +88,17 @@ export function TradeFilter({
       {showPageSize && (
         <div className="flex items-center gap-2">
           <label className="text-sm text-text-secondary">{t('fields.pageSize')}</label>
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
+          <SimpleSelect
+            value={String(pageSize)}
+            onChange={(value) => setPageSize(Number(value))}
             disabled={isLoading}
-            className="h-10 rounded-lg border border-border bg-input-bg px-2 text-sm text-text-primary"
-          >
-            {pageSizes.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            triggerSize="sm"
+            className="min-w-20"
+            options={pageSizes.map((s) => ({
+              value: String(s),
+              label: String(s),
+            }))}
+          />
         </div>
       )}
       <div className="flex gap-2">

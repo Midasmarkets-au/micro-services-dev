@@ -287,13 +287,13 @@ async function request<T>(
 
     try {
       const errorData = await response.json();
+      const errorDataString = JSON.stringify(errorData);
       console.error('[API Client] 请求失败:', {
         url,
         status: response.status,
         statusText: response.statusText,
-        errorData
+        errorDataString
       });
-
       // 处理后端直接返回字符串的情况
       // 格式4: "Wallet address already exists" - 纯字符串错误信息
       if (typeof errorData === 'string') {
