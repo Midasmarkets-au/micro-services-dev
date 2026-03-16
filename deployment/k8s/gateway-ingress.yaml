@@ -82,6 +82,7 @@ metadata:
     # 增大响应头缓冲区，防止 Next.js Server Action 设置大 Cookie（refresh_token）时触发 502
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
 spec:
   ingressClassName: nginx
   rules:
