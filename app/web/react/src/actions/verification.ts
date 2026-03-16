@@ -17,6 +17,10 @@ interface PersonalInfoData {
   [key: string]: unknown;
 }
 
+interface StartedInfoData {
+  [key: string]: unknown;
+}
+
 interface FinancialInfoData {
   [key: string]: unknown;
 }
@@ -27,6 +31,30 @@ interface AgreementData {
 
 interface DocumentSubmitData {
   [key: string]: unknown;
+}
+
+interface QuizAnswerData {
+  [key: string]: unknown;
+}
+
+interface MyReferralCodeResponse {
+  referCode?: string;
+}
+
+interface ReferralCodeSummary {
+  allowAccountTypes?: { accountType: number }[];
+  schema?: { accountType: number }[];
+}
+
+interface ReferralCodeInfoResponse {
+  code?: string;
+  serviceType?: number;
+  summary?: ReferralCodeSummary;
+  data?: {
+    code?: string;
+    serviceType?: number;
+    summary?: ReferralCodeSummary;
+  };
 }
 
 interface UploadResponse {
@@ -60,6 +88,154 @@ export async function getVerificationStatus(): Promise<ActionResponse<Verificati
     };
   } catch (error) {
     console.error('[getVerificationStatus] Error:', error);
+
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: error.errorCode,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Internal server error',
+    };
+  }
+}
+
+/**
+ * 保存开户信息（Started）
+ */
+export async function saveStartedInfo(data: StartedInfoData): Promise<ActionResponse> {
+  try {
+    const result = await apiClient.v1.post<{ data: unknown }>('/client/verification/started', data);
+
+    return {
+      success: true,
+      data: result.data,
+    };
+  } catch (error) {
+    console.error('[saveStartedInfo] Error:', error);
+
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: error.errorCode,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Internal server error',
+    };
+  }
+}
+
+/**
+ * 校验开始页问卷答案（step1）
+ */
+export async function checkClientAnswer(data: QuizAnswerData): Promise<ActionResponse> {
+  try {
+    const result = await apiClient.v1.post<{ data: unknown }>('/client/quiz/verification/step1', data);
+
+    return {
+      success: true,
+      data: result.data,
+      // 旧版逻辑这里无论接口成功都阻断继续并提示，避免出现成功 toast
+      skipToast: true,
+    };
+  } catch (error) {
+    console.error('[checkClientAnswer] Error:', error);
+
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: error.errorCode,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Internal server error',
+    };
+  }
+}
+
+/**
+ * 校验财务页问卷答案（step2）
+ */
+export async function checkClientProfessionalAnswer(data: QuizAnswerData): Promise<ActionResponse> {
+  try {
+    const result = await apiClient.v1.post<{ data: unknown }>('/client/quiz/verification/step2', data);
+
+    return {
+      success: true,
+      data: result.data,
+      skipToast: true,
+    };
+  } catch (error) {
+    console.error('[checkClientProfessionalAnswer] Error:', error);
+
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: error.errorCode,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Internal server error',
+    };
+  }
+}
+
+/**
+ * 获取我的推荐码
+ */
+export async function getMyReferralCode(): Promise<ActionResponse<MyReferralCodeResponse>> {
+  try {
+    const result = await apiClient.v1.get<MyReferralCodeResponse>('/user/me/refercode');
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error('[getMyReferralCode] Error:', error);
+
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        error: error.message,
+        errorCode: error.errorCode,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'Internal server error',
+    };
+  }
+}
+
+/**
+ * 根据推荐码获取补充信息
+ */
+export async function getReferralInfoByReferralCode(code: string): Promise<ActionResponse<ReferralCodeInfoResponse>> {
+  try {
+    const result = await apiClient.v1.get<ReferralCodeInfoResponse>(`/referralcode/${code}`);
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error('[getReferralInfoByReferralCode] Error:', error);
 
     if (error instanceof ApiError) {
       return {

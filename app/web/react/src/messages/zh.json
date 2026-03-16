@@ -416,11 +416,13 @@
     },
     "accountApplication": "账户申请",
     "accountInfo": "账户信息",
-    "personalInfo": "",
+    "personalInfo": "个人信息",
     "financialInfo": "财务信息",
     "agreement": "协议",
     "documents": "文件",
     "mainSteps": {
+      "accountInfo": "账户信息",
+      "gettingStarted": "开始",
       "personalInfo": "个人信息",
       "financialInfo": "财务信息",
       "agreement": "协议",
@@ -431,6 +433,21 @@
       "personalInfo": "个人信息",
       "identityDocument": "身份证件",
       "socialMedia": "社交媒体"
+    },
+    "started": {
+      "quizTitle": "适当性问答",
+      "quizDescription": "请根据实际情况完成以下问题，如不满足条件可能无法继续开户流程。",
+      "cantProcess": "很抱歉，您的条件暂时不符合开户要求，请联系客服。",
+      "answers": {
+        "yes": "是",
+        "no": "否"
+      },
+      "questions": {
+        "q1": "您是否具备完整民事行为能力？",
+        "q2": "您是否了解差价合约等杠杆产品的风险？",
+        "q3": "您是否有稳定资金来源并可承担潜在损失？",
+        "q4": "您是否确认提供的信息真实、完整且有效？"
+      }
     },
     "fields": {
       "currency": "货币",
@@ -503,7 +520,8 @@
         "HedgingPolicy": "MDM 对冲政策",
         "PrivacyPolicy": "MDM 隐私政策",
         "RiskWarningNotice": "MDM 风险警告通知",
-        "TermsAndConditions": "MDM 条款和条件"
+        "TermsAndConditions": "MDM 条款和条件",
+        "referralPartyAgreement": "MDM 推荐方协议"
       },
       "electronicIdTitle": "电子身份证件",
       "electronicIdDescription": "验证身份文案验证身份文案验证身份文案验证身份文案验证身份文案验证身份文案，验证身份文案验证身份文案验证身份文案。",
@@ -645,7 +663,8 @@
     "__ALREADY_PARTICIPATED__": "您已参与该活动",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能转账给自己",
     "CODE_NOT_FOUND": "验证码不存在或已失效",
-    "CODE_ALREADY_SENT": "验证码已发送，请检查您的邮箱"
+    "CODE_ALREADY_SENT": "验证码已发送，请检查您的邮箱",
+    "electronicIdentityVerificationRequired": "电子身份验证为必选项，请选择同意后继续。"
   },
   "platforms": {
     "title": "交易平台",
@@ -1806,6 +1825,7 @@
       "rebateSettings": "返佣设置",
       "clickCopy": "点击复制",
       "view": "查看",
+      "viewRebate": "查看返佣",
       "copyLink": "复制链接",
       "copied": "已复制",
       "editName": "编辑名称",
@@ -1871,6 +1891,33 @@
     "tip": {
       "searchKeyWords": "搜索关键词...",
       "copied": "已复制到剪贴板"
+    },
+    "type": {
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "比特币",
+        "Commodities": "现货指数",
+        "Crypto": "加密货币",
+        "D Forex": "直盘",
+        "ETH": "以太坊",
+        "Energy": "能源期货",
+        "Forex": "交叉盘",
+        "Fu_Energy": "能源期货",
+        "GAUCNH": "黄金人民币",
+        "Gold": "黄金",
+        "HKG50": "恒生指数",
+        "Index": "现货指数",
+        "JPN225": "日经JPN225",
+        "Natural Gas": "天然气",
+        "OIL": "原油/布伦特原油",
+        "Precious Metal": "贵金属",
+        "Shares": "股票",
+        "Silver 1000OZ": "白银1000OZ",
+        "Silver 5000OZ": "白银5000OZ",
+        "US100": "纳斯达克US100",
+        "US30": "道琼斯US30",
+        "US500": "标普US500"
+      }
     },
     "rebateEdit": {
       "title": "IB 链接详情",
@@ -2206,6 +2253,31 @@
         "30": "30",
         "40": "40",
         "50": "50"
+      },
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "比特币",
+        "Commodities": "现货指数",
+        "Crypto": "加密货币",
+        "D Forex": "直盘",
+        "ETH": "以太坊",
+        "Energy": "能源期货",
+        "Forex": "交叉盘",
+        "Fu_Energy": "能源期货",
+        "GAUCNH": "黄金人民币",
+        "Gold": "黄金",
+        "HKG50": "恒生指数",
+        "Index": "现货指数",
+        "JPN225": "日经JPN225",
+        "Natural Gas": "天然气",
+        "OIL": "原油/布伦特原油",
+        "Precious Metal": "贵金属",
+        "Shares": "股票",
+        "Silver 1000OZ": "白银1000OZ",
+        "Silver 5000OZ": "白银5000OZ",
+        "US100": "纳斯达克US100",
+        "US30": "道琼斯US30",
+        "US500": "标普US500"
       }
     },
     "ibLinks": {
@@ -2306,6 +2378,7 @@
       "copyLink": "复制链接",
       "copied": "已复制",
       "view": "查看",
+      "viewRebate": "查看返佣",
       "close": "关闭",
       "update": "更新",
       "editLink": "编辑链接",

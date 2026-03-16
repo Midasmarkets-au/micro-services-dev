@@ -301,6 +301,13 @@ function AgentView({
   calculate: (a: number, b: number) => string;
 }) {
   const schemas = data.summary?.schema ?? [];
+  const categoryNameMap = (() => {
+    try {
+      return t.raw('type.productCategory') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  })();
 
   if (schemas.length === 0) {
     return <div className="py-8 text-center text-sm text-text-secondary">{t('common.noData')}</div>;
@@ -367,7 +374,8 @@ function AgentView({
                 </thead>
                 <tbody>
                   {(account.items ?? []).map((item, idx) => {
-                    const catName = productCategory.find(c => c.key === item.cid)?.value ?? String(item.cid);
+                    const rawCatName = productCategory.find(c => c.key === item.cid)?.value ?? String(item.cid);
+                    const catName = categoryNameMap[rawCatName] ?? categoryNameMap[rawCatName.replace(/\./g, '_')] ?? rawCatName;
                     const totalRebate = accountRule?.items?.[item.cid] ?? 0;
                     const personalRebate = item.r;
                     const remainRebate = calculate(totalRebate, personalRebate);

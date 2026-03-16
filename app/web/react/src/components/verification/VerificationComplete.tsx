@@ -62,7 +62,7 @@ export function VerificationComplete({ status, rejectionReason }: VerificationCo
           </h2>
 
           {/* 描述 */}
-          <p className="text-sm text-text-secondary text-center">
+          <p className="text-sm text-text-secondary text-center whitespace-nowrap">
             {t(`complete.${config.description}`)}
           </p>
 

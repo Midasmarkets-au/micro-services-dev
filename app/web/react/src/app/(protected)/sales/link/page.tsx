@@ -138,6 +138,13 @@ export default function SalesLinkPage() {
   }, [fetchData]);
 
   const columns = useMemo<DataTableColumn<SalesLink>[]>(() => {
+    const viewRebateLabel = (() => {
+      try {
+        return t('link.viewRebate');
+      } catch {
+        return t('link.view');
+      }
+    })();
     const cols: DataTableColumn<SalesLink>[] = [
       {
         key: 'name',
@@ -230,12 +237,17 @@ export default function SalesLinkPage() {
             className="cursor-pointer text-sm font-medium hover:underline"
             onClick={() => handleViewRebateSettings(item)}
           >
-            {t('link.view')}
+            {viewRebateLabel}
           </span>
         ),
       });
     }
-
+    cols.push({
+      key: 'isAutoCreatePaymentMethod',
+      title: t('link.autoCreateAccount'),
+      skeletonWidth: 'w-10',
+      render: (item) => <span className="text-sm">{item.isAutoCreatePaymentMethod === 1 ? t('link.yes') : t('link.no')}</span>,
+    });
     cols.push({
       key: 'copyLink',
       title: t('link.clickCopy'),

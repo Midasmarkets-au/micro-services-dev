@@ -131,6 +131,7 @@ export interface SalesLink {
   url?: string;
   accountType?: number;
   rebateRuleId?: number;
+  isAutoCreatePaymentMethod?: number;
   displaySummary?: {
     language?: string;
     isAutoCreatePaymentMethod?: number;

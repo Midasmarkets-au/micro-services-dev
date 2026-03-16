@@ -25,6 +25,8 @@ interface VerificationFormLayoutProps {
   onSubmit?: () => void;
   /** 提交按钮是否禁用 */
   submitDisabled?: boolean;
+  /** 是否显示返回按钮 */
+  showBackButton?: boolean;
 }
 
 export function VerificationFormLayout({
@@ -38,6 +40,7 @@ export function VerificationFormLayout({
   isForm = true,
   onSubmit,
   submitDisabled = false,
+  showBackButton = true,
 }: VerificationFormLayoutProps) {
   const t = useTranslations('verification');
 
@@ -47,14 +50,16 @@ export function VerificationFormLayout({
   // 操作按钮区域
   const actionButtons = (
     <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-5 pt-4 md:pt-6">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onBack}
-        className="w-full sm:w-30 h-10 md:h-12"
-      >
-        {t('previousStep')}
-      </Button>
+      {showBackButton && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          className="w-full sm:w-30 h-10 md:h-12"
+        >
+          {t('previousStep')}
+        </Button>
+      )}
       <Button
         type={isForm ? 'submit' : 'button'}
         onClick={isForm ? undefined : onSubmit}

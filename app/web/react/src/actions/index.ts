@@ -37,6 +37,11 @@ export {
 // Verification actions
 export {
   getVerificationStatus,
+  saveStartedInfo,
+  checkClientAnswer,
+  checkClientProfessionalAnswer,
+  getMyReferralCode,
+  getReferralInfoByReferralCode,
   savePersonalInfo,
   saveFinancialInfo,
   saveAgreement,

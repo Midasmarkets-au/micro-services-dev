@@ -115,15 +115,26 @@ export function SalesRebateSettingsDialog({
   }, [open, code, salesAccount, execute]);
 
   const productCategoryMap = useMemo(() => {
+    const i18nMap = (() => {
+      try {
+        return t.raw('type.productCategory') as Record<string, string>;
+      } catch {
+        return {};
+      }
+    })();
     const map = new Map<number, string>();
     productCategory.forEach((item) => {
       const k = Number(item.key ?? item.id);
       if (!Number.isFinite(k)) return;
       const v = item.value ?? item.name;
-      if (v) map.set(k, v);
+      if (v)
+        map.set(
+          k,
+          i18nMap[v] ?? i18nMap[v.replace(/\./g, '_')] ?? v
+        );
     });
     return map;
-  }, [productCategory]);
+  }, [productCategory, t]);
 
   const pipOptionMap = useMemo(() => {
     try {
@@ -308,16 +319,16 @@ function AgentDetailView({
           </div>
 
           {schema.items && schema.items.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {schema.items.map((item, idx) => (
-                <div key={idx} className="rounded-md bg-surface-secondary p-2">
+                <div key={idx} className="rounded-md p-2">
                   <div className="truncate text-xs text-text-secondary">
                     {productCategoryMap.get(item.cid) ?? String(item.cid)}
                   </div>
                   <Input
                     value={String(item.r)}
                     disabled
-                    className="mt-1 h-8 bg-transparent text-center text-sm"
+                    className="mt-1 h-8 bg-transparent text-sm"
                   />
                 </div>
               ))}

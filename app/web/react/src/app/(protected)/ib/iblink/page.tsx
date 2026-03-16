@@ -120,7 +120,16 @@ export default function IBLinkPage() {
     setCopyConfirmOpen(true);
   }, [siteConfig]);
 
-  const columns = useMemo<DataTableColumn<IBLink>[]>(() => [
+  const columns = useMemo<DataTableColumn<IBLink>[]>(() => {
+    const viewRebateLabel = (() => {
+      try {
+        return t('link.viewRebate');
+      } catch {
+        return t('link.view');
+      }
+    })();
+
+    return [
     {
       key: 'name',
       title: t('link.linkName'),
@@ -201,7 +210,7 @@ export default function IBLinkPage() {
           className="cursor-pointer text-sm font-medium hover:underline"
           onClick={() => handleViewRebateSettings(item)}
         >
-          {t('link.view')}
+          {viewRebateLabel}
         </span>
       ),
     },
@@ -213,7 +222,8 @@ export default function IBLinkPage() {
         <CopyLinkCell item={item} onCopy={handleCopyLink} />
       ),
     },
-  ], [t, tAccount, handleCopyLink, handleViewRebateSettings, handleEditLink]);
+  ];
+  }, [t, tAccount, handleCopyLink, handleViewRebateSettings, handleEditLink]);
 
   return (
     <div className="flex min-h-full w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">

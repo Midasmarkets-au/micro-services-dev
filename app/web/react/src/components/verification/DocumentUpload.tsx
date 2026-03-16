@@ -113,7 +113,7 @@ function UploadBox({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-2.5 items-center">
+    <div className="flex flex-col gap-2.5 items-center cursor-pointer">
       {selected?.preview ? (
         <div className="relative w-40 h-30">
           <div className="relative w-full h-full overflow-hidden rounded bg-surface-secondary">
@@ -139,7 +139,7 @@ function UploadBox({
         <button
           type="button"
           onClick={onSelect}
-          className="flex w-40 h-30 flex-col items-center justify-center rounded border border-dashed border-border bg-surface-secondary transition-colors hover:border-primary hover:bg-primary/5 active:bg-primary/10"
+          className="cursor-pointer flex w-40 h-30 flex-col items-center justify-center rounded border border-dashed border-border bg-surface-secondary transition-colors hover:border-primary hover:bg-primary/5 active:bg-primary/10"
         >
           {/* 加号图标 */}
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">

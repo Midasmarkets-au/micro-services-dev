@@ -66,6 +66,13 @@ function AgentRebateTable({
 }) {
   const [formRows, setFormRows] = useState<RebateFormRow[]>([]);
   const [percentage, setPercentage] = useState(100);
+  const categoryNameMap = useMemo(() => {
+    try {
+      return t.raw('type.productCategory') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }, [t]);
   const [pcSelection, setPcSelection] = useState<{
     selectedPC: string;
     pcValue: number | null;
@@ -86,7 +93,7 @@ function AgentRebateTable({
     if (!productCategory.length) return;
     const rows: RebateFormRow[] = productCategory.map(cat => ({
       cid: cat.key,
-      name: cat.value,
+      name: categoryNameMap[cat.value] ?? categoryNameMap[cat.value.replace(/\./g, '_')] ?? cat.value,
       total: account.items[cat.key] ?? resolvedDefault?.category?.[cat.key] ?? resolvedDefault?.Category?.[cat.key] ?? 0,
       r: 0,
     }));
@@ -109,7 +116,7 @@ function AgentRebateTable({
         });
       }
     }
-  }, [productCategory, account, resolvedDefault, isRoot]);
+  }, [productCategory, account, resolvedDefault, isRoot, categoryNameMap]);
 
   useEffect(() => {
     if (batchPercent > 0) {

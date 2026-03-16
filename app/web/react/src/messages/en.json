@@ -421,16 +421,33 @@
     "agreement": "Agreement",
     "documents": "Documents",
     "mainSteps": {
+      "accountInfo": "Account Info",
+      "gettingStarted": "Getting Started",
       "personalInfo": "Personal Info",
       "financialInfo": "Financial Info",
       "agreement": "Agreement",
-      "documents": "Documents",
+      "documents": "Document",
       "complete": "Complete"
     },
     "subSteps": {
       "personalInfo": "Personal Info",
       "identityDocument": "Identity Document",
       "socialMedia": "Social Media"
+    },
+    "started": {
+      "quizTitle": "Suitability Questionnaire",
+      "quizDescription": "Please answer the following questions based on your actual situation. You may not proceed if requirements are not met.",
+      "cantProcess": "Sorry, you currently do not meet the account opening requirements. Please contact support.",
+      "answers": {
+        "yes": "Yes",
+        "no": "No"
+      },
+      "questions": {
+        "q1": "Do you have full legal capacity?",
+        "q2": "Do you understand the risks of leveraged products such as CFDs?",
+        "q3": "Do you have a stable source of funds and can bear potential losses?",
+        "q4": "Do you confirm that the information provided is true, complete, and valid?"
+      }
     },
     "fields": {
       "currency": "Currency",
@@ -503,7 +520,8 @@
         "HedgingPolicy": "MDM Hedging Policy",
         "PrivacyPolicy": "MDM Privacy Policy",
         "RiskWarningNotice": "MDM Risk Warning Notice",
-        "TermsAndConditions": "MDM Terms and Conditions"
+        "TermsAndConditions": "MDM Terms and Conditions",
+        "referralPartyAgreement": "MDM Referral Party Agreement"
       },
       "electronicIdTitle": "Electronic Identity Verification",
       "electronicIdDescription": "Identity verification description. Please read the following options carefully and select your preference.",
@@ -644,7 +662,8 @@
     "__ALREADY_PARTICIPATED__": "You have already participated in this event",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "You cannot transfer to your own account",
     "CODE_NOT_FOUND": "Verification code not found or has expired",
-    "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email"
+    "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email",
+    "electronicIdentityVerificationRequired": "Electronic identity verification consent is required to continue."
   },
   "platforms": {
     "title": "Trading Platforms",
@@ -1805,6 +1824,7 @@
       "rebateSettings": "Rebate Settings",
       "clickCopy": "Click to Copy",
       "view": "View",
+      "viewRebate": "View Rebate",
       "copyLink": "Copy Link",
       "copied": "Copied",
       "editName": "Edit Name",
@@ -1870,6 +1890,33 @@
     "tip": {
       "searchKeyWords": "Search keywords...",
       "copied": "Copied to clipboard"
+    },
+    "type": {
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "Bitcoin",
+        "Commodities": "Spot Index",
+        "Crypto": "Cryptocurrency",
+        "D Forex": "Direct Forex",
+        "ETH": "Ethereum",
+        "Energy": "Energy Futures",
+        "Forex": "Cross Forex",
+        "Fu_Energy": "Energy Futures",
+        "GAUCNH": "Gold RMB",
+        "Gold": "Gold",
+        "HKG50": "Hang Seng Index",
+        "Index": "Spot Index",
+        "JPN225": "Nikkei JPN225",
+        "Natural Gas": "Natural Gas",
+        "OIL": "WTI/Brent Crude",
+        "Precious Metal": "Precious Metal",
+        "Shares": "Shares",
+        "Silver 1000OZ": "Silver 1000OZ",
+        "Silver 5000OZ": "Silver 5000OZ",
+        "US100": "Nasdaq US100",
+        "US30": "Dow Jones US30",
+        "US500": "S&P US500"
+      }
     },
     "rebateEdit": {
       "title": "IB Link Detail",
@@ -2192,6 +2239,31 @@
         "30": "30",
         "40": "40",
         "50": "50"
+      },
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "Bitcoin",
+        "Commodities": "Spot Index",
+        "Crypto": "Cryptocurrency",
+        "D Forex": "Direct Forex",
+        "ETH": "Ethereum",
+        "Energy": "Energy Futures",
+        "Forex": "Cross Forex",
+        "Fu_Energy": "Energy Futures",
+        "GAUCNH": "Gold RMB",
+        "Gold": "Gold",
+        "HKG50": "Hang Seng Index",
+        "Index": "Spot Index",
+        "JPN225": "Nikkei JPN225",
+        "Natural Gas": "Natural Gas",
+        "OIL": "WTI/Brent Crude",
+        "Precious Metal": "Precious Metal",
+        "Shares": "Shares",
+        "Silver 1000OZ": "Silver 1000OZ",
+        "Silver 5000OZ": "Silver 5000OZ",
+        "US100": "Nasdaq US100",
+        "US30": "Dow Jones US30",
+        "US500": "S&P US500"
       }
     },
     "ibLinks": {
@@ -2292,6 +2364,7 @@
       "copyLink": "Copy Link",
       "copied": "Copied",
       "view": "View",
+      "viewRebate": "View Rebate",
       "close": "Close",
       "update": "Update",
       "editLink": "Edit Link",
