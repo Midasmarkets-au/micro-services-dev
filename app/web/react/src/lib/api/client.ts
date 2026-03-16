@@ -486,7 +486,7 @@ export const apiClient = {
 
       if (BACKEND_REQUEST_AUTH_MODE === 'token') {
         // token 模式：用 response body 里的 access_token 作为 Bearer token
-        const accessToken = tokenData.access_token;
+        const accessToken = tokenData.access_token ? tokenData.access_token : tokenSetCookies;
         if (!accessToken) {
           throw new ApiError('Login failed: no access_token in response', 401);
         }
