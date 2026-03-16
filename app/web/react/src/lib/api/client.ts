@@ -288,6 +288,15 @@ async function request<T>(
       });
     }
 
+    // 统一兜底：HTTP 401 一律标准化为 Unauthorized，
+    // 便于上层 useServerAction 静默处理并跳转登录页（不弹全局错误 Toast）。
+    if (response.status === 401) {
+      errorCode = 'Unauthorized';
+      if (!errorMessage || errorMessage === 'Request failed') {
+        errorMessage = 'Unauthorized';
+      }
+    }
+
     throw new ApiError(errorMessage, response.status, errors, errorCode);
   }
 

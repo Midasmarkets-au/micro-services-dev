@@ -74,7 +74,6 @@ export async function syncAuthCookies({
   const cookieHeaders =
     setCookieHeaders.length > 0 ? setCookieHeaders : response ? extractSetCookieHeaders(response) : [];
   const hasSetCookie = cookieHeaders.length > 0;
-  console.log('cookieHeaders', cookieHeaders);
   // 规则：
   // 1) 若后端返回 Set-Cookie，优先认为是 cookie 模式（不再依赖 token）
   // 2) 若没有 Set-Cookie 且有 token，走 token 模式
