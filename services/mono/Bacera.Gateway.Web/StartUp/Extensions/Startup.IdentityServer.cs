@@ -97,6 +97,9 @@ public partial class Startup
             {
                 options.UseLocalServer();
                 options.UseAspNetCore();
+                // Extract access_token from HttpOnly cookie (set by ApplyTokenResponseHandler).
+                // Bearer header still takes precedence when both are present.
+                options.AddEventHandler(ExtractCookieTokenHandler.Descriptor);
             });
     }
 

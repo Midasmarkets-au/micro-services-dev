@@ -30,24 +30,63 @@ public class ApplyTokenResponseHandler : IOpenIddictServerHandler<ApplyTokenResp
         var httpResponse = httpRequest.HttpContext.Response;
 
         // Set access_token cookie whenever a token is issued.
-        // Use Secure+SameSite=None for HTTPS (production/staging),
-        // and Secure=false+SameSite=Lax for HTTP (local dev).
+        // Use Secure+SameSite=None for HTTPS (production/staging).
+        // In local dev (HTTP), also use SameSite=None to support cross-origin requests.
         var accessToken = context.Response.AccessToken;
         if (!string.IsNullOrEmpty(accessToken))
         {
             var isHttps   = httpRequest.HttpContext.Request.IsHttps;
-            var expiresIn = context.Response.ExpiresIn ?? 86400;
-            httpResponse.Cookies.Append("access_token", accessToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure   = isHttps,
-                SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
-                Expires  = DateTimeOffset.UtcNow.AddSeconds(expiresIn),
-                Path     = "/",
-            });
+            var expiresIn = (int)(context.Response.ExpiresIn ?? 86400);
+            AppendAccessTokenCookie(httpResponse, accessToken, expiresIn, isHttps);
+
+            context.Response.AccessToken  = null;
+            context.Response.RefreshToken = null;
+            context.Response.TokenType    = null;
+            context.Response.ExpiresIn    = null;
+            context.Response.Scope        = null;
         }
 
         // Custom responses (multi-tenant selector, 2FA prompt) are now written directly
         // in PasswordGrantHandler during the HandleTokenRequest phase, so nothing to do here.
+    }
+
+    /// <summary>
+    /// Shared helper for writing the access_token HttpOnly cookie.
+    /// Used by both the OpenIddict token endpoint (this handler) and
+    /// programmatic token issuance paths (e.g. email-code login in BcrTokenService).
+    /// </summary>
+    public static void AppendAccessTokenCookie(HttpResponse response, string accessToken, int expiresInSeconds, bool isHttps)
+    {
+        // In local dev (HTTP), allow cross-origin cookie by using SameSite=None with Secure=false.
+        // Browsers (Chrome 80+) normally require Secure for SameSite=None, but grant an exception
+        // for localhost, so this works in local testing environments.
+        var isDev    = AppEnvironment.IsDevelopment();
+        var useNone  = isHttps || isDev;
+        response.Cookies.Append("access_token", accessToken, new CookieOptions
+        {
+            HttpOnly = true,
+            // SameSite=None requires Secure=true in all browsers (including Safari on localhost).
+            // In dev we set Secure=true even over HTTP so the cookie is accepted cross-origin.
+            Secure   = useNone || isHttps,
+            SameSite = useNone ? SameSiteMode.None : SameSiteMode.Lax,
+            Expires  = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds),
+            Path     = "/",
+        });
+    }
+
+    /// <summary>
+    /// Shared helper for deleting the access_token cookie (logout).
+    /// </summary>
+    public static void DeleteAccessTokenCookie(HttpResponse response, bool isHttps)
+    {
+        var isDev   = AppEnvironment.IsDevelopment();
+        var useNone = isHttps || isDev;
+        response.Cookies.Delete("access_token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure   = useNone || isHttps,
+            SameSite = useNone ? SameSiteMode.None : SameSiteMode.Lax,
+            Path     = "/",
+        });
     }
 }

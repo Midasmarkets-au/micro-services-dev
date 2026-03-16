@@ -23,6 +23,7 @@ class ApiService {
       process.env.VUE_APP_ENV === "Development"
         ? process.env.VUE_APP_API_URL
         : "/";
+    ApiService.vueInstance.axios.defaults.withCredentials = true;
   }
 
   /**

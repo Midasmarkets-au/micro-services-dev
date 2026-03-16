@@ -4,7 +4,7 @@ const api =
   process.env.VUE_APP_ENV === "Development" ? process.env.VUE_APP_API_URL : "/";
 
 const axiosInstance = axios.create({
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -14,7 +14,7 @@ const axiosInstance = axios.create({
 });
 
 const axiosInstance2 = axios.create({
-  withCredentials: false,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
