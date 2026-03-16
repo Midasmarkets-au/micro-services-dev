@@ -114,22 +114,6 @@ async function getAuthToken(): Promise<string | undefined> {
     return undefined;
   }
 }
-// 只透传这些 cookie 到后端，避免把 Next.js 内部 cookie 也发过去
-const BACKEND_COOKIE_ALLOWLIST = ['access_token', 'refresh_token', '.AspNetCore.'];
-
-async function getCookieHeader(): Promise<string | undefined> {
-  try {
-    const cookieStore = await cookies();
-    const cookieHeader = cookieStore.getAll()
-      .filter(c => BACKEND_COOKIE_ALLOWLIST.some(prefix => c.name.startsWith(prefix)))
-      .map(c => `${c.name}=${c.value}`)
-      .join('; ');
-    return cookieHeader || undefined;
-  } catch {
-    // 在非服务端环境中可能会失败，返回 undefined
-    return undefined;
-  }
-}
 
 async function hasCookieAuthContext(): Promise<boolean> {
   try {
@@ -228,23 +212,48 @@ export interface RegisterResponse {
   };
 }
 
+/**
+ * cookie 模式下，从 cookie store 或 extraCookies 中提取 access_token 值，
+ * 用于构造 Authorization: Bearer header 发给后端。
+ * 后端使用 OpenIddict validation scheme，只接受 Bearer token，不读 Cookie header。
+ */
+async function resolveBearerTokenForCookieMode(extraCookies?: string): Promise<string | undefined> {
+  // 优先从 extraCookies（登录时 connect/token 返回的 Set-Cookie 直接传递）中提取
+  if (extraCookies) {
+    const match = extraCookies.match(/(?:^|;\s*)access_token=([^;]+)/);
+    if (match?.[1]) return match[1];
+  }
+  // 其次从 Next.js cookie store 中读取（后续页面请求）
+  try {
+    const cookieStore = await cookies();
+    return cookieStore.get('access_token')?.value;
+  } catch {
+    return undefined;
+  }
+}
+
 // 基础请求方法 - 所有响应统一封装成 { data: ... } 格式
 async function request<T>(
   url: string,
   options: RequestInit = {},
   extraCookies?: string
 ): Promise<T> {
-  const cookieHeader =
-    BACKEND_REQUEST_AUTH_MODE === 'cookie' ? await getCookieHeader() : undefined;
+  let authorizationHeader: string | undefined;
 
-  // 合并 cookie store 中的 cookie 和额外传入的 cookie（如上一个请求的 Set-Cookie）
-  const mergedCookieHeader = [cookieHeader, extraCookies].filter(Boolean).join('; ') || undefined;
+  if (BACKEND_REQUEST_AUTH_MODE === 'cookie') {
+    // cookie 模式：后端用 OpenIddict validation（只读 Bearer token），
+    // 把 access_token cookie 值提取出来放进 Authorization header
+    const bearerToken = await resolveBearerTokenForCookieMode(extraCookies);
+    if (bearerToken) {
+      authorizationHeader = `Bearer ${bearerToken}`;
+    }
+  }
 
   const config: RequestInit = {
     ...options,
     headers: {
       ...options.headers,
-      ...(mergedCookieHeader ? { Cookie: mergedCookieHeader } : {}),
+      ...(authorizationHeader ? { Authorization: authorizationHeader } : {}),
     },
   };
 
