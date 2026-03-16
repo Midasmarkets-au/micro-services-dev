@@ -115,14 +115,23 @@ export async function syncAuthCookies({
     const expires =
       typeof attrsObj.expires === 'string' ? new Date(attrsObj.expires) : undefined;
 
+    const originalSameSite = normalizeSameSite(attrsObj.samesite);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // SameSite=none 要求 Secure，本地 HTTP 环境浏览器会拒绝保存，降级为 lax
+    const sameSite: CookieSameSite =
+      originalSameSite === 'none' && !isProduction ? 'lax' : originalSameSite;
+    // 非生产环境同步去掉 Secure 标志，避免 HTTP 下 cookie 被丢弃
+    const secure = isProduction ? 'secure' in attrsObj : false;
+
     cookieStore.set(name, value, {
       httpOnly: 'httponly' in attrsObj,
-      secure: 'secure' in attrsObj,
+      secure,
       path: (attrsObj.path as string) || '/',
       domain: attrsObj.domain as string | undefined,
       maxAge: Number.isFinite(maxAge) ? maxAge : undefined,
       expires: expires && !Number.isNaN(expires.getTime()) ? expires : undefined,
-      sameSite: normalizeSameSite(attrsObj.samesite),
+      sameSite,
     });
   });
 }
