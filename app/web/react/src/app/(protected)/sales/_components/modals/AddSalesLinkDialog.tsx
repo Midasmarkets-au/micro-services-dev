@@ -11,7 +11,7 @@ import {
   Button,
   Input,
   Switch,
-  SearchableSelect,
+  SimpleSelect,
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
@@ -250,7 +250,6 @@ export function AddSalesLinkDialog({
     () => filteredAccounts.filter((a) => a.selected),
     [filteredAccounts]
   );
-
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = t('link.nameRequired');
@@ -286,7 +285,7 @@ export function AddSalesLinkDialog({
           salesAccount.uid,
           {
             name,
-            language,
+            language: language,
             schema,
             isAutoCreatePaymentMethod: isAutoCreate ? 1 : 0,
           } as Record<string, unknown>
@@ -415,11 +414,12 @@ export function AddSalesLinkDialog({
                     <span className="text-primary">*</span>{' '}
                     {t('link.chooseLanguage')}
                   </label>
-                  <SearchableSelect
+                  <SimpleSelect
                     options={LINK_LANGUAGE_OPTIONS}
                     value={language}
-                    onChange={(val) => setLanguage(val as string)}
+                    onChange={setLanguage}
                     placeholder={t('link.chooseLanguage')}
+                    triggerSize="sm"
                   />
                   {errors.language && (
                     <p className="mt-1 text-xs text-primary">
@@ -755,19 +755,16 @@ function ClientPCFormInline({
             <label className="mb-1 block text-xs text-text-secondary">
               {t('link.rateOption')}
             </label>
-            <select
-              className="input-field w-full"
-              value={pc.rateOption}
-              onChange={(e) =>
-                onUpdate(acc.accountType, 'rateOption', e.target.value)
-              }
-            >
-              {acc.defaultRebateOptions.map((opt, idx) => (
-                <option key={idx} value={idx}>
-                  {opt.optionName ?? opt.OptionName}
-                </option>
-              ))}
-            </select>
+            <SimpleSelect
+              className="w-full"
+              value={String(pc.rateOption)}
+              onChange={(value) => onUpdate(acc.accountType, 'rateOption', value)}
+              options={acc.defaultRebateOptions.map((opt, idx) => ({
+                value: String(idx),
+                label: (opt.optionName ?? opt.OptionName) || String(idx),
+              }))}
+              triggerSize="sm"
+            />
           </div>
         )}
 
@@ -775,20 +772,20 @@ function ClientPCFormInline({
           <label className="mb-1 block text-xs text-text-secondary">
             {t('link.choosePipCommission')}
           </label>
-          <select
-            className="input-field w-full"
+          <SimpleSelect
+            className="w-full"
             value={pc.selectedPC}
-            onChange={(e) =>
-              onUpdate(acc.accountType, 'selectedPC', e.target.value)
-            }
-          >
-            {acc.allowPipOptions.length > 0 && (
-              <option value="pips">{t('link.pips')}</option>
-            )}
-            {acc.allowCommissionOptions.length > 0 && (
-              <option value="commission">{t('link.commission')}</option>
-            )}
-          </select>
+            onChange={(value) => onUpdate(acc.accountType, 'selectedPC', value)}
+            options={[
+              ...(acc.allowPipOptions.length > 0
+                ? [{ value: 'pips', label: t('link.pips') }]
+                : []),
+              ...(acc.allowCommissionOptions.length > 0
+                ? [{ value: 'commission', label: t('link.commission') }]
+                : []),
+            ]}
+            triggerSize="sm"
+          />
         </div>
 
         <div>
@@ -796,38 +793,38 @@ function ClientPCFormInline({
             {t('link.choosePipCommissionValue')}
           </label>
           {pc.selectedPC === 'pips' && acc.allowPipOptions.length > 0 ? (
-            <select
-              className="input-field w-full"
-              value={pc.pcValue ?? ''}
-              onChange={(e) =>
-                onUpdate(acc.accountType, 'pcValue', e.target.value)
-              }
-            >
-              {acc.allowPipOptions.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+             
+            <SimpleSelect
+              className="w-full"
+              value={pc.pcValue?.toString() ?? ''}
+              onChange={(value) => onUpdate(acc.accountType, 'pcValue', value)}
+              options={acc.allowPipOptions.map((v) => ({
+                value: v.toString(),
+                label: v.toString(),
+              }))}
+              triggerSize="sm"
+            />
           ) : pc.selectedPC === 'commission' &&
             acc.allowCommissionOptions.length > 0 ? (
-            <select
-              className="input-field w-full"
-              value={pc.pcValue ?? ''}
-              onChange={(e) =>
-                onUpdate(acc.accountType, 'pcValue', e.target.value)
-              }
-            >
-              {acc.allowCommissionOptions.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+            <SimpleSelect
+              className="w-full"
+              value={pc.pcValue?.toString() ?? ''}
+              onChange={(value) => onUpdate(acc.accountType, 'pcValue', value)}
+              options={acc.allowCommissionOptions.map((v) => ({
+                value: v.toString(),
+                label: v.toString(),
+              }))}
+              triggerSize="sm"
+            />
           ) : (
-            <select className="input-field w-full" disabled>
-              <option>{t('link.noData')}</option>
-            </select>
+            <SimpleSelect
+              className="w-full"
+              value=""
+              options={[]}
+              placeholder={t('link.noData')}
+              disabled
+              triggerSize="sm"
+            />
           )}
         </div>
       </div>

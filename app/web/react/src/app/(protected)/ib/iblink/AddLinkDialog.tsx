@@ -11,8 +11,8 @@ import {
   Button,
   Input,
   Switch,
+  SimpleSelect,
 } from '@/components/ui';
-import { SearchableSelect } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
   getIBRebateRuleDetailFull,
@@ -238,23 +238,30 @@ function AgentRebateTable({
               {hasPCColumn && (
                 <th className="bg-[#0053ad] px-3 py-2 font-semibold text-white min-w-[140px]">
                   <div className="flex flex-col items-center gap-2">
-                    <select
-                      className="rounded border-0 bg-white/20 px-2 py-0.5 text-xs text-white"
+                    <SimpleSelect
+                      className="h-7 min-w-[96px] border-0 bg-white/20 text-xs text-white"
                       value={pcSelection.selectedPC}
-                      onChange={e => handlePCTypeChange(e.target.value)}
-                    >
-                      {account.allowPips.length > 0 && <option value="pips">{t('addLink.pips')}</option>}
-                      {account.allowCommissions.length > 0 && <option value="commission">{t('addLink.commission')}</option>}
-                    </select>
-                    <select
-                      className="rounded border-0 bg-white/20 px-2 py-0.5 text-xs text-white"
-                      value={pcSelection.pcValue ?? ''}
-                      onChange={e => handlePCValueChange(Number(e.target.value))}
-                    >
-                      {(pcSelection.selectedPC === 'pips' ? account.allowPips : account.allowCommissions).map(v => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </select>
+                      onChange={handlePCTypeChange}
+                      options={[
+                        ...(account.allowPips.length > 0
+                          ? [{ value: 'pips', label: t('addLink.pips') }]
+                          : []),
+                        ...(account.allowCommissions.length > 0
+                          ? [{ value: 'commission', label: t('addLink.commission') }]
+                          : []),
+                      ]}
+                      triggerSize="sm"
+                    />
+                    <SimpleSelect
+                      className="h-7 min-w-[96px] border-0 bg-white/20 text-xs text-white"
+                      value={pcSelection.pcValue?.toString() ?? ''}
+                      onChange={(value) => handlePCValueChange(Number(value))}
+                      options={(pcSelection.selectedPC === 'pips' ? account.allowPips : account.allowCommissions).map(v => ({
+                        value: v.toString(),
+                        label: v.toString(),
+                      }))}
+                      triggerSize="sm"
+                    />
                   </div>
                 </th>
               )}
@@ -375,26 +382,33 @@ function ClientPCForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="mb-1 block text-sm text-text-secondary">{t('addLink.choosePipCommission')}</label>
-          <select
-            className="input-field w-full"
+          <SimpleSelect
+            className="w-full"
             value={selectedPC}
-            onChange={e => setSelectedPC(e.target.value)}
-          >
-            {account.allowPips.length > 0 && <option value="pips">{t('addLink.pips')}</option>}
-            {account.allowCommissions.length > 0 && <option value="commission">{t('addLink.commission')}</option>}
-          </select>
+            onChange={setSelectedPC}
+            options={[
+              ...(account.allowPips.length > 0
+                ? [{ value: 'pips', label: t('addLink.pips') }]
+                : []),
+              ...(account.allowCommissions.length > 0
+                ? [{ value: 'commission', label: t('addLink.commission') }]
+                : []),
+            ]}
+            triggerSize="sm"
+          />
         </div>
         <div>
           <label className="mb-1 block text-sm text-text-secondary">{t('addLink.choosePipCommissionValue')}</label>
-          <select
-            className="input-field w-full"
-            value={pcValue ?? ''}
-            onChange={e => setPcValue(Number(e.target.value))}
-          >
-            {(selectedPC === 'pips' ? account.allowPips : account.allowCommissions).map(v => (
-              <option key={v} value={v}>{v}</option>
-            ))}
-          </select>
+          <SimpleSelect
+            className="w-full"
+            value={pcValue?.toString() ?? ''}
+            onChange={(value) => setPcValue(Number(value))}
+            options={(selectedPC === 'pips' ? account.allowPips : account.allowCommissions).map(v => ({
+              value: v.toString(),
+              label: v.toString(),
+            }))}
+            triggerSize="sm"
+          />
         </div>
       </div>
     </div>
@@ -684,11 +698,12 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
                   <label className="mb-1.5 block text-sm text-text-secondary">
                     <span className="text-primary">*</span> {t('addLink.chooseLanguage')}
                   </label>
-                  <SearchableSelect
+                  <SimpleSelect
                     options={LINK_LANGUAGE_OPTIONS}
                     value={language}
-                    onChange={val => setLanguage(val as string)}
+                    onChange={setLanguage}
                     placeholder={t('addLink.chooseLanguage')}
+                    triggerSize="sm"
                   />
                   {errors.language && <p className="mt-1 text-xs text-primary">{errors.language}</p>}
                 </div>
