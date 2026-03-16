@@ -93,6 +93,7 @@ async function resolveAuthTokenForEndpoint(endpoint: string): Promise<string | u
     throw new ApiError('Unauthorized', 401, undefined, 'Unauthorized');
   }
 
+  // token 模式：优先读 auth-token，fallback 读 access_token（cookie 模式写入的 key）
   const token = await getAuthToken();
   if (token) {
     return token;
@@ -103,24 +104,27 @@ async function resolveAuthTokenForEndpoint(endpoint: string): Promise<string | u
 
 /**
  * 自动从 cookies 获取 token
- * @returns token 或 undefined
+ * 优先读 auth-token（token 模式），fallback 读 access_token（cookie 模式写入的 key）
  */
 async function getAuthToken(): Promise<string | undefined> {
   try {
     const cookieStore = await cookies();
-    return cookieStore.get('auth-token')?.value;
+    return cookieStore.get('auth-token')?.value ?? cookieStore.get('access_token')?.value;
   } catch {
-    // 在非服务端环境中可能会失败，返回 undefined
     return undefined;
   }
 }
+// 只透传这些 cookie 到后端，避免把 Next.js 内部 cookie 也发过去
+const BACKEND_COOKIE_ALLOWLIST = ['access_token', 'refresh_token', '.AspNetCore.'];
+
 async function getCookieHeader(): Promise<string | undefined> {
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.getAll()
-    .map(c => `${c.name}=${c.value}`)
-    .join('; ');
-    return cookieHeader;
+      .filter(c => BACKEND_COOKIE_ALLOWLIST.some(prefix => c.name.startsWith(prefix)))
+      .map(c => `${c.name}=${c.value}`)
+      .join('; ');
+    return cookieHeader || undefined;
   } catch {
     // 在非服务端环境中可能会失败，返回 undefined
     return undefined;
@@ -128,8 +132,36 @@ async function getCookieHeader(): Promise<string | undefined> {
 }
 
 async function hasCookieAuthContext(): Promise<boolean> {
-  const cookieHeader = await getCookieHeader();
-  return !!cookieHeader && cookieHeader.includes('=');
+  try {
+    const cookieStore = await cookies();
+    const allCookies = cookieStore.getAll();
+    console.log('[API Client] cookie store keys:', allCookies.map(c => c.name));
+    // 有 access_token（后端 session cookie）或 auth-mode=cookie 标记即视为已认证
+    const hasAccessToken = allCookies.some(c => c.name === 'access_token');
+    const hasCookieMode = allCookies.some(c => c.name === 'auth-mode' && c.value === 'cookie');
+    return hasAccessToken || hasCookieMode;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 从 Response 的 Set-Cookie headers 中提取 name=value 对，
+ * 拼成可直接用于下一个请求 Cookie header 的字符串
+ */
+function extractCookiesFromResponse(response: Response): string {
+  const extendedHeaders = response.headers as Headers & { getSetCookie?: () => string[] };
+  const setCookieHeaders: string[] = typeof extendedHeaders.getSetCookie === 'function'
+    ? extendedHeaders.getSetCookie()
+    : (response.headers.get('set-cookie') ? [response.headers.get('set-cookie')!] : []);
+
+  return setCookieHeaders
+    .map((cookieStr) => {
+      const nameValue = cookieStr.split(';')[0];
+      return nameValue?.trim() ?? '';
+    })
+    .filter(Boolean)
+    .join('; ');
 }
 
 async function shouldSendAuthorization(token?: string): Promise<boolean> {
@@ -199,15 +231,20 @@ export interface RegisterResponse {
 // 基础请求方法 - 所有响应统一封装成 { data: ... } 格式
 async function request<T>(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  extraCookies?: string
 ): Promise<T> {
   const cookieHeader =
     BACKEND_REQUEST_AUTH_MODE === 'cookie' ? await getCookieHeader() : undefined;
+
+  // 合并 cookie store 中的 cookie 和额外传入的 cookie（如上一个请求的 Set-Cookie）
+  const mergedCookieHeader = [cookieHeader, extraCookies].filter(Boolean).join('; ') || undefined;
+
   const config: RequestInit = {
     ...options,
     headers: {
       ...options.headers,
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      ...(mergedCookieHeader ? { Cookie: mergedCookieHeader } : {}),
     },
   };
 
@@ -384,7 +421,8 @@ export const apiClient = {
 
       console.log('[API Client] 请求参数:', formData.toString());
 
-      const tokenResponse = await request<{ data: TokenResponse }>(TOKEN_ENDPOINT, {
+      // 直接用原始 fetch 请求 connect/token，以便提取 Set-Cookie 用于后续请求
+      const tokenRawResponse = await fetch(TOKEN_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -392,8 +430,27 @@ export const apiClient = {
         body: formData.toString(),
       });
 
-      const tokenData = tokenResponse.data || ({} as TokenResponse);
-      const accessToken = tokenData.access_token;
+      // 提取 Set-Cookie，用于链式传递给下一个请求
+      const tokenSetCookies = extractCookiesFromResponse(tokenRawResponse);
+      console.log('[API Client] connect/token Set-Cookie cookies:', tokenSetCookies || '(none)');
+
+      // 同步写入 Next.js cookie store（供后续页面请求使用）
+      await syncAuthCookies({ response: tokenRawResponse });
+
+      // 解析 token 响应体
+      let tokenData: TokenResponse = {} as TokenResponse;
+      try {
+        const tokenBody = await tokenRawResponse.json();
+        tokenData = tokenBody?.data ?? tokenBody ?? {};
+      } catch {
+        // ignore parse error
+      }
+
+      if (!tokenRawResponse.ok) {
+        const errData = tokenData as unknown as Record<string, string>;
+        const errorMessage = errData.error_description || errData.message || 'Login failed';
+        throw new ApiError(errorMessage, tokenRawResponse.status);
+      }
 
       // 检查是否需要2FA
       if (tokenData.twoFactorRequired) {
@@ -416,12 +473,24 @@ export const apiClient = {
         };
       }
 
-      console.log('[API Client] Token 获取成功，准备获取用户信息');
+      let userInfoResponse: { data: UserMeResponse };
 
-      // 获取用户信息
-      const userInfoResponse = accessToken
-        ? await authenticatedRequest<{ data: UserMeResponse }>(USER_ME_ENDPOINT, accessToken)
-        : await request<{ data: UserMeResponse }>(USER_ME_ENDPOINT);
+      if (BACKEND_REQUEST_AUTH_MODE === 'token') {
+        // token 模式：用 response body 里的 access_token 作为 Bearer token
+        const accessToken = tokenData.access_token;
+        if (!accessToken) {
+          throw new ApiError('Login failed: no access_token in response', 401);
+        }
+        console.log('[API Client] Token 获取成功，准备获取用户信息（token 模式，Bearer token）');
+        // 同时把 token 写入 cookie store 供后续请求使用
+        await syncAuthCookies({ token: accessToken, refreshToken: tokenData.refresh_token, rememberMe: true });
+        userInfoResponse = await authenticatedRequest<{ data: UserMeResponse }>(USER_ME_ENDPOINT, accessToken);
+      } else {
+        // cookie 模式：将 connect/token 返回的 Set-Cookie 直接传给 user/me
+        // 因为 Next.js cookie store 在同一请求周期内无法读取刚写入的 cookie
+        console.log('[API Client] Token 获取成功，准备获取用户信息（cookie 模式，直接传递 Set-Cookie）');
+        userInfoResponse = await request<{ data: UserMeResponse }>(USER_ME_ENDPOINT, {}, tokenSetCookies || undefined);
+      }
 
       const userInfo = userInfoResponse.data;
       console.log('[API Client] 用户信息获取成功:', { userId: userInfo.uid });
@@ -438,10 +507,16 @@ export const apiClient = {
         updatedAt: userInfo.createdOn,
       };
 
+      // [已注释] token 模式：从 response body 返回 accessToken / refreshToken
+      // return {
+      //   user,
+      //   accessToken: accessToken || '',
+      //   refreshToken: tokenData.refresh_token,
+      // };
       return {
         user,
-        accessToken: accessToken || '',
-        refreshToken: tokenData.refresh_token,
+        accessToken: '',
+        refreshToken: undefined,
       };
     },
 

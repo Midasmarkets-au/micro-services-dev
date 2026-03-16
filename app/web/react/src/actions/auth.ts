@@ -167,7 +167,9 @@ export async function login(data: LoginData): Promise<ActionResponse<LoginRespon
       };
     }
 
-    const { user, accessToken, refreshToken } = backendResponse;
+    const { user } = backendResponse;
+    // [已注释] token 模式：从 response body 读取 accessToken / refreshToken
+    // const { user, accessToken, refreshToken } = backendResponse;
 
     if (!user) {
       return {
@@ -176,15 +178,15 @@ export async function login(data: LoginData): Promise<ActionResponse<LoginRespon
       };
     }
 
-    // 双模式兼容：后端返回 Set-Cookie 时，request 层已透传并切换 cookie 模式；
-    // 否则回退为 token 模式，写入 auth-token。
-    if (accessToken || refreshToken) {
-      await syncAuthCookies({
-        token: accessToken || undefined,
-        refreshToken: refreshToken || undefined,
-        rememberMe: !!rememberMe,
-      });
-    }
+    // [已注释] token 模式：将 response body 中的 token 写入 cookie
+    // cookie 模式下，token 已由 request 层通过 Set-Cookie 透传写入，无需在此处理
+    // if (accessToken || refreshToken) {
+    //   await syncAuthCookies({
+    //     token: accessToken || undefined,
+    //     refreshToken: refreshToken || undefined,
+    //     rememberMe: !!rememberMe,
+    //   });
+    // }
 
     return {
       success: true,

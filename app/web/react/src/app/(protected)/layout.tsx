@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { DashboardHeader } from '@/components/layout';
-import { getAuthCookie } from '@/lib/auth/cookies';
+import { getAuthCookie, getAuthMode } from '@/lib/auth/cookies';
 import { UserDataProvider, RouteGuard } from '@/components/providers';
 
 export default async function ProtectedLayout({
@@ -8,12 +8,13 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 检查是否有 token（middleware 已经做过一次检查，这里双保险）
+  // 检查是否有 token 或 cookie 模式（middleware 已经做过一次检查，这里双保险）
   // 真正的 token 验证在 UserDataProvider 中进行
   const token = await getAuthCookie();
+  const authMode = await getAuthMode();
   
-  // 如果没有 token，直接重定向
-  if (!token) {
+  // cookie 模式下没有 auth-token，但 auth-mode=cookie 表示已登录
+  if (!token && authMode !== 'cookie') {
     redirect('/sign-in');
   }
   
