@@ -8,7 +8,7 @@ export function EventShopSkeleton() {
   return (
     <div className="flex flex-col gap-3 md:gap-5 w-full">
       {/* NotificationBar 骨架 */}
-      <Bone className="h-9 w-full rounded" />
+      {/* <Bone className="h-9 w-full rounded" /> */}
 
       <div className="flex flex-col md:flex-row gap-3 md:gap-5 w-full flex-1 min-h-0">
         {/* 左侧：UserInfoCard + Sidebar */}

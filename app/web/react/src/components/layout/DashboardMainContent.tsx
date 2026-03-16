@@ -101,7 +101,6 @@ export function DashboardMainContent() {
           execute(getDemoAccounts),
           execute(getServiceMap),
         ]);
-
       if (accountsResult.success) {
         setLiveAccounts(accountsResult.data || []);
       }

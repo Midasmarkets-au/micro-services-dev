@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useToast } from './useToast';
@@ -13,6 +13,7 @@ export interface ActionResponse<T = unknown> {
   data?: T;
   error?: string;
   errorCode?: string;
+  statusCode?: number;
   message?: string;
   /** 是否跳过 Toast 提示，由业务 action 决定 */
   skipToast?: boolean;
@@ -45,6 +46,27 @@ export function useServerAction(options: UseServerActionOptions = {}) {
   const tErrors = useTranslations('errorCodes');
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
+  const unauthorizedRedirectingRef = useRef(false);
+
+  /**
+   * 统一判断是否为 401 / Unauthorized
+   */
+  const isUnauthorizedError = useCallback(
+    (payload?: { errorCode?: string; error?: string; statusCode?: number } | null): boolean => {
+      if (!payload) return false;
+      if (payload.statusCode === 401) return true;
+
+      const errorCode = payload.errorCode?.toLowerCase();
+      if (errorCode === 'unauthorized' || errorCode === '__unauthorized__') {
+        return true;
+      }
+
+      const errorText = payload.error?.toLowerCase();
+      if (!errorText) return false;
+      return errorText.includes('unauthorized') || errorText.includes('401');
+    },
+    []
+  );
 
   /**
    * 将 errorCode 转换为国际化文本
@@ -85,16 +107,22 @@ export function useServerAction(options: UseServerActionOptions = {}) {
       try {
         const result = await action(...args);
         if (!result.success) {
+          if (unauthorizedRedirectingRef.current) {
+            return result;
+          }
+
           const errorCode = result.errorCode;
           const rawError = result.error || result.message || 'Request failed';
           
-          // 如果是 Unauthorized 错误，自动跳转登录页
-          if (errorCode === 'Unauthorized' || rawError === 'Unauthorized') {
-            router.push('/sign-in');
+          // 401 / Unauthorized：静默跳转登录，不弹错误 Toast
+          if (isUnauthorizedError({ errorCode, error: rawError, statusCode: result.statusCode })) {
+            unauthorizedRedirectingRef.current = true;
+            router.replace('/sign-in');
             return {
               success: false,
               error: 'Unauthorized',
               errorCode: 'Unauthorized',
+              statusCode: 401,
             };
           }
           
@@ -122,8 +150,32 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         onSuccess?.(result.data as T);
         return result;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Network error';
+        if (unauthorizedRedirectingRef.current) {
+          return {
+            success: false,
+            error: 'Unauthorized',
+            errorCode: 'Unauthorized',
+            statusCode: 401,
+          };
+        }
+
+        const errorMessage = error instanceof Error ? error.message : 'Network error';
+        const unknownError = error as { statusCode?: number; errorCode?: string; message?: string } | null;
+        const statusCode = unknownError?.statusCode;
+        const errorCode = unknownError?.errorCode;
+
+        // 异常场景下也拦截 401：不弹框，直接跳转登录
+        if (isUnauthorizedError({ errorCode, error: errorMessage, statusCode })) {
+          unauthorizedRedirectingRef.current = true;
+          //router.replace('/sign-in');
+          router.push('/sign-in');
+          return {
+            success: false,
+            error: 'Unauthorized',
+            errorCode: 'Unauthorized',
+            statusCode: 401,
+          };
+        }
 
         if (showErrorToast) {
           showError('networkError');
@@ -134,13 +186,14 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         return {
           success: false,
           error: errorMessage,
-          errorCode: 'networkError',
+          errorCode: errorCode || 'networkError',
+          statusCode,
         };
       } finally {
         setIsLoading(false);
       }
     },
-    [showErrorToast, showError, translateError, onSuccess, onError, router]
+    [showErrorToast, showError, translateError, onSuccess, onError, router, isUnauthorizedError]
   );
 
   /**

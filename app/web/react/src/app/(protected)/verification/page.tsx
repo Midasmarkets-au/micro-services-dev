@@ -67,7 +67,7 @@ export default function VerificationPage() {
         // 根据已有数据设置已完成的步骤
         const completed: MainStep[] = [];
         if (data?.info) completed.push('info');
-        if (data?.financial) completed.push('financial');
+        // if (data?.financial) completed.push('financial');
         if (data?.agreement) completed.push('agreement');
         if (data?.document && data.document.length > 0) completed.push('document');
         
@@ -78,9 +78,10 @@ export default function VerificationPage() {
           setCurrentStep('complete');
         } else if (!data?.info) {
           setCurrentStep('info');
-        } else if (!data?.financial) {
-          setCurrentStep('financial');
-        } else if (!data?.agreement) {
+        // } else if (!data?.financial) {
+        //   setCurrentStep('financial');
+        // }
+        }else if (!data?.agreement) {
           setCurrentStep('agreement');
         } else if (!data?.document || data.document.length === 0) {
           setCurrentStep('document');
@@ -274,14 +275,14 @@ export default function VerificationPage() {
           />
         )}
 
-        {currentStep === 'financial' && (
+        {/* {currentStep === 'financial' && (
           <FinancialInfoForm
             initialData={verificationData?.financial}
             onSubmit={handleFinancialSubmit}
             onBack={handleBack}
             isLoading={isLoading}
           />
-        )}
+        )} */}
 
         {currentStep === 'agreement' && (
           <AgreementForm

@@ -8,10 +8,10 @@ export type MainStep = 'info' | 'financial' | 'agreement' | 'document' | 'comple
 
 const mainStepDefs: { id: MainStep; labelKey: string; number: number }[] = [
   { id: 'info', labelKey: 'personalInfo', number: 1 },
-  { id: 'financial', labelKey: 'financialInfo', number: 2 },
-  { id: 'agreement', labelKey: 'agreement', number: 3 },
-  { id: 'document', labelKey: 'documents', number: 4 },
-  { id: 'complete', labelKey: 'complete', number: 5 },
+  //{ id: 'financial', labelKey: 'financialInfo', number: 2 },
+  { id: 'agreement', labelKey: 'agreement', number: 2 },
+  { id: 'document', labelKey: 'documents', number: 3 },
+  { id: 'complete', labelKey: 'complete', number: 4 },
 ];
 
 interface VerificationStepperProps {

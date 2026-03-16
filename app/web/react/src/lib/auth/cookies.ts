@@ -74,7 +74,6 @@ export async function syncAuthCookies({
   const cookieHeaders =
     setCookieHeaders.length > 0 ? setCookieHeaders : response ? extractSetCookieHeaders(response) : [];
   const hasSetCookie = cookieHeaders.length > 0;
-  console.log('cookieHeaders', cookieHeaders);
   // 规则：
   // 1) 若后端返回 Set-Cookie，优先认为是 cookie 模式（不再依赖 token）
   // 2) 若没有 Set-Cookie 且有 token，走 token 模式
@@ -116,14 +115,23 @@ export async function syncAuthCookies({
     const expires =
       typeof attrsObj.expires === 'string' ? new Date(attrsObj.expires) : undefined;
 
+    const originalSameSite = normalizeSameSite(attrsObj.samesite);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // SameSite=none 要求 Secure，本地 HTTP 环境浏览器会拒绝保存，降级为 lax
+    const sameSite: CookieSameSite =
+      originalSameSite === 'none' && !isProduction ? 'lax' : originalSameSite;
+    // 非生产环境同步去掉 Secure 标志，避免 HTTP 下 cookie 被丢弃
+    const secure = isProduction ? 'secure' in attrsObj : false;
+
     cookieStore.set(name, value, {
       httpOnly: 'httponly' in attrsObj,
-      secure: 'secure' in attrsObj,
+      secure,
       path: (attrsObj.path as string) || '/',
       domain: attrsObj.domain as string | undefined,
       maxAge: Number.isFinite(maxAge) ? maxAge : undefined,
       expires: expires && !Number.isNaN(expires.getTime()) ? expires : undefined,
-      sameSite: normalizeSameSite(attrsObj.samesite),
+      sameSite,
     });
   });
 }
