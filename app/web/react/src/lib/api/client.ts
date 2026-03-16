@@ -31,7 +31,7 @@ export const API_BASE = `${API_BASE_URL}${API_PREFIX}`;
 type BackendRequestAuthMode = 'token' | 'cookie';
 const envBackendRequestAuthMode = process.env.BACKEND_REQUEST_AUTH_MODE?.toLowerCase();
 export const BACKEND_REQUEST_AUTH_MODE: BackendRequestAuthMode =
-  envBackendRequestAuthMode === 'cookie' ? 'cookie' : 'token';
+  envBackendRequestAuthMode === 'token' ? 'token' : 'cookie';
 
 // 获取指定版本的 API 前缀
 export const getApiPrefix = (version: ApiVersion = DEFAULT_API_VERSION): string => `/api/${version}`;
@@ -367,7 +367,7 @@ async function authenticatedRequest<T>(
     url,
     tokenPrefix: token?.substring(0, 50) + '...',
   });
-  
+
 
   const sendAuthorization = await shouldSendAuthorization(token);
 
