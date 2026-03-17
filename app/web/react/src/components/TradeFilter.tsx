@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUserStore } from '@/stores';
 import { ServiceTypes } from '@/types/accounts';
@@ -224,21 +224,20 @@ export function TradeFilter({
     [serviceOptions],
   );
 
-  const [status, setStatus] = useState<string>(defaultStatusValue);
+  const [status, setStatus] = useState<string | undefined>(undefined);
   const [isClosed, setIsClosed] = useState(false);
   const [serviceId, setServiceId] = useState<string>(defaultServiceValue);
   const [symbol, setSymbol] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultDateRange);
 
-  const isInitialMount = useRef(true);
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    setStatus(defaultStatusValue);
-  }, [defaultStatusValue]);
+  const resolvedStatus = useMemo(() => {
+    if (!status) return defaultStatusValue;
+    if (!statusOptions?.length) return status;
+    return statusOptions.some((opt) => opt.value === status)
+      ? status
+      : defaultStatusValue;
+  }, [status, statusOptions, defaultStatusValue]);
 
   const resolveStateIds = useCallback(
     (statusValue: string): number[] | undefined => {
@@ -256,7 +255,7 @@ export function TradeFilter({
       const params: Record<string, unknown> = {};
 
       if (!overrides?.clearStatus) {
-        const stateIds = resolveStateIds(status);
+        const stateIds = resolveStateIds(resolvedStatus);
         if (stateIds) params.StateIds = stateIds;
       }
 
@@ -290,7 +289,7 @@ export function TradeFilter({
 
       return clearSumUpFields(params);
     },
-    [status, isClosed, serviceId, symbol, accountNumber, dateRange, resolveStateIds, visibleFields],
+    [resolvedStatus, isClosed, serviceId, symbol, accountNumber, dateRange, resolveStateIds, visibleFields],
   );
 
   // ---- Actions ----
@@ -306,7 +305,7 @@ export function TradeFilter({
   };
 
   const handleReset = () => {
-    setStatus(defaultStatusValue);
+    setStatus(undefined);
     setIsClosed(false);
     setServiceId(defaultServiceValue);
     setSymbol('');
@@ -334,7 +333,7 @@ export function TradeFilter({
 
     const params: Record<string, unknown> = {};
 
-    const stateIds = resolveStateIds(status);
+    const stateIds = resolveStateIds(resolvedStatus);
     if (stateIds) params.StateIds = stateIds;
 
     if (visibleFields.has('isClosed')) params.isClosed = true;
@@ -359,7 +358,7 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {statusLabel || t('fields.status')}
           </span>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={resolvedStatus} onValueChange={setStatus}>
             <SelectTrigger triggerSize="sm" className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
@@ -484,8 +483,8 @@ export function TradeFilter({
   return (
     <div>
       {/* Desktop */}
-      <div className="hidden md:flex md:flex-wrap md:items-center md:justify-between md:gap-x-8 md:gap-y-3">
-        <div className="flex shrink-0 flex-wrap items-center gap-5 lg:gap-8">
+      <div className="hidden md:flex md:items-center">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:gap-3">
           {filterControls}
         </div>
       </div>

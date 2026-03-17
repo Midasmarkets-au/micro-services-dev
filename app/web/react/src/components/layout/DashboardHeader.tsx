@@ -118,7 +118,7 @@ export function DashboardHeader() {
   return (
     <>
       <header className="w-full border-b border-border bg-surface">
-        <div className="container-responsive flex h-16 items-center justify-between sm:h-20">
+        <div className="menu-responsive flex h-16 items-center justify-between sm:h-20">
           {/* Logo 和导航 */}
           <div className="flex items-center gap-4 sm:gap-6 lg:gap-10">
             {/* 移动端汉堡菜单按钮 */}
@@ -152,7 +152,10 @@ export function DashboardHeader() {
             </Link>
 
             {/* 桌面端导航菜单 - 胶囊形状 */}
-            <nav className="hidden items-start gap-8 overflow-x-auto rounded-[500px] bg-surface-secondary/80 px-10 pt-2 backdrop-blur-[28px] md:flex lg:gap-[60px]">
+            <nav
+              className="hidden items-start overflow-x-auto rounded-[500px] bg-surface-secondary/80 px-5 pt-2 backdrop-blur-[28px] md:flex"
+              style={{ gap: 'clamp(30px, calc(-4.286px + 3.348vw), 60px)' }}
+            >
               {isMenuLoading ? (
                 // 菜单骨架屏
                 <>

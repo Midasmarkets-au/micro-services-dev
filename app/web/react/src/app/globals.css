@@ -594,6 +594,13 @@ input:-webkit-autofill:active {
   padding-left: 8.33%;  /* 240px / 1920px */
   padding-right: 8.33%;
 }
+.menu-responsive {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  /* 1920 下回到 8.33%(160px)，并在更小视口时平滑收缩到 20px */
+  padding-inline: clamp(20px, calc(-140px + 15.625vw), 160px);
+}
 
 @media (max-width: 1536px) {
   .container-responsive {

@@ -368,13 +368,13 @@
     "support": "Support",
     "store": "Store",
     "menu": {
-      "dashboard": "User Management",
+      "dashboard": "Dashboard",
       "verification": "Verification",
       "account": "Account",
       "wallet": "Wallet",
-      "platforms": "Trading Platform",
+      "platforms": "Platform",
       "supports": "Support",
-      "eventshop": "Store",
+      "eventshop": "Eventshop",
       "ib": "IB Center",
       "sales": "Sales Center"
     },
@@ -2075,6 +2075,18 @@
       "copied": "Copied",
       "copy": "Copy",
       "bkmc": "BKMC"
+    },
+    "newCustomers": {
+      "title": "New Customers",
+      "all": "All",
+      "hasDeposit": "Deposited",
+      "noDeposit": "Not Deposited",
+      "customer": "Customer",
+      "email": "Email",
+      "createdTime": "Created Time",
+      "status": "Status",
+      "statusDeposited": "Deposited",
+      "statusNotDeposited": "Not Deposited"
     },
     "customers": {
       "title": "Customers",
