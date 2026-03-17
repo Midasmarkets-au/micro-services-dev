@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
   // 基础样式不包含字体大小，由 size 变体控制
-  'inline-flex items-center justify-center rounded font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40',
+  'inline-flex items-center justify-center rounded font-medium transition-colors cursor-pointer focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
       variant: {

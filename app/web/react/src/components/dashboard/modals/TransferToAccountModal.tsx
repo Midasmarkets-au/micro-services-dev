@@ -290,6 +290,7 @@ export function TransferToAccountModal({
 
           {/* Agreement Checkbox */}
           <Checkbox
+            variant="radio"
             checked={agreed}
             onCheckedChange={(checked) => setAgreed(checked === true)}
             label={t('transferAgreement')}

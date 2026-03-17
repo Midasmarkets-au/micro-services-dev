@@ -1,12 +1,14 @@
 'use client';
 
 import { useUserStore } from '@/stores/userStore';
+import { TwoFactorAuthDialog } from '@/components/layout/TwoFactorAuthDialog';
 import {
   DashboardSidebar,
   DashboardMainContent,
   DashboardNotifications,
 } from '@/components/layout';
 import { DashboardSkeleton } from '@/components/ui';
+
 export default function DashboardPage() {
   // 从 store 获取加载状态
   const { isLoading, isInitialized, user } = useUserStore();
@@ -20,9 +22,11 @@ export default function DashboardPage() {
 
   return (
     <>
+      <TwoFactorAuthDialog />
+
       {/* 移动端：内容优先，sidebar 在底部 */}
       {/* 桌面端：sidebar - content - notifications */}
-      
+
       {/* 左侧边栏 - 桌面端显示在左侧，移动端显示在内容下方 */}
       <div className="order-2 md:order-1 md:contents">
         <DashboardSidebar />

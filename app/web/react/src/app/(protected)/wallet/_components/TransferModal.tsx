@@ -474,7 +474,7 @@ export function TransferModal({
           {/* 确认勾选 */}
           <div className="mb-8">
             <Checkbox
-              variant="circle"
+              variant="radio"
               checked={confirmed}
               onCheckedChange={(checked) => setConfirmed(checked === true)}
               label={t('transfer.confirmCheckbox')}

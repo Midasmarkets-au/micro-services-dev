@@ -94,6 +94,7 @@ export async function getVerificationStatus(): Promise<ActionResponse<Verificati
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -123,6 +124,7 @@ export async function saveStartedInfo(data: StartedInfoData): Promise<ActionResp
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -154,6 +156,7 @@ export async function checkClientAnswer(data: QuizAnswerData): Promise<ActionRes
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -184,6 +187,7 @@ export async function checkClientProfessionalAnswer(data: QuizAnswerData): Promi
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -213,6 +217,7 @@ export async function getMyReferralCode(): Promise<ActionResponse<MyReferralCode
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -242,6 +247,7 @@ export async function getReferralInfoByReferralCode(code: string): Promise<Actio
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -271,6 +277,7 @@ export async function savePersonalInfo(data: PersonalInfoData): Promise<ActionRe
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -300,6 +307,7 @@ export async function saveFinancialInfo(data: FinancialInfoData): Promise<Action
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -329,6 +337,7 @@ export async function saveAgreement(data: AgreementData): Promise<ActionResponse
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -361,6 +370,7 @@ export async function submitDocument(data: DocumentSubmitData): Promise<ActionRe
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -413,6 +423,7 @@ export async function uploadFile(formDataEntries: {
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -453,6 +464,7 @@ export async function uploadVerificationDocument(
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -498,6 +510,7 @@ export async function uploadChunk(formDataEntries: {
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
@@ -540,6 +553,7 @@ export async function mergeChunks(formDataEntries: {
         success: false,
         error: error.message,
         errorCode: error.errorCode,
+        statusCode: error.statusCode,
       };
     }
 
