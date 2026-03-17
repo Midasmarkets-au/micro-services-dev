@@ -7,6 +7,7 @@ using Bacera.Gateway.Core.Utility;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting;
+using Bacera.Gateway.Web.Services;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +25,7 @@ public class ReportController(
     TenantDbContext tenantCtx,
     ITenantGetter tenantGetter,
     IBackgroundJobClient backgroundJobClient,
+    IReportServiceClient reportServiceClient,
     ReportService reportService,
     IReportJob reportJob,
     MyDbContextPool myDbContextPool)
@@ -133,7 +135,7 @@ public class ReportController(
         tenantCtx.ReportRequests.Add(item);
         await tenantCtx.SaveChangesAsync();
 
-        backgroundJobClient.Enqueue<IReportJob>(HangFireQueues.IntensiveJob, x => x.ProcessReportRequest(tenantGetter.GetTenantId(), item.Id));
+        await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
 
         return Ok(item);
     }
@@ -402,15 +404,14 @@ public class ReportController(
                     pairedReport.FileName = "";
                     pairedReport.GeneratedOn = null;
                     await tenantCtx.SaveChangesAsync();
-                    backgroundJobClient.Enqueue<IReportJob>(HangFireQueues.IntensiveJob, 
-                        x => x.ProcessReportRequest(tenantGetter.GetTenantId(), pairedReport.Id));
+                    await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), pairedReport.Id);
                 }
             }
         }
         
         await tenantCtx.SaveChangesAsync();
-        
-        backgroundJobClient.Enqueue<IReportJob>(HangFireQueues.IntensiveJob, x => x.ProcessReportRequest(tenantGetter.GetTenantId(), item.Id));
+
+        await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
         return Ok(item);
     }
 

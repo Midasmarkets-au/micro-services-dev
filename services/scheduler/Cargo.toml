@@ -1,0 +1,54 @@
+[package]
+name = "scheduler"
+version = "0.1.0"
+edition = "2021"
+description = "Scheduler Service - background job processing for report generation (port of mono's ReportJob/ReportService)"
+
+[dependencies]
+# Async runtime & web
+tokio = { workspace = true }
+axum = { version = "0.8", features = ["json", "macros"] }
+tower = { workspace = true }
+tower-http = { version = "0.6", features = ["trace"] }
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Database
+sqlx = { workspace = true, features = ["mysql"] }
+# Utils
+chrono = { workspace = true }
+uuid = { workspace = true }
+# gRPC
+tonic = { workspace = true }
+prost = { workspace = true }
+# Job queue
+apalis = { version = "1.0.0-rc.6", features = ["limit", "timeout", "retry", "catch-panic"] }
+apalis-postgres = { version = "1.0.0-rc.6", features = ["migrate"] }
+apalis-sql = { version = "1.0.0-rc.6" }
+# CSV generation
+csv = "1"
+# S3
+aws-sdk-s3 = "1.126.0"
+aws-config = "1"
+# Email
+lettre = { version = "0.11", features = ["tokio1", "tokio1-native-tls", "smtp-transport", "builder"] }
+# Redis
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Error handling
+anyhow = "1"
+thiserror = "2"
+# Env
+dotenvy = "0.15"
+# Async trait
+async-trait = "0.1"
+# Futures
+futures = "0.3"
+# Enum serde
+serde_repr = "0.1"
+apalis-board-api = { version = "1.0.0-rc.4", features = ["axum", "ui"] }
+
+[build-dependencies]
+tonic-build = { workspace = true }

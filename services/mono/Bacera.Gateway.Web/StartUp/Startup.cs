@@ -105,6 +105,12 @@ public static partial class Startup
     {
         me.AddHttpClient();
 
+        // Rust scheduler service gRPC client
+        var schedulerGrpcAddr = GetEnvValue("SCHEDULER_GRPC_URL", "http://scheduler:50053");
+        me.AddGrpcClient<Api.V1.SchedulerService.SchedulerServiceClient>(o =>
+            o.Address = new Uri(schedulerGrpcAddr));
+        me.AddScoped<IReportServiceClient, ReportServiceClient>();
+
         var idgenAddr = GetEnvValue("IDGEN_GRPC_ADDR", "http://idgen:50051");
         me.AddGrpcClient<Api.V1.ApiService.ApiServiceClient>(o => o.Address = new Uri(idgenAddr));
 
