@@ -324,7 +324,7 @@ export function CreateDemoAccountModal({
               <div />
               <div className="flex gap-2 md:gap-5">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleClose}
                   disabled={isLoading}
                   className="w-auto min-w-20 md:w-[120px]"
@@ -353,7 +353,7 @@ export function CreateDemoAccountModal({
               </Button>
               <div className="flex gap-2 md:gap-5">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleClose}
                   disabled={isLoading}
                   className="w-auto min-w-20 md:w-[120px]"

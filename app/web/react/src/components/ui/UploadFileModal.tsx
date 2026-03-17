@@ -273,7 +273,7 @@ export function UploadFileModal({
         {/* 底部按钮 */}
         <DialogFooter className="flex flex-row justify-end gap-5 mt-5">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleClose}
             disabled={isUploading}
             className="w-[120px]"

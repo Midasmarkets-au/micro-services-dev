@@ -299,7 +299,7 @@ export function TransferToAccountModal({
 
         <DialogFooter className="flex flex-row justify-end gap-3">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleClose}
             disabled={isLoading}
           >

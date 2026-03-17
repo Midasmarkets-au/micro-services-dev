@@ -322,7 +322,7 @@ export function CreateLiveAccountModal({
               <div />
               <div className="flex gap-2 md:gap-3">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleClose}
                   disabled={isLoading}
                   className="w-auto min-w-20 md:w-[120px]"
@@ -351,7 +351,7 @@ export function CreateLiveAccountModal({
               </Button>
               <div className="flex gap-2 md:gap-3">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleClose}
                   disabled={isLoading}
                   className="w-auto min-w-20 md:w-[120px]"

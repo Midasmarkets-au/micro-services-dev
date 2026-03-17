@@ -206,7 +206,7 @@ export function DashboardMainContent() {
 
       {/* 账户切换标签栏 */}
       <div className="flex flex-col">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between">
           <AccountTabs 
             activeTab={activeTab} 
             onTabChange={setActiveTab}
@@ -214,27 +214,28 @@ export function DashboardMainContent() {
           />
 
           {/* 右侧创建交易账户按钮 */}
-          <Button
-            size="xs"
-            className="gap-1"
-            onClick={() =>
-              activeTab === 'RealAccounts'
-                ? setShowCreateLiveModal(true)
-                : setShowCreateDemoModal(true)
-            }
-          >
-            <Image
-              src="/images/icons/add-plain.svg"
-              alt="add"
-              width={20}
-              height={20}
-            />
-            <span>
-              {activeTab === 'RealAccounts'
-                ? tAccounts('action.createTradeAccount')
-                : tAccounts('action.createDemoAccount')}
-            </span>
-          </Button>
+          <div className="w-full md:w-auto">
+            <Button
+              className="w-full justify-center gap-1 md:h-auto md:w-auto md:px-2.5 md:py-1"
+              onClick={() =>
+                activeTab === 'RealAccounts'
+                  ? setShowCreateLiveModal(true)
+                  : setShowCreateDemoModal(true)
+              }
+            >
+              <Image
+                src="/images/icons/add-plain.svg"
+                alt="add"
+                width={20}
+                height={20}
+              />
+              <span>
+                {activeTab === 'RealAccounts'
+                  ? tAccounts('action.createTradeAccount')
+                  : tAccounts('action.createDemoAccount')}
+              </span>
+            </Button>
+          </div>
         </div>
 
         {/* 分割线 */}

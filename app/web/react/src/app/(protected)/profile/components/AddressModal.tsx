@@ -326,7 +326,7 @@ export function AddressModal({
 
         <DialogFooter className="flex flex-row gap-5 justify-end mt-10">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleClose}
             disabled={loading}
             className="w-[100px] sm:w-[120px]"

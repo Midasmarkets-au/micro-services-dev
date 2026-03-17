@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -98,6 +98,13 @@ export function RebateRuleEditModal({
   >({});
 
   const mountedRef = useRef(false);
+  const productCategoryNameMap = useMemo(() => {
+    try {
+      return t.raw('type.productCategory') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }, [t]);
 
   // =============================================
   // Sales 模式初始化 (对应 SalesEditTopAgentForm.vue)
@@ -698,9 +705,15 @@ export function RebateRuleEditModal({
                 <hr className="my-3 border-border" />
                 <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
                   {(acct.items || []).map((item: any) => {
-                    const catName =
+                    const rawCatName =
                       productCategories.find((c) => c.key === item.cid)
                         ?.value ?? String(item.cid);
+                    const catName =
+                      productCategoryNameMap[rawCatName] ??
+                      productCategoryNameMap[
+                        rawCatName.replace(/\./g, '_')
+                      ] ??
+                      rawCatName;
                     return (
                       <div key={item.cid} className="mb-1">
                         <div className="text-xs text-text-secondary">
