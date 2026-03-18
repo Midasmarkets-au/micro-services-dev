@@ -214,7 +214,7 @@ export function RebateRuleEditModal({
 
       schema[accountType] = acct;
     }
-
+    console.log('schema', schema);
     setFilledAccountSchema(schema);
   }, [salesAccount, context, execute]);
 

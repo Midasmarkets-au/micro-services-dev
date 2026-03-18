@@ -204,7 +204,7 @@
       "997": "USN",
       "999": "PTS",
       "undefined": "Undefined"
-    }
+    } 
   },
   "errors": {
     "noPermission": {
@@ -1049,7 +1049,8 @@
       "110": "代表",
       "200": "Top IB",
       "300": "IB",
-      "400": "Client"
+      "400": "Client",
+      "1000": "Guest"
     },
     "noData": "暂无账户数据",
     "detail": {
@@ -1884,7 +1885,7 @@
       "personalRebate": "个人返佣",
       "remainRebate": "剩余返佣",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "addRatePercentage": "附加比例 %",
       "choosePipCommission": "选择点差/佣金",
       "choosePipCommissionValue": "选择数值",
@@ -1932,7 +1933,7 @@
       "personalRebate": "个人返佣",
       "remainRebate": "剩余返佣",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "addRatePercentage": "附加比例 %",
       "updateRebateRule": "更新返佣规则",
       "existRule": "已有规则",
@@ -1989,7 +1990,7 @@
       "openPrice": "开仓价",
       "closePrice": "平仓价",
       "profit": "利润",
-      "commission": "手续费",
+      "commission": "佣金",
       "swap": "过夜费",
       "paymentMethod": "支付方式",
       "email": "邮箱",
@@ -2105,7 +2106,7 @@
       "personalRebate": "个人返佣",
       "remainRebate": "剩余返佣",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "addRate": "附加费率",
       "percentage": "百分比",
       "addRatePercentage": "附加比例 %",
@@ -2145,7 +2146,7 @@
       "name": "名称",
       "accountType": "账户类型",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "percentage": "分成比例",
       "noData": "暂无数据",
       "loading": "加载中...",
@@ -2187,31 +2188,6 @@
         "310": "Wholesale",
         "400": "Client",
         "1000": "Guest"
-      },
-      "shortAccount": {
-        "0": "Unknown",
-        "1": "Idv",
-        "2": "Jont",
-        "3": "Corp",
-        "4": "Std",
-        "5": "Pro",
-        "6": "Raw",
-        "7": "Swap Free Standard",
-        "8": "Swap Free Pro",
-        "9": "Swap Free Raw",
-        "10": "Wholesale",
-        "11": "Adv",
-        "12": "Aff",
-        "13": "SEA",
-        "14": "Raw Plus",
-        "15": "JpSTDCFD",
-        "16": "JpSTDIND",
-        "17": "JpSTDFX",
-        "18": "JpALPCFD",
-        "19": "JpALPIND",
-        "20": "JpALPFX",
-        "21": "SEA Pro",
-        "22": "精英"
       },
       "accountRole": {
         "0": "未知",

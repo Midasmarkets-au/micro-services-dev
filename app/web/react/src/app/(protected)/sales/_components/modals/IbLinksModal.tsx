@@ -464,7 +464,7 @@ export function IbLinksModal({
                                       }`}
                                     >
                                       {t(
-                                        `type.shortAccount.${acc.accountType}` as any
+                                        `type.account.${acc.accountType}` as any
                                       )}
                                     </span>
                                   )
@@ -483,7 +483,7 @@ export function IbLinksModal({
                                     }`}
                                   >
                                     {t(
-                                      `type.shortAccount.${acc.accountType}` as any
+                                      `type.account.${acc.accountType}` as any
                                     )}
                                   </span>
                                 ))}

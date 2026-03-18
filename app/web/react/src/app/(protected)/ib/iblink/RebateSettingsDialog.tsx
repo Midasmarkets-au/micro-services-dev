@@ -459,7 +459,7 @@ function ClientView({
                 className="rounded-md px-2 py-0.5 text-xs font-semibold"
                 style={{ background: 'rgba(88,168,255,0.1)', color: '#4196f0' }}
               >
-                {schema.optionName === 'alpha' ? 'Standard' : schema.optionName}
+                {schema.optionName === 'alpha' ? tAccount(`accountTypes.${schema.accountType}`) : schema.optionName}
               </span>
             )}
           </div>

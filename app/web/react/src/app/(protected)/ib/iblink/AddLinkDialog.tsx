@@ -89,43 +89,47 @@ function AgentRebateTable({
     return raw[0];
   }, [defaultLevelSetting, account.accountType, account.optionName]);
 
-  useEffect(() => {
-    if (!productCategory.length) return;
-    const rows: RebateFormRow[] = productCategory.map(cat => ({
-      cid: cat.key,
-      name: categoryNameMap[cat.value] ?? categoryNameMap[cat.value.replace(/\./g, '_')] ?? cat.value,
-      total: account.items[cat.key] ?? resolvedDefault?.category?.[cat.key] ?? resolvedDefault?.Category?.[cat.key] ?? 0,
-      r: 0,
-    }));
-    setFormRows(rows);
+  const depsKey = `${account.accountType}-${account.optionName}-${isRoot}-${productCategory.length}`;
+  const [prevDepsKey, setPrevDepsKey] = useState('');
+  if (prevDepsKey !== depsKey) {
+    setPrevDepsKey(depsKey);
+    if (productCategory.length) {
+      setFormRows(productCategory.map(cat => ({
+        cid: cat.key,
+        name: categoryNameMap[cat.value] ?? categoryNameMap[cat.value.replace(/\./g, '_')] ?? cat.value,
+        total: account.items[cat.key] ?? resolvedDefault?.category?.[cat.key] ?? resolvedDefault?.Category?.[cat.key] ?? 0,
+        r: 0,
+      })));
 
-    if (isRoot && (account.allowPips.length > 0 || account.allowCommissions.length > 0)) {
-      if (account.allowPips.length > 0) {
-        const firstPip = account.allowPips[0];
-        setPcSelection({
-          selectedPC: 'pips',
-          pcValue: firstPip,
-          schema: resolvedDefault?.allowPipSetting?.[firstPip]?.items ?? null,
-        });
-      } else {
-        const firstComm = account.allowCommissions[0];
-        setPcSelection({
-          selectedPC: 'commission',
-          pcValue: firstComm,
-          schema: resolvedDefault?.allowCommissionSetting?.[firstComm]?.items ?? null,
-        });
+      if (isRoot && (account.allowPips.length > 0 || account.allowCommissions.length > 0)) {
+        if (account.allowPips.length > 0) {
+          const firstPip = account.allowPips[0];
+          setPcSelection({
+            selectedPC: 'pips',
+            pcValue: firstPip,
+            schema: resolvedDefault?.allowPipSetting?.[firstPip]?.items ?? null,
+          });
+        } else {
+          const firstComm = account.allowCommissions[0];
+          setPcSelection({
+            selectedPC: 'commission',
+            pcValue: firstComm,
+            schema: resolvedDefault?.allowCommissionSetting?.[firstComm]?.items ?? null,
+          });
+        }
       }
     }
-  }, [productCategory, account, resolvedDefault, isRoot, categoryNameMap]);
+  }
 
-  useEffect(() => {
-    if (batchPercent > 0) {
+  const applyBatchPercent = (percent: number) => {
+    setBatchPercent(percent);
+    if (percent > 0) {
       setFormRows(prev => prev.map(row => ({
         ...row,
-        r: Number((row.total * (batchPercent / 100)).toFixed(1)),
+        r: Number((row.total * (percent / 100)).toFixed(1)),
       })));
     }
-  }, [batchPercent]);
+  };
 
   const handleRChange = (cid: number, val: number) => {
     setFormRows(prev => prev.map(row => row.cid === cid ? { ...row, r: val } : row));
@@ -185,7 +189,7 @@ function AgentRebateTable({
 
   const calculate = (a: number, b: number) => {
     if (b > a) return 0;
-    return Number((a - b).toFixed(1));
+    return Number((a - b).toFixed(2));
   };
 
   return (
@@ -233,7 +237,7 @@ function AgentRebateTable({
                       min={0}
                       max={100}
                       value={batchPercent}
-                      onChange={e => setBatchPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                      onChange={e => applyBatchPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
                     />
                     <span className="text-xs">%</span>
                   </div>
@@ -772,7 +776,8 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
                                 className="rounded-md px-2 py-0.5 text-xs font-semibold"
                                 style={{ background: 'rgba(88,168,255,0.1)', color: '#4196f0' }}
                               >
-                                {acc.optionName === 'alpha' ? 'Standard' : acc.optionName}
+                                
+                                {acc.optionName === 'alpha' ? tAccount(`accountTypes.4`) : acc.optionName}
                               </span>
                             )}
                           </div>
@@ -815,7 +820,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
                                   className="rounded-md px-2 py-0.5 text-xs font-semibold"
                                   style={{ background: 'rgba(88,168,255,0.1)', color: '#4196f0' }}
                                 >
-                                  {acc.optionName === 'alpha' ? 'Standard' : acc.optionName}
+                                  {acc.optionName === 'alpha' ? tAccount(`accountTypes.4`) : acc.optionName}
                                 </span>
                               )}
                             </div>

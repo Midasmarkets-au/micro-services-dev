@@ -312,7 +312,7 @@ function AgentDetailView({
             {schema.optionName && (
               <span className="rounded-md bg-[rgba(128,0,32,0.2)] px-2 py-0.5 text-xs font-semibold text-[#800020]">
                 {schema.optionName === 'alpha'
-                  ? t('type.account.4')
+                  ? tAccount(`accountTypes.${schema.accountType}`)
                   : schema.optionName}
               </span>
             )}
@@ -419,7 +419,7 @@ function ClientDetailView({
               {schema.optionName && (
                 <span className="rounded-md bg-[rgba(128,0,32,0.2)] px-2 py-0.5 text-xs font-semibold text-[#800020]">
                   {schema.optionName === 'alpha'
-                    ? t('type.account.4')
+                    ? tAccount(`accountTypes.${schema.accountType}`)
                     : schema.optionName}
                 </span>
               )}

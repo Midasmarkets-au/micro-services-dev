@@ -369,7 +369,7 @@ export function AccountRebateRelationModal({
                                 }`}
                               >
                                 {t(
-                                  `type.shortAccount.${acc.accountType}` as any
+                                  `type.account.${acc.accountType}` as any
                                 )}
                               </span>
                             ))}
