@@ -2,6 +2,7 @@ using Bacera.Gateway.Auth;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.BackgroundJobs;
+using Bacera.Gateway.Web.Identity;
 using Bacera.Gateway.Web.Services;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
@@ -182,6 +183,10 @@ public partial class AuthControllerV2
 
         authCode.Status = (short)AuthCodeStatusTypes.Invalid;
         await ctx.SaveChangesAsync();
+
+        if (!string.IsNullOrEmpty(token.AccessToken))
+            ApplyTokenResponseHandler.AppendAccessTokenCookie(Response, token.AccessToken, token.AccessTokenLifetime, Request.IsHttps);
+
         return Ok(token);
     }
 

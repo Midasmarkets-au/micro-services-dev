@@ -1,4 +1,4 @@
-﻿using Bacera.Gateway.Web.Services;
+using Bacera.Gateway.Web.Services;
 using Microsoft.AspNetCore.Hosting;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -115,6 +115,24 @@ public class MyCache(
             return null;
 
         return await Database.HashGetAsync(key, field);
+    }
+
+    public async Task<Dictionary<string, bool>> HGetManyAsBoolAsync(string key, IEnumerable<string> fields)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            return new Dictionary<string, bool>();
+
+        var fieldList = fields.Where(f => !string.IsNullOrWhiteSpace(f)).Distinct().ToList();
+        if (fieldList.Count == 0)
+            return new Dictionary<string, bool>();
+
+        var db = Database;
+        var batch = db.CreateBatch();
+        var tasks = fieldList.ToDictionary(f => f, f => batch.HashGetAsync(key, f));
+        batch.Execute();
+        await Task.WhenAll(tasks.Values);
+
+        return tasks.ToDictionary(kv => kv.Key, kv => kv.Value.Result == "1");
     }
 
     public async Task<T?> HGetAsync<T>(string key, string field) where T : class, new()

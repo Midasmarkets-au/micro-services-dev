@@ -391,6 +391,11 @@ public sealed partial class AccountingService
             .Select(x => new { x.Amount, x.CurrencyId })
             .ToListAsync();
 
+        var foreignCurrencies = withdrawalsForSum
+            .Select(w => (CurrencyTypes)w.CurrencyId)
+            .Where(c => c != CurrencyTypes.USD && c != CurrencyTypes.USC);
+        var exchangeRates = await GetExchangeRatesForCurrenciesAsync(foreignCurrencies, CurrencyTypes.USD);
+
         decimal totalAmountInUSD = 0;
         foreach (var withdrawal in withdrawalsForSum)
         {
@@ -399,29 +404,20 @@ public sealed partial class AccountingService
 
             if (currency == CurrencyTypes.USD)
             {
-                // USD: Amount is already scaled, convert to USD units
                 amountInUSD = withdrawal.Amount / 1_000_000m;
             }
             else if (currency == CurrencyTypes.USC)
             {
-                // USC: Amount is scaled USC, USC = USD/100, so convert to USD
                 var uscUnits = withdrawal.Amount / 1_000_000m;
-                amountInUSD = uscUnits / 100m; // Convert USC to USD (1 USC = 0.01 USD)
+                amountInUSD = uscUnits / 100m;
             }
             else
             {
-                // Other currencies: convert via exchange rate
-                var exchangeRate = await GetExchangeRateAsync(currency, CurrencyTypes.USD);
-                if (exchangeRate?.SellingRate > 0)
-                {
-                    var amountInCurrencyUnits = withdrawal.Amount / 1_000_000m; // From scaled to currency units
-                    amountInUSD = amountInCurrencyUnits * exchangeRate.SellingRate;
-                }
-                else
-                {
-                    // Skip if no exchange rate available
+                if (!exchangeRates.TryGetValue(currency, out var exchangeRate) || exchangeRate.SellingRate <= 0)
                     continue;
-                }
+
+                var amountInCurrencyUnits = withdrawal.Amount / 1_000_000m;
+                amountInUSD = amountInCurrencyUnits * exchangeRate.SellingRate;
             }
 
             totalAmountInUSD += amountInUSD;

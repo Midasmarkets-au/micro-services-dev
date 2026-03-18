@@ -175,13 +175,19 @@ public class UserService(
 
     public async Task ApplyUserBlackListInfo(List<TenantUserBasicModel> items)
     {
+        var ipBlackList    = await cache.HGetManyAsBoolAsync(_ipKey, items.Select(i => i.LastLoginIp));
+        var nameBlackList  = await cache.HGetManyAsBoolAsync(_nameKey, items.Select(i => i.NativeName));
+        var phoneBlackList = await cache.HGetManyAsBoolAsync(_phoneKey, items.Select(i => i.Phone));
+        var emailBlackList = await cache.HGetManyAsBoolAsync(_emailKey, items.Select(i => i.Email));
+        var idBlackList    = await cache.HGetManyAsBoolAsync(_idNumberKey, items.Select(i => i.IdNumber));
+
         foreach (var item in items)
         {
-            item.IsInIpBlackList = await cache.HGetStringAsync(_ipKey, item.LastLoginIp) == "1";
-            item.IsInUserBlackList = await cache.HGetStringAsync(_nameKey, item.NativeName) == "1"
-                                     || await cache.HGetStringAsync(_phoneKey, item.Phone) == "1"
-                                     || await cache.HGetStringAsync(_emailKey, item.Email) == "1"
-                                     || await cache.HGetStringAsync(_idNumberKey, item.IdNumber) == "1";
+            item.IsInIpBlackList = ipBlackList.GetValueOrDefault(item.LastLoginIp);
+            item.IsInUserBlackList = nameBlackList.GetValueOrDefault(item.NativeName)
+                                     || phoneBlackList.GetValueOrDefault(item.Phone)
+                                     || emailBlackList.GetValueOrDefault(item.Email)
+                                     || idBlackList.GetValueOrDefault(item.IdNumber);
         }
     }
 
@@ -459,39 +465,25 @@ public class UserService(
         await using var transaction = await tenantCtx.Database.BeginTransactionAsync();
         try
         {
+            // Use a separate read-only context to fan out independent navigation property queries in parallel.
+            // The main tenantCtx is reserved for the transaction and delete operations.
+            await using var readCtx = pool.CreateTenantDbContext(_tenantId);
+
             var party = await tenantCtx.Parties.SingleAsync(x => x.Id == partyId);
-            party.Medium = await tenantCtx.Media
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.ApiLogs = await tenantCtx.ApiLogs
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.PartyComments = await tenantCtx.PartyComments
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.PartyRoles = await tenantCtx.PartyRoles
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.Verifications = await tenantCtx.Verifications
-                .Where(x => x.PartyId == partyId)
-                .Include(x => x.VerificationItems)
-                .ToListAsync();
-            party.TradeDemoAccounts = await tenantCtx.TradeDemoAccounts
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.LoginLogs = await tenantCtx.LoginLogs
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.Leads = await tenantCtx.Leads
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.AuthCodes = await tenantCtx.AuthCodes
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.Applications = await tenantCtx.Applications
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.Accounts = await tenantCtx.Accounts
+
+            // Fan out all independent read queries in parallel using a separate read context.
+            // EF Core does not support concurrent queries on the same DbContext instance.
+            var tMedium           = readCtx.Media.Where(x => x.PartyId == partyId).ToListAsync();
+            var tApiLogs          = readCtx.ApiLogs.Where(x => x.PartyId == partyId).ToListAsync();
+            var tPartyComments    = readCtx.PartyComments.Where(x => x.PartyId == partyId).ToListAsync();
+            var tPartyRoles       = readCtx.PartyRoles.Where(x => x.PartyId == partyId).ToListAsync();
+            var tVerifications    = readCtx.Verifications.Where(x => x.PartyId == partyId).Include(x => x.VerificationItems).ToListAsync();
+            var tDemoAccounts     = readCtx.TradeDemoAccounts.Where(x => x.PartyId == partyId).ToListAsync();
+            var tLoginLogs        = readCtx.LoginLogs.Where(x => x.PartyId == partyId).ToListAsync();
+            var tLeads            = readCtx.Leads.Where(x => x.PartyId == partyId).ToListAsync();
+            var tAuthCodes        = readCtx.AuthCodes.Where(x => x.PartyId == partyId).ToListAsync();
+            var tApplications     = readCtx.Applications.Where(x => x.PartyId == partyId).ToListAsync();
+            var tAccounts         = readCtx.Accounts
                 .Where(x => x.PartyId == partyId)
                 .Include(x => x.RebateClientRule)
                 .Include(x => x.AccountComments)
@@ -503,19 +495,75 @@ public class UserService(
                 .Include(x => x.AccountReports)
                 .Include(x => x.ReferralCodes)
                 .ToListAsync();
+            var tWallets          = readCtx.Wallets
+                .Where(x => x.PartyId == partyId)
+                .Include(x => x.WalletPaymentMethodAccesses)
+                .Include(x => x.WalletTransactions)
+                .Include(x => x.WalletDailySnapshots)
+                .ToListAsync();
+            var tEventParties     = readCtx.EventParties.Where(x => x.PartyId == partyId).Include(x => x.EventShopPoint).ToListAsync();
+            var tCommByParty      = readCtx.CommunicateHistories.Where(x => x.PartyId == partyId).ToListAsync();
+            var tCommByOperator   = readCtx.CommunicateHistories.Where(x => x.OperatorPartyId == partyId).ToListAsync();
+            var tRefReferred      = readCtx.Referrals.Where(x => x.ReferredPartyId == partyId).ToListAsync();
+            var tRefReferrer      = readCtx.Referrals.Where(x => x.ReferrerPartyId == partyId).ToListAsync();
+            var tDeposits         = readCtx.Deposits
+                .Where(x => x.PartyId == partyId)
+                .Include(x => x.Payment).ThenInclude(x => x.CryptoTransaction)
+                .Include(x => x.IdNavigation).ThenInclude(x => x.Activities)
+                .ToListAsync();
+            var tMessageRecords   = readCtx.MessageRecords.Where(x => x.ReceiverPartyId == partyId).ToListAsync();
+
+            await Task.WhenAll(
+                tMedium, tApiLogs, tPartyComments, tPartyRoles, tVerifications,
+                tDemoAccounts, tLoginLogs, tLeads, tAuthCodes, tApplications, tAccounts,
+                tWallets, tEventParties, tCommByParty, tCommByOperator,
+                tRefReferred, tRefReferrer, tDeposits, tMessageRecords
+            );
+
+            party.Medium                          = tMedium.Result;
+            party.ApiLogs                         = tApiLogs.Result;
+            party.PartyComments                   = tPartyComments.Result;
+            party.PartyRoles                      = tPartyRoles.Result;
+            party.Verifications                   = tVerifications.Result;
+            party.TradeDemoAccounts               = tDemoAccounts.Result;
+            party.LoginLogs                       = tLoginLogs.Result;
+            party.Leads                           = tLeads.Result;
+            party.AuthCodes                       = tAuthCodes.Result;
+            party.Applications                    = tApplications.Result;
+            party.Accounts                        = tAccounts.Result;
+            party.Wallets                         = tWallets.Result;
+            party.EventParties                    = tEventParties.Result;
+            party.CommunicateHistoryParties       = tCommByParty.Result;
+            party.CommunicateHistoryOperatorParties = tCommByOperator.Result;
+            party.ReferralReferredParties         = tRefReferred.Result;
+            party.ReferralReferrerParties         = tRefReferrer.Result;
+            party.Deposits                        = tDeposits.Result;
+            party.MessageRecords                  = tMessageRecords.Result;
 
             tenantCtx.RebateAgentRules.RemoveRange(party.Accounts.Where(x => x.RebateAgentRule != null)
                 .Select(x => x.RebateAgentRule!));
             tenantCtx.ReferralCodes.RemoveRange(party.Accounts.SelectMany(x => x.ReferralCodes));
 
-            var accountIds = party.Accounts.Select(y => y.Id).ToList();
-            var tradeRebates = await tenantCtx.TradeRebates
-                .Where(x => x.AccountId != null)
-                .Where(x => accountIds.Contains(x.AccountId!.Value))
-                .Include(x => x.Rebates)
-                .ThenInclude(x => x.IdNavigation)
-                .ThenInclude(x => x.Activities)
+            var accountIds       = party.Accounts.Select(y => y.Id).ToList();
+            var verificationIds  = party.Verifications.Select(y => y.Id).ToList();
+            var leadIds          = party.Leads.Select(y => y.Id).ToList();
+
+            var tTradeRebates = readCtx.TradeRebates
+                .Where(x => x.AccountId != null && accountIds.Contains(x.AccountId!.Value))
+                .Include(x => x.Rebates).ThenInclude(x => x.IdNavigation).ThenInclude(x => x.Activities)
                 .ToListAsync();
+            var tVerificationComments = readCtx.Comments
+                .Where(x => x.Type == (int)CommentTypes.Verification && verificationIds.Contains(x.RowId))
+                .ToListAsync();
+            var tLeadComments = readCtx.Comments
+                .Where(x => x.Type == (int)CommentTypes.Lead && leadIds.Contains(x.RowId))
+                .ToListAsync();
+
+            await Task.WhenAll(tTradeRebates, tVerificationComments, tLeadComments);
+
+            var tradeRebates         = tTradeRebates.Result;
+            var verificationComments = tVerificationComments.Result;
+            var leadComments         = tLeadComments.Result;
 
             var mtIds = tradeRebates.SelectMany(x => x.Rebates).Select(x => x.Id).ToList();
             var rebateWalletTransactions = await tenantCtx.WalletTransactions
@@ -529,54 +577,13 @@ public class UserService(
                 tenantCtx.Matters.RemoveRange(tr.Rebates.Select(x => x.IdNavigation));
                 tenantCtx.TradeRebates.Remove(tr);
             }
-            
-            party.Wallets = await tenantCtx.Wallets
-                .Where(x => x.PartyId == partyId)
-                .Include(x => x.WalletPaymentMethodAccesses)
-                .Include(x => x.WalletTransactions)
-                .Include(x => x.WalletDailySnapshots)
-                .ToListAsync();
 
             tenantCtx.WalletTransactions.RemoveRange(party.Wallets.SelectMany(y => y.WalletTransactions));
             tenantCtx.WalletDailySnapshots.RemoveRange(party.Wallets.SelectMany(y => y.WalletDailySnapshots));
-            
-            party.EventParties = await tenantCtx.EventParties
-                .Where(x => x.PartyId == partyId)
-                .Include(x => x.EventShopPoint)
-                .ToListAsync();
-            party.CommunicateHistoryParties = await tenantCtx.CommunicateHistories
-                .Where(x => x.PartyId == partyId)
-                .ToListAsync();
-            party.CommunicateHistoryOperatorParties = await tenantCtx.CommunicateHistories
-                .Where(x => x.OperatorPartyId == partyId)
-                .ToListAsync();
-            party.ReferralReferredParties = await tenantCtx.Referrals
-                .Where(x => x.ReferredPartyId == partyId)
-                .ToListAsync();
-            party.ReferralReferrerParties = await tenantCtx.Referrals
-                .Where(x => x.ReferrerPartyId == partyId)
-                .ToListAsync();
-            party.Deposits = await tenantCtx.Deposits
-                .Where(x => x.PartyId == partyId)
-                .Include(x => x.Payment).ThenInclude(x => x.CryptoTransaction)
-                .Include(x => x.IdNavigation)
-                .ThenInclude(x => x.Activities).ToListAsync();
-
-            party.MessageRecords = await tenantCtx.MessageRecords
-                .Where(x => x.ReceiverPartyId == partyId)
-                .ToListAsync();
 
             tenantCtx.MessageRecords.RemoveRange(party.MessageRecords);
 
-            var verificationComments = await tenantCtx.Comments
-                .Where(x => x.Type == (int)CommentTypes.Verification && party.Verifications.Select(y => y.Id).Contains(x.RowId))
-                .ToListAsync();
             var verificationCmtMap = party.Verifications.ToDictionary(x => x, x => verificationComments.Where(y => y.RowId == x.Id).ToList());
-
-            var leadComments = await tenantCtx.Comments
-                .Where(x => x.Type == (int)CommentTypes.Lead && party.Leads.Select(y => y.Id).Contains(x.RowId))
-                .ToListAsync();
-
             var leadCmtMap = party.Leads.ToDictionary(x => x, x => leadComments.Where(y => y.RowId == x.Id).ToList());
 
             tenantCtx.Comments.RemoveRange(verificationComments);

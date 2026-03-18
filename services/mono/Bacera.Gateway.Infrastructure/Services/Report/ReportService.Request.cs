@@ -72,6 +72,11 @@ partial class ReportService
     {
         var criteria = JsonConvert.DeserializeObject<DailyEquity.Criteria>(request.Query, Utils.AppJsonSerializerSettings);
         if (criteria == null) return new Tuple<ReportRequest, Medium?>(request, null);
+        if (criteria.From == null || criteria.To == null)
+        {
+            logger.LogError("DailyEquity ReportRequest {Id} is missing From or To date in Query: {Query}", request.Id, request.Query);
+            return new Tuple<ReportRequest, Medium?>(request, null);
+        }
 
         var hoursGap = await configSvc.GetHoursGapForMT5Async();
         

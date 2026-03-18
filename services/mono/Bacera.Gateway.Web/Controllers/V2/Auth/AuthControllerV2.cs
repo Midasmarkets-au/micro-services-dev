@@ -276,6 +276,15 @@ public partial class AuthControllerV2(
     }
 
     [AllowAnonymous]
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult Logout()
+    {
+        Identity.ApplyTokenResponseHandler.DeleteAccessTokenCookie(Response, Request.IsHttps);
+        return NoContent();
+    }
+
+    [AllowAnonymous]
     [HttpPost("password/forgot")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
