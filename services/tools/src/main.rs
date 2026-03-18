@@ -17,8 +17,13 @@ use tracing::{error, info};
 
 const FF_CALENDAR_URL: &str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
 const CLAUDE_API_URL: &str = "https://api.anthropic.com/v1/messages";
-const OUTPUT_FILE: &str = "ff_calendar_thisweek.json";
-const S3_KEY: &str = "data/ff_calendar_thisweek.json";
+
+fn timestamped_filename() -> (String, String) {
+    let ts = Utc::now().format("%Y%m%dT%H%M%SZ");
+    let filename = format!("ff_calendar_thisweek_{ts}.json");
+    let s3_key = format!("data/{filename}");
+    (filename, s3_key)
+}
 
 /// Sunday 07:00 UTC
 /// Forex Factory refreshes thisweek.json at the start of each week (Sunday midnight US Eastern):
@@ -100,6 +105,9 @@ struct TranslatedEvent {
 async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
     info!("Starting FF Calendar fetch & translate job");
 
+    let (output_file, s3_key) = timestamped_filename();
+    info!("Output: {output_file}  S3: {s3_key}");
+
     // 1. Fetch
     let events: Vec<CalendarEvent> = ctx
         .http
@@ -114,6 +122,7 @@ async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
     if events.is_empty() {
         upload_s3(
             ctx,
+            &s3_key,
             serde_json::to_vec_pretty(&Vec::<TranslatedEvent>::new())?,
         )
         .await?;
@@ -164,26 +173,26 @@ async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
 
     // 5. Save local file
     let json_bytes = serde_json::to_vec_pretty(&translated)?;
-    std::fs::write(OUTPUT_FILE, &json_bytes)?;
-    info!("Saved: {OUTPUT_FILE}");
+    std::fs::write(&output_file, &json_bytes)?;
+    info!("Saved: {output_file}");
 
     // 6. Upload to S3
-    upload_s3(ctx, json_bytes).await?;
+    upload_s3(ctx, &s3_key, json_bytes).await?;
 
     Ok(())
 }
 
-async fn upload_s3(ctx: &AppCtx, data: Vec<u8>) -> Result<()> {
-    info!("Uploading to s3://{}/{S3_KEY}", ctx.s3_bucket);
+async fn upload_s3(ctx: &AppCtx, s3_key: &str, data: Vec<u8>) -> Result<()> {
+    info!("Uploading to s3://{}/{s3_key}", ctx.s3_bucket);
     ctx.s3
         .put_object()
         .bucket(&ctx.s3_bucket)
-        .key(S3_KEY)
+        .key(s3_key)
         .body(data.into())
         .content_type("application/json")
         .send()
         .await
-        .with_context(|| format!("S3 upload failed: {S3_KEY}"))?;
+        .with_context(|| format!("S3 upload failed: {s3_key}"))?;
     info!("S3 upload complete");
     Ok(())
 }
