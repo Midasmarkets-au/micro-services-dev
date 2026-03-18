@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package api.v1;
+
+option csharp_namespace = "Api.V1";
+
+// SchedulerService — exposed by the Rust scheduler service.
+// mono calls this to enqueue report jobs and trigger cron jobs.
+service SchedulerService {
+  // Enqueue a ProcessReportRequest job (replaces Hangfire.Enqueue<IReportJob>).
+  rpc EnqueueReportRequest(EnqueueReportRequestRequest) returns (EnqueueReportRequestResponse);
+
+  // Manually trigger the close-trade cron job.
+  rpc TriggerCloseTrade(TriggerJobRequest) returns (TriggerJobResponse);
+
+  // Manually trigger the account-daily-confirmation cron job.
+  rpc TriggerAccountDaily(TriggerJobRequest) returns (TriggerJobResponse);
+}
+
+// MonoCallbackService — exposed by mono.
+// The Rust scheduler calls this after a report is generated,
+// so mono can send the WebSocket popup notification to the client.
+service MonoCallbackService {
+  rpc NotifyReportDone(NotifyReportDoneRequest) returns (NotifyReportDoneResponse);
+}
+
+message EnqueueReportRequestRequest {
+  int64 tenant_id  = 1;
+  int64 request_id = 2;
+}
+
+message EnqueueReportRequestResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message TriggerJobRequest {
+  // Optional: reserved for future per-tenant trigger.
+  int64 tenant_id = 1;
+}
+
+message TriggerJobResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message NotifyReportDoneRequest {
+  int64  tenant_id   = 1;
+  int64  party_id    = 2;
+  string report_name = 3;
+}
+
+message NotifyReportDoneResponse {
+  bool success = 1;
+}

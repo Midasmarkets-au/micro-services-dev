@@ -119,17 +119,20 @@ public partial class Startup
             w => w.MonitorAsync(),
             "*/1 * * * *"));
 
-        TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IReportJob>(
-            "Close Trade Job",
-            HangFireQueues.AccountReport,
-            w => w.ExecuteCloseTradeJobAsync(),
-            "30 22 * * *"));
-
-        TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IReportJob>(
-            "Report Account Daily Confirmation",
-            HangFireQueues.AccountConfirmationReport,
-            w => w.GenerateAccountDailyConfirmationReport(CancellationToken.None),
-            Utils.IsCurrentDSTLosAngeles(DateTime.UtcNow) ? "29 21 * * 1-5" : "29 22 * * 1-5"));
+        // "Close Trade Job" and "Report Account Daily Confirmation" recurring jobs
+        // have been moved to the Rust report service (services/report).
+        // The Rust service runs its own cron scheduler and no longer needs Hangfire for these.
+        // TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IReportJob>(
+        //     "Close Trade Job",
+        //     HangFireQueues.AccountReport,
+        //     w => w.ExecuteCloseTradeJobAsync(),
+        //     "30 22 * * *"));
+        //
+        // TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IReportJob>(
+        //     "Report Account Daily Confirmation",
+        //     HangFireQueues.AccountConfirmationReport,
+        //     w => w.GenerateAccountDailyConfirmationReport(CancellationToken.None),
+        //     Utils.IsCurrentDSTLosAngeles(DateTime.UtcNow) ? "29 21 * * 1-5" : "29 22 * * 1-5"));
     }
 
     private static void TryAddOrUpdateRecurringJob(System.Action register)

@@ -128,6 +128,9 @@ app.MapControllerRoute(
 
 app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
 
+// MonoCallbackService: called by the Rust scheduler to trigger WS notifications
+app.MapGrpcService<Bacera.Gateway.Web.Grpc.MonoCallbackGrpcService>();
+
 if (app.Environment.IsDevelopment())
     app.MapGrpcReflectionService();
 

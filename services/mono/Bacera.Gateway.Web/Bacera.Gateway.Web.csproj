@@ -72,6 +72,7 @@
         <Protobuf Include="..\..\..\proto\api\v1\service.proto" ProtoRoot="..\..\..\proto" GrpcServices="Both" />
         <Protobuf Include="..\..\..\proto\api\v1\auth.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
         <Protobuf Include="..\..\..\proto\api\v1\boardcast.proto" ProtoRoot="..\..\..\proto" GrpcServices="Client" />
+        <Protobuf Include="..\..\..\proto\api\v1\scheduler.proto" ProtoRoot="..\..\..\proto" GrpcServices="Both" />
         <Protobuf Include="..\..\..\proto\google\api\annotations.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
         <Protobuf Include="..\..\..\proto\google\api\http.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
     </ItemGroup>
