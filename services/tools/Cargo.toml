@@ -1,0 +1,31 @@
+[package]
+name = "tools"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Async runtime
+tokio = { workspace = true }
+# HTTP
+reqwest = { workspace = true }
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Error handling
+anyhow = "1"
+# Env
+dotenvy = "0.15"
+# Futures
+futures = "0.3"
+# Scheduling
+apalis = { version = "1.0.0-rc.6", features = ["limit"] }
+apalis-cron = "1.0.0-rc.6"
+cron = "0.15"
+chrono = { workspace = true }
+# S3
+aws-sdk-s3 = { version = "1", features = ["behavior-version-latest"] }
+aws-config = "1"
+aws-credential-types = "1"
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
