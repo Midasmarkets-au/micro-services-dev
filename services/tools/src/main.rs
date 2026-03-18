@@ -17,6 +17,27 @@ use tracing::{error, info};
 
 const FF_CALENDAR_URL: &str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
 const CLAUDE_API_URL: &str = "https://api.anthropic.com/v1/messages";
+const CACHE_FILE: &str = "translation_cache.json";
+
+type TranslationCache = HashMap<String, HashMap<String, String>>;
+
+fn load_cache() -> TranslationCache {
+    std::fs::read_to_string(CACHE_FILE)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_cache(cache: &TranslationCache) {
+    match serde_json::to_vec_pretty(cache) {
+        Ok(bytes) => {
+            if let Err(e) = std::fs::write(CACHE_FILE, bytes) {
+                error!("Failed to save translation cache: {e}");
+            }
+        }
+        Err(e) => error!("Failed to serialize translation cache: {e}"),
+    }
+}
 
 fn weekly_filename() -> (String, String) {
     let week = Utc::now().date_naive().iso_week().week();
@@ -134,31 +155,37 @@ async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
         .collect();
     unique_titles.sort_unstable();
 
+    // 3. Load cache, split into hit / miss
+    let mut cache = load_cache();
+    let uncached: Vec<String> = unique_titles
+        .iter()
+        .filter(|t| !cache.contains_key(*t))
+        .cloned()
+        .collect();
+
     info!(
-        "Translating {} unique titles into {} languages",
+        "{} unique titles: {} from cache, {} need translation",
         unique_titles.len(),
-        LANGS.len()
+        unique_titles.len() - uncached.len(),
+        uncached.len()
     );
 
-    // 3. Translate in batches of 30
-    let mut translations: HashMap<String, HashMap<String, String>> = HashMap::new();
-    let total_batches = (unique_titles.len() + 29) / 30;
-    for (i, chunk) in unique_titles.chunks(30).enumerate() {
-        info!(
-            "  Batch {}/{} ({} titles)",
-            i + 1,
-            total_batches,
-            chunk.len()
-        );
-        let batch = translate_with_claude(&ctx.http, &ctx.anthropic_key, chunk).await?;
-        translations.extend(batch);
+    // 4. Translate only uncached titles in batches of 30
+    if !uncached.is_empty() {
+        let total_batches = (uncached.len() + 29) / 30;
+        for (i, chunk) in uncached.chunks(30).enumerate() {
+            info!("  Batch {}/{} ({} titles)", i + 1, total_batches, chunk.len());
+            let batch = translate_with_claude(&ctx.http, &ctx.anthropic_key, chunk).await?;
+            cache.extend(batch);
+        }
+        save_cache(&cache);
     }
 
-    // 4. Build translated events
+    // 5. Build translated events (all titles now in cache)
     let translated: Vec<TranslatedEvent> = events
         .into_iter()
         .map(|e| {
-            let lang_map = translations.get(&e.title).cloned().unwrap_or_default();
+            let lang_map = cache.get(&e.title).cloned().unwrap_or_default();
             TranslatedEvent {
                 title: e.title,
                 translations: lang_map,
