@@ -39,11 +39,24 @@ fn save_cache(cache: &TranslationCache) {
     }
 }
 
-fn weekly_filename() -> (String, String) {
+async fn next_weekly_s3_key(ctx: &AppCtx) -> Result<(String, String)> {
     let week = Utc::now().date_naive().iso_week().week();
-    let filename = format!("index-{week}.json");
-    let s3_key = format!("data/{filename}");
-    (filename, s3_key)
+    let prefix = format!("data/{week}/");
+
+    let resp = ctx
+        .s3
+        .list_objects_v2()
+        .bucket(&ctx.s3_bucket)
+        .prefix(&prefix)
+        .send()
+        .await
+        .context("Failed to list S3 objects")?;
+
+    let count = resp.contents().len();
+    let n = count + 1;
+    let filename = format!("index-{n}.json");
+    let s3_key = format!("{prefix}{filename}");
+    Ok((filename, s3_key))
 }
 
 /// Daily 09:00 UTC
@@ -119,10 +132,49 @@ struct TranslatedEvent {
 
 // ── Main job logic ────────────────────────────────────────────────────────────
 
+const CACHE_S3_KEY: &str = "data/translation_cache.json";
+
+async fn load_cache_from_s3(ctx: &AppCtx) -> TranslationCache {
+    match ctx
+        .s3
+        .get_object()
+        .bucket(&ctx.s3_bucket)
+        .key(CACHE_S3_KEY)
+        .send()
+        .await
+    {
+        Ok(resp) => match resp.body.collect().await {
+            Ok(bytes) => serde_json::from_slice(&bytes.into_bytes()).unwrap_or_default(),
+            Err(e) => {
+                error!("Failed to read S3 cache body: {e}");
+                TranslationCache::default()
+            }
+        },
+        Err(_) => {
+            // Not found or error — fall back to local file
+            load_cache()
+        }
+    }
+}
+
+async fn save_cache_to_s3(ctx: &AppCtx, cache: &TranslationCache) {
+    match serde_json::to_vec_pretty(cache) {
+        Ok(bytes) => {
+            save_cache(cache);
+            if let Err(e) = upload_s3(ctx, CACHE_S3_KEY, bytes).await {
+                error!("Failed to upload cache to S3: {e:#}");
+            } else {
+                info!("Translation cache uploaded to S3: {CACHE_S3_KEY}");
+            }
+        }
+        Err(e) => error!("Failed to serialize translation cache: {e}"),
+    }
+}
+
 async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
     info!("Starting FF Calendar fetch & translate job");
 
-    let (output_file, s3_key) = weekly_filename();
+    let (output_file, s3_key) = next_weekly_s3_key(ctx).await?;
     info!("Output: {output_file}  S3: {s3_key}");
 
     // 1. Fetch
@@ -156,7 +208,7 @@ async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
     unique_titles.sort_unstable();
 
     // 3. Load cache, split into hit / miss
-    let mut cache = load_cache();
+    let mut cache = load_cache_from_s3(ctx).await;
     let uncached: Vec<String> = unique_titles
         .iter()
         .filter(|t| !cache.contains_key(*t))
@@ -178,7 +230,7 @@ async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
             let batch = translate_with_claude(&ctx.http, &ctx.anthropic_key, chunk).await?;
             cache.extend(batch);
         }
-        save_cache(&cache);
+        save_cache_to_s3(ctx, &cache).await;
     }
 
     // 5. Build translated events (all titles now in cache)
