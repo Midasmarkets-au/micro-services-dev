@@ -18,22 +18,15 @@ use tracing::{error, info};
 const FF_CALENDAR_URL: &str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
 const CLAUDE_API_URL: &str = "https://api.anthropic.com/v1/messages";
 
-fn timestamped_filename() -> (String, String) {
-    let today = Utc::now().date_naive();
-    // Roll back to the most recent Sunday (0 = Sun, so subtract weekday offset)
-    let days_since_sunday = today.weekday().num_days_from_sunday();
-    let sunday = today - chrono::Duration::days(days_since_sunday as i64);
-    let filename = format!("ff_calendar_thisweek_{}.json", sunday.format("%Y%m%d"));
+fn weekly_filename() -> (String, String) {
+    let week = Utc::now().date_naive().iso_week().week();
+    let filename = format!("index-{week}.json");
     let s3_key = format!("data/{filename}");
     (filename, s3_key)
 }
 
-/// Sunday 07:00 UTC
-/// Forex Factory refreshes thisweek.json at the start of each week (Sunday midnight US Eastern):
-///   - EDT (Mar–Nov): Sunday 04:00 UTC
-///   - EST (Nov–Mar): Sunday 05:00 UTC
-/// Fetching at 07:00 UTC gives a 2–3 hour safety margin.
-const CRON_SCHEDULE: &str = "0 0 7 * * SUN";
+/// Daily 09:00 UTC
+const CRON_SCHEDULE: &str = "0 0 9 * * *";
 
 const LANGS: &[(&str, &str)] = &[
     ("zh_CN", "简体中文"),
@@ -108,7 +101,7 @@ struct TranslatedEvent {
 async fn fetch_translate_upload(ctx: &AppCtx) -> Result<()> {
     info!("Starting FF Calendar fetch & translate job");
 
-    let (output_file, s3_key) = timestamped_filename();
+    let (output_file, s3_key) = weekly_filename();
     info!("Output: {output_file}  S3: {s3_key}");
 
     // 1. Fetch
@@ -337,12 +330,11 @@ async fn main() -> Result<()> {
         error!("Startup fetch failed: {e:#}");
     }
 
-    // Schedule weekly cron: Sunday 07:00 UTC
-    // (Forex Factory refreshes ~04:00-05:00 UTC, so 07:00 gives a safe margin)
-    info!("Starting cron worker — {CRON_SCHEDULE} (every Sunday 07:00 UTC)");
+    // Schedule daily cron: 09:00 UTC
+    info!("Starting cron worker — {CRON_SCHEDULE} (daily 09:00 UTC)");
     let schedule = CronSchedule::from_str(CRON_SCHEDULE).context("Invalid cron expression")?;
 
-    let worker = WorkerBuilder::new("ff-calendar-weekly")
+    let worker = WorkerBuilder::new("ff-calendar-daily")
         .backend(CronStream::new_with_timezone(schedule, Utc))
         .data(ctx)
         .build(cron_job);
