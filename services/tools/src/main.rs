@@ -8,7 +8,7 @@ use apalis::prelude::*;
 use apalis_cron::{CronStream, Tick};
 use aws_credential_types::Credentials;
 use aws_sdk_s3::Client as S3Client;
-use chrono::Utc;
+use chrono::{Datelike, Utc};
 use cron::Schedule as CronSchedule;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,11 @@ const FF_CALENDAR_URL: &str = "https://nfs.faireconomy.media/ff_calendar_thiswee
 const CLAUDE_API_URL: &str = "https://api.anthropic.com/v1/messages";
 
 fn timestamped_filename() -> (String, String) {
-    let ts = Utc::now().format("%Y%m%dT%H%M%SZ");
-    let filename = format!("ff_calendar_thisweek_{ts}.json");
+    let today = Utc::now().date_naive();
+    // Roll back to the most recent Sunday (0 = Sun, so subtract weekday offset)
+    let days_since_sunday = today.weekday().num_days_from_sunday();
+    let sunday = today - chrono::Duration::days(days_since_sunday as i64);
+    let filename = format!("ff_calendar_thisweek_{}.json", sunday.format("%Y%m%d"));
     let s3_key = format!("data/{filename}");
     (filename, s3_key)
 }
