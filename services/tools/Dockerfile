@@ -14,6 +14,7 @@ COPY Cargo.lock ./
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
 # Generate minimal workspace containing only tools
 RUN printf '[workspace]\nmembers = ["services/tools"]\nresolver = "1"\n\n[workspace.dependencies]\ntokio = { version = "1", features = ["full"] }\nreqwest = { version = "0.11", features = ["blocking", "rustls-tls", "json"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\n' > Cargo.toml
+RUN mkdir -p services/tools/src && printf 'fn main() {}' > services/tools/src/main.rs
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ── Stage 3: compile dependencies (cached as long as deps unchanged) ─────────
