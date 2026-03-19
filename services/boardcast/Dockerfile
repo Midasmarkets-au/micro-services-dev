@@ -11,23 +11,33 @@ RUN apt-get update && apt-get install -y protobuf-compiler && rm -rf /var/lib/ap
 # ── Stage 2: generate recipe.json (only needs Cargo files, no source) ────────
 FROM chef AS planner
 WORKDIR /app
-COPY Cargo.lock ./
+COPY Cargo.toml Cargo.lock ./
+COPY vendor/ ./vendor/
+COPY proto/ ./proto/
 COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
-# 生成只包含 boardcast 的精简 workspace
-RUN printf '[workspace]\nmembers = ["services/boardcast"]\nresolver = "1"\n\n[workspace.dependencies]\ntonic = { version = "0.11", features = ["gzip", "transport"] }\ntonic-reflection = "0.11"\ntonic-build = { version = "0.11", features = ["prost"] }\nprost = "0.12"\ntokio = { version = "1", features = ["full"] }\naxum = { version = "0.7", features = ["json", "macros"] }\ntower = "0.4"\ntower-http = { version = "0.5", features = ["cors"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\ntokio-stream = { version = "0.1", features = ["sync"] }\ndashmap = "5"\n' > Cargo.toml
-RUN mkdir -p services/boardcast/src && printf 'fn main() {}' > services/boardcast/src/main.rs
+# Stubs for other workspace members so the workspace resolves correctly
+COPY services/idgen/Cargo.toml ./services/idgen/Cargo.toml
+COPY services/auth/Cargo.toml ./services/auth/Cargo.toml
+COPY services/scheduler/Cargo.toml ./services/scheduler/Cargo.toml
+COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
+RUN for svc in idgen auth boardcast scheduler tools; do \
+      mkdir -p services/$svc/src && printf 'fn main() {}' > services/$svc/src/main.rs; \
+    done
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ── Stage 3: compile dependencies (cached as long as deps unchanged) ─────────
 FROM chef AS builder
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
-COPY Cargo.lock ./
-COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
-# Proto files needed here because build.rs (tonic-build) runs during cook
+COPY Cargo.toml Cargo.lock ./
+COPY vendor/ ./vendor/
 COPY proto/ ./proto/
-RUN printf '[workspace]\nmembers = ["services/boardcast"]\nresolver = "1"\n\n[workspace.dependencies]\ntonic = { version = "0.11", features = ["gzip", "transport"] }\ntonic-reflection = "0.11"\ntonic-build = { version = "0.11", features = ["prost"] }\nprost = "0.12"\ntokio = { version = "1", features = ["full"] }\naxum = { version = "0.7", features = ["json", "macros"] }\ntower = "0.4"\ntower-http = { version = "0.5", features = ["cors"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\ntokio-stream = { version = "0.1", features = ["sync"] }\ndashmap = "5"\n' > Cargo.toml
-# 只要 Cargo.toml/Cargo.lock/proto 不变，此层永久缓存
+COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
+COPY services/idgen/Cargo.toml ./services/idgen/Cargo.toml
+COPY services/auth/Cargo.toml ./services/auth/Cargo.toml
+COPY services/scheduler/Cargo.toml ./services/scheduler/Cargo.toml
+COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
+# Only deps change → this layer is cached
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Copy real source and build only the changed business code

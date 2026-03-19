@@ -4,10 +4,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 WORKDIR /app
 COPY services/auth/Bacera.Gateway.Auth.csproj ./services/auth/
-RUN dotnet restore services/auth/Bacera.Gateway.Auth.csproj
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore services/auth/Bacera.Gateway.Auth.csproj
 
 COPY services/auth/ ./services/auth/
-RUN dotnet publish services/auth/Bacera.Gateway.Auth.csproj -c Release -o /publish
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish services/auth/Bacera.Gateway.Auth.csproj -c Release -o /publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
