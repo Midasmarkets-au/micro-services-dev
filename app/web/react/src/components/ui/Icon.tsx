@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 
-export interface IconProps {
+export interface IconProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** SVG 文件名（不含 .svg 后缀），对应 /public/images/icons/ 目录下的文件 */
   name: string;
   /** 图标尺寸 (px)，默认 16 */
   size?: number;
   className?: string;
+  onClick?: () => void;
 }
 
 /**
@@ -21,12 +22,13 @@ export interface IconProps {
  * <Icon name="arrow-left" size={24} className="text-text-secondary" />
  * ```
  */
-export function Icon({ name, size = 16, className }: IconProps) {
+export function Icon({ name, size = 16, className, onClick }: IconProps) {
   return (
     <span
       role="img"
       aria-hidden
-      className={cn('inline-block shrink-0', className)}
+      onClick={onClick}
+      className={cn('inline-block shrink-0 cursor-pointer', className)}
       style={{
         width: size,
         height: size,

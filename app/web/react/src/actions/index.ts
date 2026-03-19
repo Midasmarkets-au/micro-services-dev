@@ -194,6 +194,7 @@ export {
   getSalesDeposits,
   getSalesWithdrawals,
   getSalesLinks,
+  getReferralLinkDetail,
   getSalesLinkDetail,
   createSalesLinkForIB,
   createSalesLinkForClient,

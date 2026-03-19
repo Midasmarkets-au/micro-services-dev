@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter
 } from '@/components/ui/radix/Dialog';
 import { Button, Skeleton } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -461,6 +462,11 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
           </div>
         )}
       </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" size="sm" className="w-auto min-w-20 md:w-[120px]" onClick={() => onOpenChange(false)}>
+          {t('action.close')}
+        </Button>
+      </DialogFooter>
     </Dialog>
   );
 }

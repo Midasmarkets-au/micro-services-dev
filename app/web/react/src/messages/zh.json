@@ -2112,7 +2112,7 @@
       "addRatePercentage": "附加比例 %",
       "options": "选项",
       "none": "无",
-      "availablePips": "可用加点",
+      "availablePips": "点数",
       "availableCommission": "可用加佣 ($)",
       "setPercentageTooltip": "设置百分比自动填充返佣值",
       "updateRebateRule": "更新返佣规则",
@@ -2286,6 +2286,7 @@
       "client": "客户",
       "autoCreateAccount": "自动开户",
       "default": "默认",
+      "notDefault": "非默认",
       "yes": "是",
       "no": "否",
       "actions": "操作"

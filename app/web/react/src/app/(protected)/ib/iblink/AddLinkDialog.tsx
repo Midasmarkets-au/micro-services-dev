@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
   Button,
   Input,
   Switch,
@@ -865,7 +866,10 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 md:gap-5">
+        
+      </DialogContent>
+      <DialogFooter>
+      <div className="mt-6 flex justify-end gap-3 md:gap-5">
           <Button variant="secondary" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
             {t('addLink.close')}
           </Button>
@@ -878,7 +882,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
             {t('addLink.submit')}
           </Button>
         </div>
-      </DialogContent>
+      </DialogFooter>
     </Dialog>
   );
 }

@@ -119,7 +119,10 @@ export function RebateRuleEditModal({
         execute(getSalesIBRebateRuleDetail, salesAccount.uid, context.editUid),
         execute(getSalesDefaultLevelSetting, salesAccount.uid),
       ]);
-
+    console.log('catResult', catResult);
+    console.log('availableResult', availableResult);
+    console.log('editRuleResult', editRuleResult);
+    console.log('defaultResult', defaultResult);
     const categories =
       catResult.success && catResult.data
         ? (catResult.data as any[]).map((c: any) => ({

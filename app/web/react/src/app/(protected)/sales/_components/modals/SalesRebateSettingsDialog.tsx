@@ -13,7 +13,7 @@ import {
   Input,
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesLinkDetail, getSalesSymbolCategory } from '@/actions';
+import { getReferralLinkDetail, getSalesSymbolCategory } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
 import type { SalesLinkDetail, SalesLinkSchema } from '@/types/sales';
 
@@ -68,7 +68,7 @@ export function SalesRebateSettingsDialog({
     (async () => {
       try {
         const [detailRes, categoryRes] = await Promise.all([
-          execute(getSalesLinkDetail, salesAccount.uid, code),
+          execute(getReferralLinkDetail, code),
           execute(getSalesSymbolCategory),
         ]);
 

@@ -2283,6 +2283,7 @@
       "client": "Client",
       "autoCreateAccount": "Auto Create Account",
       "default": "Default",
+      "notDefault": "Not Default",
       "yes": "Yes",
       "no": "No",
       "actions": "Actions"

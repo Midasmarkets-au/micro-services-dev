@@ -61,6 +61,7 @@ const INITIAL_CRITERIA: SalesClientCriteria = {
   multiLevel: false,
 };
 
+
 export default function SalesCustomersPage() {
   const t = useTranslations('sales');
   const tAccount = useTranslations('accounts');
@@ -136,8 +137,6 @@ export default function SalesCustomersPage() {
         sortFlag: true,
         multiLevel: criteria.multiLevel ?? false,
       });
-    } else {
-      setIsLoading(false);
     }
   }, [salesAccount, activeTab, fetchData]);
 
@@ -171,9 +170,10 @@ export default function SalesCustomersPage() {
     fetchData({
       ...criteria,
       page: 1,
-      childParentAccountUid: ibAccount.uid,
+      parentAccountUid: ibAccount.uid,
       relativeLevel: ibChain.length + 2,
       searchText: undefined,
+      hasMore:false,
     });
   }, [criteria, ibChain.length, fetchData]);
 
@@ -498,7 +498,7 @@ export default function SalesCustomersPage() {
                 {getUserName(acc)}
               </button>
               <span className="rounded-full bg-yellow-400 px-1.5 text-xs font-medium text-gray-900">
-                Lv{idx + 2}
+                Lv{idx + 1}
               </span>
               <span className="text-text-secondary">/</span>
             </div>
