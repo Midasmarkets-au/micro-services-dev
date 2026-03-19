@@ -27,6 +27,8 @@ spec:
             - qazwsx13
             - --maxmemory-policy
             - allkeys-lru
+            - --tcp-keepalive
+            - "60"
           ports:
             - name: redis
               containerPort: 6379

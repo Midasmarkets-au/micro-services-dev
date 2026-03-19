@@ -130,22 +130,7 @@ async fn main() -> Result<()> {
     let dashboard_storage =
         RedisStorage::<ProcessReportRequestJob>::new(ctx.apalis_conn.clone());
 
-    let ctx_for_worker = ctx.clone();
-    // Each start gets a unique worker ID to avoid "still active within threshold" errors
-    // when the service restarts within the keep_alive window.
-    let worker_id = format!("process-report-request-{}", std::process::id());
-    let monitor = Monitor::new()
-        .register(move |_index| {
-            let storage =
-                RedisStorage::<ProcessReportRequestJob>::new(ctx_for_worker.apalis_conn.clone());
-            let ctx = ctx_for_worker.clone();
-            WorkerBuilder::new(&worker_id)
-                .backend(storage)
-                .build(move |job: ProcessReportRequestJob, _: WorkerContext| {
-                    let ctx = ctx.clone();
-                    async move { jobs::process_request::execute(ctx, job).await }
-                })
-        });
+    let ctx_for_monitor = ctx.clone();
 
     // ── Build axum HTTP router (health + apalis dashboard) ────────────────
     let board_api = ApiBuilder::new(Router::new())
@@ -176,8 +161,30 @@ async fn main() -> Result<()> {
     });
 
     // ── Spawn apalis monitor (manages worker lifecycle + heartbeat) ───────
+    // Auto-restart on transient errors (e.g. Redis TCP timeout due to AWS idle connection drop).
+    // Each restart gets a new UUID worker ID to avoid "still active within threshold" errors.
     tokio::spawn(async move {
-        monitor.run().await.expect("Monitor failed");
+        loop {
+            let ctx_for_worker = ctx_for_monitor.clone();
+            let worker_id = format!("process-report-request-{}", uuid::Uuid::new_v4());
+            let monitor = Monitor::new()
+                .register(move |_index| {
+                    let storage = RedisStorage::<ProcessReportRequestJob>::new(
+                        ctx_for_worker.apalis_conn.clone(),
+                    );
+                    let ctx = ctx_for_worker.clone();
+                    WorkerBuilder::new(&worker_id)
+                        .backend(storage)
+                        .build(move |job: ProcessReportRequestJob, _: WorkerContext| {
+                            let ctx = ctx.clone();
+                            async move { jobs::process_request::execute(ctx, job).await }
+                        })
+                });
+            if let Err(e) = monitor.run().await {
+                error!("Monitor failed: {:#}. Restarting in 5s...", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
     });
 
     // ── Spawn HTTP server ─────────────────────────────────────────────────

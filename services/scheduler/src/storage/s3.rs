@@ -74,6 +74,10 @@ impl S3Storage {
         Ok(bytes)
     }
 
+    pub fn bucket(&self) -> &str {
+        &self.bucket
+    }
+
     /// Build the S3 key for a report CSV.
     /// Format: reports/{tenant_id}/{report_type}/{name}.csv
     pub fn report_csv_key(tenant_id: i64, report_type: i32, name: &str) -> String {

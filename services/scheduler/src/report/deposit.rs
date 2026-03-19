@@ -39,7 +39,7 @@ pub async fn generate_deposit_csv(pool: &PgPool, criteria: &DateRangeCriteria) -
             d."ApprovedOn" as approved_on,
             d."PaymentMethod" as payment_method,
             d."Reference" as reference
-           FROM fin."_Deposit" d
+           FROM acct."_Deposit" d
            LEFT JOIN trd."_Account" a ON a."Id" = d."AccountId"
            WHERE d."CreatedOn" >= $1 AND d."CreatedOn" < $2
            ORDER BY d."CreatedOn""#,
@@ -88,7 +88,7 @@ pub async fn generate_withdrawal_csv(
             w."CreatedOn" as created_on,
             w."ApprovedOn" as approved_on,
             w."PaymentMethod" as payment_method
-           FROM fin."_Withdrawal" w
+           FROM acct."_Withdrawal" w
            LEFT JOIN trd."_Account" a ON a."Id" = w."AccountId"
            WHERE w."CreatedOn" >= $1 AND w."CreatedOn" < $2
            AND w."Status" IN (0, 1)
@@ -105,7 +105,7 @@ pub async fn generate_withdrawal_csv(
             w."CreatedOn" as created_on,
             w."ApprovedOn" as approved_on,
             w."PaymentMethod" as payment_method
-           FROM fin."_Withdrawal" w
+           FROM acct."_Withdrawal" w
            LEFT JOIN trd."_Account" a ON a."Id" = w."AccountId"
            WHERE w."CreatedOn" >= $1 AND w."CreatedOn" < $2
            ORDER BY w."CreatedOn""#
@@ -157,7 +157,7 @@ pub async fn generate_wallet_transaction_csv(
             m."PostedOn" as created_on,
             m."StatedOn" as released_on
            FROM acct."_WalletTransaction" wt
-           JOIN core."_Matter" m ON m."Id" = wt."MatterId"
+           LEFT JOIN core."_Matter" m ON m."Id" = wt."MatterId"
            LEFT JOIN acct."_Wallet" w ON w."Id" = wt."WalletId"
            WHERE wt."UpdatedOn" >= $1 AND wt."UpdatedOn" <= $2
            ORDER BY wt."Id""#
@@ -174,7 +174,7 @@ pub async fn generate_wallet_transaction_csv(
             m."PostedOn" as created_on,
             m."StatedOn" as released_on
            FROM acct."_WalletTransaction" wt
-           JOIN core."_Matter" m ON m."Id" = wt."MatterId"
+           LEFT JOIN core."_Matter" m ON m."Id" = wt."MatterId"
            LEFT JOIN acct."_Wallet" w ON w."Id" = wt."WalletId"
            WHERE m."StatedOn" >= $1 AND m."StatedOn" < $2
            ORDER BY wt."Id""#
@@ -249,11 +249,11 @@ pub async fn generate_wallet_overview_csv(pool: &PgPool, criteria: &DateRangeCri
             w."PartyId" as party_id,
             w."Balance" as balance,
             w."Currency" as currency,
-            (SELECT SUM(d."Amount") FROM fin."_Deposit" d
+            (SELECT SUM(d."Amount") FROM acct."_Deposit" d
              JOIN trd."_Account" a ON a."Id" = d."AccountId"
              WHERE a."PartyId" = w."PartyId"
              AND d."ApprovedOn" >= $1 AND d."ApprovedOn" < $2) as total_deposit,
-            (SELECT SUM(wd."Amount") FROM fin."_Withdrawal" wd
+            (SELECT SUM(wd."Amount") FROM acct."_Withdrawal" wd
              JOIN trd."_Account" a ON a."Id" = wd."AccountId"
              WHERE a."PartyId" = w."PartyId"
              AND wd."ApprovedOn" >= $1 AND wd."ApprovedOn" < $2) as total_withdrawal
@@ -328,7 +328,7 @@ pub async fn generate_transaction_csv(pool: &PgPool, criteria: &DateRangeCriteri
             t."Type" as transaction_type,
             t."CreatedOn" as created_on,
             t."Reference" as reference
-           FROM fin."_Transaction" t
+           FROM acct."_Transaction" t
            LEFT JOIN trd."_Account" a ON a."Id" = t."AccountId"
            WHERE t."CreatedOn" >= $1 AND t."CreatedOn" < $2
            ORDER BY t."CreatedOn""#,
