@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -714,23 +715,25 @@ export function AddSalesLinkDialog({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 md:gap-5">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.close')}
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            loading={submitting}
-            disabled={initLoading}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.submit')}
-          </Button>
-        </div>
+        <DialogFooter>
+          <div className="mt-6 flex justify-end gap-3 md:gap-5">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.close')}
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={initLoading}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.submit')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

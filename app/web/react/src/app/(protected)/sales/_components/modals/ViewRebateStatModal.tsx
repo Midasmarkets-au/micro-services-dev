@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
@@ -279,16 +280,18 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
         </div>
 
         {/* 底部关闭按钮 */}
-        <div className="flex justify-end">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-[120px] border border-border"
-            onClick={() => onOpenChange(false)}
-          >
-            {t('action.close')}
-          </Button>
-        </div>
+        <DialogFooter>
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-[120px] border border-border"
+              onClick={() => onOpenChange(false)}
+            >
+              {t('action.close')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBLinks, getReferralCodeSupplement } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
-import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { IBLink, IBReferralSupplement } from '@/types/ib';
 import { useUserStore } from '@/stores/userStore';
@@ -326,11 +326,13 @@ export default function IBLinkPage() {
               </div>
             </div>
           )}
-          <div className="mt-6 flex justify-end gap-3 md:gap-5">
-            <Button variant="secondary" onClick={() => setCopyConfirmOpen(false)} className="w-auto min-w-20 md:w-[120px]">
-              OK
-            </Button>
-          </div>
+          <DialogFooter>
+            <div className="mt-6 flex justify-end gap-3 md:gap-5">
+              <Button variant="outline" onClick={() => setCopyConfirmOpen(false)} className="w-auto min-w-20 md:w-[120px]">
+                OK
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

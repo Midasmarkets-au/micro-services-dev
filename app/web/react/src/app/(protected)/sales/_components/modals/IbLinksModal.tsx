@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
@@ -428,16 +429,18 @@ export function IbLinksModal({
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-auto min-w-20 md:w-[120px]"
-              onClick={() => onOpenChange(false)}
-            >
-              {t('action.close')}
-            </Button>
-          </div>
+          <DialogFooter>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-auto min-w-20 md:w-[120px]"
+                onClick={() => onOpenChange(false)}
+              >
+                {t('action.close')}
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -489,19 +492,21 @@ export function IbLinksModal({
               />
             </div>
 
-            <div className="mt-8 flex justify-center gap-3">
-              <Button variant="outline" size="sm" className="w-auto min-w-20 md:w-[120px]" onClick={() => setEditDialogOpen(false)}>
-                {t('action.cancel')}
-              </Button>
-              <Button
-                size="sm"
-                className="w-auto min-w-20 md:w-[120px]"
-                onClick={handleUpdateName}
-                disabled={isUpdating || !editNewName.trim()}
-              >
-                {isUpdating ? '...' : t('ibLinks.update')}
-              </Button>
-            </div>
+            <DialogFooter>
+              <div className="mt-8 flex justify-center gap-3">
+                <Button variant="outline" size="sm" className="w-auto min-w-20 md:w-[120px]" onClick={() => setEditDialogOpen(false)}>
+                  {t('action.cancel')}
+                </Button>
+                <Button
+                  size="sm"
+                  className="w-auto min-w-20 md:w-[120px]"
+                  onClick={handleUpdateName}
+                  disabled={isUpdating || !editNewName.trim()}
+                >
+                  {isUpdating ? '...' : t('ibLinks.update')}
+                </Button>
+              </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>

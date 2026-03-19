@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
@@ -573,7 +574,8 @@ export function AccountRebateRelationModal({
             </>
           )}
         </div>
-        <div className="flex justify-end gap-3 pt-4">
+        <DialogFooter>
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="outline"
               size="sm"
@@ -583,6 +585,7 @@ export function AccountRebateRelationModal({
               {t('action.close')}
             </Button>
           </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

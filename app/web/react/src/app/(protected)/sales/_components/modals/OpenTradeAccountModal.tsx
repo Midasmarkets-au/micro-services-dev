@@ -7,6 +7,7 @@ import { useUserStore } from '@/stores/userStore';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
@@ -332,25 +333,27 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenChange(false)}
-                    disabled={isSubmitting}
-                  >
-                    {t('action.cancel')}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    loading={isSubmitting}
-                    onClick={handleSubmit}
-                    disabled={!canSubmit}
-                  >
-                    {t('action.submit')}
-                  </Button>
-                </div>
+                <DialogFooter>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onOpenChange(false)}
+                      disabled={isSubmitting}
+                    >
+                      {t('action.cancel')}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={isSubmitting}
+                      onClick={handleSubmit}
+                      disabled={!canSubmit}
+                    >
+                      {t('action.submit')}
+                    </Button>
+                  </div>
+                </DialogFooter>
               </>
             )}
           </div>
