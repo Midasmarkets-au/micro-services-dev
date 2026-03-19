@@ -103,6 +103,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   // Step 2: 加载渠道详情
   const loadGroupInfo = useCallback(async () => {
     if (!account || !selectedGroup) return;
+    if (selectedGroup.isActive === false) return;
     setIsLoadingInfo(true);
     try {
       const result = await execute(getDepositGroupInfo, account.uid, selectedGroup.group);
@@ -258,6 +259,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
     return completed;
   }, [step]);
+  const selectedGroupIsActive = selectedGroup?.isActive !== false;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else onOpenChange(v); }}>
@@ -288,15 +290,21 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     {groups.map((group) => {
                       const isSelected = selectedGroup?.group === group.group;
+                      const isGroupActive = group.isActive !== false;
+                      const groupRange = group.rang;
+                      
                       return (
                         <button
                           key={group.group}
                           type="button"
+                          disabled={!isGroupActive}
                           onClick={() => setSelectedGroup(group)}
-                          className={`relative flex cursor-pointer items-start gap-4 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
-                            isSelected
-                              ? 'border-primary bg-surface'
-                              : 'border-border bg-surface hover:border-primary/50'
+                          className={`relative flex items-start gap-4 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
+                            !isGroupActive
+                              ? 'cursor-not-allowed border-border bg-surface opacity-50'
+                              : isSelected
+                                ? 'cursor-pointer border-primary bg-surface'
+                                : 'cursor-pointer border-border bg-surface hover:border-primary/50'
                           }`}
                         >
                           {group.logo && (
@@ -321,8 +329,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                             <span className="text-xs text-text-secondary">
                               {t('channel.processing')}：{'< 1'}{t('channel.hour')}
                             </span>
+                            {groupRange && account && (
+                              <>
+                                <span className="text-xs text-text-secondary">
+                                  Min: <BalanceShow balance={groupRange[0]} currencyId={account.currencyId} />
+                                </span>
+                                <span className="text-xs text-text-secondary">
+                                  Max: <BalanceShow balance={groupRange[1]} currencyId={account.currencyId} />
+                                </span>
+                              </>
+                            )}
                           </div>
-                          {isSelected && (
+                          {isSelected && isGroupActive && (
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="absolute -bottom-px -right-px">
                               <path d="M0 24L24 24L24 0L0 24Z" fill="var(--color-primary)" />
                               <path d="M17 15L14.5 17.5L12.5 15.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -623,13 +641,13 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
             <>
               <div />
               <div className="flex gap-2 md:gap-5">
-                <Button variant="secondary" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
+                <Button variant="outline" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
                   {t('action.close')}
                 </Button>
                 <Button
                   variant="primary"
                   onClick={loadGroupInfo}
-                  disabled={!selectedGroup || isLoadingInfo}
+                  disabled={!selectedGroup || !selectedGroupIsActive || isLoadingInfo}
                   loading={isLoadingInfo}
                   className="w-auto min-w-20 md:w-[120px]"
                 >
@@ -643,7 +661,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 {t('action.prev')}
               </Button>
               <div className="flex gap-2 md:gap-5">
-                <Button variant="secondary" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
+                <Button variant="outline" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
                   {t('action.close')}
                 </Button>
                 <Button variant="primary" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
@@ -662,7 +680,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 {t('action.prev')}
               </Button>
               <div className="flex gap-2 md:gap-5">
-                <Button variant="secondary" onClick={handleClose} disabled={isLoading} className="w-auto min-w-20 md:w-[120px]">
+                <Button variant="outline" onClick={handleClose} disabled={isLoading} className="w-auto min-w-20 md:w-[120px]">
                   {t('action.close')}
                 </Button>
                 <Button

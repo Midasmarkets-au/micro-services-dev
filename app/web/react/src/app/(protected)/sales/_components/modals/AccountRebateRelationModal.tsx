@@ -175,6 +175,7 @@ export function AccountRebateRelationModal({
           getCategoryResult.success && Array.isArray(getCategoryResult.data)
             ? getCategoryResult.data
             : [];
+        console.log('cats', cats);
         setProductCategory(cats);
 
         // rebateInfo: adjustRebateInfo converts arrays to objects keyed by accountType
@@ -292,12 +293,12 @@ export function AccountRebateRelationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[750px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{userName}</DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[80vh] overflow-auto">
+        <div className="max-h-[70vh] overflow-auto">
           {isLoading ? (
             <div className="space-y-4 py-4">
               <Skeleton className="h-6 w-48" />

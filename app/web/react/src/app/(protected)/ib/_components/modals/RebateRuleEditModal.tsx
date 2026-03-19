@@ -461,12 +461,13 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
             </div>
           </div>
         )}
+        <DialogFooter>
+          <Button variant="outline" size="sm" className="w-auto min-w-20 md:w-[120px]" onClick={() => onOpenChange(false)}>
+            {t('action.close')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogFooter>
-        <Button variant="outline" size="sm" className="w-auto min-w-20 md:w-[120px]" onClick={() => onOpenChange(false)}>
-          {t('action.close')}
-        </Button>
-      </DialogFooter>
+      
     </Dialog>
   );
 }

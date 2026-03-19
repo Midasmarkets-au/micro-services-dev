@@ -866,23 +866,22 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
           )}
         </div>
 
-        
+        <DialogFooter className="mt-6">
+          <div className="flex justify-end gap-3 md:gap-5">
+            <Button variant="secondary" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
+              {t('addLink.close')}
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={initLoading}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('addLink.submit')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
-      <DialogFooter>
-      <div className="mt-6 flex justify-end gap-3 md:gap-5">
-          <Button variant="secondary" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
-            {t('addLink.close')}
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            loading={submitting}
-            disabled={initLoading}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('addLink.submit')}
-          </Button>
-        </div>
-      </DialogFooter>
     </Dialog>
   );
 }

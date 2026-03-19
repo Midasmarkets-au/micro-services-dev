@@ -631,6 +631,7 @@
   "errorCodes": {
     "Unauthorized": "未授权，请先登录",
     "__USER_IS_LOCKED_OUT__": "用户已被锁定",
+    "invalid_username_or_password": "用户名或密码无效",
     "invalid_grant": "用户名或密码无效",
     "Invalid code": "验证码无效",
     "__EMAIL_UNCONFIRMED__": "邮箱未确认",
@@ -1634,6 +1635,7 @@
       "createClientLink": "创建客户链接",
       "generateReport": "生成报告",
       "download": "下载",
+      "close": "关闭",
       "sortNewest": "最新的优先",
       "sortOldest": "最早的优先"
     },
@@ -1954,7 +1956,7 @@
       "deposit": "入金",
       "withdrawal": "出金",
       "lead": "线索",
-      "link": "链接",
+      "link": "销售链接",
       "statistics": "统计",
       "rebate": "返佣"
     },
