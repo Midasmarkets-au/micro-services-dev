@@ -69,6 +69,35 @@ pub async fn mark_report_generated(
     Ok(())
 }
 
+/// Insert a row into sto._Medium and return the generated Guid (UUID).
+/// This mirrors what mono's UploadFileAndSaveMediaAsync does.
+pub async fn insert_medium(
+    pool: &PgPool,
+    tenant_id: i64,
+    party_id: i64,
+    row_id: i64,
+    guid: &str,
+    file_name: &str,
+    url: &str,
+    length: i64,
+) -> Result<()> {
+    sqlx::query(
+        r#"INSERT INTO sto."_Medium"
+           ("TenantId", "PartyId", "RowId", "Guid", "FileName", "Type", "Context", "ContentType", "Url", "Length")
+           VALUES ($1, $2, $3, $4, $5, 'report-request', '', 'text/csv', $6, $7)"#,
+    )
+    .bind(tenant_id)
+    .bind(party_id)
+    .bind(row_id)
+    .bind(guid)
+    .bind(file_name)
+    .bind(url)
+    .bind(length)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn insert_report_request(pool: &PgPool, req: &NewReportRequest) -> Result<i64> {
     let row: (i64,) = sqlx::query_as(
         r#"INSERT INTO sto."_ReportRequest" ("Type", "PartyId", "Name", "Query", "IsFromApi", "FileName")

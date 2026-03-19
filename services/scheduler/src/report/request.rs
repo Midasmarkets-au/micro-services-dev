@@ -152,6 +152,25 @@ async fn upload_csv(
     csv_bytes: Vec<u8>,
 ) -> Result<String> {
     let key = S3Storage::report_csv_key(tenant_id, request.r#type, &request.name);
+    let length = csv_bytes.len() as i64;
     ctx.s3.upload_csv(&key, csv_bytes).await?;
-    Ok(key)
+
+    // Build the S3 URL and insert a sto._Medium record so the mono
+    // /api/v1/tenant/media/{guid} endpoint can serve this file.
+    let url = format!("https://{}.s3.amazonaws.com/{}", ctx.s3.bucket(), key);
+    let guid = uuid::Uuid::new_v4().to_string();
+    let tenant_pool = ctx.tenant_pool(tenant_id).await?;
+    let safe_name = format!("{}.csv", request.name.replace(['/', '\\'], "_"));
+    tenant::insert_medium(
+        &tenant_pool,
+        tenant_id,
+        request.party_id,
+        request.id,
+        &guid,
+        &safe_name,
+        &url,
+        length,
+    ).await?;
+
+    Ok(guid)
 }
