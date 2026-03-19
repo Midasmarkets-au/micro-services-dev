@@ -16,16 +16,19 @@ COPY ["services/mono/Bacera.Gateway.Core/Bacera.Gateway.Core.csproj", "services/
 COPY ["services/mono/Bacera.Gateway.TradingData/Bacera.Gateway.TradingData.csproj", "services/mono/Bacera.Gateway.TradingData/"]
 COPY ["services/mono/Bacera.Core/Bacera.Core.csproj", "services/mono/Bacera.Core/"]
 
-RUN dotnet restore "services/mono/Bacera.Gateway.Web/Bacera.Gateway.Web.csproj"
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "services/mono/Bacera.Gateway.Web/Bacera.Gateway.Web.csproj"
 
 COPY proto/ proto/
 COPY services/mono/ services/mono/
 
 WORKDIR "/src/services/mono/Bacera.Gateway.Web"
-RUN dotnet build "Bacera.Gateway.Web.csproj" -c Release -o /app/build /m:1 /p:RunAnalyzers=false /p:Protobuf_ProtocFullPath=/usr/bin/protoc
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet build "Bacera.Gateway.Web.csproj" -c Release -o /app/build /m:1 /p:RunAnalyzers=false /p:Protobuf_ProtocFullPath=/usr/bin/protoc
 
 FROM build AS publish
-RUN dotnet publish "Bacera.Gateway.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false /m:1 /p:RunAnalyzers=false /p:Protobuf_ProtocFullPath=/usr/bin/protoc
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet publish "Bacera.Gateway.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false /m:1 /p:RunAnalyzers=false /p:Protobuf_ProtocFullPath=/usr/bin/protoc
 
 FROM base AS final
 WORKDIR /app
