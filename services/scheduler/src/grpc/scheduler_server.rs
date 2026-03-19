@@ -5,7 +5,7 @@
 ///   TriggerCloseTrade     → spawn close_trade job
 ///   TriggerAccountDaily   → spawn account_daily job
 use apalis::prelude::TaskSink;
-use apalis_postgres::PostgresStorage;
+use apalis_redis::RedisStorage;
 use futures::stream;
 use tonic::{Request, Response, Status};
 use tracing::{error, info};
@@ -41,8 +41,8 @@ impl SchedulerService for SchedulerGrpcServer {
             request_id: req.request_id,
         };
 
-        let mut storage: PostgresStorage<ProcessReportRequestJob> =
-            PostgresStorage::new(&self.ctx.apalis_pool);
+        let mut storage: RedisStorage<ProcessReportRequestJob> =
+            RedisStorage::new(self.ctx.apalis_conn.clone());
         let task = apalis::prelude::Task::builder(job).build();
         let mut tasks = stream::iter(vec![task]);
 

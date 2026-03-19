@@ -65,7 +65,7 @@ async fn process_tenant(ctx: AppContext, tenant_id: i64) -> Result<()> {
         .map(|dt| chrono::DateTime::<Utc>::from_naive_utc_and_offset(dt, Utc))
         .unwrap_or_else(|_| Utc::now());
 
-    let dst_offset = if is_dst_los_angeles(date) { 20i64 } else { 21 };
+    let dst_offset = if crate::utils::is_dst_los_angeles(date) { 20i64 } else { 21 };
     let to = date + Duration::hours(dst_offset) + Duration::minutes(59) + Duration::seconds(59);
 
     // Skip if the report window hasn't closed yet
@@ -202,9 +202,3 @@ async fn send_mail_task(
     Ok(())
 }
 
-fn is_dst_los_angeles(dt: chrono::DateTime<Utc>) -> bool {
-    let month = dt.month();
-    (3..=11).contains(&month)
-}
-
-use chrono::Datelike;

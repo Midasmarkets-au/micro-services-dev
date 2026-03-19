@@ -1,0 +1,64 @@
+# ============================================================================
+#  scheduler — Rust 后台任务处理服务（报表生成、CSV 上传 S3）
+#  端口：8090 (HTTP / Apalis Dashboard)、50053 (gRPC)
+#  环境变量：由 Secret scheduler-env 注入
+#  依赖：postgres、redis、mono (gRPC callback)
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler
+  labels:
+    app: scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler
+  template:
+    metadata:
+      labels:
+        app: scheduler
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      imagePullSecrets:
+        - name: ecr-registry
+      containers:
+        - name: scheduler
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/scheduler:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          ports:
+            - name: http
+              containerPort: 8090
+            - name: grpc
+              containerPort: 50053
+          envFrom:
+            - secretRef:
+                name: scheduler-env
+          env:
+            - name: SCHEDULER_PORT
+              value: "8090"
+            - name: SCHEDULER_GRPC_PORT
+              value: "50053"
+            - name: MONO_GRPC_URL
+              value: "http://mono:80"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10

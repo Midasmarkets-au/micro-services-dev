@@ -47,18 +47,25 @@ pub async fn execute(ctx: AppContext) -> Result<()> {
 async fn process_tenant(ctx: &AppContext, tenant_id: i64) -> Result<()> {
     let tenant_pool = ctx.tenant_pool(tenant_id).await?;
 
-    // Determine date (mirrors C# logic: UTC now + DST offset + MT5 GMT+2)
+    // Determine date (mirrors C# logic: UTC midnight + DST offset + MT5 GMT+2)
+    // IMPORTANT: Use date_naive() to get midnight UTC, matching C# `DateTime.UtcNow.Date`.
+    // Using Utc::now() directly shifts the computed report date by ~22 hours into the future.
     let utc_now = Utc::now();
+    let midnight_utc = utc_now
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
     let hours_gap = get_hours_gap(&tenant_pool).await.unwrap_or(2.0);
-    let dst_offset = if is_dst_los_angeles(utc_now) { 20.0 } else { 21.0 };
-    let date = utc_now
+    let dst_offset = if crate::utils::is_dst_los_angeles(utc_now) { 20.0 } else { 21.0 };
+    let date = midnight_utc
         + Duration::hours((dst_offset + hours_gap) as i64)
         + Duration::minutes(59)
         + Duration::seconds(59);
 
     // Find a valid active party ID
     let valid_party_id: Option<(i64,)> = sqlx::query_as(
-        r#"SELECT "Id" FROM pub."_Party" WHERE "Status" = 1 LIMIT 1"#,
+        r#"SELECT "Id" FROM core."_Party" WHERE "Status" = 0 LIMIT 1"#,
     )
     .fetch_optional(&tenant_pool)
     .await?;
@@ -258,9 +265,3 @@ async fn get_hours_gap(pool: &sqlx::PgPool) -> Result<f64> {
         .unwrap_or(2.0))
 }
 
-/// Approximate DST check for Los Angeles (UTC-7 in summer, UTC-8 in winter).
-fn is_dst_los_angeles(dt: chrono::DateTime<Utc>) -> bool {
-    let month = dt.month();
-    // DST roughly March–November
-    (3..=11).contains(&month)
-}

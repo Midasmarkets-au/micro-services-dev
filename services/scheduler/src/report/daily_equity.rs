@@ -99,7 +99,7 @@ async fn query_daily_equity(
             SELECT
                 w."PartyId" as party_id,
                 COALESCE(SUM(w."Balance"), 0) as wallet_balance
-            FROM wlt."_Wallet" w
+            FROM acct."_Wallet" w
             GROUP BY w."PartyId"
         )
         SELECT

@@ -122,17 +122,16 @@ pub async fn generate_withdrawal_csv(
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct WalletTransactionRecord {
-    pub id: i64,
     pub wallet_id: i64,
+    pub transaction_id: i64,
     pub party_id: Option<i64>,
-    pub amount: f64,
-    pub balance_after: Option<f64>,
-    pub transaction_type: Option<i32>,
-    pub stated_on: Option<DateTime<Utc>>,
-    pub released_on: Option<DateTime<Utc>>,
+    pub fund_type: Option<i32>,
+    pub matter_type: Option<i32>,
+    pub state: Option<i32>,
+    pub amount: i64,
+    pub prev_balance: i64,
     pub created_on: Option<DateTime<Utc>>,
-    pub reference: Option<String>,
-    pub comment: Option<String>,
+    pub released_on: Option<DateTime<Utc>>,
 }
 
 pub async fn generate_wallet_transaction_csv(
@@ -143,40 +142,42 @@ pub async fn generate_wallet_transaction_csv(
     let from = criteria.from.unwrap_or_else(|| Utc::now() - chrono::Duration::days(1));
     let to = criteria.to.unwrap_or_else(Utc::now);
 
+    // is_from_api=1 (use_released_time=true): filter by wt.UpdatedOn
+    // is_from_api=0 (use_released_time=false): filter by m.StatedOn (job entry)
     let sql = if use_released_time {
         r#"SELECT
-            wt."Id" as id,
             wt."WalletId" as wallet_id,
+            wt."Id" as transaction_id,
             w."PartyId" as party_id,
+            w."FundType" as fund_type,
+            m."Type" as matter_type,
+            m."StateId" as state,
             wt."Amount" as amount,
-            wt."BalanceAfter" as balance_after,
-            wt."Type" as transaction_type,
-            wt."StatedOn" as stated_on,
-            wt."ReleasedOn" as released_on,
-            wt."CreatedOn" as created_on,
-            wt."Reference" as reference,
-            wt."Comment" as comment
-           FROM wlt."_WalletTransaction" wt
-           LEFT JOIN wlt."_Wallet" w ON w."Id" = wt."WalletId"
-           WHERE wt."StatedOn" >= $1 AND wt."StatedOn" < $2
-           ORDER BY wt."StatedOn""#
+            wt."PrevBalance" as prev_balance,
+            m."PostedOn" as created_on,
+            m."StatedOn" as released_on
+           FROM acct."_WalletTransaction" wt
+           JOIN core."_Matter" m ON m."Id" = wt."MatterId"
+           LEFT JOIN acct."_Wallet" w ON w."Id" = wt."WalletId"
+           WHERE wt."UpdatedOn" >= $1 AND wt."UpdatedOn" <= $2
+           ORDER BY wt."Id""#
     } else {
         r#"SELECT
-            wt."Id" as id,
             wt."WalletId" as wallet_id,
+            wt."Id" as transaction_id,
             w."PartyId" as party_id,
+            w."FundType" as fund_type,
+            m."Type" as matter_type,
+            m."StateId" as state,
             wt."Amount" as amount,
-            wt."BalanceAfter" as balance_after,
-            wt."Type" as transaction_type,
-            wt."StatedOn" as stated_on,
-            wt."ReleasedOn" as released_on,
-            wt."CreatedOn" as created_on,
-            wt."Reference" as reference,
-            wt."Comment" as comment
-           FROM wlt."_WalletTransaction" wt
-           LEFT JOIN wlt."_Wallet" w ON w."Id" = wt."WalletId"
-           WHERE wt."CreatedOn" >= $1 AND wt."CreatedOn" < $2
-           ORDER BY wt."CreatedOn""#
+            wt."PrevBalance" as prev_balance,
+            m."PostedOn" as created_on,
+            m."StatedOn" as released_on
+           FROM acct."_WalletTransaction" wt
+           JOIN core."_Matter" m ON m."Id" = wt."MatterId"
+           LEFT JOIN acct."_Wallet" w ON w."Id" = wt."WalletId"
+           WHERE m."StatedOn" >= $1 AND m."StatedOn" < $2
+           ORDER BY wt."Id""#
     };
 
     let records = sqlx::query_as::<_, WalletTransactionRecord>(sql)
@@ -216,8 +217,8 @@ pub async fn generate_wallet_snapshot_csv(pool: &PgPool, query_json: &str) -> Re
             w."PartyId" as party_id,
             s."Balance" as balance,
             s."SnapshotDate" as snapshot_date
-           FROM wlt."_WalletDailySnapshot" s
-           LEFT JOIN wlt."_Wallet" w ON w."Id" = s."WalletId"
+           FROM acct."_WalletDailySnapshot" s
+           LEFT JOIN acct."_Wallet" w ON w."Id" = s."WalletId"
            WHERE s."SnapshotDate"::date = $1::date
            ORDER BY s."WalletId""#,
     )
@@ -256,7 +257,7 @@ pub async fn generate_wallet_overview_csv(pool: &PgPool, criteria: &DateRangeCri
              JOIN trd."_Account" a ON a."Id" = wd."AccountId"
              WHERE a."PartyId" = w."PartyId"
              AND wd."ApprovedOn" >= $1 AND wd."ApprovedOn" < $2) as total_withdrawal
-           FROM wlt."_Wallet" w
+           FROM acct."_Wallet" w
            ORDER BY w."Id""#,
     )
     .bind(from)
@@ -276,6 +277,42 @@ pub struct TransactionRecord {
     pub transaction_type: Option<i32>,
     pub created_on: Option<DateTime<Utc>>,
     pub reference: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use crate::storage::s3::S3Storage;
+
+    #[tokio::test]
+    async fn test_wallet_transaction_csv_and_s3_upload() {
+        dotenvy::dotenv().ok();
+        let config = Config::from_env().expect("config");
+
+        let db_url = format!(
+            "postgresql://{}:{}@{}:{}/portal_tenant_bvi",
+            config.db_user, config.db_password, config.db_host, config.db_port
+        );
+        let pool = sqlx::PgPool::connect(&db_url).await.expect("db connect");
+        let s3 = S3Storage::new(&config).await.expect("s3 init");
+
+        let criteria = DateRangeCriteria {
+            from: Some("2026-01-01T00:00:00Z".parse().unwrap()),
+            to: Some("2026-03-19T23:59:59Z".parse().unwrap()),
+        };
+
+        let csv_bytes = generate_wallet_transaction_csv(&pool, &criteria, false)
+            .await
+            .expect("generate csv");
+
+        println!("CSV rows bytes: {}", csv_bytes.len());
+        println!("CSV preview:\n{}", String::from_utf8_lossy(&csv_bytes[..csv_bytes.len().min(500)]));
+
+        let key = "test/wallet_transaction_test.csv".to_string();
+        s3.upload_csv(&key, csv_bytes).await.expect("s3 upload");
+        println!("Uploaded to S3 key: {}", key);
+    }
 }
 
 pub async fn generate_transaction_csv(pool: &PgPool, criteria: &DateRangeCriteria) -> Result<Vec<u8>> {

@@ -6,8 +6,9 @@ use std::time::Duration;
 use anyhow::Result;
 use apalis::prelude::*;
 use apalis_board_api::framework::{ApiBuilder, RegisterRoute};
+use apalis_board_api::sse::TracingBroadcaster;
 use apalis_board_api::ui::ServeUI;
-use apalis_postgres::PostgresStorage;
+use apalis_redis::{connect as redis_connect, ConnectionManager, RedisStorage};
 use axum::response::Json;
 use axum::{routing::get, Router};
 use sqlx::PgPool;
@@ -26,10 +27,14 @@ mod jobs;
 mod mail;
 mod report;
 mod storage;
+mod utils;
 
 use cache::redis::RedisCache;
 use config::Config;
 use generated::api::v1::scheduler_service_server::SchedulerServiceServer;
+
+const FILE_DESCRIPTOR_SET: &[u8] =
+    include_bytes!(concat!(env!("OUT_DIR"), "/reflection_descriptor.bin"));
 use grpc::{mono_client::MonoCallbackClient, scheduler_server::SchedulerGrpcServer};
 use jobs::process_request::ProcessReportRequestJob;
 use mail::sender::MailSender;
@@ -41,7 +46,7 @@ pub struct AppContext {
     pub config: Arc<Config>,
     pub auth_pool: PgPool,
     pub central_pool: PgPool,
-    pub apalis_pool: PgPool,
+    pub apalis_conn: ConnectionManager,
     pub s3: Arc<S3Storage>,
     pub mail: Arc<MailSender>,
     pub cache: Arc<RedisCache>,
@@ -55,7 +60,7 @@ impl AppContext {
     pub async fn new(config: Config) -> Result<Self> {
         let auth_pool = db::pg_pool(&config.central_db_url()).await?;
         let central_pool = db::pg_pool(&config.central_db_url()).await?;
-        let apalis_pool = db::pg_pool(&config.hangfire_db_url()).await?;
+        let apalis_conn = redis_connect(config.redis_url.clone()).await?;
         let s3 = Arc::new(S3Storage::new(&config).await?);
         let mail = Arc::new(MailSender::new(&config)?);
         let cache = Arc::new(RedisCache::new(&config).await?);
@@ -65,7 +70,7 @@ impl AppContext {
             config: Arc::new(config),
             auth_pool,
             central_pool,
-            apalis_pool,
+            apalis_conn,
             s3,
             mail,
             cache,
@@ -75,6 +80,7 @@ impl AppContext {
     }
 
     /// Get or create a per-tenant PostgreSQL pool.
+    /// Looks up the actual database name from core."_Tenant".DatabaseName.
     pub async fn tenant_pool(&self, tenant_id: i64) -> Result<PgPool> {
         {
             let pools = self.tenant_pools.read().await;
@@ -83,7 +89,10 @@ impl AppContext {
             }
         }
 
-        let url = self.config.tenant_db_url(tenant_id);
+        let db_name = db::tenant::get_tenant_db_name(&self.central_pool, tenant_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Tenant {} not found in core._Tenant", tenant_id))?;
+        let url = self.config.tenant_db_url_by_name(&db_name);
         let pool = db::tenant_pg_pool(&url).await?;
 
         {
@@ -117,21 +126,25 @@ async fn main() -> Result<()> {
     let grpc_port = config.grpc_port;
     let ctx = AppContext::new(config).await?;
 
-    // ── Setup apalis PostgreSQL storage (run migrations) ──────────────────
-    PostgresStorage::<(), (), ()>::setup(&ctx.apalis_pool)
-        .await
-        .expect("Failed to setup apalis PostgreSQL storage");
-
-    // ── Build apalis worker for ProcessReportRequest ──────────────────────
-    let process_request_storage = PostgresStorage::<ProcessReportRequestJob>::new(&ctx.apalis_pool);
-    let dashboard_storage = process_request_storage.clone();
+    // ── Build apalis storage (for dashboard) and monitor (for worker lifecycle) ──
+    let dashboard_storage =
+        RedisStorage::<ProcessReportRequestJob>::new(ctx.apalis_conn.clone());
 
     let ctx_for_worker = ctx.clone();
-    let worker = WorkerBuilder::new("process-report-request")
-        .backend(process_request_storage)
-        .build(move |job: ProcessReportRequestJob, _: WorkerContext| {
+    // Each start gets a unique worker ID to avoid "still active within threshold" errors
+    // when the service restarts within the keep_alive window.
+    let worker_id = format!("process-report-request-{}", std::process::id());
+    let monitor = Monitor::new()
+        .register(move |_index| {
+            let storage =
+                RedisStorage::<ProcessReportRequestJob>::new(ctx_for_worker.apalis_conn.clone());
             let ctx = ctx_for_worker.clone();
-            async move { jobs::process_request::execute(ctx, job).await }
+            WorkerBuilder::new(&worker_id)
+                .backend(storage)
+                .build(move |job: ProcessReportRequestJob, _: WorkerContext| {
+                    let ctx = ctx.clone();
+                    async move { jobs::process_request::execute(ctx, job).await }
+                })
         });
 
     // ── Build axum HTTP router (health + apalis dashboard) ────────────────
@@ -139,10 +152,12 @@ async fn main() -> Result<()> {
         .register(dashboard_storage)
         .build();
 
+    let broadcaster = TracingBroadcaster::create();
     let http_app = Router::new()
         .route("/health", get(health))
-        .nest("/board/api/v1", board_api)
+        .nest("/api/v1", board_api)
         .fallback_service(ServeUI::new())
+        .layer(axum::Extension(broadcaster))
         .layer(TraceLayer::new_for_http());
 
     let http_addr = SocketAddr::from(([0, 0, 0, 0], http_port));
@@ -160,9 +175,9 @@ async fn main() -> Result<()> {
         run_cron_scheduler(ctx_cron).await;
     });
 
-    // ── Spawn apalis worker ───────────────────────────────────────────────
+    // ── Spawn apalis monitor (manages worker lifecycle + heartbeat) ───────
     tokio::spawn(async move {
-        worker.run().await.expect("Worker failed");
+        monitor.run().await.expect("Monitor failed");
     });
 
     // ── Spawn HTTP server ─────────────────────────────────────────────────
@@ -172,10 +187,17 @@ async fn main() -> Result<()> {
     });
 
     // ── Start gRPC server (blocks) ────────────────────────────────────────
-    TonicServer::builder()
-        .add_service(grpc_server)
-        .serve(grpc_addr)
-        .await?;
+    let is_dev = std::env::var("ASPNETCORE_ENVIRONMENT").as_deref() == Ok("Development");
+    let mut grpc_builder = TonicServer::builder().add_service(grpc_server);
+    if is_dev {
+        let reflection = tonic_reflection::server::Builder::configure()
+            .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
+            .build()
+            .expect("Failed to build gRPC reflection service");
+        grpc_builder = grpc_builder.add_service(reflection);
+        info!("gRPC reflection enabled (Development)");
+    }
+    grpc_builder.serve(grpc_addr).await?;
 
     Ok(())
 }
@@ -202,7 +224,7 @@ async fn run_cron_scheduler(ctx: AppContext) {
         }
 
         // Account Daily Confirmation: 21:29 UTC Mon-Fri (DST) or 22:29 (non-DST)
-        let dst = is_dst_now();
+        let dst = utils::is_dst_los_angeles(now);
         let target_hour = if dst { 21 } else { 22 };
         if hour == target_hour && minute == 29 && weekday < 5 {
             let ctx = ctx.clone();
@@ -215,9 +237,3 @@ async fn run_cron_scheduler(ctx: AppContext) {
     }
 }
 
-fn is_dst_now() -> bool {
-    let month = chrono::Utc::now().month();
-    (3..=11).contains(&month)
-}
-
-use chrono::Datelike;

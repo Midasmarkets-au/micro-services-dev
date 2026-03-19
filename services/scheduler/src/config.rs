@@ -98,9 +98,9 @@ impl Config {
         self.build_pg_url(&self.hangfire_db_name)
     }
 
-    /// PostgreSQL URL for a per-tenant DB.
-    pub fn tenant_db_url(&self, tenant_id: i64) -> String {
-        self.build_pg_url(&format!("{}{}", self.tenant_db_name_prefix, tenant_id))
+    /// PostgreSQL URL for a per-tenant DB using the actual database name from core._Tenant.
+    pub fn tenant_db_url_by_name(&self, db_name: &str) -> String {
+        self.build_pg_url(db_name)
     }
 
     fn build_pg_url(&self, db: &str) -> String {
