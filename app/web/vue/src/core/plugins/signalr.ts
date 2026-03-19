@@ -3,10 +3,9 @@ import {
   HubConnectionBuilder,
   LogLevel,
 } from "@microsoft/signalr";
-import { App, inject } from "vue";
+import { App } from "vue";
 import { IHttpConnectionOptions } from "@microsoft/signalr/src/IHttpConnectionOptions";
 import TenantGlobalInjectionKeys from "@/core/types/TenantGlobalInjectionKeys";
-import JwtService from "@/core/services/JwtService";
 
 interface WSSignalR {
   install: (app: App) => void;
@@ -33,10 +32,9 @@ const createSignalR = (url: string): WSSignalR => ({
     }
     this.connection = new HubConnectionBuilder()
       .withUrl(this.url, {
-        withCredentials: false,
-        // Always read the latest token from storage so that refreshed tokens
-        // are picked up on reconnect instead of using a stale captured value.
-        accessTokenFactory: () => JwtService.getToken() ?? token,
+        withCredentials: true,
+        // Token is carried via HttpOnly cookie (access_token) set on login.
+        // No accessTokenFactory needed — browser sends the cookie automatically.
       } as IHttpConnectionOptions)
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)

@@ -155,11 +155,23 @@ public partial class Startup
                 {
                     OnMessageReceived = context =>
                     {
-                        var accessToken = context.Request.Query["access_token"];
                         var path = context.HttpContext.Request.Path;
-                        if (!string.IsNullOrEmpty(accessToken) &&
-                            (StartWithHubPath(path) || StartWithMediaPath(path)))
+                        if (!StartWithHubPath(path) && !StartWithMediaPath(path))
+                            return Task.CompletedTask;
+
+                        // 1. Query string token (WebSocket upgrade cannot set headers)
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken))
+                        {
                             context.Token = accessToken;
+                            return Task.CompletedTask;
+                        }
+
+                        // 2. HttpOnly cookie (set by ApplyTokenResponseHandler on login)
+                        var cookieToken = context.Request.Cookies["access_token"];
+                        if (!string.IsNullOrEmpty(cookieToken))
+                            context.Token = cookieToken;
+
                         return Task.CompletedTask;
                     }
                 };
