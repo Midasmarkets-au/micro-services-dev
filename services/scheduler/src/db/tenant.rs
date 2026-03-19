@@ -188,7 +188,7 @@ pub struct Wallet {
 
 pub async fn get_wallets_with_balance(pool: &PgPool) -> Result<Vec<i64>> {
     let rows: Vec<(i64,)> = sqlx::query_as(
-        r#"SELECT "Id" FROM wlt."_Wallet" WHERE "Balance" != 0"#,
+        r#"SELECT "Id" FROM acct."_Wallet" WHERE "Balance" != 0"#,
     )
     .fetch_all(pool)
     .await?;
@@ -240,16 +240,25 @@ pub async fn count_pending_account_reports(pool: &PgPool, date: DateTime<Utc>) -
     Ok(row.0)
 }
 
-/// Get all active tenant IDs from CentralDb (via the Hangfire/apalis DB which has access).
-/// In practice we read from the central DB. Here we expose a helper that takes a pool
-/// already connected to the central DB.
+/// Get all active tenant IDs from CentralDb.
 pub async fn get_all_tenant_ids(central_pool: &PgPool) -> Result<Vec<i64>> {
     let rows: Vec<(i64,)> = sqlx::query_as(
-        r#"SELECT "Id" FROM pub."_Tenant" WHERE "Status" = 1"#,
+        r#"SELECT "Id" FROM core."_Tenant""#,
     )
     .fetch_all(central_pool)
     .await?;
     Ok(rows.into_iter().map(|r| r.0).collect())
+}
+
+/// Get a tenant's actual database name from CentralDb.
+pub async fn get_tenant_db_name(central_pool: &PgPool, tenant_id: i64) -> Result<Option<String>> {
+    let row: Option<(String,)> = sqlx::query_as(
+        r#"SELECT "DatabaseName" FROM core."_Tenant" WHERE "Id" = $1"#,
+    )
+    .bind(tenant_id)
+    .fetch_optional(central_pool)
+    .await?;
+    Ok(row.map(|(name,)| name))
 }
 
 /// Get MT4 trade service connection string for a given service ID.
@@ -269,6 +278,22 @@ pub async fn get_mt4_connection_string(pool: &PgPool, service_id: i64) -> Result
         }
     }
     Ok(None)
+}
+
+/// Get active client accounts with their MT5 account numbers.
+/// Returns `(account_id, account_number, party_id)` tuples.
+/// Used by AccountDailyConfirmation to check for open MT5 positions.
+pub async fn get_active_client_account_logins(pool: &PgPool) -> Result<Vec<(i64, i64, i64)>> {
+    let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
+        r#"SELECT "Id", "AccountNumber", "PartyId"
+           FROM trd."_Account"
+           WHERE "AccountNumber" IS NOT NULL
+             AND "AccountNumber" > 0
+             AND "Status" = 1"#,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows)
 }
 
 /// Get MT5 trade service connection string for a given service ID.

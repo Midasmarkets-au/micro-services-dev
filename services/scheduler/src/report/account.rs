@@ -3,6 +3,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::collections::HashSet;
 
 use crate::db::auth;
 use crate::db::tenant;
@@ -23,6 +24,10 @@ pub struct AccountReportModel {
 }
 
 /// Stage 1: Identify accounts with trading activity and create AccountReport entries.
+///
+/// Mirrors C# `GenerateAccountToSendConfirmationReport`:
+///   1. Accounts with closed trades in the period (via `_TradeTransaction`)
+///   2. Accounts with open MT5 positions but no closed trades (mirrors C# `hasOpenTrades` check)
 pub async fn generate_account_to_send_confirmation_report(
     tenant_pool: &PgPool,
     _auth_pool: &PgPool,
@@ -30,8 +35,8 @@ pub async fn generate_account_to_send_confirmation_report(
     from: DateTime<Utc>,
     to: DateTime<Utc>,
 ) -> Result<usize> {
-    // Find accounts with trades in the period
-    let active_accounts: Vec<(i64, i64)> = sqlx::query_as(
+    // Stage 1a: accounts with closed trades in the period
+    let closed_trade_accounts: Vec<(i64, i64)> = sqlx::query_as(
         r#"SELECT DISTINCT ta."AccountId", a."PartyId"
            FROM trd."_TradeTransaction" t
            JOIN trd."_TradeAccount" ta ON ta."Id" = t."TradeAccountId"
@@ -43,33 +48,100 @@ pub async fn generate_account_to_send_confirmation_report(
     .fetch_all(tenant_pool)
     .await?;
 
+    let mut seen: HashSet<i64> = HashSet::new();
     let mut count = 0;
-    for (account_id, party_id) in active_accounts {
-        // Check if report already exists
-        let existing: Option<(i64,)> = sqlx::query_as(
-            r#"SELECT "Id" FROM sto."_AccountReport"
-               WHERE "AccountId" = $1 AND "Date"::date = $2::date"#,
-        )
-        .bind(account_id)
-        .bind(from)
-        .fetch_optional(tenant_pool)
-        .await?;
 
-        if existing.is_none() {
-            sqlx::query(
-                r#"INSERT INTO sto."_AccountReport" ("AccountId", "PartyId", "Date", "Status")
-                   VALUES ($1, $2, $3, 0)"#,
-            )
-            .bind(account_id)
-            .bind(party_id)
-            .bind(from)
-            .execute(tenant_pool)
-            .await?;
+    for (account_id, party_id) in &closed_trade_accounts {
+        seen.insert(*account_id);
+        if insert_account_report_if_new(tenant_pool, *account_id, *party_id, from).await? {
             count += 1;
         }
     }
 
+    // Stage 1b: accounts with open MT5 positions but no closed trades.
+    // Mirrors C# `mt5Ctx.Mt5Positions.Where(x => x.Login == login).AnyAsync()`.
+    if let Ok(Some(mt5_conn)) =
+        crate::db::tenant::get_mt5_connection_string(tenant_pool, 1).await
+    {
+        match crate::db::mysql_pool(&mt5_conn).await {
+            Ok(mt5_pool) => {
+                let all_accounts: Vec<(i64, i64, i64)> =
+                    crate::db::tenant::get_active_client_account_logins(tenant_pool).await?;
+
+                // Only check accounts not already captured by closed trades
+                let unchecked: Vec<(i64, i64, i64)> = all_accounts
+                    .into_iter()
+                    .filter(|(account_id, _, _)| !seen.contains(account_id))
+                    .collect();
+
+                let logins: Vec<i64> = unchecked.iter().map(|(_, login, _)| *login).collect();
+
+                if !logins.is_empty() {
+                    let positions =
+                        crate::db::mt5::get_open_positions(&mt5_pool, &logins).await?;
+                    let logins_with_positions: HashSet<i64> =
+                        positions.iter().map(|p| p.login).collect();
+
+                    for (account_id, login, party_id) in unchecked {
+                        if logins_with_positions.contains(&login) {
+                            if insert_account_report_if_new(
+                                tenant_pool,
+                                account_id,
+                                party_id,
+                                from,
+                            )
+                            .await?
+                            {
+                                count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "AccountDailyConfirmation: could not connect to MT5 for open positions check: {}",
+                    e
+                );
+            }
+        }
+    }
+
     Ok(count)
+}
+
+/// Insert an AccountReport row if one doesn't already exist for this account+date.
+/// Returns `true` if a new row was inserted.
+async fn insert_account_report_if_new(
+    pool: &PgPool,
+    account_id: i64,
+    party_id: i64,
+    from: DateTime<Utc>,
+) -> Result<bool> {
+    let existing: Option<(i64,)> = sqlx::query_as(
+        r#"SELECT "Id" FROM sto."_AccountReport"
+           WHERE "AccountId" = $1 AND "Date"::date = $2::date"#,
+    )
+    .bind(account_id)
+    .bind(from)
+    .fetch_optional(pool)
+    .await?;
+
+    if existing.is_some() {
+        return Ok(false);
+    }
+
+    sqlx::query(
+        r#"INSERT INTO sto."_AccountReport" ("AccountId", "PartyId", "Date", "Status")
+           VALUES ($1, $2, $3, 0)"#,
+    )
+    .bind(account_id)
+    .bind(party_id)
+    .bind(from)
+    .execute(pool)
+    .await?;
+
+    Ok(true)
 }
 
 /// Stage 2: Generate HTML for each pending AccountReport and upload to S3.

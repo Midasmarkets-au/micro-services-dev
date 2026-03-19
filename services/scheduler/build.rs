@@ -15,7 +15,8 @@ fn workspace_root() -> std::path::PathBuf {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ws_root = workspace_root();
     let proto_root = ws_root.join("proto");
-    let _out_dir = std::env::var("OUT_DIR").unwrap();
+    let out_dir = std::env::var("OUT_DIR").unwrap();
+    let descriptor_path = std::path::Path::new(&out_dir).join("reflection_descriptor.bin");
 
     let generated_dir = std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("src")
@@ -26,6 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build_server(true)
         .build_client(true)
         .out_dir(&generated_dir)
+        .file_descriptor_set_path(&descriptor_path)
         .compile(
             &[proto_root.join("api/v1/scheduler.proto")],
             &[proto_root.clone()],

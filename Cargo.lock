@@ -66,9 +66,9 @@ dependencies = [
 
 [[package]]
 name = "apalis-board-api"
-version = "1.0.0-rc.4"
+version = "1.0.0-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ed583947f906bd99574c42a1ac0d2cdf5c202ffcc9e946fc995df43bce4d21f"
+checksum = "7aaeda5d8c93c2f2dca1d8f9fb7319295ee3b8a6fff2fb5b3a04da63d346ab77"
 dependencies = [
  "apalis-board-types",
  "apalis-core",
@@ -85,9 +85,9 @@ dependencies = [
 
 [[package]]
 name = "apalis-board-types"
-version = "1.0.0-rc.4"
+version = "1.0.0-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5bf2d4d8965f74922d850ed40a4fe240219dfebc93df6ef06c561abfd46d27c"
+checksum = "3f19fa2d178cd463817f5e923637a49e0f4c0de185b4066f9d1475924ec74d3a"
 dependencies = [
  "serde",
  "thiserror",
@@ -138,35 +138,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "apalis-postgres"
+name = "apalis-redis"
 version = "1.0.0-rc.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e7fccc55fd309574036c472fd42ef1d5e802d246e0b2c70e749951722783f0a"
 dependencies = [
  "apalis-codec",
  "apalis-core",
- "apalis-sql",
+ "chrono",
+ "event-listener",
  "futures",
- "pin-project",
+ "log",
+ "redis",
  "serde",
  "serde_json",
- "sqlx",
  "thiserror",
  "tokio",
+ "tower 0.5.3",
  "ulid",
-]
-
-[[package]]
-name = "apalis-sql"
-version = "1.0.0-rc.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0821183c53a44b41133eae82b558112a67a1c4df1917d2bc2e3f803c8b6658c"
-dependencies = [
- "apalis-core",
- "chrono",
- "serde",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]
@@ -186,6 +173,12 @@ checksum = "f9f3647c145568cec02c42054e07bdf9a5a698e15b466fb2341bfc393cd24aa5"
 dependencies = [
  "rustversion",
 ]
+
+[[package]]
+name = "arcstr"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03918c3dbd7701a85c6b9887732e2921175f26c350b4563841d0958c21d57e6d"
 
 [[package]]
 name = "async-stream"
@@ -2209,15 +2202,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2817,7 +2801,7 @@ checksum = "22505a5c94da8e3b7c2996394d1c933236c4d743e81a410bcca4e6989fc066a4"
 dependencies = [
  "bytes",
  "heck",
- "itertools 0.12.1",
+ "itertools",
  "log",
  "multimap",
  "once_cell",
@@ -2837,7 +2821,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn",
@@ -2944,28 +2928,29 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.27.6"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09d8f99a4090c89cc489a94833c901ead69bfbf3877b4867d5482e321ee875bc"
+checksum = "b36964393906eb775b89b25b05b7b95685b8dd14062f1663a31ff93e75c452e5"
 dependencies = [
  "arc-swap",
- "async-trait",
+ "arcstr",
  "backon",
  "bytes",
+ "cfg-if",
  "combine",
- "futures",
+ "futures-channel",
  "futures-util",
- "itertools 0.13.0",
  "itoa",
  "num-bigint",
  "percent-encoding",
  "pin-project-lite",
  "ryu",
  "sha1_smol",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "tokio",
  "tokio-util",
  "url",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -3239,8 +3224,7 @@ dependencies = [
  "anyhow",
  "apalis",
  "apalis-board-api",
- "apalis-postgres",
- "apalis-sql",
+ "apalis-redis",
  "async-trait",
  "aws-config",
  "aws-sdk-s3",
@@ -3260,6 +3244,7 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
+ "tonic-reflection",
  "tower 0.4.13",
  "tower-http 0.6.8",
  "tracing",
@@ -4993,6 +4978,12 @@ name = "xmlparser"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66fee0b777b0f5ac1c69bb06d361268faafa61cd4682ae064a171c16c433e9e4"
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdd20c5420375476fbd4394763288da7eb0cc0b8c11deed431a91562af7335d3"
 
 [[package]]
 name = "yoke"

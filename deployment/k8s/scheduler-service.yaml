@@ -1,0 +1,24 @@
+# ============================================================================
+#  scheduler Service — ClusterIP
+#  供 mono 通过 http://scheduler:50053 调用 gRPC（EnqueueReportRequest）
+#  8090 暴露 Apalis Dashboard（集群内访问）
+# ============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler
+  labels:
+    app: scheduler
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 50053
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app: scheduler

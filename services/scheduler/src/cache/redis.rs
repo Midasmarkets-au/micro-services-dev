@@ -13,7 +13,7 @@ pub struct RedisCache {
 impl RedisCache {
     pub async fn new(config: &Config) -> Result<Self> {
         let client = Client::open(config.redis_url.as_str())?;
-        let conn = ConnectionManager::new(client).await?;
+        let conn = client.get_connection_manager().await?;
         Ok(Self { conn })
     }
 
