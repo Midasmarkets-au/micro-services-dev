@@ -14,8 +14,6 @@ pub struct Config {
     // Database names
     /// Central DB (portal_central) — used for AuthDb and tenant list
     pub central_db_name: String,
-    /// Hangfire/Apalis job store DB name (HANGFIRE_DATABASE)
-    pub hangfire_db_name: String,
     /// Prefix for per-tenant DBs, e.g. "portal_tenant_" → "portal_tenant_10000"
     pub tenant_db_name_prefix: String,
 
@@ -65,7 +63,6 @@ impl Config {
             db_password,
 
             central_db_name: env_str("DB_DATABASE", "portal_central"),
-            hangfire_db_name: env_str("HANGFIRE_DATABASE", "hangfire"),
             tenant_db_name_prefix: env_str("TENANT_DB_NAME_PREFIX", "portal_tenant_"),
 
             redis_url,
@@ -93,11 +90,6 @@ impl Config {
         self.build_pg_url(&self.central_db_name)
     }
 
-    /// PostgreSQL URL for the Hangfire/Apalis job store.
-    pub fn hangfire_db_url(&self) -> String {
-        self.build_pg_url(&self.hangfire_db_name)
-    }
-
     /// PostgreSQL URL for a per-tenant DB using the actual database name from core._Tenant.
     pub fn tenant_db_url_by_name(&self, db_name: &str) -> String {
         self.build_pg_url(db_name)
@@ -118,7 +110,7 @@ fn build_redis_url() -> String {
         return url;
     }
 
-    let conn = env_str("REDIS_CONNECTION", "localhost:6379");
+    let conn = env_str("REDIS_CONNECTION", "redis:6379");
     let password = env::var("REDIS_PASSWORD").ok();
 
     match password {
