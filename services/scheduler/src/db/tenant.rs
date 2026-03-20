@@ -147,7 +147,7 @@ pub async fn get_accounts_by_party(pool: &PgPool, party_id: i64) -> Result<Vec<A
     Ok(rows)
 }
 
-/// Mirrors fin._Deposit (minimal fields)
+/// Mirrors acct._Deposit (minimal fields)
 #[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
 pub struct Deposit {
     #[sqlx(rename = "Id")]
@@ -166,7 +166,7 @@ pub struct Deposit {
     pub approved_on: Option<DateTime<Utc>>,
 }
 
-/// Mirrors fin._Withdrawal (minimal fields)
+/// Mirrors acct._Withdrawal (minimal fields)
 #[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
 pub struct Withdrawal {
     #[sqlx(rename = "Id")]
@@ -185,7 +185,7 @@ pub struct Withdrawal {
     pub approved_on: Option<DateTime<Utc>>,
 }
 
-/// Mirrors reb._Rebate (minimal fields)
+/// Mirrors trd._Rebate (minimal fields)
 #[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
 pub struct Rebate {
     #[sqlx(rename = "Id")]

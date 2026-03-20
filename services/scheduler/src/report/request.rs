@@ -115,12 +115,17 @@ async fn dispatch(
             upload_csv(ctx, tenant_id, request, csv_bytes).await
         }
         ReportRequestType::DailyEquity => {
+            let from = criteria.from.unwrap_or_else(|| Utc::now() - chrono::Duration::days(1));
+            let to = criteria.to.unwrap_or_else(Utc::now);
+            let use_closing_time = request.is_from_api == 1;
             let csv_bytes = daily_equity::generate_daily_equity_csv(
                 ctx,
                 tenant_pool,
-                tenant_id,
-                &criteria,
-                request.is_from_api == 1,
+                from,
+                to,
+                use_closing_time,
+                from,
+                to,
             ).await?;
             upload_csv(ctx, tenant_id, request, csv_bytes).await
         }

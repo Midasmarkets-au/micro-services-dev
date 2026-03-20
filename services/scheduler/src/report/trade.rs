@@ -16,9 +16,9 @@ pub struct TradeRecord {
     pub symbol: Option<String>,
     pub cmd: Option<i32>,
     pub volume: Option<f64>,
-    pub open_time: Option<DateTime<Utc>>,
+    pub open_time: Option<String>,
     pub open_price: Option<f64>,
-    pub close_time: Option<DateTime<Utc>>,
+    pub close_time: Option<String>,
     pub close_price: Option<f64>,
     pub profit: Option<f64>,
     pub commission: Option<f64>,
@@ -55,7 +55,7 @@ pub async fn generate_trade_csv(
                 volume: d.volume,
                 open_time: None,
                 open_price: None,
-                close_time: d.time,
+                close_time: d.time.map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string()),
                 close_price: d.price,
                 profit: d.profit,
                 commission: d.commission,
@@ -96,9 +96,9 @@ async fn generate_trade_csv_from_tenant_db(
             t."Symbol" as symbol,
             t."Cmd" as cmd,
             t."Volume" as volume,
-            t."OpenAt" as open_time,
+            TO_CHAR(t."OpenAt", 'YYYY-MM-DD HH24:MI:SS') as open_time,
             t."OpenPrice" as open_price,
-            t."CloseAt" as close_time,
+            TO_CHAR(t."CloseAt", 'YYYY-MM-DD HH24:MI:SS') as close_time,
             t."ClosePrice" as close_price,
             t."Profit" as profit,
             t."Commission" as commission,
@@ -118,13 +118,39 @@ async fn generate_trade_csv_from_tenant_db(
     to_csv_bytes(&records)
 }
 
+/// Mirrors DemoAccountRecord.cs
+/// Header: AccountNumber,ExpireOn,Leverage,Balance,Type,Currency,NativeName,FirstName,
+///         LastName,CountryCode,PhoneNumber,Email,Language,CreatedOn
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct DemoAccountRecord {
+    #[serde(rename = "AccountNumber")]
     pub account_number: Option<i64>,
-    pub login: Option<i64>,
-    pub party_id: Option<i64>,
-    pub group: Option<String>,
-    pub created_on: Option<DateTime<Utc>>,
+    #[serde(rename = "ExpireOn")]
+    pub expire_on: Option<String>,
+    #[serde(rename = "Leverage")]
+    pub leverage: Option<i32>,
+    #[serde(rename = "Balance")]
+    pub balance: Option<f64>,       // demo."Balance" / 100
+    #[serde(rename = "Type")]
+    pub r#type: Option<String>,     // CASE on demo."Type"
+    #[serde(rename = "Currency")]
+    pub currency: Option<String>,   // CASE on demo."CurrencyId"
+    #[serde(rename = "NativeName")]
+    pub native_name: Option<String>,
+    #[serde(rename = "FirstName")]
+    pub first_name: Option<String>,
+    #[serde(rename = "LastName")]
+    pub last_name: Option<String>,
+    #[serde(rename = "CountryCode")]
+    pub country_code: Option<String>,
+    #[serde(rename = "PhoneNumber")]
+    pub phone_number: Option<String>,
+    #[serde(rename = "Email")]
+    pub email: Option<String>,
+    #[serde(rename = "Language")]
+    pub language: Option<String>,
+    #[serde(rename = "CreatedOn")]
+    pub created_on: Option<String>, // formatted "yyyy-MM-dd HH:mm:ss"
 }
 
 pub async fn generate_demo_account_csv(pool: &PgPool, query_json: &str) -> Result<Vec<u8>> {
@@ -137,20 +163,48 @@ pub async fn generate_demo_account_csv(pool: &PgPool, query_json: &str) -> Resul
     let criteria: DemoAccountCriteria = serde_json::from_str(query_json)
         .unwrap_or(DemoAccountCriteria { date: None });
     let date = criteria.date.unwrap_or_else(Utc::now);
+    // C# uses `demo."CreatedOn" > date - 7 days`
+    let from_date = date - chrono::Duration::days(7);
 
     let records = sqlx::query_as::<_, DemoAccountRecord>(
         r#"SELECT
-            a."AccountNumber" as account_number,
-            a."AccountNumber" as login,
-            a."PartyId" as party_id,
-            a."Group" as group,
-            a."CreatedOn" as created_on
-           FROM trd."_Account" a
-           WHERE a."Type" = 2
-           AND a."CreatedOn"::date = $1::date
-           ORDER BY a."CreatedOn""#,
+            demo."AccountNumber"                                                        as account_number,
+            TO_CHAR(demo."ExpireOn", 'YYYY-MM-DD HH24:MI:SS')                          as expire_on,
+            demo."Leverage"                                                             as leverage,
+            demo."Balance"::float8 / 100.0                                             as balance,
+            CASE demo."Type"
+                WHEN 4  THEN 'STD'
+                WHEN 6  THEN 'ALPHA'
+                WHEN 11 THEN 'Advantage'
+                WHEN 13 THEN 'Sea STD'
+                ELSE demo."Type"::text
+            END                                                                         as type,
+            CASE demo."CurrencyId"
+                WHEN 36  THEN 'AUD'
+                WHEN 840 THEN 'USD'
+                ELSE demo."CurrencyId"::text
+            END                                                                         as currency,
+            CASE WHEN demo."PartyId" > 1 THEN p."NativeName"  ELSE demo."Name"        END as native_name,
+            CASE WHEN demo."PartyId" > 1 THEN p."FirstName"   ELSE ''                 END as first_name,
+            CASE WHEN demo."PartyId" > 1 THEN p."LastName"    ELSE ''                 END as last_name,
+            CASE WHEN demo."PartyId" > 1 THEN p."CountryCode" ELSE demo."CountryCode" END as country_code,
+            CASE WHEN demo."PartyId" > 1 THEN p."PhoneNumber" ELSE demo."PhoneNumber" END as phone_number,
+            demo."Email"                                                                as email,
+            CASE WHEN demo."PartyId" > 1 THEN p."Language"    ELSE ''                 END as language,
+            TO_CHAR(demo."CreatedOn", 'YYYY-MM-DD HH24:MI:SS')                         as created_on
+           FROM trd."_TradeDemoAccount" demo
+           LEFT JOIN core."_Party" p ON p."Id" = demo."PartyId"
+           WHERE demo."CreatedOn" > $1
+             AND (
+               demo."PartyId" = 1
+               OR (demo."PartyId" > 1
+                   AND NOT EXISTS (
+                       SELECT 1 FROM trd."_Account" acc WHERE acc."PartyId" = demo."PartyId"
+                   ))
+             )
+           ORDER BY demo."CreatedOn""#,
     )
-    .bind(date)
+    .bind(from_date)
     .fetch_all(pool)
     .await?;
 
