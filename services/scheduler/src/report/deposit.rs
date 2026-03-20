@@ -640,9 +640,9 @@ pub async fn generate_wallet_snapshot_csv(pool: &PgPool, query_json: &str) -> Re
 
     let records = sqlx::query_as::<_, WalletSnapshotRecord>(
         r#"SELECT
-            s."Id"           as id,
+            w."Id"           as id,
             p."NativeName"   as name,
-            NULL::text       as email,
+            p."Email"        as email,
             c."Code"         as currency,
             CASE w."FundType"
                 WHEN 1 THEN 'Wire'
@@ -653,13 +653,12 @@ pub async fn generate_wallet_snapshot_csv(pool: &PgPool, query_json: &str) -> Re
                 ELSE w."FundType"::text
             END              as fund_type,
             s."Balance"::float8 / 1000000.0 as amount,
-            CASE party."Status"
+            CASE p."Status"
                 WHEN 1 THEN 'Active'
                 ELSE 'Closed'
             END              as status
            FROM acct."_WalletDailySnapshot" s
            JOIN acct."_Wallet" w ON w."Id" = s."WalletId"
-           LEFT JOIN core."_Party" party ON party."Id" = w."PartyId"
            LEFT JOIN core."_Party" p ON p."Id" = w."PartyId"
            LEFT JOIN acct."_Currency" c ON c."Id" = w."CurrencyId"
            WHERE s."SnapshotDate"::date = $1::date
@@ -697,7 +696,7 @@ pub async fn generate_wallet_overview_csv(pool: &PgPool, criteria: &DateRangeCri
         r#"SELECT
             w."Id"         as id,
             p."NativeName" as name,
-            NULL::text     as email,
+            p."Email"      as email,
             c."Code"       as currency,
             CASE w."FundType"
                 WHEN 1 THEN 'Wire'
@@ -708,14 +707,13 @@ pub async fn generate_wallet_overview_csv(pool: &PgPool, criteria: &DateRangeCri
                 ELSE w."FundType"::text
             END            as fund_type,
             w."Balance"::float8 / 1000000.0 as amount,
-            CASE party."Status"
+            CASE p."Status"
                 WHEN 1 THEN 'Active'
                 ELSE 'Closed'
             END            as status
            FROM acct."_Wallet" w
-           LEFT JOIN core."_Party" p    ON p."Id"    = w."PartyId"
-           LEFT JOIN core."_Party" party ON party."Id" = w."PartyId"
-           LEFT JOIN acct."_Currency" c ON c."Id"    = w."CurrencyId"
+           LEFT JOIN core."_Party" p ON p."Id" = w."PartyId"
+           LEFT JOIN acct."_Currency" c ON c."Id" = w."CurrencyId"
            WHERE w."Balance" != 0
            ORDER BY w."Id""#,
     )
