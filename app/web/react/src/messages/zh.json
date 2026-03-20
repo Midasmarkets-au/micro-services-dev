@@ -1176,7 +1176,7 @@
     },
     "error": {
       "amountRequired": "请输入金额",
-      "amountRange": "请输入入金额${min}~${max}",
+      "amountRange": "请输入入金额",
       "selectChannel": "请选择支付方式"
     },
     "requestKeys": {
@@ -1625,7 +1625,7 @@
       "viewDetails": "查看详情",
       "viewAccounts": "查看账户",
       "viewRebateStatistics": "查看返佣统计",
-      "editSchema": "编辑方案",
+      "editSchema": "编辑架构",
       "clear": "清除",
       "copy": "复制",
       "create": "创建",
@@ -2017,7 +2017,7 @@
       "viewDetails": "查看详情",
       "viewAccounts": "查看账户",
       "viewRebateStatistics": "查看交易统计",
-      "editSchema": "编辑方案",
+      "editSchema": "编辑架构",
       "clear": "清除",
       "copy": "复制",
       "create": "创建",

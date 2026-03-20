@@ -2,9 +2,13 @@
 
 import { useMemo } from 'react';
 import { useLocale } from 'next-intl';
-import { CURRENCY_CODE_MAP } from '@/types/wallet';
+import { CurrencyTypes } from '@/types/accounts';
 
-export { CURRENCY_CODE_MAP as CurrencyCodeMap };
+export const CurrencyCodeMap: Record<number, string> = Object.fromEntries(
+  Object.entries(CurrencyTypes)
+    .filter(([key, value]) => !Number.isNaN(Number(key)) && typeof value === 'string')
+    .map(([key, value]) => [Number(key), value])
+) as Record<number, string>;
 
 const LOCALE_MAP: Record<string, string> = {
   en: 'en-US',
@@ -73,7 +77,7 @@ export function formatBalance(
   const value = balance / 100;
   const hasDecimal = value % 1 !== 0;
   const fractionDigits = hasDecimal ? 4 : 2;
-  const code = CURRENCY_CODE_MAP[id] || 'USD';
+  const code = CurrencyCodeMap[id] || 'USD';
 
   try {
     return new Intl.NumberFormat(locale, {

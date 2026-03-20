@@ -16,9 +16,9 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { getDemoAccountConfig, createDemoAccount } from '@/actions';
 import { useToast } from '@/hooks/useToast';
 import type { AccountConfig, ServiceMap, CreateDemoAccountParams } from '@/types/accounts';
-import { getPlatformName, getCurrencySymbol } from '@/types/accounts';
+import { getPlatformName } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
-
+import { BalanceShow } from '@/components/ui/BalanceShow';
 interface CreateDemoAccountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -310,7 +310,7 @@ export function CreateDemoAccountModal({
                 </div>
                 <div className="flex items-center justify-between py-3">
                   <span className="text-sm text-text-secondary">{t('fields.initialAmount')}：</span>
-                  <span className="text-sm text-text-primary">{getCurrencySymbol(Number(currency))}{Number(amount).toLocaleString()}</span>
+                  <span className="text-sm text-text-primary"> <BalanceShow balance={Number(amount)} currencyId={Number(currency)} /></span>
                 </div>
               </div>
             </div>

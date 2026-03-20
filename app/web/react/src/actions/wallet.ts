@@ -270,12 +270,17 @@ export async function createUserPaymentInfo(
 }
 
 export async function submitWalletWithdrawal(
-  walletHashId: string,
-  data: WithdrawalSubmitData
+  targetId: string | number,
+  data: WithdrawalSubmitData,
+  type: 'wallet' | 'account' = 'wallet'
 ): Promise<ActionResponse<unknown>> {
   try {
+    const path =
+      type === 'account'
+        ? `/client/account/${targetId}/withdrawal`
+        : `/client/wallet/${targetId}/withdrawal`;
     const response = await apiClient.v2.post(
-      `/client/wallet/${walletHashId}/withdrawal`,
+      path,
       { ...data, amount: Math.round(data.amount * AMOUNT_SUBMIT_MULTIPLIER) }
     );
     return { success: true, data: response };

@@ -203,154 +203,154 @@ export function DashboardMainContent() {
           </button>
         </div>
       </div>
+      <div className='bg-surface rounded p-4 h-full'>
+        {/* 账户切换标签栏 */}
+        <div className="flex flex-col mb-4">
+          <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between">
+            <AccountTabs 
+              activeTab={activeTab} 
+              onTabChange={setActiveTab}
+              disableRealAccounts={isGuest}
+            />
 
-      {/* 账户切换标签栏 */}
-      <div className="flex flex-col">
-        <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between">
-          <AccountTabs 
-            activeTab={activeTab} 
-            onTabChange={setActiveTab}
-            disableRealAccounts={isGuest}
-          />
-
-          {/* 右侧创建交易账户按钮 */}
-          <div className="w-full md:w-auto">
-            <Button
-              className="w-full justify-center gap-1 md:h-auto md:w-auto md:px-2.5 md:py-1"
-              onClick={() =>
-                activeTab === 'RealAccounts'
-                  ? setShowCreateLiveModal(true)
-                  : setShowCreateDemoModal(true)
-              }
-            >
-              <Image
-                src="/images/icons/add-plain.svg"
-                alt="add"
-                width={20}
-                height={20}
-              />
-              <span>
-                {activeTab === 'RealAccounts'
-                  ? tAccounts('action.createTradeAccount')
-                  : tAccounts('action.createDemoAccount')}
-              </span>
-            </Button>
+            {/* 右侧创建交易账户按钮 */}
+            <div className="w-full md:w-auto">
+              <Button
+                className="w-full justify-center gap-1 md:h-auto md:w-auto md:px-2.5 md:py-1"
+                onClick={() =>
+                  activeTab === 'RealAccounts'
+                    ? setShowCreateLiveModal(true)
+                    : setShowCreateDemoModal(true)
+                }
+              >
+                <Image
+                  src="/images/icons/add-plain.svg"
+                  alt="add"
+                  width={20}
+                  height={20}
+                />
+                <span>
+                  {activeTab === 'RealAccounts'
+                    ? tAccounts('action.createTradeAccount')
+                    : tAccounts('action.createDemoAccount')}
+                </span>
+              </Button>
+            </div>
           </div>
+
+          {/* 分割线 */}
+          <div className="mt-0 h-px w-full bg-border" />
         </div>
 
-        {/* 分割线 */}
-        <div className="mt-0 h-px w-full bg-border" />
+        {/* 账户列表内容 */}
+        {isInitialLoading ? (
+          // 骨架屏
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-10"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-6 w-12" />
+                  </div>
+                  <Skeleton className="size-8" />
+                </div>
+                <div className="flex items-center gap-5">
+                  <Skeleton className="size-10 rounded-full" />
+                  <div className="flex flex-col gap-2">
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-px w-full" />
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-12 w-20" />
+                  <Skeleton className="h-12 w-20" />
+                  <Skeleton className="h-12 w-20" />
+                </div>
+                <div className="flex gap-5">
+                  <Skeleton className="h-9 flex-1" />
+                  <Skeleton className="h-9 flex-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : activeTab === 'RealAccounts' ? (
+          // 真实账户列表
+          liveAccounts.length === 0 && pendingApplications.length === 0 ? (
+            <div className="flex grow flex-col items-center justify-center rounded bg-surface py-20">
+              <div className="flex flex-col items-center gap-4">
+                <Image
+                  src={mounted && isDark ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
+                  alt="No data"
+                  width={120}
+                  height={120}
+                />
+                <p className="text-lg text-text-secondary">
+                  {tAccounts('noData')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {pendingApplications.map((app, index) => (
+                <TradeAccountCard
+                  key={`app-${app.id ?? index}`}
+                  item={app}
+                  type="application"
+                  serviceMap={serviceMap}
+                  onRefresh={handleRefresh}
+                />
+              ))}
+              {liveAccounts.map((account, index) => (
+                <TradeAccountCard
+                  key={`account-${account.id ?? account.uid ?? index}`}
+                  item={account}
+                  type="account"
+                  serviceMap={serviceMap}
+                  onDeposit={() => handleDeposit(account)}
+                  onResetPassword={() => handleResetPassword(account)}
+                  onChangeLeverage={() => handleChangeLeverage(account)}
+                  onViewDetails={() => account.tradeAccount && router.push(`/account/${account.tradeAccount.accountNumber}`)}
+                  onRefresh={handleRefresh}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          // 模拟账户列表
+          demoAccounts.length === 0 ? (
+            <div className="flex grow flex-col items-center justify-center rounded bg-surface py-20">
+              <div className="flex flex-col items-center gap-4">
+                <Image
+                  src={mounted && isDark ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
+                  alt="No data"
+                  width={120}
+                  height={120}
+                />
+                <p className="text-lg text-text-secondary">
+                  {tAccounts('noData')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {demoAccounts.map((demo, index) => (
+                <TradeAccountCard
+                  key={`demo-${demo.id ?? demo.accountNumber ?? index}`}
+                  item={demo}
+                  type="demo"
+                  serviceMap={serviceMap}
+                  onRefresh={handleRefresh}
+                />
+              ))}
+            </div>
+          )
+        )}
       </div>
-
-      {/* 账户列表内容 */}
-      {isInitialLoading ? (
-        // 骨架屏
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-10"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-6 w-12" />
-                </div>
-                <Skeleton className="size-8" />
-              </div>
-              <div className="flex items-center gap-5">
-                <Skeleton className="size-10 rounded-full" />
-                <div className="flex flex-col gap-2">
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              </div>
-              <Skeleton className="h-px w-full" />
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-12 w-20" />
-                <Skeleton className="h-12 w-20" />
-                <Skeleton className="h-12 w-20" />
-              </div>
-              <div className="flex gap-5">
-                <Skeleton className="h-9 flex-1" />
-                <Skeleton className="h-9 flex-1" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : activeTab === 'RealAccounts' ? (
-        // 真实账户列表
-        liveAccounts.length === 0 && pendingApplications.length === 0 ? (
-          <div className="flex grow flex-col items-center justify-center rounded bg-surface py-20">
-            <div className="flex flex-col items-center gap-4">
-              <Image
-                src={mounted && isDark ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
-                alt="No data"
-                width={120}
-                height={120}
-              />
-              <p className="text-lg text-text-secondary">
-                {tAccounts('noData')}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {pendingApplications.map((app, index) => (
-              <TradeAccountCard
-                key={`app-${app.id ?? index}`}
-                item={app}
-                type="application"
-                serviceMap={serviceMap}
-                onRefresh={handleRefresh}
-              />
-            ))}
-            {liveAccounts.map((account, index) => (
-              <TradeAccountCard
-                key={`account-${account.id ?? account.uid ?? index}`}
-                item={account}
-                type="account"
-                serviceMap={serviceMap}
-                onDeposit={() => handleDeposit(account)}
-                onResetPassword={() => handleResetPassword(account)}
-                onChangeLeverage={() => handleChangeLeverage(account)}
-                onViewDetails={() => account.tradeAccount && router.push(`/account/${account.tradeAccount.accountNumber}`)}
-                onRefresh={handleRefresh}
-              />
-            ))}
-          </div>
-        )
-      ) : (
-        // 模拟账户列表
-        demoAccounts.length === 0 ? (
-          <div className="flex grow flex-col items-center justify-center rounded bg-surface py-20">
-            <div className="flex flex-col items-center gap-4">
-              <Image
-                src={mounted && isDark ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
-                alt="No data"
-                width={120}
-                height={120}
-              />
-              <p className="text-lg text-text-secondary">
-                {tAccounts('noData')}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {demoAccounts.map((demo, index) => (
-              <TradeAccountCard
-                key={`demo-${demo.id ?? demo.accountNumber ?? index}`}
-                item={demo}
-                type="demo"
-                serviceMap={serviceMap}
-                onRefresh={handleRefresh}
-              />
-            ))}
-          </div>
-        )
-      )}
-
       {/* 创建真实账户弹窗 */}
       <CreateLiveAccountModal
         open={showCreateLiveModal}

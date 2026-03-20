@@ -260,7 +260,6 @@ export default function IBWithdrawalPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       {/* Pagination */}

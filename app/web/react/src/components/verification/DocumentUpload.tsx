@@ -308,7 +308,7 @@ export function DocumentUpload({
       <div className="flex flex-col gap-10 md:gap-10">
         {/* 错误提示 */}
         {error && (
-          <div className="p-3 rounded bg-error/10 text-error text-sm">
+          <div className="p-3 rounded bg-error/10  text-sm">
             {error}
           </div>
         )}

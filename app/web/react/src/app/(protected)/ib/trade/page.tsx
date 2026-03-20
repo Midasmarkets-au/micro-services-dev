@@ -279,7 +279,6 @@ export default function IBTradePage() {
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
         footer={footerRows}
-        className="flex-1"
       />
 
       {/* Pagination */}

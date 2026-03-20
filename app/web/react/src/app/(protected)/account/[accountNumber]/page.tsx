@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
-import { BalanceShow, Button, Skeleton, DatePicker, Tabs } from '@/components/ui';
-import type { TabItem } from '@/components/ui';
+import { BalanceShow, Button, Skeleton, DatePicker, Tabs, DataTable } from '@/components/ui';
+import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { DateRange } from '@/components/ui';
 import {
   Select,
@@ -30,9 +30,7 @@ import {
   getAccountWithdrawals,
   getAccountTransactions,
   getAccountTrades,
-  getWalletList,
 } from '@/actions';
-import type { Wallet } from '@/types/wallet';
 import type {
   Account,
   ServiceMap,
@@ -80,12 +78,6 @@ function formatTime(dateStr: string) {
   return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 const PENDING_STATES = new Set([
   DepositState.DepositCreated, DepositState.DepositPaymentCompleted, DepositState.DepositTenantApproved,
   WithdrawalState.WithdrawalCreated, WithdrawalState.WithdrawalTenantApproved,
@@ -109,17 +101,6 @@ function getStateBadgeCls(stateId: number): string {
   if (REJECTED_STATES.has(stateId)) return 'bg-[rgba(128,0,32,0.2)] text-[#800020]';
   if (PENDING_STATES.has(stateId)) return 'bg-[rgba(255,165,0,0.2)] text-[#ffa500]';
   return 'bg-gray-500/20 text-gray-500';
-}
-
-// 按日期分组
-function groupByDate<T extends { createdOn: string }>(items: T[]): Record<string, T[]> {
-  const groups: Record<string, T[]> = {};
-  items.forEach((item) => {
-    const key = formatDate(item.createdOn);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(item);
-  });
-  return groups;
 }
 
 const DEPOSIT_STATUS_OPTIONS = [
@@ -162,7 +143,9 @@ export default function AccountDetailPage() {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [receiptModal, setReceiptModal] = useState<{ open: boolean; hashId: string; methodName: string }>({
+    open: false, hashId: '', methodName: '',
+  });
 
   // Filters
   const [pageSize, setPageSize] = useState(20);
@@ -179,7 +162,7 @@ export default function AccountDetailPage() {
   const loadAccountData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [accountResult, accountsResult, serviceResult, walletResult] = await Promise.all([
+      const [accountResult, accountsResult, serviceResult] = await Promise.all([
         execute(getAccountByNumber, accountNumber),
         execute(getLiveAccounts, {
           hasTradeAccount: true,
@@ -193,7 +176,6 @@ export default function AccountDetailPage() {
           ],
         }),
         execute(getServiceMap),
-        execute(getWalletList),
       ]);
 
       if (accountResult.success && accountResult.data) {
@@ -204,12 +186,6 @@ export default function AccountDetailPage() {
       }
       if (serviceResult.success) {
         setServiceMap(serviceResult.data || {});
-      }
-      if (walletResult.success && walletResult.data?.length) {
-        const matchedWallet = walletResult.data.find(
-          (w) => w.currencyId === accountResult.data?.currencyId
-        );
-        setWallet(matchedWallet || walletResult.data[0]);
       }
     } finally {
       setIsLoading(false);
@@ -342,6 +318,236 @@ export default function AccountDetailPage() {
     { key: 'transfer', label: t('detail.tabs.transfer') },
     { key: 'tradeReport', label: t('detail.tabs.tradeReport') },
   ];
+
+  const groupHeaderRender = useCallback((groupKey: string) => {
+    const [weekday, dayMonthYear] = groupKey.split('||');
+    return (
+      <div className="flex flex-col gap-2.5">
+        <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
+        <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
+      </div>
+    );
+  }, []);
+
+  const dateGroupConfig = useMemo<DataTableGroupConfig<{ createdOn: string }>>(() => ({
+    groupBy: (item) => {
+      const d = new Date(item.createdOn);
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayMonthYear = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `${weekday}||${dayMonthYear}`;
+    },
+    renderGroupHeader: groupHeaderRender,
+    headerWidth: 'w-[140px]',
+  }), [groupHeaderRender]);
+
+  const depositColumns = useMemo<DataTableColumn<AccountDeposit>[]>(() => [
+    {
+      key: 'deposit',
+      title: t('detail.tabs.deposit'),
+      skeletonWidth: 'w-40',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <span className="text-[#004eff] text-xs font-bold">↓</span>
+          <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
+          {item.stateId === DepositState.DepositCreated && (
+            <button
+              type="button"
+              className="ml-2 inline-flex items-center gap-1 rounded bg-[#000f32] px-2.5 py-1 text-xs text-white transition-colors hover:bg-[#001a4d] cursor-pointer"
+              onClick={() => setReceiptModal({ open: true, hashId: item.hashId, methodName: item.paymentMethodName })}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14,2 14,8 20,8" />
+              </svg>
+              {t('action.uploadReceipt')}
+            </button>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('detail.table.status'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
+          {t(`transactionState.${item.stateId}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'payment',
+      title: t('detail.table.payment'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className="text-sm text-text-secondary">
+          {t(`paymentStatus.${item.paymentStatus}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('detail.table.amount'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => (
+        <BalanceShow
+          balance={item.amount}
+          currencyId={item.currencyId || tradeAccount?.currencyId || CurrencyTypes.USD}
+          className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
+        />
+      ),
+    },
+    {
+      key: 'time',
+      title: t('detail.table.createdOn'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>,
+    },
+  ], [t, tradeAccount?.currencyId]);
+
+  const withdrawalColumns = useMemo<DataTableColumn<AccountWithdrawal>[]>(() => [
+    {
+      key: 'withdrawal',
+      title: t('detail.tabs.withdrawal'),
+      skeletonWidth: 'w-40',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <span className="text-[#e02b1d] text-xs font-bold">↑</span>
+          <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('detail.table.status'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
+          {t(`transactionState.${item.stateId}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'payment',
+      title: t('detail.table.payment'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className="text-sm text-text-secondary">
+          {t(`paymentStatus.${item.paymentStatus}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('detail.table.amount'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => (
+        <BalanceShow
+          balance={item.amount}
+          currencyId={item.currencyId || tradeAccount?.currencyId || CurrencyTypes.USD}
+          className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
+        />
+      ),
+    },
+    {
+      key: 'createdOn',
+      title: t('detail.table.createdOn'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>,
+    },
+    {
+      key: 'updatedOn',
+      title: t('detail.table.updatedOn'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.updatedOn)}</span>,
+    },
+  ], [t, tradeAccount?.currencyId]);
+
+  const transferColumns = useMemo<DataTableColumn<AccountTransaction>[]>(() => [
+    {
+      key: 'transfer',
+      title: t('detail.tabs.transfer'),
+      skeletonWidth: 'w-40',
+      render: (item) => (
+        <div className="flex items-center gap-1 text-sm">
+          <span className={tradeAccount?.accountNumber === item.sourceTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
+            {item.sourceTradeAccountNumber || 'Wallet'}
+          </span>
+          <span className="text-yellow-500 mx-1">→</span>
+          <span className={tradeAccount?.accountNumber === item.targetTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
+            {item.targetTradeAccountNumber || 'Wallet'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('detail.table.status'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
+          {t(`transactionState.${item.stateId}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('detail.table.amount'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => {
+        const isIncoming = item.targetTradeAccountNumber === tradeAccount?.accountNumber;
+        return (
+          <div className="flex items-center justify-end gap-0.5">
+            <span className={isIncoming ? 'text-green-500' : 'text-red-500'}>
+              {isIncoming ? '+' : '-'}
+            </span>
+            <BalanceShow
+              balance={item.amount}
+              currencyId={tradeAccount?.currencyId || CurrencyTypes.USD}
+              className="inline text-base font-bold text-text-primary font-['DIN',sans-serif]"
+            />
+          </div>
+        );
+      },
+    },
+    {
+      key: 'time',
+      title: t('detail.table.createdOn'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>,
+    },
+  ], [t, tradeAccount?.accountNumber, tradeAccount?.currencyId]);
+
+  const tradeColumns = useMemo<DataTableColumn<AccountTrade>[]>(() => [
+    { key: 'ticket', title: 'Ticket', skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.ticket}</span> },
+    { key: 'symbol', title: 'Symbol', skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.symbol}</span> },
+    {
+      key: 'type', title: 'Type', skeletonWidth: 'w-12',
+      render: (item) => <span className={item.type === 0 ? 'text-green-500' : 'text-red-500'}>{item.type === 0 ? 'Buy' : 'Sell'}</span>,
+    },
+    { key: 'volume', title: 'Volume', align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-primary">{item.volume.toFixed(2)}</span> },
+    { key: 'openTime', title: 'Open Time', skeletonWidth: 'w-24', render: (item) => <span className="text-text-secondary">{formatTime(item.openTime)}</span> },
+    { key: 'openPrice', title: 'Open Price', align: 'right', skeletonWidth: 'w-20', render: (item) => <span className="text-text-primary">{item.openPrice.toFixed(5)}</span> },
+    { key: 'sl', title: 'S/L', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.sl > 0 ? item.sl.toFixed(5) : '--'}</span> },
+    { key: 'tp', title: 'T/P', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.tp > 0 ? item.tp.toFixed(5) : '--'}</span> },
+    { key: 'closeTime', title: 'Close Time', skeletonWidth: 'w-24', render: (item) => <span className="text-text-secondary">{item.closeTime ? formatTime(item.closeTime) : '--'}</span> },
+    { key: 'closePrice', title: 'Close Price', align: 'right', skeletonWidth: 'w-20', render: (item) => <span className="text-text-primary">{item.closePrice > 0 ? item.closePrice.toFixed(5) : '--'}</span> },
+    { key: 'commission', title: 'Commission', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.commission.toFixed(2)}</span> },
+    { key: 'swap', title: 'Swap', align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-secondary">{item.swap.toFixed(2)}</span> },
+    { key: 'profit', title: 'P/L', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className={`font-medium ${item.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>{item.profit.toFixed(2)}</span> },
+  ], []);
 
   if (isLoading) {
     return (
@@ -601,7 +807,7 @@ export default function AccountDetailPage() {
             {t('detail.tabs.deposit')}
           </Button>
         )}
-        {activeTab === 'withdrawal' && wallet && (
+        {activeTab === 'withdrawal' && tradeAccount && (
           <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -625,28 +831,47 @@ export default function AccountDetailPage() {
       </p>
 
       {/* Tab 内容 */}
-      {tabLoading ? (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-12 w-full rounded" />
-          ))}
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          {activeTab === 'deposit' && (
-            <DepositTable data={deposits} currencyId={tradeAccount.currencyId} accountUid={currentAccount.uid} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} t={t} onRefresh={loadTabData} />
-          )}
-          {activeTab === 'withdrawal' && (
-            <WithdrawalTable data={withdrawals} currencyId={tradeAccount.currencyId} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} t={t} />
-          )}
-          {activeTab === 'transfer' && (
-            <TransferTable data={transactions} currencyId={tradeAccount.currencyId} currentAccountNumber={tradeAccount.accountNumber} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} t={t} />
-          )}
-          {activeTab === 'tradeReport' && (
-            <TradeReportTable data={trades} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} />
-          )}
-        </div>
-      )}
+      <div className="overflow-x-auto">
+        {activeTab === 'deposit' && (
+          <DataTable<AccountDeposit>
+            columns={depositColumns}
+            data={deposits}
+            rowKey={(item, idx) => item.id ?? idx}
+            loading={tabLoading}
+            skeletonRows={3}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<AccountDeposit>}
+          />
+        )}
+        {activeTab === 'withdrawal' && (
+          <DataTable<AccountWithdrawal>
+            columns={withdrawalColumns}
+            data={withdrawals}
+            rowKey={(item, idx) => item.id ?? idx}
+            loading={tabLoading}
+            skeletonRows={3}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<AccountWithdrawal>}
+          />
+        )}
+        {activeTab === 'transfer' && (
+          <DataTable<AccountTransaction>
+            columns={transferColumns}
+            data={transactions}
+            rowKey={(item, idx) => item.id ?? idx}
+            loading={tabLoading}
+            skeletonRows={3}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<AccountTransaction>}
+          />
+        )}
+        {activeTab === 'tradeReport' && (
+          <DataTable<AccountTrade>
+            columns={tradeColumns}
+            data={trades}
+            rowKey={(item) => item.id || item.ticket}
+            loading={tabLoading}
+            skeletonRows={5}
+          />
+        )}
+      </div>
 
       </div>
       {/* end: Tab + 筛选 + 内容 白色容器 */}
@@ -661,11 +886,11 @@ export default function AccountDetailPage() {
         account={currentAccount ? { uid: currentAccount.uid, currencyId: currentAccount.currencyId } : null}
       />
 
-      {wallet && (
+      {tradeAccount && (
         <WithdrawalModal
           open={showWithdrawalModal}
           onOpenChange={setShowWithdrawalModal}
-          wallet={wallet}
+          wallet={tradeAccount}
           type='account'
           accountNumber={tradeAccount.accountNumber}
           onSuccess={loadTabData}
@@ -681,405 +906,17 @@ export default function AccountDetailPage() {
           onSuccess={loadTabData}
         />
       )}
-    </div>
-  );
-}
-
-// ========================================
-// Sub-components
-// ========================================
-
-function EmptyState({ text, isDark, mounted }: { text: string; isDark: boolean; mounted: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16">
-      <Image
-        src={mounted && isDark ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
-        alt="No data"
-        width={100}
-        height={100}
-      />
-      <p className="mt-4 text-sm text-text-secondary">{text}</p>
-    </div>
-  );
-}
-
-function DepositTable({ data, currencyId, accountUid, noRecordsText, isDark, mounted, t, onRefresh }: {
-  data: AccountDeposit[];
-  currencyId: number;
-  accountUid: number;
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-  t: (key: string, values?: Record<string, string | number>) => string;
-  onRefresh?: () => void;
-}) {
-  const [receiptModal, setReceiptModal] = useState<{ open: boolean; hashId: string; methodName: string }>({
-    open: false, hashId: '', methodName: '',
-  });
-
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-  const groups = groupByDate(data);
-
-  return (
-    <>
-      <div className="flex flex-col gap-5">
-        {/* Column Headers */}
-        <div className="hidden md:flex items-center px-5 gap-[200px]">
-          <div className="w-[100px] shrink-0 opacity-0"><span>Date</span></div>
-          <div className="flex-1 flex items-center justify-between">
-            <div className="flex-1 pl-[43px]">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.tabs.deposit')}</span>
-            </div>
-            <div className="flex-1 text-center">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.status')}</span>
-            </div>
-            <div className="flex-1 text-center">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.payment')}</span>
-            </div>
-            <div className="flex-1 text-right">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.amount')}</span>
-            </div>
-            <div className="flex-1 text-right pr-[53px]">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.createdOn')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Grouped rows */}
-        <div className="flex flex-col gap-5">
-          {Object.entries(groups).map(([dateKey, items]) => {
-            const firstDate = items[0]?.createdOn ? new Date(items[0].createdOn) : new Date();
-            const weekday = firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-            const dayMonthYear = firstDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-            return (
-              <div key={dateKey} className="flex flex-col md:flex-row md:items-start gap-4 md:gap-[200px] border border-border rounded-xl p-5 overflow-hidden">
-                <div className="shrink-0 w-[100px]">
-                  <div className="flex flex-col gap-2.5">
-                    <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
-                    <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
-                  </div>
-                </div>
-                <div className="flex-1 flex flex-col gap-5">
-                  {items.map((item, index) => (
-                    <div key={item.id || item.hashId || `${item.createdOn}-${index}`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div className="flex-1 flex items-center gap-2">
-                            <span className="text-[#004eff] text-xs font-bold">↓</span>
-                            <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
-                            {item.stateId === DepositState.DepositCreated && (
-                              <button
-                                type="button"
-                                className="ml-2 inline-flex items-center gap-1 rounded bg-[#000f32] px-2.5 py-1 text-xs text-white transition-colors hover:bg-[#001a4d] cursor-pointer"
-                                onClick={() => setReceiptModal({ open: true, hashId: item.hashId, methodName: item.paymentMethodName })}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                                  <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                                {t('action.uploadReceipt')}
-                              </button>
-                            )}
-                          </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
-                            {t(`transactionState.${item.stateId}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className="text-sm text-text-secondary">
-                            {t(`paymentStatus.${item.paymentStatus}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-end">
-                          <BalanceShow
-                            balance={item.amount}
-                            currencyId={item.currencyId || currencyId}
-                            className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
-                          />
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-end">
-                          <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>
-                        </div>
-                      </div>
-                      {index < items.length - 1 && <div className="w-full h-px bg-border mt-5" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       <UploadReceiptModal
         open={receiptModal.open}
         onOpenChange={(open) => setReceiptModal((prev) => ({ ...prev, open }))}
-        accountUid={accountUid}
+        accountUid={currentAccount.uid}
         depositHashId={receiptModal.hashId}
         paymentMethodName={receiptModal.methodName}
-        onSuccess={onRefresh}
+        onSuccess={loadTabData}
       />
-    </>
-  );
-}
-
-function WithdrawalTable({ data, currencyId, noRecordsText, isDark, mounted, t, onCancel }: {
-  data: AccountWithdrawal[];
-  currencyId: number;
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-  t: (key: string, values?: Record<string, string | number>) => string;
-  onCancel?: (hashId: string) => void;
-}) {
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-  const groups = groupByDate(data);
-
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Column Headers */}
-      <div className="hidden md:flex items-center px-5 gap-[200px]">
-        <div className="w-[100px] shrink-0 opacity-0"><span>Date</span></div>
-        <div className="flex-1 flex items-center justify-between">
-          <div className="flex-1 pl-[43px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.tabs.withdrawal')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.status')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.payment')}</span>
-          </div>
-          <div className="flex-1 text-right">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.amount')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.createdOn')}</span>
-          </div>
-          <div className="flex-1 text-right pr-[53px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.updatedOn')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grouped rows */}
-      <div className="flex flex-col gap-5">
-        {Object.entries(groups).map(([dateKey, items]) => {
-          const firstDate = items[0]?.createdOn ? new Date(items[0].createdOn) : new Date();
-          const weekday = firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-          const dayMonthYear = firstDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-          return (
-            <div key={dateKey} className="flex flex-col md:flex-row md:items-start gap-4 md:gap-[200px] border border-border rounded-xl p-5 overflow-hidden">
-              <div className="shrink-0 w-[100px]">
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
-                  <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col gap-5">
-                {items.map((item, index) => {
-                  const canCancel = item.stateId === WithdrawalState.WithdrawalCreated;
-                  return (
-                    <div key={item.id || item.hashId || `${item.createdOn}-${index}`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex-1 flex items-center gap-2">
-                          <span className="text-[#e02b1d] text-xs font-bold">↑</span>
-                          <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
-                          {canCancel && onCancel && item.hashId && (
-                            <Button variant="outline" size="xs" onClick={() => onCancel(item.hashId)} className="ml-2 text-xs text-red-500 border-red-500/30 hover:bg-red-500/10">
-                              {t('action.cancel')}
-                            </Button>
-                          )}
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
-                            {t(`transactionState.${item.stateId}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className="text-sm text-text-secondary">
-                            {t(`paymentStatus.${item.paymentStatus}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-end">
-                          <BalanceShow
-                            balance={item.amount}
-                            currencyId={item.currencyId || currencyId}
-                            className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
-                          />
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-center">
-                          <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-end">
-                          <span className="text-sm text-text-secondary">{formatTime(item.updatedOn)}</span>
-                        </div>
-                      </div>
-                      {index < items.length - 1 && <div className="w-full h-px bg-border mt-5" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
-function TransferTable({ data, currencyId, currentAccountNumber, noRecordsText, isDark, mounted, t }: {
-  data: AccountTransaction[];
-  currencyId: number;
-  currentAccountNumber: number;
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-  t: (key: string, values?: Record<string, string | number>) => string;
-}) {
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-  const groups = groupByDate(data);
-
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Column Headers */}
-      <div className="hidden md:flex items-center px-5 gap-[200px]">
-        <div className="w-[100px] shrink-0 opacity-0"><span>Date</span></div>
-        <div className="flex-1 flex items-center justify-between">
-          <div className="flex-1 pl-[43px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.tabs.transfer')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.status')}</span>
-          </div>
-          <div className="flex-1 text-right">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.amount')}</span>
-          </div>
-          <div className="flex-1 text-right pr-[53px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.createdOn')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grouped rows */}
-      <div className="flex flex-col gap-5">
-        {Object.entries(groups).map(([dateKey, items]) => {
-          const firstDate = items[0]?.createdOn ? new Date(items[0].createdOn) : new Date();
-          const weekday = firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-          const dayMonthYear = firstDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-          return (
-            <div key={dateKey} className="flex flex-col md:flex-row md:items-start gap-4 md:gap-[200px] border border-border rounded-xl p-5 overflow-hidden">
-              <div className="shrink-0 w-[100px]">
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
-                  <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col gap-5">
-                {items.map((item, index) => {
-                  const isIncoming = item.targetTradeAccountNumber === currentAccountNumber;
-                  return (
-                    <div key={item.id || item.hashId || `${item.createdOn}-${index}`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex-1 flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-sm">
-                            <span className={currentAccountNumber === item.sourceTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
-                              {item.sourceTradeAccountNumber || 'Wallet'}
-                            </span>
-                            <span className="text-yellow-500 mx-1">→</span>
-                            <span className={currentAccountNumber === item.targetTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
-                              {item.targetTradeAccountNumber || 'Wallet'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
-                            {t(`transactionState.${item.stateId}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-end">
-                          <span className={isIncoming ? 'text-green-500' : 'text-red-500'}>
-                            {isIncoming ? '+' : '-'}
-                          </span>
-                          <BalanceShow
-                            balance={item.amount}
-                            currencyId={currencyId}
-                            className="inline text-base font-bold text-text-primary font-['DIN',sans-serif]"
-                          />
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-end">
-                          <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>
-                        </div>
-                      </div>
-                      {index < items.length - 1 && <div className="w-full h-px bg-border mt-5" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function TradeReportTable({ data, noRecordsText, isDark, mounted }: {
-  data: AccountTrade[];
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-}) {
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-
-  return (
-    <table className="w-full text-left text-sm">
-      <thead>
-        <tr className="border-b border-border text-text-secondary">
-          <th className="pb-3 pr-3 font-medium">Ticket</th>
-          <th className="pb-3 pr-3 font-medium">Symbol</th>
-          <th className="pb-3 pr-3 font-medium">Type</th>
-          <th className="pb-3 pr-3 font-medium text-right">Volume</th>
-          <th className="pb-3 pr-3 font-medium">Open Time</th>
-          <th className="pb-3 pr-3 font-medium text-right">Open Price</th>
-          <th className="pb-3 pr-3 font-medium text-right">S/L</th>
-          <th className="pb-3 pr-3 font-medium text-right">T/P</th>
-          <th className="pb-3 pr-3 font-medium">Close Time</th>
-          <th className="pb-3 pr-3 font-medium text-right">Close Price</th>
-          <th className="pb-3 pr-3 font-medium text-right">Commission</th>
-          <th className="pb-3 pr-3 font-medium text-right">Swap</th>
-          <th className="pb-3 font-medium text-right">P/L</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((item) => (
-          <tr key={item.id || item.ticket} className="border-b border-border/30">
-            <td className="py-3 pr-3 text-text-primary">{item.ticket}</td>
-            <td className="py-3 pr-3 text-text-primary">{item.symbol}</td>
-            <td className="py-3 pr-3">
-              <span className={item.type === 0 ? 'text-green-500' : 'text-red-500'}>
-                {item.type === 0 ? 'Buy' : 'Sell'}
-              </span>
-            </td>
-            <td className="py-3 pr-3 text-right text-text-primary">{item.volume.toFixed(2)}</td>
-            <td className="py-3 pr-3 text-text-secondary">{formatTime(item.openTime)}</td>
-            <td className="py-3 pr-3 text-right text-text-primary">{item.openPrice.toFixed(5)}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.sl > 0 ? item.sl.toFixed(5) : '--'}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.tp > 0 ? item.tp.toFixed(5) : '--'}</td>
-            <td className="py-3 pr-3 text-text-secondary">{item.closeTime ? formatTime(item.closeTime) : '--'}</td>
-            <td className="py-3 pr-3 text-right text-text-primary">{item.closePrice > 0 ? item.closePrice.toFixed(5) : '--'}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.commission.toFixed(2)}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.swap.toFixed(2)}</td>
-            <td className={`py-3 text-right font-medium ${item.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {item.profit.toFixed(2)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 

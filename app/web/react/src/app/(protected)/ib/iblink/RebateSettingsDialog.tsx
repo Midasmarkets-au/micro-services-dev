@@ -211,7 +211,7 @@ export function RebateSettingsDialog({
         ) : null}
 
         <DialogFooter className="mt-5">
-          <Button variant="primary" onClick={onClose}>
+          <Button variant="outline" onClick={onClose}>
             {t('link.close')}
           </Button>
         </DialogFooter>

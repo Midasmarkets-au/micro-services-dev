@@ -60,7 +60,11 @@ export function DashboardHeader() {
   const t = useTranslations('dashboard');
   const pathname = usePathname();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const { logout, isLoading: isLoggingOut } = useLogout();
   
   // 从 store 获取用户信息和初始化状态
@@ -86,6 +90,41 @@ export function DashboardHeader() {
   };
 
   const activeMenuId = getActiveMenuId();
+
+  // 使用 IntersectionObserver 检测 header 是否已吸顶（比 scroll 事件更高效、更丝滑）
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsSticky(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
+  // 吸顶时保留占位高度，避免布局突变
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updateHeaderHeight = () => {
+      setHeaderHeight(header.getBoundingClientRect().height);
+    };
+
+    updateHeaderHeight();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeaderHeight();
+    });
+    resizeObserver.observe(header);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   // 点击外部关闭 Drawer
   useEffect(() => {
@@ -117,8 +156,18 @@ export function DashboardHeader() {
 
   return (
     <>
-      <header className="w-full border-b border-border bg-surface">
-        <div className="menu-responsive flex h-16 items-center justify-between sm:h-20">
+      {/* 哨兵元素：用于 IntersectionObserver 检测 header 是否需要吸顶 */}
+      <div ref={sentinelRef} className="-mt-px h-px w-full" aria-hidden="true" />
+      <div className="w-full" style={isSticky ? { height: headerHeight } : undefined}>
+      <header
+        ref={headerRef}
+        className={`w-full border-b border-border transition-shadow duration-300 ease-out ${
+          isSticky
+            ? 'fixed inset-x-0 top-0 z-30 bg-surface shadow-md'
+            : 'relative z-10 bg-surface shadow-none'
+        }`}
+      >
+        <div className="container-responsive flex h-16 items-center justify-between sm:h-20">
           {/* Logo 和导航 */}
           <div className="flex items-center gap-4 sm:gap-6 lg:gap-10">
             {/* 移动端汉堡菜单按钮 */}
@@ -218,6 +267,7 @@ export function DashboardHeader() {
           </div>
         </div>
       </header>
+      </div>
 
       {/* 移动端 Drawer 遮罩 */}
       {isDrawerOpen && (

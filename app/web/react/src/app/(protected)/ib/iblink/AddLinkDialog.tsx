@@ -127,7 +127,7 @@ function AgentRebateTable({
     if (percent > 0) {
       setFormRows(prev => prev.map(row => ({
         ...row,
-        r: Number((row.total * (percent / 100)).toFixed(1)),
+        r: Number((row.total * (percent / 100)).toFixed(2)),
       })));
     }
   };
@@ -868,7 +868,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
 
         <DialogFooter className="mt-6">
           <div className="flex justify-end gap-3 md:gap-5">
-            <Button variant="secondary" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
+            <Button variant="outline" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
               {t('addLink.close')}
             </Button>
             <Button

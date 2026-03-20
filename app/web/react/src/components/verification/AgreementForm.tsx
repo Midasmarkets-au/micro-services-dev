@@ -154,7 +154,7 @@ export function AgreementForm({ initialData, onSubmit, onBack, isLoading, showIb
 
               {/* 错误提示 */}
               {errors.documentConfirmation && (
-                <p className="text-sm text-error">
+                <p className="text-sm error-text">
                   {t('errors.agreementRequired')}
                 </p>
               )}

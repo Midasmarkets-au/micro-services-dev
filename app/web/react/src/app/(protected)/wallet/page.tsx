@@ -53,7 +53,6 @@ export default function WalletPage() {
     setIsLoadingWallet(true);
     try {
       const result = await execute(getPrimaryWallet);
-      console.log('result', result);
       if (result.success && result.data) {
         setWallet(result.data);
       }

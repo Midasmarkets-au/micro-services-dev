@@ -232,7 +232,6 @@ export default function IBRebatePage() {
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
         footer={footerRows}
-        className="flex-1"
       />
 
       <Pagination page={page} total={total} size={pageSize} onPageChange={handlePageChange} />

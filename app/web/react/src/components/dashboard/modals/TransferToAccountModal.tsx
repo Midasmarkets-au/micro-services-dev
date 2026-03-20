@@ -256,7 +256,7 @@ export function TransferToAccountModal({
               placeholder={t('pleaseInput')}
             />
             {amountError && (
-              <span className="text-xs text-error">{amountError}</span>
+              <span className="text-xs ">{amountError}</span>
             )}
           </div>
 

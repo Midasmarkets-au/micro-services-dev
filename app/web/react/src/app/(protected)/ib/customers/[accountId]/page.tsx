@@ -238,6 +238,12 @@ export default function IBCustomerDetailPage({
     headerWidth: 'w-[120px]',
   }), [groupHeaderRender]);
 
+  const tradeGroupConfig = useMemo<DataTableGroupConfig<IBTradeRecord>>(() => ({
+    groupBy: (item) => formatGroupKey(item.openTime || item.openAt || ''),
+    renderGroupHeader: groupHeaderRender,
+    headerWidth: 'w-[120px]',
+  }), [groupHeaderRender]);
+
   const depositColumns = useMemo<DataTableColumn<IBDepositRecord>[]>(() => [
     {
       key: 'deposit',
@@ -247,9 +253,9 @@ export default function IBCustomerDetailPage({
         <div className="flex flex-col">
           <span className="flex items-center gap-1 text-sm">
             <span className="text-xs font-bold text-[#004eff]">↓</span>
-            No.{item.accountNumber}
+            No.{item.targetTradeAccount?.accountNumber}
           </span>
-          <span className="text-xs">{td('columns.group')}: {item.paymentMethodName || '--'}</span>
+          <span className="text-xs">{td('columns.group')}: {item.targetTradeAccount?.group || '--'}</span>
         </div>
       ),
     },
@@ -292,9 +298,9 @@ export default function IBCustomerDetailPage({
         <div className="flex flex-col">
           <span className="flex items-center gap-1 text-sm">
             <span className="text-xs font-bold text-[#e02b1d]">↑</span>
-            No.{item.accountNumber}
+            No.{item.source?.displayNumber}
           </span>
-          <span className="text-xs">{td('columns.group')}: {item.paymentMethodName || '--'}</span>
+          <span className="text-xs">{td('columns.group')}: {item.source?.agentGroupName || '--'}</span>
         </div>
       ),
     },
@@ -429,6 +435,7 @@ export default function IBCustomerDetailPage({
             rowKey={(item, idx) => item.id ?? idx}
             loading={isLoading}
             skeletonRows={5}
+            groupConfig={tradeGroupConfig}
           />
         );
       case 'commissionReport':
@@ -439,6 +446,7 @@ export default function IBCustomerDetailPage({
             rowKey={(item, idx) => item.id ?? idx}
             loading={isLoading}
             skeletonRows={5}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<IBRebateRecord>}
           />
         );
       default:

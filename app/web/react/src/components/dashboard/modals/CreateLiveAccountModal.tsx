@@ -13,7 +13,6 @@ import {
 import { Button } from '@/components/ui';
 import { Stepper } from '@/components/ui/Stepper';
 import { SimpleSelect } from '@/components/ui/radix/Select';
-import { Input } from '@/components/ui/radix/Input';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getLiveAccountConfig, createLiveAccount } from '@/actions';
 import { useToast } from '@/hooks/useToast';
@@ -50,7 +49,6 @@ export function CreateLiveAccountModal({
   const [accountType, setAccountType] = useState<string>('');
   const [currency, setCurrency] = useState<string>('');
   const [leverage, setLeverage] = useState<string>('');
-  const [referCode, setReferCode] = useState<string>('');
 
   // 加载配置
   useEffect(() => {
@@ -73,9 +71,6 @@ export function CreateLiveAccountModal({
             }
             if (result.data.leverageAvailable?.length > 0) {
               setLeverage(String(result.data.leverageAvailable[0]));
-            }
-            if (result.data.referCode) {
-              setReferCode(result.data.referCode);
             }
           }
         } finally {
@@ -104,7 +99,6 @@ export function CreateLiveAccountModal({
       accountType: Number(accountType),
       currencyId: Number(currency),
       leverage: Number(leverage),
-      referCode: referCode || undefined,
     };
 
     const result = await execute(createLiveAccount, params);
@@ -115,7 +109,6 @@ export function CreateLiveAccountModal({
       setAccountType('');
       setCurrency('');
       setLeverage('');
-      setReferCode('');
       setConfig(null);
       setStep(1);
     }
@@ -276,39 +269,31 @@ export function CreateLiveAccountModal({
                 />
               </div>
 
-              {/* 推荐代理（设计稿：请填写代理） */}
-              <Input
-                label={t('fields.referCode')}
-                required
-                value={referCode}
-                onChange={(e) => setReferCode(e.target.value)}
-                placeholder={t('placeholder.referCode')}
-              />
             </div>
           )}
 
           {/* Step 2: 审查 */}
           {step === 2 && (
-            <div className="flex flex-col gap-5">
-              <h3 className="text-base font-semibold text-text-primary">
+            <div className="flex flex-col gap-5 px-5">
+              <h3 className="text-sm font-semibold text-text-primary">
                 {t('review.basicInfo')}
               </h3>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-text-secondary">{t('fields.platform')}：</span>
-                  <span className="text-sm text-text-primary">{selectedPlatformLabel}</span>
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <span className="w-[117px] shrink-0 text-sm text-text-table">{t('fields.platform')}：</span>
+                  <span className="text-right text-sm text-text-secondary">{selectedPlatformLabel}</span>
                 </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-text-secondary">{t('fields.type')}：</span>
-                  <span className="text-sm text-text-primary">{selectedTypeLabel}</span>
+                <div className="flex items-center justify-between">
+                  <span className="w-[117px] shrink-0 text-sm text-text-table">{t('fields.type')}：</span>
+                  <span className="text-right text-sm text-text-secondary">{selectedTypeLabel}</span>
                 </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-text-secondary">{t('fields.currency')}：</span>
-                  <span className="text-sm text-text-primary">{selectedCurrencyLabel}</span>
+                <div className="flex items-center justify-between">
+                  <span className="w-[117px] shrink-0 text-sm text-text-table">{t('fields.currency')}：</span>
+                  <span className="text-right text-sm text-text-secondary">{selectedCurrencyLabel}</span>
                 </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-text-secondary">{t('fields.leverage')}：</span>
-                  <span className="text-sm text-text-primary">{selectedLeverageLabel}</span>
+                <div className="flex items-center justify-between">
+                  <span className="w-[117px] shrink-0 text-sm text-text-table">{t('fields.leverage')}：</span>
+                  <span className="text-right text-sm text-text-secondary">{selectedLeverageLabel}</span>
                 </div>
               </div>
             </div>

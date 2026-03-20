@@ -1173,7 +1173,7 @@
     },
     "error": {
       "amountRequired": "Please enter an amount",
-      "amountRange": "Please enter amount between ${min}~${max}",
+      "amountRange": "Please enter amount between ",
       "selectChannel": "Please select a payment method"
     },
     "requestKeys": {

@@ -117,7 +117,6 @@ export function SalesLatestDepositsWidget() {
             skeletonRows={5}
             rounded="xl"
             emptyContent={t('noRecords')}
-            className="flex-1"
           />
         </div>
       </div>

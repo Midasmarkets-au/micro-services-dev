@@ -255,7 +255,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     )}
                   />
                   {errors.gender && (
-                    <p className="text-sm text-error">{t('errors.required')}</p>
+                    <p className="text-sm error-text">{t('errors.required')}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -273,7 +273,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     )}
                   />
                   {errors.birthday && (
-                    <p className="text-sm text-error">{t('errors.required')}</p>
+                    <p className="text-sm error-text">{t('errors.required')}</p>
                   )}
                 </div>
               </div>
@@ -351,7 +351,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     )}
                   />
                   {errors.idType && (
-                    <p className="text-sm text-error">{t('errors.required')}</p>
+                    <p className="text-sm error-text">{t('errors.required')}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">

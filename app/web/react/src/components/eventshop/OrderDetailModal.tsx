@@ -244,7 +244,7 @@ export function OrderDetailModal({ open, onOpenChange, orderHashId, onRefresh }:
                     {isConfirming ? '...' : t('orderDetail.confirmDelivered')}
                   </Button>
                 )}
-                <Button variant="primary" className="w-[120px]" onClick={() => onOpenChange(false)}>
+                <Button variant="outline" className="w-[120px]" onClick={() => onOpenChange(false)}>
                   {t('orderDetail.close')}
                 </Button>
               </div>

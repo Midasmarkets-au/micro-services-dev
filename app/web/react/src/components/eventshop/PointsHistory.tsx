@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { useTheme } from '@/hooks/useTheme';
 import { getPointsHistory, getMediaUrl } from '@/actions';
 import { PointTransactionStatus, PointTransactionSource } from '@/types/eventshop';
 import type { PointTransaction } from '@/types/eventshop';
-import { Button, Input, DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs } from '@/components/ui';
-import type { TagVariant } from '@/components/ui';
+import { Button, Input, DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
+import type { TagVariant, DataTableColumn } from '@/components/ui';
 import { ShopPoints } from './ShopPoints';
 
 const STATUS_TABS = [
@@ -20,7 +19,6 @@ const STATUS_TABS = [
 
 export function PointsHistoryTab() {
   const t = useTranslations('eventshop');
-  const { theme } = useTheme();
   const [items, setItems] = useState<PointTransaction[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -170,7 +168,53 @@ export function PointsHistoryTab() {
   const getPointColor = (point: number) =>
     point >= 0 ? 'text-[#333] dark:text-text-primary' : 'text-text-secondary';
 
-  const totalPages = Math.ceil(total / pageSize);
+  const columns = useMemo<DataTableColumn<PointTransaction>[]>(() => [
+    {
+      key: 'itemName',
+      title: t('columns.itemName'),
+      skeletonWidth: 'w-24',
+      skeletonRender: () => (
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 size-10 rounded bg-surface-secondary" />
+          <div className="h-4 w-24 rounded bg-surface-secondary" />
+        </div>
+      ),
+      render: (item) => (
+        <div className="flex items-center gap-3 min-w-0">
+          {renderItemImage(item)}
+          <span className="text-sm text-text-primary truncate">{renderItemName(item)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      title: t('columns.type'),
+      skeletonWidth: 'w-16',
+      render: (item) => <span className="text-sm text-text-secondary">{renderType(item)}</span>,
+    },
+    {
+      key: 'points',
+      title: t('columns.points'),
+      skeletonWidth: 'w-14',
+      render: (item) => <ShopPoints value={item.point} showSign className={`text-sm font-semibold ${getPointColor(item.point)}`} />,
+    },
+    {
+      key: 'time',
+      title: t('columns.time'),
+      skeletonWidth: 'w-28',
+      render: (item) => <DateDisplay value={item.createdOn} className="text-sm text-text-secondary" />,
+    },
+    {
+      key: 'status',
+      title: t('columns.status'),
+      skeletonWidth: 'w-16',
+      render: (item) => (
+        <Tag variant={getStatusVariant(item.status)} soft>
+          {getStatusLabel(item.status)}
+        </Tag>
+      ),
+    },
+  ], [t, imageUrls]);
 
   return (
     <div className="flex-1 bg-surface rounded flex flex-col gap-5 overflow-hidden p-5 min-w-0">
@@ -220,103 +264,15 @@ export function PointsHistoryTab() {
         </div>
       </div>
 
-      {/* Scrollable Table */}
-      <div className="overflow-x-auto flex-1 min-w-0">
-        <div className="min-w-[700px]">
-          {/* Column Headers */}
-          <div className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr] gap-3 text-sm text-text-tertiary px-3">
-            <span>{t('columns.itemName')}</span>
-            <span>{t('columns.type')}</span>
-            <span>{t('columns.points')}</span>
-            <span>{t('columns.time')}</span>
-            <span>{t('columns.status')}</span>
-          </div>
-          <div className="h-px bg-border mt-3" />
+      <DataTable<PointTransaction>
+        columns={columns}
+        data={items}
+        rowKey={(item, idx) => item.hashId || idx}
+        loading={isLoading}
+        skeletonRows={5}
+      />
 
-          {/* Data Rows */}
-          {isLoading ? (
-            <div className="flex flex-col">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr] gap-3 items-center px-3 py-4 border-b border-border last:border-b-0 animate-pulse">
-                  <div className="flex items-center gap-3">
-                    <div className="shrink-0 size-10 rounded bg-surface-secondary" />
-                    <div className="h-4 w-24 rounded bg-surface-secondary" />
-                  </div>
-                  <div className="h-4 w-16 rounded bg-surface-secondary" />
-                  <div className="h-4 w-14 rounded bg-surface-secondary" />
-                  <div className="h-4 w-28 rounded bg-surface-secondary" />
-                  <div className="h-5 w-16 rounded-sm bg-surface-secondary" />
-                </div>
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2.5 py-24">
-              <Image
-                src={theme === 'dark' ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
-                alt="" width={150} height={150}
-              />
-              <p className="text-base text-text-tertiary">{t('noData')}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {items.map((item, idx) => (
-                <div key={item.hashId || idx} className="grid grid-cols-[2fr_1fr_1fr_1.5fr_1fr] gap-3 items-center px-3 py-4 border-b border-border last:border-b-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {renderItemImage(item)}
-                    <span className="text-sm text-text-primary truncate">{renderItemName(item)}</span>
-                  </div>
-                  <span className="text-sm text-text-secondary">{renderType(item)}</span>
-                  <ShopPoints value={item.point} showSign className={`text-sm font-semibold ${getPointColor(item.point)}`} />
-                  <DateDisplay value={item.createdOn} className="text-sm text-text-secondary" />
-                  <Tag variant={getStatusVariant(item.status)} soft>
-                    {getStatusLabel(item.status)}
-                  </Tag>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-end items-center gap-1 pt-3">
-          <button
-            disabled={page <= 1}
-            onClick={() => handlePageChange(page - 1)}
-            className="size-8 flex items-center justify-center rounded border border-border text-sm disabled:opacity-40 cursor-pointer"
-          >
-            &lt;
-          </button>
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => handlePageChange(p)}
-              className={`size-8 flex items-center justify-center rounded text-sm cursor-pointer ${
-                p === page ? 'bg-primary text-white' : 'border border-border text-text-secondary'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-          {totalPages > 5 && <span className="px-1 text-text-tertiary">...</span>}
-          {totalPages > 5 && (
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              className={`size-8 flex items-center justify-center rounded text-sm cursor-pointer border border-border text-text-secondary`}
-            >
-              {totalPages}
-            </button>
-          )}
-          <button
-            disabled={page >= totalPages}
-            onClick={() => handlePageChange(page + 1)}
-            className="size-8 flex items-center justify-center rounded border border-border text-sm disabled:opacity-40 cursor-pointer"
-          >
-            &gt;
-          </button>
-        </div>
-      )}
+      <Pagination page={page} total={total} size={pageSize} onPageChange={handlePageChange} />
     </div>
   );
 }
