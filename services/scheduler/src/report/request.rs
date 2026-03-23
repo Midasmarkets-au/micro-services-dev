@@ -16,6 +16,7 @@ use super::{daily_equity, deposit, rebate, sales, trade};
 pub struct DateRangeCriteria {
     pub from: Option<DateTime<Utc>>,
     pub to: Option<DateTime<Utc>>,
+    pub emails: Option<Vec<String>>,
 }
 
 /// Process a single ReportRequest: dispatch to the correct handler,
@@ -115,14 +116,26 @@ async fn dispatch(
             upload_csv(ctx, tenant_id, request, csv_bytes).await
         }
         ReportRequestType::DailyEquity => {
+            let emails = criteria.emails.clone().unwrap_or_default();
+            let from = criteria.from.unwrap_or_else(|| Utc::now() - chrono::Duration::days(1));
+            let to = criteria.to.unwrap_or_else(Utc::now);
+            let use_closing_time = request.is_from_api == 1;
             let csv_bytes = daily_equity::generate_daily_equity_csv(
                 ctx,
                 tenant_pool,
-                tenant_id,
-                &criteria,
-                request.is_from_api == 1,
+                from,
+                to,
+                use_closing_time,
+                from,
+                to,
             ).await?;
-            upload_csv(ctx, tenant_id, request, csv_bytes).await
+            let guid = upload_csv(ctx, tenant_id, request, csv_bytes.clone()).await?;
+            if !emails.is_empty() {
+                let subject = format!("Daily Equity Report {}", to.format("%Y-%m-%d"));
+                let attachment_name = format!("{}.csv", request.name.replace(['/', '\\'], "_"));
+                send_equity_email(ctx, &emails, &subject, &attachment_name, csv_bytes).await;
+            }
+            Ok(guid)
         }
         ReportRequestType::AccountSearchForTenant => {
             let csv_bytes = sales::generate_account_search_csv(tenant_pool, &criteria).await?;
@@ -142,6 +155,22 @@ async fn dispatch(
             let csv_bytes = trade::generate_demo_account_csv(tenant_pool, &request.query).await?;
             upload_csv(ctx, tenant_id, request, csv_bytes).await
         }
+    }
+}
+
+async fn send_equity_email(
+    ctx: &AppContext,
+    emails: &[String],
+    subject: &str,
+    attachment_name: &str,
+    csv_bytes: Vec<u8>,
+) {
+    if let Err(e) = ctx
+        .mail
+        .send_with_attachment(emails, subject, attachment_name, csv_bytes)
+        .await
+    {
+        error!("Failed to send equity report email: {:#}", e);
     }
 }
 

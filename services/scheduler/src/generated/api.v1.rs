@@ -225,6 +225,7 @@ pub mod mono_callback_service_client {
     /// MonoCallbackService — exposed by mono.
     /// The Rust scheduler calls this after a report is generated,
     /// so mono can send the WebSocket popup notification to the client.
+    /// Also called by the Rust scheduler to trigger recurring jobs managed by Hangfire.
     #[derive(Debug, Clone)]
     pub struct MonoCallbackServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -329,6 +330,91 @@ pub mod mono_callback_service_client {
             req.extensions_mut()
                 .insert(
                     GrpcMethod::new("api.v1.MonoCallbackService", "NotifyReportDone"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Trigger recurring jobs (cron schedule managed by Rust scheduler).
+        pub async fn trigger_calculate_rebate(
+            &mut self,
+            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::TriggerJobResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.MonoCallbackService/TriggerCalculateRebate",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "api.v1.MonoCallbackService",
+                        "TriggerCalculateRebate",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn trigger_release_rebate(
+            &mut self,
+            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::TriggerJobResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.MonoCallbackService/TriggerReleaseRebate",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("api.v1.MonoCallbackService", "TriggerReleaseRebate"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn trigger_crypto_monitor(
+            &mut self,
+            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::TriggerJobResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.MonoCallbackService/TriggerCryptoMonitor",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("api.v1.MonoCallbackService", "TriggerCryptoMonitor"),
                 );
             self.inner.unary(req, path, codec).await
         }
@@ -652,10 +738,33 @@ pub mod mono_callback_service_server {
             tonic::Response<super::NotifyReportDoneResponse>,
             tonic::Status,
         >;
+        /// Trigger recurring jobs (cron schedule managed by Rust scheduler).
+        async fn trigger_calculate_rebate(
+            &self,
+            request: tonic::Request<super::TriggerJobRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::TriggerJobResponse>,
+            tonic::Status,
+        >;
+        async fn trigger_release_rebate(
+            &self,
+            request: tonic::Request<super::TriggerJobRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::TriggerJobResponse>,
+            tonic::Status,
+        >;
+        async fn trigger_crypto_monitor(
+            &self,
+            request: tonic::Request<super::TriggerJobRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::TriggerJobResponse>,
+            tonic::Status,
+        >;
     }
     /// MonoCallbackService — exposed by mono.
     /// The Rust scheduler calls this after a report is generated,
     /// so mono can send the WebSocket popup notification to the client.
+    /// Also called by the Rust scheduler to trigger recurring jobs managed by Hangfire.
     #[derive(Debug)]
     pub struct MonoCallbackServiceServer<T: MonoCallbackService> {
         inner: _Inner<T>,
@@ -770,6 +879,156 @@ pub mod mono_callback_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = NotifyReportDoneSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.MonoCallbackService/TriggerCalculateRebate" => {
+                    #[allow(non_camel_case_types)]
+                    struct TriggerCalculateRebateSvc<T: MonoCallbackService>(pub Arc<T>);
+                    impl<
+                        T: MonoCallbackService,
+                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    for TriggerCalculateRebateSvc<T> {
+                        type Response = super::TriggerJobResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::TriggerJobRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MonoCallbackService>::trigger_calculate_rebate(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = TriggerCalculateRebateSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.MonoCallbackService/TriggerReleaseRebate" => {
+                    #[allow(non_camel_case_types)]
+                    struct TriggerReleaseRebateSvc<T: MonoCallbackService>(pub Arc<T>);
+                    impl<
+                        T: MonoCallbackService,
+                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    for TriggerReleaseRebateSvc<T> {
+                        type Response = super::TriggerJobResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::TriggerJobRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MonoCallbackService>::trigger_release_rebate(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = TriggerReleaseRebateSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.MonoCallbackService/TriggerCryptoMonitor" => {
+                    #[allow(non_camel_case_types)]
+                    struct TriggerCryptoMonitorSvc<T: MonoCallbackService>(pub Arc<T>);
+                    impl<
+                        T: MonoCallbackService,
+                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    for TriggerCryptoMonitorSvc<T> {
+                        type Response = super::TriggerJobResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::TriggerJobRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MonoCallbackService>::trigger_crypto_monitor(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = TriggerCryptoMonitorSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

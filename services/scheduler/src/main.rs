@@ -241,6 +241,32 @@ async fn run_cron_scheduler(ctx: AppContext) {
                 }
             });
         }
+
+        // Crypto Monitor: every minute (*/1 * * * *)
+        {
+            let ctx = ctx.clone();
+            tokio::spawn(async move {
+                if let Err(e) = jobs::crypto::execute(ctx).await {
+                    error!("Scheduled CryptoMonitorJob error: {:#}", e);
+                }
+            });
+        }
+
+        // Calculate & Release Rebate: every 2 minutes (*/2 * * * *)
+        if minute % 2 == 0 {
+            let ctx_calc = ctx.clone();
+            tokio::spawn(async move {
+                if let Err(e) = jobs::rebate::execute_calculate(ctx_calc).await {
+                    error!("Scheduled CalculateRebateJob error: {:#}", e);
+                }
+            });
+            let ctx_release = ctx.clone();
+            tokio::spawn(async move {
+                if let Err(e) = jobs::rebate::execute_release(ctx_release).await {
+                    error!("Scheduled ReleaseRebateJob error: {:#}", e);
+                }
+            });
+        }
     }
 }
 

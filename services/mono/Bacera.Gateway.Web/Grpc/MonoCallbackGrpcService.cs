@@ -2,6 +2,7 @@ using Api.V1;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Bacera.Gateway.Web.WebSocket;
 using Grpc.Core;
+using Hangfire;
 
 namespace Bacera.Gateway.Web.Grpc;
 
@@ -9,9 +10,11 @@ namespace Bacera.Gateway.Web.Grpc;
 /// gRPC server implementation of MonoCallbackService (defined in scheduler.proto).
 /// Called by the Rust scheduler service after a report is generated,
 /// so mono can send the WebSocket popup notification to the requesting party.
+/// Also called by the Rust scheduler cron to trigger recurring jobs managed by Hangfire.
 /// </summary>
 public class MonoCallbackGrpcService(
     WsMessageProcessor wsMessageProcessor,
+    IHangfireWrapper hangfire,
     ILogger<MonoCallbackGrpcService> logger)
     : MonoCallbackService.MonoCallbackServiceBase
 {
@@ -37,5 +40,32 @@ public class MonoCallbackGrpcService(
         }
 
         return Task.FromResult(new NotifyReportDoneResponse { Success = true });
+    }
+
+    public override Task<TriggerJobResponse> TriggerCalculateRebate(
+        TriggerJobRequest request,
+        ServerCallContext context)
+    {
+        logger.LogInformation("gRPC TriggerCalculateRebate");
+        hangfire.BackgroundJobClient.Enqueue<IRebateJob>(x => x.CalculateRebate());
+        return Task.FromResult(new TriggerJobResponse { Success = true });
+    }
+
+    public override Task<TriggerJobResponse> TriggerReleaseRebate(
+        TriggerJobRequest request,
+        ServerCallContext context)
+    {
+        logger.LogInformation("gRPC TriggerReleaseRebate");
+        hangfire.BackgroundJobClient.Enqueue<IRebateJob>(x => x.ReleaseRebateAsync());
+        return Task.FromResult(new TriggerJobResponse { Success = true });
+    }
+
+    public override Task<TriggerJobResponse> TriggerCryptoMonitor(
+        TriggerJobRequest request,
+        ServerCallContext context)
+    {
+        logger.LogInformation("gRPC TriggerCryptoMonitor");
+        hangfire.BackgroundJobClient.Enqueue<CryptoJob>(x => x.MonitorAsync());
+        return Task.FromResult(new TriggerJobResponse { Success = true });
     }
 }
