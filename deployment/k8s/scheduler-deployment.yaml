@@ -1,6 +1,6 @@
 # ============================================================================
 #  scheduler — Rust 后台任务处理服务（报表生成、CSV 上传 S3）
-#  端口：8090 (HTTP / Apalis Dashboard)、50053 (gRPC)
+#  端口：9004 (HTTP / Apalis Dashboard)、50004 (gRPC)
 #  环境变量：由 Secret scheduler-env 注入
 #  依赖：postgres、redis、mono (gRPC callback)
 # ============================================================================
@@ -37,19 +37,12 @@ spec:
               cpu: "500m"
           ports:
             - name: http
-              containerPort: 8090
+              containerPort: 9004
             - name: grpc
-              containerPort: 50053
+              containerPort: 50004
           envFrom:
             - secretRef:
                 name: scheduler-env
-          env:
-            - name: SCHEDULER_PORT
-              value: "8090"
-            - name: SCHEDULER_GRPC_PORT
-              value: "50053"
-            - name: MONO_GRPC_URL
-              value: "http://mono:9000"
           livenessProbe:
             httpGet:
               path: /health

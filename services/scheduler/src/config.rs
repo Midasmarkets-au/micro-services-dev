@@ -54,8 +54,8 @@ impl Config {
         let redis_url = build_redis_url();
 
         Ok(Self {
-            port: env_u16("SCHEDULER_PORT", 8090),
-            grpc_port: env_u16("SCHEDULER_GRPC_PORT", 50053),
+            port: env_u16("SCHEDULER_PORT", 9004),
+            grpc_port: env_u16("SCHEDULER_GRPC_PORT", 50004),
 
             db_host,
             db_port,
@@ -79,7 +79,7 @@ impl Config {
             smtp_password: env_str("SMTP_PASSWORD", ""),
             smtp_from: env_str("SMTP_FROM", "noreply@example.com"),
 
-            mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:9000"),
+            mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:50005"),
 
             worker_concurrency: env_usize("WORKER_CONCURRENCY", 4),
         })

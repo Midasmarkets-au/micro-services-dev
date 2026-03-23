@@ -1,6 +1,5 @@
 # ============================================================================
-#  idgen Service — ClusterIP，供 mono 通过 http://idgen:50051 调用 gRPC
-#  同时暴露 8080 供内部 HTTP 调用或调试
+#  idgen Service — ClusterIP，供 mono 通过 http://idgen:50001 调用 gRPC
 # ============================================================================
 apiVersion: v1
 kind: Service
@@ -11,12 +10,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - name: http
-      port: 8080
-      targetPort: http
-      protocol: TCP
     - name: grpc
-      port: 50051
+      port: 50001
       targetPort: grpc
       protocol: TCP
   selector:

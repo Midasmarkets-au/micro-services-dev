@@ -142,10 +142,10 @@ fn http_app(bus: BroadcastBus) -> Router {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grpc_addr: SocketAddr = std::env::var("GRPC_ADDR")
-        .unwrap_or_else(|_| "[::]:50052".to_string())
+        .unwrap_or_else(|_| "[::]:50003".to_string())
         .parse()?;
     let http_addr: SocketAddr = std::env::var("HTTP_ADDR")
-        .unwrap_or_else(|_| "[::]:8081".to_string())
+        .unwrap_or_else(|_| "[::]:9003".to_string())
         .parse()?;
 
     let bus = BroadcastBus::new();

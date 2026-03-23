@@ -1,7 +1,7 @@
 # ============================================================================
 #  mono — .NET 8 Gateway Web 服务
 #  镜像：docker build --target mono
-#  端口：80 (HTTP/1.1 REST)、9000 (HTTP/2 gRPC callback，供 scheduler 回调)
+#  端口：9005 (HTTP/1.1 REST/SignalR)、50005 (HTTP/2 gRPC callback，供 scheduler 回调)
 #  依赖：redis (缓存/SignalR)、idgen (gRPC ID 生成)
 #  环境变量：由 Secret mono-env 注入，env 块可覆盖
 #  入口：由 gateway-ingress.yaml 中的 NGINX Ingress 统一暴露
@@ -28,25 +28,12 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 9005
             - name: grpc
-              containerPort: 9000
+              containerPort: 50005
           envFrom:
             - secretRef:
                 name: mono-env
-          env:
-            # Port 80: HTTP/1.1 for REST/SignalR
-            # Port 9000: HTTP/2 for gRPC (MonoCallbackService, called by scheduler)
-            - name: Kestrel__Endpoints__Http__Url
-              value: "http://+:80"
-            - name: Kestrel__Endpoints__Http__Protocols
-              value: "Http1"
-            - name: Kestrel__Endpoints__Grpc__Url
-              value: "http://+:9000"
-            - name: Kestrel__Endpoints__Grpc__Protocols
-              value: "Http2"
-            - name: Grpc__RemoteHello__Address
-              value: "http://idgen:50051"
           resources:
             requests:
               memory: "2Gi"
@@ -57,18 +44,18 @@ spec:
           startupProbe:
             httpGet:
               path: /api/v1/health
-              port: 80
+              port: 9005
             failureThreshold: 30
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /api/v1/health
-              port: 80
+              port: 9005
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /api/v1/health
-              port: 80
+              port: 9005
             initialDelaySeconds: 5
             periodSeconds: 5

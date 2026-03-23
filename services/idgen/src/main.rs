@@ -105,7 +105,7 @@ fn http_app() -> Router {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grpc_addr = std::env::var("GRPC_ADDR")
-        .unwrap_or_else(|_| "[::1]:50051".to_string())
+        .unwrap_or_else(|_| "[::]:50001".to_string())
         .parse()?;
     let http_addr: SocketAddr = std::env::var("HTTP_ADDR")
         .unwrap_or_else(|_| "[::]:8080".to_string())

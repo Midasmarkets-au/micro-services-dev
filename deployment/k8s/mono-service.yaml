@@ -11,11 +11,11 @@ spec:
   type: ClusterIP
   ports:
     - name: http
-      port: 80
+      port: 9005
       targetPort: http
       protocol: TCP
     - name: grpc
-      port: 9000
+      port: 50005
       targetPort: grpc
       protocol: TCP
   selector:
