@@ -33,8 +33,4 @@ FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:80
-ENV REDIS_CONNECTION=redis:6379
-ENV REDIS_PASSWORD=
-
 ENTRYPOINT ["dotnet", "Bacera.Gateway.Web.dll"]

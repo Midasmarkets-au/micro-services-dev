@@ -14,5 +14,9 @@ spec:
       port: 80
       targetPort: http
       protocol: TCP
+    - name: grpc
+      port: 9000
+      targetPort: grpc
+      protocol: TCP
   selector:
     app: mono

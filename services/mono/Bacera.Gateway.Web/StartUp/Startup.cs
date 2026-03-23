@@ -267,13 +267,6 @@ public static partial class Startup
             AbortOnConnectFail = false, // Don't crash if ElastiCache is temporarily unavailable
         };
 
-        if (!AppEnvironment.IsDevelopment())
-        {
-            configOptions.Ssl = true;
-            configOptions.SslHost = host; // SNI
-            configOptions.SslProtocols = System.Security.Authentication.SslProtocols.Tls12
-                                         | System.Security.Authentication.SslProtocols.Tls13;
-        }
 
         configOptions.EndPoints.Add(host, port);
 
@@ -444,14 +437,6 @@ public static partial class Startup
                     ReconnectRetryPolicy = new ExponentialRetry(1000, 10000),
                     AllowAdmin = !isClusterMode,
                 };
-
-                if (!AppEnvironment.IsDevelopment())
-                {
-                    config.Ssl = true;
-                    config.SslHost = host;
-                    config.SslProtocols = System.Security.Authentication.SslProtocols.Tls12
-                                          | System.Security.Authentication.SslProtocols.Tls13;
-                }
 
                 config.EndPoints.Add(host, port);
 

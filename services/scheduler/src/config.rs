@@ -79,7 +79,7 @@ impl Config {
             smtp_password: env_str("SMTP_PASSWORD", ""),
             smtp_from: env_str("SMTP_FROM", "noreply@example.com"),
 
-            mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:50051"),
+            mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:9000"),
 
             worker_concurrency: env_usize("WORKER_CONCURRENCY", 4),
         })

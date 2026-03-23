@@ -18,5 +18,10 @@ spec:
         - key: karpenter.sh/capacity-type
           operator: In
           values: ["on-demand", "spot"]
+  disruption:
+    consolidationPolicy: WhenEmpty   # Only reclaim fully empty nodes, prevents pod eviction for consolidation
+    consolidateAfter: 1h
+    budgets:
+      - nodes: 10%
   weight: 10
 
