@@ -802,6 +802,7 @@ mod tests {
         let criteria = DateRangeCriteria {
             from: Some("2026-01-01T00:00:00Z".parse().unwrap()),
             to: Some("2026-03-19T23:59:59Z".parse().unwrap()),
+            emails: None,
         };
 
         let csv_bytes = generate_wallet_transaction_csv(&pool, &criteria, false)

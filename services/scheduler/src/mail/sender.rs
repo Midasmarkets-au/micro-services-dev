@@ -1,6 +1,6 @@
 use anyhow::Result;
 use lettre::{
-    message::header::ContentType,
+    message::{header::ContentType, Attachment, MultiPart, SinglePart},
     transport::smtp::authentication::Credentials,
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
@@ -35,6 +35,36 @@ impl MailSender {
             .subject(subject)
             .header(ContentType::TEXT_HTML)
             .body(html_body.to_string())?;
+
+        self.transport.send(email).await?;
+        Ok(())
+    }
+
+    pub async fn send_with_attachment(
+        &self,
+        to: &[String],
+        subject: &str,
+        attachment_name: &str,
+        attachment_data: Vec<u8>,
+    ) -> Result<()> {
+        let mut builder = Message::builder().from(self.from.parse()?);
+        for addr in to {
+            builder = builder.to(addr.parse()?);
+        }
+
+        let attachment = Attachment::new(attachment_name.to_string())
+            .body(attachment_data, "text/csv; charset=utf-8".parse()?);
+
+        let email = builder
+            .subject(subject)
+            .multipart(
+                MultiPart::mixed()
+                    .singlepart(SinglePart::plain(format!(
+                        "Please find the {} attached.",
+                        subject
+                    )))
+                    .singlepart(attachment),
+            )?;
 
         self.transport.send(email).await?;
         Ok(())

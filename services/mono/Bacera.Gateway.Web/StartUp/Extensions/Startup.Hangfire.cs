@@ -101,23 +101,27 @@ public partial class Startup
 
         if (!IsHangFireWorkerEnable()) return;
 
-        TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IRebateJob>(
-            "Calculate Rebate",
-            "rebate",
-            w => w.CalculateRebate(),
-            "*/2 * * * *"));
-
-        TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IRebateJob>(
-            "Release Rebate",
-            "rebate",
-            w => w.ReleaseRebateAsync(),
-            "*/2 * * * *"));
-
-        TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<CryptoJob>(
-            "Crypto Wallet",
-            "crypto-monitor",
-            w => w.MonitorAsync(),
-            "*/1 * * * *"));
+        // "Calculate Rebate", "Release Rebate", and "Crypto Wallet" recurring jobs
+        // have been moved to the Rust scheduler service (services/scheduler).
+        // The Rust scheduler calls back via gRPC (MonoCallbackService.TriggerXxx) to enqueue
+        // the corresponding Hangfire job immediately.
+        // TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IRebateJob>(
+        //     "Calculate Rebate",
+        //     "rebate",
+        //     w => w.CalculateRebate(),
+        //     "*/2 * * * *"));
+        //
+        // TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<IRebateJob>(
+        //     "Release Rebate",
+        //     "rebate",
+        //     w => w.ReleaseRebateAsync(),
+        //     "*/2 * * * *"));
+        //
+        // TryAddOrUpdateRecurringJob(() => RecurringJob.AddOrUpdate<CryptoJob>(
+        //     "Crypto Wallet",
+        //     "crypto-monitor",
+        //     w => w.MonitorAsync(),
+        //     "*/1 * * * *"));
 
         // "Close Trade Job" and "Report Account Daily Confirmation" recurring jobs
         // have been moved to the Rust report service (services/report).

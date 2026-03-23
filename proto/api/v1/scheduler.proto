@@ -20,8 +20,14 @@ service SchedulerService {
 // MonoCallbackService — exposed by mono.
 // The Rust scheduler calls this after a report is generated,
 // so mono can send the WebSocket popup notification to the client.
+// Also called by the Rust scheduler to trigger recurring jobs managed by Hangfire.
 service MonoCallbackService {
   rpc NotifyReportDone(NotifyReportDoneRequest) returns (NotifyReportDoneResponse);
+
+  // Trigger recurring jobs (cron schedule managed by Rust scheduler).
+  rpc TriggerCalculateRebate(TriggerJobRequest) returns (TriggerJobResponse);
+  rpc TriggerReleaseRebate(TriggerJobRequest) returns (TriggerJobResponse);
+  rpc TriggerCryptoMonitor(TriggerJobRequest) returns (TriggerJobResponse);
 }
 
 message EnqueueReportRequestRequest {

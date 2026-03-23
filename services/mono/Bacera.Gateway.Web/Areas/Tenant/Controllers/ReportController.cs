@@ -8,7 +8,6 @@ using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting;
 using Bacera.Gateway.Web.Services;
-using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +23,6 @@ using M = ReportRequest;
 public class ReportController(
     TenantDbContext tenantCtx,
     ITenantGetter tenantGetter,
-    IBackgroundJobClient backgroundJobClient,
     IReportServiceClient reportServiceClient,
     ReportService reportService,
     IReportJob reportJob,
@@ -500,24 +498,34 @@ public class ReportController(
     }
 
     /// <summary>
-    /// Request equity report by background job
+    /// Request equity report by scheduler
     /// </summary>
     /// <param name="spec"></param>
     /// <returns></returns>
     [HttpPost("request/equity")]
     [ProducesResponseType(typeof(M), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<M> QueueEquityReport([FromBody] EquityReportRequest spec)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> QueueEquityReport([FromBody] EquityReportRequest spec)
     {
         if (!spec.Emails.Any())
         {
             return BadRequest(Result.Error("__EMAILS_REQUIRED__"));
         }
 
-        var job = backgroundJobClient.Enqueue<IReportJob>(x =>
-            x.GenerateDailyEquityReportForTenant(tenantGetter.GetTenantId(), spec.RowId, spec.Emails, spec.Date));
+        var date = (spec.Date ?? DateTime.UtcNow).Date;
+        var query = new { from = date, to = date.AddHours(23).AddMinutes(59).AddSeconds(59), emails = spec.Emails };
+        var name = $"Daily Equity Report (ClosingTime Based) {date:yyyy-MM-dd}";
 
-        return Ok(new { job });
+        var item = M.Build(GetPartyId(), ReportRequestTypes.DailyEquity, name,
+            Utils.JsonSerializeObject(query, true));
+        item.IsFromApi = 1;
+
+        tenantCtx.ReportRequests.Add(item);
+        await tenantCtx.SaveChangesAsync();
+
+        await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
+
+        return Ok(item);
     }
 
     [HttpPost("request/equity/html")]
@@ -551,9 +559,7 @@ public class ReportController(
 
     public class EquityReportRequest
     {
-        [Required, Range(1, 100000)] public long RowId { get; set; }
         [Required] public List<string> Emails { get; set; } = new();
-
         public DateTime? Date { get; set; }
     }
 

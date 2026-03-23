@@ -1,11 +1,12 @@
-/// tonic gRPC client — calls mono's MonoCallbackService.NotifyReportDone
-/// after a report is generated, so mono can send the WebSocket popup.
+/// tonic gRPC client — calls mono's MonoCallbackService.
+/// Used to notify report completion and to trigger recurring jobs whose cron
+/// schedule is now managed by the Rust scheduler.
 use tonic::transport::Channel;
 use tracing::error;
 
 use crate::generated::api::v1::{
     mono_callback_service_client::MonoCallbackServiceClient,
-    NotifyReportDoneRequest,
+    NotifyReportDoneRequest, TriggerJobRequest,
 };
 
 #[derive(Clone)]
@@ -51,6 +52,49 @@ impl MonoCallbackClient {
             })
             .await?;
 
+        Ok(())
+    }
+
+    /// Trigger CalculateRebate job in mono.
+    /// Fire-and-forget: errors are logged but not propagated.
+    pub async fn trigger_calculate_rebate(&self) {
+        if let Err(e) = self.try_trigger(|mut c| async move {
+            c.trigger_calculate_rebate(TriggerJobRequest { tenant_id: 0 }).await
+        }).await {
+            error!("Failed to trigger CalculateRebate in mono: {}", e);
+        }
+    }
+
+    /// Trigger ReleaseRebate job in mono.
+    /// Fire-and-forget: errors are logged but not propagated.
+    pub async fn trigger_release_rebate(&self) {
+        if let Err(e) = self.try_trigger(|mut c| async move {
+            c.trigger_release_rebate(TriggerJobRequest { tenant_id: 0 }).await
+        }).await {
+            error!("Failed to trigger ReleaseRebate in mono: {}", e);
+        }
+    }
+
+    /// Trigger CryptoMonitor job in mono.
+    /// Fire-and-forget: errors are logged but not propagated.
+    pub async fn trigger_crypto_monitor(&self) {
+        if let Err(e) = self.try_trigger(|mut c| async move {
+            c.trigger_crypto_monitor(TriggerJobRequest { tenant_id: 0 }).await
+        }).await {
+            error!("Failed to trigger CryptoMonitor in mono: {}", e);
+        }
+    }
+
+    async fn try_trigger<F, Fut>(&self, f: F) -> anyhow::Result<()>
+    where
+        F: FnOnce(MonoCallbackServiceClient<Channel>) -> Fut,
+        Fut: std::future::Future<Output = Result<tonic::Response<crate::generated::api::v1::TriggerJobResponse>, tonic::Status>>,
+    {
+        let channel = Channel::from_shared(self.endpoint.clone())?
+            .connect()
+            .await?;
+        let c = MonoCallbackServiceClient::new(channel);
+        f(c).await?;
         Ok(())
     }
 }
