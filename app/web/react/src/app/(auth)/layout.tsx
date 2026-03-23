@@ -7,10 +7,12 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <AuthHeader />
-      <main className="container-responsive flex min-h-screen items-center justify-center pb-16 pt-20">
-        {children}
+      <main className="container-responsive pointer-events-none relative z-10 flex flex-1 items-center justify-center pt-20">
+        <div className="pointer-events-auto">
+          {children}
+        </div>
       </main>
       <AuthFooter />
     </div>

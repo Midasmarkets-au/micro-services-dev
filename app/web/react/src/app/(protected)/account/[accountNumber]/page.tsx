@@ -46,19 +46,11 @@ import {
   DepositState,
   WithdrawalState,
   TransferState,
+  getCurrencyFlag,
 } from '@/types/accounts';
 
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport';
 
-const getCurrencyFlag = (currencyId: number): string => {
-  const flagMap: Record<number, string> = {
-    [CurrencyTypes.AUD]: '/images/flags/au.svg',
-    [CurrencyTypes.CNY]: '/images/flags/cn.svg',
-    [CurrencyTypes.USD]: '/images/flags/us.svg',
-    [CurrencyTypes.USC]: '/images/flags/us.svg',
-  };
-  return flagMap[currencyId] || '/images/flags/us.svg';
-};
 
 const CopyIcon = () => (
   <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -340,6 +332,17 @@ export default function AccountDetailPage() {
     headerWidth: 'w-[140px]',
   }), [groupHeaderRender]);
 
+  const transferDateGroupConfig = useMemo<DataTableGroupConfig<{ statedOn: string }>>(() => ({
+    groupBy: (item) => {
+      const d = new Date(item.statedOn);
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayMonthYear = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `${weekday}||${dayMonthYear}`;
+    },
+    renderGroupHeader: groupHeaderRender,
+    headerWidth: 'w-[140px]',
+  }), [groupHeaderRender]);
+
   const depositColumns = useMemo<DataTableColumn<AccountDeposit>[]>(() => [
     {
       key: 'deposit',
@@ -479,12 +482,12 @@ export default function AccountDetailPage() {
       skeletonWidth: 'w-40',
       render: (item) => (
         <div className="flex items-center gap-1 text-sm">
-          <span className={tradeAccount?.accountNumber === item.sourceTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
-            {item.sourceTradeAccountNumber || 'Wallet'}
+          <span className={tradeAccount?.accountNumber === item.sourceAccountNumber ? ' border-primary text-primary' : 'text-text-primary'}>
+            NO.{item.sourceAccountNumber || 'Wallet'} 
           </span>
-          <span className="text-yellow-500 mx-1">→</span>
-          <span className={tradeAccount?.accountNumber === item.targetTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
-            {item.targetTradeAccountNumber || 'Wallet'}
+          <span className="text-primary mx-1">→</span>
+          <span className={tradeAccount?.accountNumber === item.targetAccountNumber ? ' border-primary text-primary' : 'text-text-primary'}>
+          NO.{item.targetAccountNumber || 'Wallet'}
           </span>
         </div>
       ),
@@ -526,7 +529,7 @@ export default function AccountDetailPage() {
       title: t('detail.table.createdOn'),
       align: 'right',
       skeletonWidth: 'w-20',
-      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>,
+      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.statedOn)}</span>,
     },
   ], [t, tradeAccount?.accountNumber, tradeAccount?.currencyId]);
 
@@ -859,7 +862,7 @@ export default function AccountDetailPage() {
             rowKey={(item, idx) => item.id ?? idx}
             loading={tabLoading}
             skeletonRows={3}
-            groupConfig={dateGroupConfig as DataTableGroupConfig<AccountTransaction>}
+            groupConfig={transferDateGroupConfig as DataTableGroupConfig<AccountTransaction>}
           />
         )}
         {activeTab === 'tradeReport' && (

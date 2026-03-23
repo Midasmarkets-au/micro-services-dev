@@ -162,6 +162,7 @@ export {
   updateIBReferralCode,
   getRebateSymbolCategory,
   getSymbolCategory,
+  getAllSymbols,
   getIBAgentRules,
   getBrokerRebateRules,
   getIBReportRequests,

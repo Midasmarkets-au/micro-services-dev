@@ -397,12 +397,15 @@ export interface AccountTransaction {
   amount: number;
   amountInCents: number;
   sourceTradeAccountUid: number;
+  sourceAccountNumber: number;
+  targetAccountNumber: number;
   sourceTradeAccountNumber: number;
   targetTradeAccountUid: number;
   targetTradeAccountNumber: number;
   walletId?: number;
   createdOn: string;
   updatedOn: string;
+  statedOn: string;
 }
 
 // 转账状态 (matches old project TransactionStateType)
@@ -623,6 +626,11 @@ export const formatBalance = (balanceInCents: number, currencyId: number, locale
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+};
+
+// 获取货币图标
+export const getCurrencyFlag = (currencyId: number): string => {
+  return `/images/currency/${currencyId}.svg`;
 };
 
 // 获取平台名称

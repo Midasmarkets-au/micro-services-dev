@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { useServerAction } from '@/hooks/useServerAction';
+import { getAllSymbols } from '@/actions';
 import { useUserStore } from '@/stores';
 import { ServiceTypes } from '@/types/accounts';
 import {
@@ -231,6 +233,43 @@ export function TradeFilter({
   const [accountNumber, setAccountNumber] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultDateRange);
 
+  const { execute } = useServerAction({ showErrorToast: false });
+  const [symbolCodes, setSymbolCodes] = useState<string[]>([]);
+  const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
+  const symbolDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!visibleFields.has('product')) return;
+    let cancelled = false;
+    (async () => {
+      const result = await execute(getAllSymbols);
+      if (!cancelled && result.success && Array.isArray(result.data)) {
+        setSymbolCodes(
+          result.data
+            .map((s) => s.code)
+            .filter((code) => code && code !== 'UNKNOWN'),
+        );
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [visibleFields]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (symbolDropdownRef.current && !symbolDropdownRef.current.contains(e.target as Node)) {
+        setShowSymbolDropdown(false);
+      }
+    };
+    if (showSymbolDropdown) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSymbolDropdown]);
+
+  const filteredSymbols = useMemo(() => {
+    if (!symbol.trim()) return symbolCodes;
+    const q = symbol.trim().toLowerCase();
+    return symbolCodes.filter((code) => code.toLowerCase().startsWith(q));
+  }, [symbol, symbolCodes]);
+
   const resolvedStatus = useMemo(() => {
     if (!status) return defaultStatusValue;
     if (!statusOptions?.length) return status;
@@ -407,13 +446,41 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {t('trade.product')}
           </span>
-          <Input
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            inputSize="sm"
-            className="w-[160px]"
-          />
+          <div className="relative" ref={symbolDropdownRef}>
+            <Input
+              value={symbol}
+              onChange={(e) => {
+                setSymbol(e.target.value);
+                setShowSymbolDropdown(true);
+              }}
+              onFocus={() => setShowSymbolDropdown(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setShowSymbolDropdown(false);
+                  handleSearch();
+                }
+              }}
+              inputSize="sm"
+              className="w-[160px]"
+            />
+            {showSymbolDropdown && filteredSymbols.length > 0 && (
+              <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-[200px] overflow-y-auto rounded border border-border bg-surface shadow-lg">
+                {filteredSymbols.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => {
+                      setSymbol(code);
+                      setShowSymbolDropdown(false);
+                    }}
+                    className="w-full cursor-pointer px-3 py-1.5 text-left text-sm text-text-primary hover:bg-surface-secondary"
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

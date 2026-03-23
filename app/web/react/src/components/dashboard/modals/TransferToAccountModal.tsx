@@ -23,7 +23,7 @@ import {
   transferBetweenTradeAccounts,
   sendTransferVerificationCode,
 } from '@/actions';
-import type { Account } from '@/types/accounts';
+import { CurrencyTypes, type Account } from '@/types/accounts';
 
 interface TransferToAccountModalProps {
   open: boolean;
@@ -193,7 +193,7 @@ export function TransferToAccountModal({
         else onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent >
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
@@ -207,7 +207,7 @@ export function TransferToAccountModal({
             <BalanceShow
               balance={Math.round(maxBalance * 100)}
               currencyId={sourceAccount.currencyId}
-              className="text-sm font-semibold text-primary"
+              className="text-sm font-semibold text-text-primary"
             />
           </div>
 
@@ -239,12 +239,10 @@ export function TransferToAccountModal({
           </div>
 
           {/* Amount */}
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center text-sm font-medium text-text-secondary">
-              <span className="mr-1 text-primary">*</span>
-              {t('transferAmount')}
-            </label>
-            <input
+          <div>
+            <Input
+              label={t('transferAmount')}
+              required
               type="number"
               value={amount}
               onChange={(e) => {
@@ -252,11 +250,15 @@ export function TransferToAccountModal({
                 if (amountError) validateAmount(e.target.value);
               }}
               onBlur={() => amount && validateAmount(amount)}
-              className="h-12 w-full rounded bg-input-bg px-3 text-sm font-medium text-text-primary outline-none"
+              inputSize="md"
               placeholder={t('pleaseInput')}
+              error={amountError}
+              errorPosition="bottom"
             />
-            {amountError && (
-              <span className="text-xs ">{amountError}</span>
+            {!amountError && sourceAccount.currencyId === CurrencyTypes.USC && amount && (
+              <span className="mt-1 text-xs text-text-secondary">
+                <BalanceShow balance={Number(amount)} currencyId={CurrencyTypes.USD} className="text-xs error-text" />
+              </span>
             )}
           </div>
 
@@ -266,13 +268,15 @@ export function TransferToAccountModal({
               {tTransfer('verificationCode')}
             </label>
             <div className="flex items-center gap-3">
-              <input
-                type="text"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                className="h-12 flex-1 rounded bg-input-bg px-3 text-sm text-text-primary outline-none"
-                placeholder={tTransfer('codePlaceholder')}
-              />
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  inputSize="md"
+                  placeholder={tTransfer('codePlaceholder')}
+                />
+              </div>
               <Button
                 variant="primary"
                 size="sm"

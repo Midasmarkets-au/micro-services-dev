@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/radix/Dialog';
-import { Button, Checkbox, BalanceShow, Input } from '@/components/ui';
+import { Button, Checkbox, BalanceShow, Input, formatBalance } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Stepper } from '@/components/ui/Stepper';
 import {
@@ -23,6 +23,7 @@ import {
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { useUserStore } from '@/stores/userStore';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 import {
   getWalletWithdrawGroups,
   getWalletWithdrawGroupInfo,
@@ -125,6 +126,7 @@ export function WithdrawalModal({
 }: WithdrawalModalProps) {
   const t = useTranslations('wallet');
   const tCommon = useTranslations('common');
+  const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess, showError } = useToast();
   const isPasswordChangedWithin24h = useUserStore(
@@ -340,7 +342,7 @@ export function WithdrawalModal({
     }
   }, [selectedGroup, bankFormData, usdtFormData, execute, fetchPaymentInfos, showSuccess, t, tBank]);
 
-  // 金额校验：amount * 100 与 range 直接比较
+  // 金额校验：输入金额统一转为分后与余额/区间比较
   const validateAmount = useCallback(
     (val: string): boolean => {
       const num = Number(val);
@@ -353,13 +355,15 @@ export function WithdrawalModal({
         return false;
       }
       if (groupInfo?.range) {
-        const [min, max] = groupInfo.range;
-        const amountInCents = num;
-        if (min > 0 && amountInCents < min) {
+        const [rawMin, rawMax] = groupInfo.range;
+        const minInUsd = rawMin / 100;
+        const maxInUsd = rawMax / 100;
+        const inputInUsd = wallet.currencyId === CurrencyTypes.USC ? num / 100 : num;
+        if (minInUsd > 0 && inputInUsd < minInUsd) {
           setAmountError('range');
           return false;
         }
-        if (max > 0 && amountInCents > max) {
+        if (maxInUsd > 0 && inputInUsd > maxInUsd) {
           setAmountError('range');
           return false;
         }
@@ -367,7 +371,7 @@ export function WithdrawalModal({
       setAmountError('');
       return true;
     },
-    [availableBalanceInCents, groupInfo]
+    [availableBalanceInCents, groupInfo, wallet.currencyId]
   );
 
   // Step 3 validation
@@ -741,8 +745,13 @@ export function WithdrawalModal({
                         className="h-12 w-full rounded bg-input-bg px-3 text-sm font-medium text-text-primary outline-none"
                         placeholder={
                           groupInfo?.range
-                            ? `${groupInfo.range[0]} - ${groupInfo.range[1]}`
-                            : '0.00'
+                            ? (() => {
+                                const rangeMultiplier = wallet.currencyId === CurrencyTypes.USC ? 100 : 1;
+                                const min = groupInfo.range[0] * rangeMultiplier;
+                                const max = groupInfo.range[1] * rangeMultiplier;
+                                return `${formatBalance(min, wallet.currencyId)} - ${formatBalance(max, wallet.currencyId)}`;
+                              })()
+                            : formatBalance(0, wallet.currencyId)
                         }
                       />
                       {amountError === 'required' && (
@@ -753,18 +762,16 @@ export function WithdrawalModal({
                       )}
                       {amountError === 'range' && groupInfo?.range && (
                         <span className="text-xs error-text">
-                          {t('withdraw.amountOutOfRange')}
-                          <BalanceShow balance={groupInfo.range[0]} currencyId={wallet.currencyId} />
-                          ~
-                          <BalanceShow balance={groupInfo.range[1]} currencyId={wallet.currencyId} />
-                        </span>
-                      )}
-                      {groupInfo?.range && (
-                        <span className="text-xs text-text-secondary">
-                          {t('withdraw.range')}：
-                          <BalanceShow balance={groupInfo.range[0]} currencyId={wallet.currencyId} />
-                          {' - '}
-                          <BalanceShow balance={groupInfo.range[1]} currencyId={wallet.currencyId} />
+                          {t('withdraw.amountOutOfRange')}{' '}
+                          <BalanceShow
+                            balance={groupInfo.range[0] * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1)}
+                            currencyId={wallet.currencyId}
+                          />
+                          {' ~ '}
+                          <BalanceShow
+                            balance={groupInfo.range[1] * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1)}
+                            currencyId={wallet.currencyId}
+                          />
                         </span>
                       )}
                     </div>
@@ -1044,10 +1051,12 @@ export function WithdrawalModal({
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-text-secondary">
-                      {t('withdraw.amount')}
+                    <span className="text-sm text-text-primary">
+                      {t('withdraw.amount')}({getCurrencyName(wallet.currencyId)})
                     </span>
-                    <span className="text-sm font-semibold text-primary">{amount}</span>
+                    <span className="text-sm font-semibold text-text-primary">
+                    <BalanceShow balance={parseFloat(amount || '0') * 100} currencyId={wallet.currencyId} />
+                      </span>
                   </div>
                   {selectedPaymentInfo && (
                     <>

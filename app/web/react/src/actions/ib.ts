@@ -656,6 +656,17 @@ export async function getSymbolCategory(): Promise<ActionResponse<SymbolCategory
   }
 }
 
+export async function getAllSymbols(): Promise<ActionResponse<{ code: string }[]>> {
+  try {
+    const response = await apiClient.v1.get<{ code: string }[]>(
+      '/client/symbol'
+    );
+    return { success: true, data: unwrapData<{ code: string }[]>(response) };
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch symbols');
+  }
+}
+
 export async function getIBAgentRules(
   agentUid: number
 ): Promise<ActionResponse<unknown>> {
