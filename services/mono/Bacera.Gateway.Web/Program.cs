@@ -126,10 +126,10 @@ app.MapControllerRoute(
     name: "Default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
-
-// MonoCallbackService: called by the Rust scheduler to trigger WS notifications
-app.MapGrpcService<Bacera.Gateway.Web.Grpc.MonoCallbackGrpcService>();
+// MonoCallbackService: called by the Rust scheduler via standard gRPC (tonic, HTTP/2).
+// No UseGrpcWeb: gRPC-Web is for browsers; tonic uses standard gRPC and is incompatible with gRPC-Web encoding.
+// AllowAnonymous: internal cluster call from scheduler, no JWT token.
+app.MapGrpcService<Bacera.Gateway.Web.Grpc.MonoCallbackGrpcService>().AllowAnonymous();
 
 if (app.Environment.IsDevelopment())
     app.MapGrpcReflectionService();
