@@ -354,11 +354,14 @@ export function WithdrawalModal({
         setAmountError('insufficient');
         return false;
       }
+      console.log('num', num);
+      console.log('groupInfo', groupInfo);
+      console.log('wallet.currencyId', wallet.currencyId);
       if (groupInfo?.range) {
         const [rawMin, rawMax] = groupInfo.range;
-        const minInUsd = rawMin / 100;
-        const maxInUsd = rawMax / 100;
-        const inputInUsd = wallet.currencyId === CurrencyTypes.USC ? num / 100 : num;
+        const minInUsd = rawMin * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1);
+        const maxInUsd = rawMax * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1);
+        const inputInUsd =  num;
         if (minInUsd > 0 && inputInUsd < minInUsd) {
           setAmountError('range');
           return false;
@@ -746,7 +749,7 @@ export function WithdrawalModal({
                         placeholder={
                           groupInfo?.range
                             ? (() => {
-                                const rangeMultiplier = wallet.currencyId === CurrencyTypes.USC ? 100 : 1;
+                                const rangeMultiplier = wallet.currencyId === CurrencyTypes.USC ? 10000 : 100;
                                 const min = groupInfo.range[0] * rangeMultiplier;
                                 const max = groupInfo.range[1] * rangeMultiplier;
                                 return `${formatBalance(min, wallet.currencyId)} - ${formatBalance(max, wallet.currencyId)}`;
@@ -764,12 +767,12 @@ export function WithdrawalModal({
                         <span className="text-xs error-text">
                           {t('withdraw.amountOutOfRange')}{' '}
                           <BalanceShow
-                            balance={groupInfo.range[0] * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1)}
+                            balance={groupInfo.range[0] * (wallet.currencyId === CurrencyTypes.USC ? 10000 : 100)}
                             currencyId={wallet.currencyId}
                           />
                           {' ~ '}
                           <BalanceShow
-                            balance={groupInfo.range[1] * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1)}
+                            balance={groupInfo.range[1] * (wallet.currencyId === CurrencyTypes.USC ? 10000 : 100)}
                             currencyId={wallet.currencyId}
                           />
                         </span>

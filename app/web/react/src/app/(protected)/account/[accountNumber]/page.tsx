@@ -651,7 +651,7 @@ export default function AccountDetailPage() {
                       value={String(tradeAccount.accountNumber)}
                       onValueChange={handleAccountSwitch}
                     >
-                      <SelectTrigger className="h-auto! w-auto! border-none! bg-transparent! p-0! text-lg font-bold text-white shadow-none! gap-1.5">
+                      <SelectTrigger className="h-auto! w-auto! border-none! bg-transparent! p-0! text-lg font-bold text-white! shadow-none! gap-1.5">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

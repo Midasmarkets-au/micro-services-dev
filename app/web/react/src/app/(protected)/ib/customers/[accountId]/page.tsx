@@ -308,7 +308,7 @@ export default function IBCustomerDetailPage({
     {
       key: 'amount',
       title: td('columns.amount'),
-      align: 'center',
+      align: 'right',
       skeletonWidth: 'w-20',
       render: (item) => <BalanceShow balance={item.amount} currencyId={item.currencyId} className="text-sm" />,
     },
@@ -354,7 +354,7 @@ export default function IBCustomerDetailPage({
     {
       key: 'amount',
       title: td('columns.amount'),
-      align: 'center',
+      align: 'right',
       skeletonWidth: 'w-20',
       render: (item) => <BalanceShow balance={item.amount} currencyId={item.currencyId} className="text-sm" />,
     },
@@ -377,7 +377,7 @@ export default function IBCustomerDetailPage({
           <div className="flex flex-col">
             <div>
               <span className="text-sm">No.{item.sourceAccount.accountNumber || '--'}</span>
-              <span className="text-xs text-text-secondary">{getCurrencyCode(item.sourceAccount.currencyId ?? item.currencyId ?? 840)}</span>
+              <span className="text-xs text-text-secondary">&nbsp;{getCurrencyCode(item.sourceAccount.currencyId ?? item.currencyId ?? 840)}</span>
             </div>
             <span className="text-xs text-text-secondary">{td('columns.group')}:{item.sourceAccount.group || '--'}</span>
           </div>
@@ -410,7 +410,7 @@ export default function IBCustomerDetailPage({
     {
       key: 'amount',
       title: td('columns.amount'),
-      align: 'center',
+      align: 'right',
       skeletonWidth: 'w-20',
       render: (item) => <BalanceShow balance={item.amount || 0} currencyId={item.currencyId || 840} className="text-sm" />,
     },
