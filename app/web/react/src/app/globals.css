@@ -595,6 +595,14 @@ input:-webkit-autofill:active {
   padding-right: 8.33%; */
   padding-inline: clamp(20px, calc(-140px + 15.625vw), 160px);
 }
+
+.container-auth-responsive {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  /* 1920 下左右 240px，并向小屏平滑收缩到 20px */
+  padding-inline: clamp(20px, calc(-33.4px + 14.24vw), 240px);
+}
 .menu-responsive {
   width: 100%;
   max-width: 1920px;
@@ -649,26 +657,8 @@ input:-webkit-autofill:active {
 .auth-card {
   display: flex;
   width: 100%;
-  max-width: 90rem;  /* 1440px */
+  max-width: 100%;
   overflow: hidden;
-}
-
-@media (max-width: 1280px) {
-  .auth-card {
-    max-width: 75rem;  /* 1200px */
-  }
-}
-
-@media (max-width: 1024px) {
-  .auth-card {
-    max-width: 56.25rem;  /* 900px */
-  }
-}
-
-@media (max-width: 768px) {
-  .auth-card {
-    max-width: 37.5rem;  /* 600px */
-  }
 }
 
 .auth-card-form {

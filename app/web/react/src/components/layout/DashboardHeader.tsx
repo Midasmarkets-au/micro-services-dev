@@ -386,7 +386,7 @@ export function DashboardHeader() {
           <div className="flex flex-col gap-1">
             {/* 账户设置 */}
             <Link
-              href="/settings"
+              href="/profile"
               onClick={closeDrawer}
               className="flex items-center gap-3 rounded-lg px-4 py-3 text-base text-text-primary hover:bg-surface-secondary"
             >

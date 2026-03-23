@@ -162,7 +162,7 @@ export default function IBDepositPage() {
         if (!acc) return item.accountNumber ? `No.${item.accountNumber}` : '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber}</span>
+            <span className="text-sm text-text-primary font-semibold">No.{acc.accountNumber}</span>
             <span className="text-xs">{t('deposit.group')}：{acc.group || '***'}</span>
           </div>
         );

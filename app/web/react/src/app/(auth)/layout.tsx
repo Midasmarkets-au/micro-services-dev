@@ -9,8 +9,8 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <AuthHeader />
-      <main className="container-responsive pointer-events-none relative z-10 flex flex-1 items-center justify-center pt-20">
-        <div className="pointer-events-auto">
+      <main className="container-auth-responsive pointer-events-none relative z-10 flex flex-1 items-center justify-center pt-20">
+        <div className="pointer-events-auto w-full">
           {children}
         </div>
       </main>

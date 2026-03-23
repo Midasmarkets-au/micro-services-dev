@@ -157,7 +157,7 @@ export default function SalesDepositPage() {
         if (!acc) return item.accountNumber ? `No.${item.accountNumber}` : '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber}</span>
+            <span className="text-sm text-text-primary font-semibold">No.{acc.accountNumber}</span>
             <span className="text-xs">{t('deposit.group')}：{acc.group || '***'}</span>
           </div>
         );
@@ -167,6 +167,7 @@ export default function SalesDepositPage() {
       key: 'amount',
       title: t('deposit.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),

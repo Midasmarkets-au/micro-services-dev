@@ -150,7 +150,7 @@ export default function SalesTransactionPage() {
         return (
           <div className="flex flex-col items-center">
             <span className="text-sm">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
-            <span className="text-xs">Group: {acc.group || '***'}</span>
+            <span className="text-xs">{t('withdrawal.group')}: {acc.group || '***'}</span>
           </div>
         );
       },
@@ -165,8 +165,8 @@ export default function SalesTransactionPage() {
         if (!acc) return item.toAccountNumber ?? '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
-            <span className="text-xs">Group: {acc.group || '***'}</span>
+            <span className="text-sm text-text-primary font-semibold">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
+            <span className="text-xs">{t('withdrawal.group')}: {acc.group || '***'}</span>
           </div>
         );
       },
@@ -175,6 +175,7 @@ export default function SalesTransactionPage() {
       key: 'amount',
       title: t('transaction.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),

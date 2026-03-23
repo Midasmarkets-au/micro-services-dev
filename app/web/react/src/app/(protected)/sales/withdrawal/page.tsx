@@ -161,11 +161,11 @@ export default function SalesWithdrawalPage() {
               if (!src) return item.accountNumber ? `No.${item.accountNumber}` : '-';
               return (
                 <div className="flex flex-col items-center">
-                  <span className="text-sm">
+                  <span className="text-sm text-text-primary font-semibold">
                     No.{src.displayNumber} ({CurrencyCodeMap[src.currencyId ?? 0] || '-'})
                   </span>
                   <span className="text-xs">
-                    Group: {src.agentGroupName || '***'}
+                    {t('withdrawal.group')}: {src.agentGroupName || '***'}
                   </span>
                 </div>
               );
@@ -183,6 +183,7 @@ export default function SalesWithdrawalPage() {
       key: 'amount',
       title: t('withdrawal.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),
