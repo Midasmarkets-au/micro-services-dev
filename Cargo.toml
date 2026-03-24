@@ -42,6 +42,10 @@ harsh = "0.2"
 # Broadcast / SSE
 tokio-stream = { version = "0.1", features = ["sync"] }
 dashmap = "5"
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
 
 [patch.crates-io]
 # Fix: fetch_by_queue() missing ARGV[1] (now timestamp) causes 500 on /queues/{queue}/stats

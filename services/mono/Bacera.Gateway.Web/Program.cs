@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using Serilog;
+using Serilog.Events;
 
 Startup.LoadEnvironmentConfigure();
 IdentityModelEventSource.ShowPII = true; //DEBUG for Identity
@@ -92,6 +93,35 @@ var corsPolicy = (isProduction || isStaging || isTesting) ? "AllowSpecificOrigin
 app.UseCors(corsPolicy);
 app.BuildSwagger();
 // Configure the HTTP request pipeline.
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.GetLevel = (httpContext, _, ex) =>
+    {
+        if (httpContext.Request.ContentType?.StartsWith("application/grpc") == true)
+            return LogEventLevel.Verbose; // gRPC has its own logging; skip here
+        if (httpContext.Response.StatusCode >= 500 || ex != null)
+            return LogEventLevel.Error;
+        if (httpContext.Response.StatusCode >= 400)
+            return LogEventLevel.Warning;
+        return LogEventLevel.Information;
+    };
+    options.MessageTemplate =
+        "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    // Pick up business fields stored by ApiLogMiddleware
+    options.EnrichDiagnosticContext = (diag, ctx) =>
+    {
+        if (ctx.Items.TryGetValue("log.TenantId", out var tenantId)) diag.Set("TenantId", tenantId);
+        if (ctx.Items.TryGetValue("log.IsTenantSet", out var isTenantSet)) diag.Set("IsTenantSet", isTenantSet);
+        if (ctx.Items.TryGetValue("log.PartyId", out var partyId)) diag.Set("PartyId", partyId);
+        if (ctx.Items.TryGetValue("log.GodPartyId", out var godPartyId)) diag.Set("GodPartyId", godPartyId);
+        if (ctx.Items.TryGetValue("log.Ip", out var ip)) diag.Set("Ip", ip);
+        if (ctx.Items.TryGetValue("log.UserAgent", out var userAgent)) diag.Set("UserAgent", userAgent);
+        if (ctx.Items.TryGetValue("log.Referer", out var referer)) diag.Set("Referer", referer);
+        if (ctx.Items.TryGetValue("log.QueryParams", out var queryParams)) diag.Set("QueryParams", queryParams);
+        if (ctx.Items.TryGetValue("log.RequestBody", out var requestBody)) diag.Set("RequestBody", requestBody);
+    };
+});
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
