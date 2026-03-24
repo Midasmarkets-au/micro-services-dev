@@ -23,8 +23,14 @@ pub struct TracingGuard {
 ///
 /// Returns a [`TracingGuard`] that **must be kept alive** for the duration of the
 /// process so that the background log-writer threads are not dropped prematurely.
+#[must_use = "TracingGuard must be kept alive for the duration of the process"]
 pub fn init_tracing(service_name: &'static str) -> TracingGuard {
     let log_dir = std::env::var("LOG_DIR").unwrap_or_else(|_| "./logs".to_string());
+
+    // --- create log directory if it doesn't exist ---------------------------
+    if let Err(e) = std::fs::create_dir_all(&log_dir) {
+        eprintln!("Warning: could not create log directory '{}': {}", log_dir, e);
+    }
 
     // --- file appenders -------------------------------------------------
     let daily_appender =
