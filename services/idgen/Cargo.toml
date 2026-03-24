@@ -17,6 +17,7 @@ serde_json = { workspace = true }
 snowflaked = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+otel = { path = "../otel" }
 
 [build-dependencies]
 tonic-build = { workspace = true }
