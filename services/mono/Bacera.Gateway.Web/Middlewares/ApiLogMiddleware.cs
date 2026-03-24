@@ -1,28 +1,40 @@
 using System.Web;
 using System.Text;
-using System.Net;
-using Bacera.Gateway.MyException;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.Services;
-using Microsoft.EntityFrameworkCore.Storage;
 using Newtonsoft.Json;
-using Org.BouncyCastle.Asn1.Cms;
 using UAParser;
 
 
 namespace Bacera.Gateway.Web.Middleware;
 
+/// <summary>
+/// Enriches Serilog request logs (via UseSerilogRequestLogging) with business fields.
+/// Values are stored in HttpContext.Items and picked up by the EnrichDiagnosticContext callback
+/// configured in Program.cs. No DB writes — all logs go to Serilog/Seq/CloudWatch.
+/// </summary>
 public class ApiLogMiddleware(
-    TenantDbContext tenantDbContext,
     Tenancy tenancy,
     ITenantService tenantService,
-    IMyCache cache,
-    CentralDbContext centralDbContext)
+    IMyCache cache)
     : IMiddleware
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        
+        // gRPC uses HTTP/2 with content-type application/grpc — skip entirely to avoid breaking DATA frames
+        if (context.Request.ContentType?.StartsWith("application/grpc") == true)
+        {
+            await next(context);
+            return;
+        }
+
+        // WebSocket upgrade (SignalR long connections)
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            await next(context);
+            return;
+        }
+
         var tenantId = tenancy.GetTenantId();
         var tenant = await tenantService.GetAsync(tenantId);
         if (!tenant.IsEmpty() && tenant.ApiLogEnable == false)
@@ -89,103 +101,30 @@ public class ApiLogMiddleware(
             return;
         }
 
-        var apiLog = new ApiLog();
-        var centralApiLog = new CentralApiLog();
-        try
-        {
-            
+        var referer = context.Request.Headers.TryGetValue("Referer", out var refererString)
+            ? refererString.FirstOrDefault()
+            : string.Empty;
 
-            var referer = context.Request.Headers.TryGetValue("Referer", out var refererString)
-                ? refererString.FirstOrDefault()
-                : string.Empty;
+        var godPartyIdHashed = context.User.Claims.FirstOrDefault(x => x.Type == UserClaimTypes.GodPartyId)?.Value;
+        var godPartyId = godPartyIdHashed == null ? 0 : Party.HashDecode(godPartyIdHashed);
 
-          
-            var godPartyIdHashed = context.User.Claims.FirstOrDefault(x => x.Type == UserClaimTypes.GodPartyId)?.Value;
-            var godPartyId = godPartyIdHashed == null ? 0 : Party.HashDecode(godPartyIdHashed);
+        var ip = GetRemoteIpAddress(context);
+        var queryParams = GetQueryString(context);
+        var requestBody = await GetRequestBody(context);
 
-            if (godPartyId != 0)
-            {
-                userAgent += $" GodPartyId:{godPartyId}";
-            }
+        // Store business fields in HttpContext.Items — picked up by UseSerilogRequestLogging
+        // EnrichDiagnosticContext callback configured in Program.cs
+        context.Items["log.TenantId"] = tenantId;
+        context.Items["log.IsTenantSet"] = tenancy.IsTenantSet();
+        context.Items["log.PartyId"] = partyId;
+        context.Items["log.GodPartyId"] = godPartyId;
+        context.Items["log.Ip"] = ip;
+        context.Items["log.UserAgent"] = userAgent;
+        context.Items["log.Referer"] = referer;
+        context.Items["log.QueryParams"] = queryParams;
+        context.Items["log.RequestBody"] = requestBody;
 
-            apiLog = new ApiLog
-            {
-                Method = context.Request.Method,
-                Action = context.Request.Path,
-                ConnectionId = context.Connection.Id,
-                Parameters = GetQueryString(context),
-                RequestContent = await GetRequestBody(context),
-                Ip = GetRemoteIpAddress(context),
-                PartyId = partyId,
-                UserAgent = userAgent,
-                Referer = referer,
-                CreatedOn = DateTime.UtcNow,
-                UpdatedOn = DateTime.UtcNow
-            };
-
-            centralApiLog = apiLog.ToCentralApiLog();
-            try
-            {
-                if (tenancy.IsTenantSet() == false)
-                {
-                    await centralDbContext.CentralApiLogs.AddAsync(centralApiLog);
-                    await centralDbContext.SaveChangesAsync();
-                }
-                else
-                {
-                    await tenantDbContext.ApiLogs.AddAsync(apiLog);
-                    await tenantDbContext.SaveChangesAsync();
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-
-            using var responseBody = new MemoryStream();
-            var originalBodyStream = context.Response.Body;
-            context.Response.Body = responseBody;
-
-            await next(context);
-            // await ExecuteNext(context, next);
-            apiLog.StatusCode = context.Response.StatusCode;
-            centralApiLog.StatusCode = context.Response.StatusCode;
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
-            apiLog.ResponseContent = await new StreamReader(responseBody).ReadToEndAsync();
-            centralApiLog.ResponseContent = apiLog.ResponseContent;
-            context.Response.Body.Seek(0, SeekOrigin.Begin);
-            await responseBody.CopyToAsync(originalBodyStream);
-        }
-        catch (Exception e)
-        {
-            apiLog.StatusCode = 500;
-            apiLog.ResponseContent = e.Message;
-            centralApiLog.StatusCode = 500;
-            centralApiLog.ResponseContent = e.Message;
-            throw;
-        }
-        finally
-        {
-            try
-            {
-                apiLog.UpdatedOn = DateTime.UtcNow;
-                centralApiLog.UpdatedOn = DateTime.UtcNow;
-                if (tenancy.IsTenantSet() == false)
-                {
-                    centralDbContext.CentralApiLogs.Update(centralApiLog);
-                    await centralDbContext.SaveChangesAsync();
-                }
-                else
-                {
-                    tenantDbContext.ApiLogs.Update(apiLog);
-                    await tenantDbContext.SaveChangesAsync();
-                }
-            }
-            catch
-            {
-                // ignored
-            }
-        }
+        await next(context);
     }
 
     private static string GetQueryString(HttpContext context)
@@ -222,7 +161,6 @@ public class ApiLogMiddleware(
     {
         if (!allowForwarded) return context.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
 
-
         // 尝试从 X-Forwarded-For 头部获取 IP 地址
         var forwardedHeader = context.Request.Headers["X-Forwarded-For"];
         if (!string.IsNullOrEmpty(forwardedHeader))
@@ -257,7 +195,7 @@ public class ApiLogMiddleware(
             BcrLog.Slack($"Error reading request body: {e.Message}, {context.Request.Path.Value ?? "/none"}");
             return "{}";
         }
-            
+
         context.Request.Body.Position = 0;
 
         // check if password is in the request json body
@@ -324,8 +262,9 @@ public class ApiLogMiddleware(
         "/api/v1/tenant/media",
         "/none",
         "/hf_manage",
-        "/hub/client/negotiate",
         "/hub/client",
+        "/hub/tenant",   // SignalR tenant hub + negotiate
+        "/live/trade",   // market hub
         "/api/v1/auth/c"
     ];
 }

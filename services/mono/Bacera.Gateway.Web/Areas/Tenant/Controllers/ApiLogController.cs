@@ -7,17 +7,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Bacera.Gateway.Web.Areas.Tenant;
 
+// NOTE: ApiLogMiddleware has been refactored to use Serilog structured logging (→ Seq/CloudWatch).
+// This endpoint returns historical data only. New request logs are in Seq under MessageTemplate "HTTP {RequestMethod}...".
 [Tags("Tenant/Api Log")]
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/api-log")]
 [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 public class ApiLogController(TenantDbContext tenantCtx) : TenantBaseController
 {
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="criteria"></param>
-    /// <returns></returns>
     [HttpGet]
     public async Task<IActionResult> Index([FromQuery] ApiLog.Criteria? criteria = null)
     {
