@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
+use tracing::{error, info};
 
 use auth::{db, hashids, password, token};
 
@@ -104,7 +105,7 @@ async fn handle_password_grant(state: &AppState, req: &TokenRequest) -> Json<Val
     let users = match db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
         Err(e) => {
-            tracing::error!("db error: {}", e);
+            error!("db error: {}", e);
             return error_response("server_error", "internal error");
         }
     };
@@ -296,13 +297,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let http_addr: SocketAddr = env("HTTP_ADDR", "[::]:9001").parse()?;
 
-    tracing::info!(
+    info!(
         "Connecting to database at {}:{}",
         env("DB_HOST", "localhost"),
         env("DB_PORT", "5432")
     );
     let pool = PgPool::connect(&database_url).await?;
-    tracing::info!("Connected to database");
+    info!("Connected to database");
 
     let state = Arc::new(AppState {
         pool,
@@ -311,7 +312,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let listener = tokio::net::TcpListener::bind(http_addr).await?;
-    tracing::info!("Auth HTTP listening on http://{}", http_addr);
+    info!("Auth HTTP listening on http://{}", http_addr);
 
     axum::serve(listener, http_app(state)).await?;
     Ok(())
