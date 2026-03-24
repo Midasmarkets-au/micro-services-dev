@@ -43,6 +43,11 @@ spec:
           envFrom:
             - secretRef:
                 name: scheduler-env
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: LOG_DIR
+              value: "/app/logs"
           livenessProbe:
             httpGet:
               path: /health
