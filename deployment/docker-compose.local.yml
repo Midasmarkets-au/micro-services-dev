@@ -116,7 +116,6 @@ services:
       - "9005:9005"
       - "50005:50005"
     environment:
-      ASPNETCORE_URLS: "http://+:9005"
       ASPNETCORE_ENVIRONMENT: Development
       REDIS_CONNECTION: "redis:6379"
       REDIS_PASSWORD: "qazwsx13"
