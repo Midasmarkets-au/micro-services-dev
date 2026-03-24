@@ -239,6 +239,7 @@ dependencies = [
  "harsh",
  "hmac",
  "jsonwebtoken",
+ "otel",
  "pbkdf2",
  "serde",
  "serde_json",
@@ -248,6 +249,31 @@ dependencies = [
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "auth-rust"
+version = "0.1.0"
+dependencies = [
+ "axum 0.7.9",
+ "base64 0.22.1",
+ "chrono",
+ "harsh",
+ "hmac",
+ "jsonwebtoken",
+ "otel",
+ "pbkdf2",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
+ "tower 0.4.13",
+ "tower-http 0.5.2",
+ "tracing",
+ "tracing-appender",
  "tracing-subscriber",
  "uuid",
 ]
@@ -950,6 +976,7 @@ dependencies = [
  "axum 0.7.9",
  "chrono",
  "dashmap",
+ "otel",
  "prost",
  "serde",
  "serde_json",
@@ -2125,6 +2152,7 @@ name = "idgen"
 version = "0.1.0"
 dependencies = [
  "axum 0.7.9",
+ "otel",
  "prost",
  "reqwest",
  "serde",
@@ -3259,6 +3287,7 @@ dependencies = [
  "dotenvy",
  "futures",
  "lettre",
+ "otel",
  "prost",
  "redis",
  "serde",
@@ -4124,6 +4153,7 @@ dependencies = [
  "cron",
  "dotenvy",
  "futures",
+ "otel",
  "reqwest",
  "serde",
  "serde_json",
