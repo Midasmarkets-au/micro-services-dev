@@ -56,6 +56,15 @@ data:
         Time_Key    time
         Time_Format %Y-%m-%dT%H:%M:%S.%L
 
+  labelmap.json: |
+    {
+      "kubernetes": {
+        "namespace_name": "namespace",
+        "pod_name":        "pod",
+        "container_name":  "container"
+      }
+    }
+
   fluent-bit.conf: |
     [SERVICE]
         Parsers_File /fluent-bit/etc/parsers.conf
@@ -85,6 +94,7 @@ data:
         Host            loki
         Port            3100
         Labels          job=fluent-bit
+        label_map_path  /fluent-bit/etc/labelmap.json
         Auto_Kubernetes_Labels On
         Line_Format     json
 ---
