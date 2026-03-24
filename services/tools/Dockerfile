@@ -12,9 +12,11 @@ FROM chef AS planner
 WORKDIR /app
 COPY Cargo.lock ./
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
-# Generate minimal workspace containing only tools
-RUN printf '[workspace]\nmembers = ["services/tools"]\nresolver = "1"\n\n[workspace.dependencies]\ntokio = { version = "1", features = ["full"] }\nreqwest = { version = "0.11", features = ["blocking", "rustls-tls", "json"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\n' > Cargo.toml
-RUN mkdir -p services/tools/src && printf 'fn main() {}' > services/tools/src/main.rs
+COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
+# Generate minimal workspace containing tools + otel (tools depends on otel)
+RUN printf '[workspace]\nmembers = ["services/tools", "services/otel"]\nresolver = "2"\n\n[workspace.dependencies]\ntokio = { version = "1", features = ["full"] }\nreqwest = { version = "0.11", features = ["blocking", "rustls-tls", "json"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\ntracing = "0.1"\ntracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }\n' > Cargo.toml
+RUN mkdir -p services/tools/src && printf 'fn main() {}' > services/tools/src/main.rs && \
+    mkdir -p services/otel/src && touch services/otel/src/lib.rs
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ── Stage 3: compile dependencies (cached as long as deps unchanged) ─────────
@@ -23,11 +25,13 @@ WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
 COPY Cargo.lock ./
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
-RUN printf '[workspace]\nmembers = ["services/tools"]\nresolver = "1"\n\n[workspace.dependencies]\ntokio = { version = "1", features = ["full"] }\nreqwest = { version = "0.11", features = ["blocking", "rustls-tls", "json"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\n' > Cargo.toml
+COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
+RUN printf '[workspace]\nmembers = ["services/tools", "services/otel"]\nresolver = "2"\n\n[workspace.dependencies]\ntokio = { version = "1", features = ["full"] }\nreqwest = { version = "0.11", features = ["blocking", "rustls-tls", "json"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\nchrono = { version = "0.4", features = ["serde"] }\ntracing = "0.1"\ntracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }\n' > Cargo.toml
 # 只要 Cargo.toml/Cargo.lock 不变，此层永久缓存
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Copy real source and build only the changed business code
+COPY services/otel/ ./services/otel/
 COPY services/tools/ ./services/tools/
 RUN cargo build --release -p tools
 

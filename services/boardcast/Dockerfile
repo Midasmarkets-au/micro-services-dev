@@ -20,9 +20,13 @@ COPY services/idgen/Cargo.toml ./services/idgen/Cargo.toml
 COPY services/auth/Cargo.toml ./services/auth/Cargo.toml
 COPY services/scheduler/Cargo.toml ./services/scheduler/Cargo.toml
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
+COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
+COPY services/auth_rust/Cargo.toml ./services/auth_rust/Cargo.toml
 RUN for svc in idgen auth boardcast scheduler tools; do \
       mkdir -p services/$svc/src && printf 'fn main() {}' > services/$svc/src/main.rs; \
-    done
+    done && \
+    mkdir -p services/otel/src && touch services/otel/src/lib.rs && \
+    mkdir -p services/auth_rust/src && printf 'fn main() {}' > services/auth_rust/src/main.rs && touch services/auth_rust/src/lib.rs
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ── Stage 3: compile dependencies (cached as long as deps unchanged) ─────────
@@ -37,10 +41,13 @@ COPY services/idgen/Cargo.toml ./services/idgen/Cargo.toml
 COPY services/auth/Cargo.toml ./services/auth/Cargo.toml
 COPY services/scheduler/Cargo.toml ./services/scheduler/Cargo.toml
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
+COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
+COPY services/auth_rust/Cargo.toml ./services/auth_rust/Cargo.toml
 # Only deps change → this layer is cached
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Copy real source and build only the changed business code
+COPY services/otel/ ./services/otel/
 COPY services/boardcast/ ./services/boardcast/
 RUN cargo build --release -p boardcast
 
