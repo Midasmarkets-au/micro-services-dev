@@ -483,6 +483,8 @@ export interface AccountTrade {
   sl: number;
   tp: number;
   closeTime: string;
+  closeAt: string;
+  openAt: string;
   closePrice: number;
   commission: number;
   swap: number;
@@ -522,6 +524,8 @@ export interface WithdrawalQueryParams extends PaginationParams {
 // 交易报告查询参数
 export interface TradeQueryParams extends PaginationParams {
   period?: string;
+  from?: string;
+  to?: string;
   symbol?: string;
   isClosed?: boolean;
 }
@@ -532,6 +536,26 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   size: number;
+}
+
+export interface AccountTradeCriteria {
+  page: number;
+  size: number;
+  total?: number;
+  isClosed?: boolean;
+  pageTotalVolume?: number;
+  pageTotalCommission?: number;
+  pageTotalSwap?: number;
+  pageTotalProfit?: number;
+  totalVolume?: number;
+  totalCommission?: number;
+  totalSwap?: number;
+  totalProfit?: number;
+}
+
+export interface AccountTradeListResponse {
+  data: AccountTrade[];
+  criteria: AccountTradeCriteria;
 }
 
 // ============================================

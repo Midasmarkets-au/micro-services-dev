@@ -7,7 +7,9 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
+import { TimeShow } from '@/components/TimeShow';
 import { BalanceShow, Button, Skeleton, DatePicker, Tabs, DataTable } from '@/components/ui';
+import { TradeFilter } from '@/components/TradeFilter';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { DateRange } from '@/components/ui';
 import {
@@ -38,6 +40,7 @@ import type {
   AccountWithdrawal,
   AccountTransaction,
   AccountTrade,
+  AccountTradeCriteria,
 } from '@/types/accounts';
 import {
   AccountStatusTypes,
@@ -48,6 +51,7 @@ import {
   TransferState,
   getCurrencyFlag,
 } from '@/types/accounts';
+import { handleTradeBuySellDisplay } from '@/lib/trade';
 
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport';
 
@@ -64,10 +68,15 @@ const CopyIcon = () => (
   </svg>
 );
 
-function formatTime(dateStr: string) {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+function toFixedSafe(value: number | undefined | null, digits: number, fallback = '--') {
+  if (value == null || Number.isNaN(value)) return fallback;
+  return value.toFixed(digits);
+}
+
+function getProfitColorClass(value: number): string {
+  if (value < 0) return 'text-[#800020] dark:text-[#800020]';
+  if (value > 0) return 'text-[#004EFF] dark:text-[#004EFF]';
+  return 'text-text-primary';
 }
 
 const PENDING_STATES = new Set([
@@ -113,6 +122,7 @@ export default function AccountDetailPage() {
   const params = useParams();
   const accountNumber = Number(params.accountNumber);
   const t = useTranslations('accounts');
+  const tType = useTranslations();
   const { isDark, mounted } = useTheme();
   const { execute } = useServerAction({ showErrorToast: true });
 
@@ -128,6 +138,7 @@ export default function AccountDetailPage() {
   const [withdrawals, setWithdrawals] = useState<AccountWithdrawal[]>([]);
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
   const [trades, setTrades] = useState<AccountTrade[]>([]);
+  const [tradeCriteria, setTradeCriteria] = useState<AccountTradeCriteria | null>(null);
   const [tabLoading, setTabLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -144,6 +155,7 @@ export default function AccountDetailPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
+  const tradeFilterParamsRef = useRef<Record<string, unknown>>({ isClosed: false });
 
   const isLoadedRef = useRef(false);
 
@@ -225,10 +237,14 @@ export default function AccountDetailPage() {
           break;
         }
         case 'tradeReport': {
-          const result = await execute(getAccountTrades, uid, { size: pageSize, isClosed: true, period });
+          const result = await execute(getAccountTrades, uid, {
+            size: pageSize,
+            ...tradeFilterParamsRef.current,
+          });
           if (result.success) {
             setTrades(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            setTradeCriteria(result.data?.criteria || null);
+            setTotalCount(result.data?.criteria?.total || 0);
           }
           break;
         }
@@ -298,6 +314,15 @@ export default function AccountDetailPage() {
     setStatusFilter('all');
     setTotalCount(0);
   };
+
+  const handleTradeFilterSearch = useCallback((params: Record<string, unknown>) => {
+    tradeFilterParamsRef.current = params;
+    loadTabData();
+  }, [loadTabData]);
+
+  const handleTradeFilterReset = useCallback(() => {
+    tradeFilterParamsRef.current = { isClosed: false };
+  }, []);
 
   const tradeAccount = currentAccount?.tradeAccount;
   const service = tradeAccount ? serviceMap[tradeAccount.serviceId] : undefined;
@@ -408,7 +433,7 @@ export default function AccountDetailPage() {
       title: t('detail.table.createdOn'),
       align: 'right',
       skeletonWidth: 'w-20',
-      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn} format="HH:mm A" />,
     },
   ], [t, tradeAccount?.currencyId]);
 
@@ -464,14 +489,14 @@ export default function AccountDetailPage() {
       title: t('detail.table.createdOn'),
       align: 'center',
       skeletonWidth: 'w-20',
-      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn} format="HH:mm A" />,
     },
     {
       key: 'updatedOn',
       title: t('detail.table.updatedOn'),
       align: 'right',
       skeletonWidth: 'w-20',
-      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.updatedOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.updatedOn} format="HH:mm A" />,
     },
   ], [t, tradeAccount?.currencyId]);
 
@@ -529,28 +554,102 @@ export default function AccountDetailPage() {
       title: t('detail.table.createdOn'),
       align: 'right',
       skeletonWidth: 'w-20',
-      render: (item) => <span className="text-sm text-text-secondary">{formatTime(item.statedOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.statedOn} format="HH:mm A" />,
     },
   ], [t, tradeAccount?.accountNumber, tradeAccount?.currencyId]);
 
+  const isTradeClosed = (tradeCriteria?.isClosed ?? tradeFilterParamsRef.current?.isClosed) === true;
+
   const tradeColumns = useMemo<DataTableColumn<AccountTrade>[]>(() => [
-    { key: 'ticket', title: 'Ticket', skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.ticket}</span> },
-    { key: 'symbol', title: 'Symbol', skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.symbol}</span> },
+    { key: 'ticket', title: t('detail.table.ticket'), skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.ticket}</span> },
+    { key: 'symbol', title: t('detail.table.symbol'), skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.symbol}</span> },
     {
-      key: 'type', title: 'Type', skeletonWidth: 'w-12',
-      render: (item) => <span className={item.type === 0 ? 'text-green-500' : 'text-red-500'}>{item.type === 0 ? 'Buy' : 'Sell'}</span>,
+      key: 'type', title: t('fields.type'), skeletonWidth: 'w-12',
+      render: (item) => {
+        const typeCmd = handleTradeBuySellDisplay(item);
+        return <span>{tType(`type.cmd.${typeCmd}`)}</span>;
+      },
     },
-    { key: 'volume', title: 'Volume', align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-primary">{item.volume.toFixed(2)}</span> },
-    { key: 'openTime', title: 'Open Time', skeletonWidth: 'w-24', render: (item) => <span className="text-text-secondary">{formatTime(item.openTime)}</span> },
-    { key: 'openPrice', title: 'Open Price', align: 'right', skeletonWidth: 'w-20', render: (item) => <span className="text-text-primary">{item.openPrice.toFixed(5)}</span> },
-    { key: 'sl', title: 'S/L', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.sl > 0 ? item.sl.toFixed(5) : '--'}</span> },
-    { key: 'tp', title: 'T/P', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.tp > 0 ? item.tp.toFixed(5) : '--'}</span> },
-    { key: 'closeTime', title: 'Close Time', skeletonWidth: 'w-24', render: (item) => <span className="text-text-secondary">{item.closeTime ? formatTime(item.closeTime) : '--'}</span> },
-    { key: 'closePrice', title: 'Close Price', align: 'right', skeletonWidth: 'w-20', render: (item) => <span className="text-text-primary">{item.closePrice > 0 ? item.closePrice.toFixed(5) : '--'}</span> },
-    { key: 'commission', title: 'Commission', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.commission.toFixed(2)}</span> },
-    { key: 'swap', title: 'Swap', align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-secondary">{item.swap.toFixed(2)}</span> },
-    { key: 'profit', title: 'P/L', align: 'right', skeletonWidth: 'w-16', render: (item) => <span className={`font-medium ${item.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>{item.profit.toFixed(2)}</span> },
-  ], []);
+    { key: 'volume', title: t('detail.table.volume'), align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-primary">{toFixedSafe(item.volume, 2)}</span> },
+    { key: 'openAt', title: t('detail.table.openTime'), skeletonWidth: 'w-24', render: (item) => <TimeShow type="inFields" dateIsoString={item.openAt} /> },
+    { key: 'openPrice', title: t('detail.table.openPrice'), align: 'right', skeletonWidth: 'w-20', render: (item) => <span className="text-text-primary">{toFixedSafe(item.openPrice, 5)}</span> },
+    { key: 'sl', title: t('detail.table.sl'), align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.sl != null && item.sl > 0 ? toFixedSafe(item.sl, 5) : '--'}</span> },
+    { key: 'tp', title: t('detail.table.tp'), align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.tp != null && item.tp > 0 ? toFixedSafe(item.tp, 5) : '--'}</span> },
+    ...(isTradeClosed ? [
+      { key: 'closeAt', title: t('detail.table.closeTime'), skeletonWidth: 'w-24', render: (item: AccountTrade) => <TimeShow type="inFields" dateIsoString={item.closeAt} /> },
+      { key: 'closePrice', title: t('detail.table.closePrice'), align: 'right' as const, skeletonWidth: 'w-20', render: (item: AccountTrade) => <span className="text-text-primary">{item.closePrice != null && item.closePrice > 0 ? toFixedSafe(item.closePrice, 5) : '--'}</span> },
+    ] : []),
+    { key: 'commission', title: t('detail.table.commission'), align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{toFixedSafe(item.commission, 2)}</span> },
+    { key: 'swap', title: t('detail.table.swap'), align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-secondary">{toFixedSafe(item.swap, 2)}</span> },
+    {
+      key: 'profit',
+      title: t('detail.table.pl'),
+      align: 'right',
+      skeletonWidth: 'w-16',
+      render: (item) => {
+        const profit = item.profit ?? 0;
+        return (
+          <span className={`font-semibold ${getProfitColorClass(profit)}`}>
+            {profit > 0 ? '+' : ''}{toFixedSafe(profit, 2, '0.00')}
+          </span>
+        );
+      },
+    },
+  ], [t, tType, isTradeClosed]);
+
+  const tradeFooterRows = useMemo(() => {
+    if (!tradeCriteria || trades.length === 0) return null;
+    const volumeColIndex = tradeColumns.findIndex((col) => col.key === 'volume');
+    const commissionColIndex = tradeColumns.findIndex((col) => col.key === 'commission');
+    const swapColIndex = tradeColumns.findIndex((col) => col.key === 'swap');
+    const profitColIndex = tradeColumns.findIndex((col) => col.key === 'profit');
+
+    if (volumeColIndex < 0 || commissionColIndex < 0 || swapColIndex < 0 || profitColIndex < 0) return null;
+
+    const beforeVolumeColSpan = Math.max(volumeColIndex - 1, 0);
+    const middleColSpan = Math.max(commissionColIndex - volumeColIndex - 1, 0);
+
+    const buildSummaryRow = (
+      label: string,
+      volume: number,
+      commission: number,
+      swap: number,
+      profit: number,
+      highlight?: boolean,
+    ) => (
+      <tr key={label} className={highlight ? 'bg-surface-secondary/50 font-semibold' : 'font-medium'}>
+        <td className="px-5 py-3 text-text-primary">{label}</td>
+        {beforeVolumeColSpan > 0 && <td className="px-5 py-3" colSpan={beforeVolumeColSpan} />}
+        <td className="px-5 py-3 text-right text-text-primary">{toFixedSafe(volume, 2, '0.00')}</td>
+        {middleColSpan > 0 && <td className="px-5 py-3" colSpan={middleColSpan} />}
+        <td className="px-5 py-3 text-right text-text-primary">{toFixedSafe(commission, 2, '0.00')}</td>
+        <td className="px-5 py-3 text-right text-text-primary">{toFixedSafe(swap, 2, '0.00')}</td>
+        <td className={`px-5 py-3 text-right font-semibold ${getProfitColorClass(profit)}`}>
+          {profit > 0 ? '+' : ''}{toFixedSafe(profit, 2, '0.00')}
+        </td>
+      </tr>
+    );
+
+    return (
+      <>
+        {buildSummaryRow(
+          t('detail.table.subTotal'),
+          tradeCriteria.pageTotalVolume ?? 0,
+          tradeCriteria.pageTotalCommission ?? 0,
+          tradeCriteria.pageTotalSwap ?? 0,
+          tradeCriteria.pageTotalProfit ?? 0,
+        )}
+        {buildSummaryRow(
+          t('detail.table.total'),
+          tradeCriteria.totalVolume ?? 0,
+          tradeCriteria.totalCommission ?? 0,
+          tradeCriteria.totalSwap ?? 0,
+          tradeCriteria.totalProfit ?? 0,
+          true,
+        )}
+      </>
+    );
+  }, [tradeCriteria, trades.length, tradeColumns, t]);
 
   if (isLoading) {
     return (
@@ -741,92 +840,105 @@ export default function AccountDetailPage() {
       />
 
       {/* 筛选栏 */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 页面大小 */}
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.pageSize')}</span>
-            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="h-[28px]!">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 状态筛选 */}
-          {showStatusFilter && (
+      {activeTab === 'tradeReport' ? (
+        <div className="mb-4 mt-4">
+          <TradeFilter
+            type="trade"
+            translationNamespace="accounts"
+            filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
+            onSearch={handleTradeFilterSearch}
+            onReset={handleTradeFilterReset}
+            isLoading={tabLoading}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* 页面大小 */}
             <div className="flex items-center gap-1">
-              <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.status')}</span>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.pageSize')}</span>
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                 <SelectTrigger className="h-[28px]!">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {statusOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>{size}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          {/* 时间选择 */}
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.period')}</span>
-            <DatePicker
-              mode="range"
-              value={dateRange}
-              onChange={handleDateChange}
-              placeholder={t('detail.table.selectDate')}
-              className="h-[28px]! w-auto! min-w-0 rounded! border-border bg-input-bg px-2.5! py-1! text-sm!"
-            />
+            {/* 状态筛选 */}
+            {showStatusFilter && (
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.status')}</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-[28px]!">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* 时间选择 */}
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.period')}</span>
+              <DatePicker
+                mode="range"
+                value={dateRange}
+                onChange={handleDateChange}
+                placeholder={t('detail.table.selectDate')}
+                className="h-[28px]! w-auto! min-w-0 rounded! border-border bg-input-bg px-2.5! py-1! text-sm!"
+              />
+            </div>
+
+            {/* 重置 / 搜索 / 全部历史 */}
+            <Button size="xs" onClick={handleReset} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
+              <Image src="/images/icons/refresh.svg" alt="" width={14} height={14} />
+              {t('detail.table.reset')}
+            </Button>
+            <Button size="xs" onClick={loadTabData} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
+              <Image src="/images/icons/search.svg" alt="" width={14} height={14} />
+              {t('detail.table.search')}
+            </Button>
+            <Button size="xs" className="bg-[#000f32] text-white hover:bg-[#001a4d]">
+              {t('detail.table.allHistory')}
+            </Button>
           </div>
 
-          {/* 重置 / 搜索 / 全部历史 */}
-          <Button size="xs" onClick={handleReset} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
-            <Image src="/images/icons/refresh.svg" alt="" width={14} height={14} />
-            {t('detail.table.reset')}
-          </Button>
-          <Button size="xs" onClick={loadTabData} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
-            <Image src="/images/icons/search.svg" alt="" width={14} height={14} />
-            {t('detail.table.search')}
-          </Button>
-          <Button size="xs" className="bg-[#000f32] text-white hover:bg-[#001a4d]">
-            {t('detail.table.allHistory')}
-          </Button>
+          {/* 右侧快捷按钮 */}
+          {activeTab === 'deposit' && (
+            <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowDepositModal(true)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              {t('detail.tabs.deposit')}
+            </Button>
+          )}
+          {activeTab === 'withdrawal' && tradeAccount && (
+            <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              {t('detail.tabs.withdrawal')}
+            </Button>
+          )}
+          {activeTab === 'transfer' && currentAccount && (
+            <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowTransferModal(true)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              {t('detail.tabs.transfer')}
+            </Button>
+          )}
         </div>
-
-        {/* 右侧快捷按钮 */}
-        {activeTab === 'deposit' && (
-          <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowDepositModal(true)}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {t('detail.tabs.deposit')}
-          </Button>
-        )}
-        {activeTab === 'withdrawal' && tradeAccount && (
-          <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {t('detail.tabs.withdrawal')}
-          </Button>
-        )}
-        {activeTab === 'transfer' && currentAccount && (
-          <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowTransferModal(true)}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {t('detail.tabs.transfer')}
-          </Button>
-        )}
-      </div>
+      )}
 
       {/* 结果计数 */}
       <p className="text-sm text-text-secondary">
@@ -872,6 +984,7 @@ export default function AccountDetailPage() {
             rowKey={(item) => item.id || item.ticket}
             loading={tabLoading}
             skeletonRows={5}
+            footer={tradeFooterRows}
           />
         )}
       </div>

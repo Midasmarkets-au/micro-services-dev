@@ -322,7 +322,7 @@ export function AccountRebateRelationModal({
                         className={`mr-4 w-[100px] cursor-pointer rounded-[5px] border px-[15px] py-[10px] text-center text-sm transition-colors ${
                           selectedAccountType === accountType
                             ? 'border-[#000f32] bg-[#000f32] text-white'
-                            : 'border-[#ecedf4] hover:border-[#000f32] hover:bg-[#000f32] hover:text-white'
+                            : 'border-[#eeeeee] hover:border-[#000f32] hover:bg-[#000f32] hover:text-white'
                         }`}
                       >
                         {t(`type.account.${accountType}` as any)}
@@ -336,7 +336,7 @@ export function AccountRebateRelationModal({
               <table className="w-full table-auto border-collapse align-middle">
                 <tbody className="text-sm font-semibold text-gray-600">
                   {/* 第一行：账户所有者信息 */}
-                  <tr className="border-b border-[#ecedf4] text-center">
+                  <tr className="border-b border-[#eeeeee] text-center">
                     <td />
                     {relationList.map(({ uid }) => (
                       <td key={uid} className="relative px-3 py-3">
@@ -382,7 +382,7 @@ export function AccountRebateRelationModal({
                   </tr>
 
                   {/* 第二行：Pips 和 Commission */}
-                  <tr className="border-b border-[#ecedf4] text-center">
+                  <tr className="border-b border-[#eeeeee] text-center">
                     <td />
                     {relationList.map(({ uid }) => (
                       <td key={uid} className="px-3 py-3">
@@ -458,7 +458,7 @@ export function AccountRebateRelationModal({
                   </tr>
 
                   {/* 第三行："我拿多少" 百分比 */}
-                  <tr className="border-b border-[#ecedf4] text-center">
+                  <tr className="border-b border-[#eeeeee] text-center">
                     <td />
                     {relationList.map(({ uid, belowAcc }) => (
                       <td key={uid} className="px-3 py-3">
@@ -487,7 +487,7 @@ export function AccountRebateRelationModal({
                   {productCategory.map((category) => (
                     <tr
                       key={category.key ?? category.id}
-                      className="border-b border-[#ecedf4] text-center"
+                      className="border-b border-[#eeeeee] text-center"
                     >
                       <td className="px-3 py-3 text-left">
                         {category.value ?? category.name}

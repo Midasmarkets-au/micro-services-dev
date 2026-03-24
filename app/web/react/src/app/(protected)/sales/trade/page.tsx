@@ -9,30 +9,19 @@ import { ServiceTypes } from '@/types/accounts';
 import { Pagination, DataTable } from '@/components/ui';
 import type { DateRange } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { SalesTradeRecord, SalesTradeListResponse } from '@/types/sales';
+import { handleTradeBuySellDisplay } from '@/lib/trade';
 
 function formatTradePrice(price: number | undefined | null, digits?: number) {
   if (price == null || isNaN(price)) return '-';
   return parseFloat(price.toFixed(digits ?? 2)).toString();
 }
 
-function formatTradeTime(time: string | undefined | null) {
-  if (!time) return '-';
-  const d = new Date(time);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-function getTradeTypeLabel(trade: SalesTradeRecord, t: (key: string) => string) {
-  const cmd = trade.cmd ?? trade.type;
-  if (cmd === 0) return t('trade.sell');
-  if (cmd === 1) return t('trade.buy');
-  return String(cmd ?? '-');
-}
-
 export default function SalesTradePage() {
   const t = useTranslations('sales');
+  const tType = useTranslations();
   const { execute } = useServerAction({ showErrorToast: true });
   const executeRef = useRef(execute);
   executeRef.current = execute;
@@ -129,12 +118,13 @@ export default function SalesTradePage() {
         key: 'type',
         title: t('trade.type'),
         skeletonWidth: 'w-14',
-        render: (item) => getTradeTypeLabel(item, t),
+        render: (item) => tType(`type.cmd.${handleTradeBuySellDisplay(item)}`),
       },
       {
         key: 'volume',
         title: t('trade.lots'),
         skeletonWidth: 'w-14',
+        align: 'right' as const,
         render: (item) => item.volume ?? 0,
       },
       {
@@ -142,9 +132,7 @@ export default function SalesTradePage() {
         title: t('trade.openTime'),
         skeletonWidth: 'w-32',
         render: (item) => (
-          <span className="whitespace-nowrap text-xs">
-            {formatTradeTime(item.openAt || item.openTime)}
-          </span>
+          <TimeShow type="inFields" dateIsoString={item.openAt || item.openTime} />
         ),
       },
       {
@@ -176,9 +164,7 @@ export default function SalesTradePage() {
           title: t('trade.closeTime'),
           skeletonWidth: 'w-32',
           render: (item: SalesTradeRecord) => (
-            <span className="whitespace-nowrap text-xs">
-              {formatTradeTime(item.closeAt || item.closeTime)}
-            </span>
+            <TimeShow type="inFields" dateIsoString={item.closeAt || item.closeTime} />
           ),
         },
         {
@@ -195,12 +181,14 @@ export default function SalesTradePage() {
         key: 'commission',
         title: t('trade.commission'),
         skeletonWidth: 'w-14',
+        align: 'right' as const,
         render: (item) => item.commission ?? 0,
       },
       {
         key: 'swaps',
         title: t('trade.swaps'),
         skeletonWidth: 'w-16',
+        align: 'right' as const,
         render: (item) => item.swaps ?? item.swap ?? 0,
       },
       {
@@ -222,23 +210,31 @@ export default function SalesTradePage() {
     ];
 
     return cols;
-  }, [t, isClosed]);
+  }, [t, tType, isClosed]);
 
   const footerRows = useMemo(() => {
     if (!criteria || data.length === 0) return null;
-    const colCount = columns.length;
+    const volumeColIndex = columns.findIndex((col) => col.key === 'volume');
+    const commissionColIndex = columns.findIndex((col) => col.key === 'commission');
+    const swapColIndex = columns.findIndex((col) => col.key === 'swaps');
+    const profitColIndex = columns.findIndex((col) => col.key === 'profit');
+
+    if (volumeColIndex < 0 || commissionColIndex < 0 || swapColIndex < 0 || profitColIndex < 0) return null;
+
+    const beforeVolumeColSpan = Math.max(volumeColIndex - 1, 0);
+    const middleColSpan = Math.max(commissionColIndex - volumeColIndex - 1, 0);
 
     const buildSummaryRow = (label: string, vol: number, comm: number, sw: number, profit: number, highlight?: boolean) => {
       const profitPrefix = profit > 0 ? '+' : '';
       return (
         <tr key={label} className={highlight ? 'bg-surface-secondary/50 font-semibold' : 'font-medium'}>
-          <td className="px-4 py-3 text-text-primary">{label}</td>
-          <td className="px-4 py-3" colSpan={isClosed ? 3 : 3} />
-          <td className="px-4 py-3 text-text-primary">{vol}</td>
-          <td className="px-4 py-3" colSpan={isClosed ? colCount - 9 : colCount - 7} />
-          <td className="px-4 py-3 text-text-primary">{comm}</td>
-          <td className="px-4 py-3 text-text-primary">{sw}</td>
-          <td className={`px-4 py-3 text-right ${profit < 0 ? 'text-[#800020] dark:text-[#800020]' : profit > 0 ? 'text-[#004EFF] dark:text-[#004EFF]' : 'text-text-primary'}`}>
+          <td className="px-5 py-3 text-text-primary">{label}</td>
+          {beforeVolumeColSpan > 0 && <td className="px-5 py-3" colSpan={beforeVolumeColSpan} />}
+          <td className="px-5 py-3 text-right text-text-primary">{vol}</td>
+          {middleColSpan > 0 && <td className="px-5 py-3" colSpan={middleColSpan} />}
+          <td className="px-5 py-3 text-right text-text-primary">{comm}</td>
+          <td className="px-5 py-3 text-right text-text-primary">{sw}</td>
+          <td className={`px-5 py-3 text-right ${profit < 0 ? 'text-[#800020] dark:text-[#800020]' : profit > 0 ? 'text-[#004EFF] dark:text-[#004EFF]' : 'text-text-primary'}`}>
             {profitPrefix}{formatTradePrice(profit, 2)}
           </td>
         </tr>
@@ -264,7 +260,7 @@ export default function SalesTradePage() {
         )}
       </>
     );
-  }, [criteria, data.length, columns.length, isClosed, t]);
+  }, [criteria, data.length, columns, t]);
 
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">

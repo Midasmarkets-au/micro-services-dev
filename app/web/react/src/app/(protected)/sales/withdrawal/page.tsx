@@ -244,7 +244,7 @@ export default function SalesWithdrawalPage() {
           className="flex shrink-0 items-center gap-1"
         >
           {isClient ? t('withdrawal.client') : t('withdrawal.ib')}
-          <Icon name="reset-line" size={14} />
+          <Icon name="switch" size={14} />
         </Button>
       </div>
 

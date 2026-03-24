@@ -969,7 +969,9 @@
       "next": "Next",
       "prev": "Previous",
       "details": "Details",
-      "uploadReceipt": "Upload Receipt"
+      "uploadReceipt": "Upload Receipt",
+      "reset": "Reset",
+      "search": "Search"
     },
     "fields": {
       "equity": "Equity",
@@ -1077,7 +1079,23 @@
         "search": "Search",
         "allHistory": "All History",
         "noRecords": "No transaction records",
-        "showingResults": "Showing {count} results"
+        "showingResults": "Showing {count} results",
+        "ticket": "Ticket",
+        "symbol": "Symbol",
+        "volume": "Volume",
+        "openTime": "Open Time",
+        "openPrice": "Open Price",
+        "sl": "S/L",
+        "tp": "T/P",
+        "closeTime": "Close Time",
+        "closePrice": "Close Price",
+        "commission": "Commission",
+        "swap": "Swap",
+        "pl": "P/L",
+        "buy": "Buy",
+        "sell": "Sell",
+        "subTotal": "Sub Total",
+        "total": "Total"
       }
     },
     "tip": {
@@ -1119,6 +1137,14 @@
       "all": "All",
       "pending": "Pending",
       "completed": "Completed"
+    },
+    "trade": {
+      "openOrder": "Open Orders",
+      "closedOrder": "Closed Orders",
+      "service": "Service",
+      "product": "Product",
+      "account": "Account",
+      "allHistory": "All History"
     }
   },
   "deposit": {
@@ -2096,6 +2122,52 @@
       "noTradeAccount": "No trade account",
       "searchPlaceholder": "Search by name, email, account number..."
     },
+    "customerDetail": {
+      "backToList": "Back to customer list",
+      "balance": "Balance",
+      "equity": "Equity",
+      "credit": "Credit",
+      "role": "Role",
+      "account": "Account",
+      "roleClient": "Client",
+      "roleIB": "IB",
+      "roleSales": "Sales",
+      "showResults": "Showing <num>{count}</num> results",
+      "noData": "No data",
+      "tabs": {
+        "transaction": "Transaction",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "tradeReport": "Trade Report"
+      },
+      "columns": {
+        "transaction": "Transaction",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "status": "Status",
+        "currency": "Currency",
+        "amount": "Amount",
+        "time": "Time",
+        "account": "Account",
+        "group": "Group",
+        "exchangeRate": "Exchange Rate",
+        "ticket": "Ticket",
+        "symbol": "Symbol",
+        "type": "Type",
+        "volume": "Volume",
+        "openTime": "Open Time",
+        "openPrice": "Open Price",
+        "sl": "S/L",
+        "tp": "T/P",
+        "closeTime": "Close Time",
+        "closePrice": "Close Price",
+        "commission": "Commission",
+        "swap": "Swap",
+        "profit": "P/L",
+        "subTotal": "Sub Total",
+        "total": "Total"
+      }
+    },
     "rebateEdit": {
       "title": "Rebate Rule Edit",
       "category": "Category",
@@ -2478,6 +2550,19 @@
       "incompleteWithdrawal": "Incomplete",
       "client": "Client",
       "ib": "IB"
+    }
+  },
+  "type": {
+    "cmd": {
+      "0": "Long",
+      "1": "Short",
+      "2": "Buy Limit",
+      "3": "Sell Limit",
+      "4": "Buy Stop",
+      "5": "Sell Stop",
+      "6": "Balance",
+      "7": "Credit",
+      "undefined": "Undefined"
     }
   },
   "unlockEmail": {

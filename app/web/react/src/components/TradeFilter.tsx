@@ -25,6 +25,9 @@ const SERVICE_OPTIONS = [
   { label: 'MT4', value: String(ServiceTypes.MetaTrader4) },
 ];
 
+let symbolCodesCache: string[] | null = null;
+let symbolCodesRequest: Promise<string[]> | null = null;
+
 // ====================================================================
 // 状态映射 — 完全对应 Vue StateInfos.ts 中的 simpleXxxToArray
 // ====================================================================
@@ -234,25 +237,43 @@ export function TradeFilter({
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultDateRange);
 
   const { execute } = useServerAction({ showErrorToast: false });
+  const executeRef = useRef(execute);
+  executeRef.current = execute;
   const [symbolCodes, setSymbolCodes] = useState<string[]>([]);
   const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
   const symbolDropdownRef = useRef<HTMLDivElement>(null);
+  const hasProductField = filterOptions.includes('product');
 
   useEffect(() => {
-    if (!visibleFields.has('product')) return;
+    if (!hasProductField) return;
     let cancelled = false;
     (async () => {
-      const result = await execute(getAllSymbols);
-      if (!cancelled && result.success && Array.isArray(result.data)) {
-        setSymbolCodes(
-          result.data
+      if (symbolCodesCache) {
+        if (!cancelled) setSymbolCodes(symbolCodesCache);
+        return;
+      }
+
+      if (!symbolCodesRequest) {
+        symbolCodesRequest = (async () => {
+          const result = await executeRef.current(getAllSymbols);
+          if (!result.success || !Array.isArray(result.data)) return [];
+          const codes = result.data
             .map((s) => s.code)
-            .filter((code) => code && code !== 'UNKNOWN'),
-        );
+            .filter((code) => code && code !== 'UNKNOWN');
+          symbolCodesCache = codes;
+          return codes;
+        })().finally(() => {
+          symbolCodesRequest = null;
+        });
+      }
+
+      const codes = await symbolCodesRequest;
+      if (!cancelled) {
+        setSymbolCodes(codes);
       }
     })();
     return () => { cancelled = true; };
-  }, [visibleFields]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasProductField]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

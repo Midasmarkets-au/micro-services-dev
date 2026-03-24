@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import * as Label from '@radix-ui/react-label';
-import { EyeOpenIcon, EyeClosedIcon } from '@radix-ui/react-icons';
+import { EyeOpenIcon, EyeClosedIcon, Cross2Icon } from '@radix-ui/react-icons';
 import { cn } from '@/lib/utils';
 
 /**
@@ -28,6 +28,10 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   showPasswordToggle?: boolean;
   /** 输入框尺寸：sm=36px（搜索框），normal=44px（默认），md=48px（登录等页面） */
   inputSize?: InputSize;
+  /** 是否显示清除按钮（聚焦且有内容时出现） */
+  clearable?: boolean;
+  /** 清除内容后的回调 */
+  onClear?: () => void;
 }
 
 const INPUT_SIZE_CLASS: Record<InputSize, string> = {
@@ -48,15 +52,62 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       required,
       showPasswordToggle,
       inputSize = 'normal',
+      clearable = true,
+      onClear,
+      onChange,
+      value,
+      defaultValue,
+      onFocus,
+      onBlur,
       ...props
     },
     ref
   ) => {
     const [showPassword, setShowPassword] = React.useState(false);
+    const [focused, setFocused] = React.useState(false);
+    const [internalValue, setInternalValue] = React.useState(defaultValue ?? '');
+    const innerRef = React.useRef<HTMLInputElement>(null);
     const isPassword = type === 'password';
     const shouldShowToggle = isPassword && (showPasswordToggle !== false);
     const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
     const sizeClass = INPUT_SIZE_CLASS[inputSize];
+
+    const isControlled = value !== undefined;
+    const currentValue = isControlled ? value : internalValue;
+    const hasValue = currentValue !== undefined && currentValue !== null && String(currentValue).length > 0;
+    const showClear = clearable && focused && hasValue && !shouldShowToggle;
+
+    React.useImperativeHandle(ref, () => innerRef.current!);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!isControlled) setInternalValue(e.target.value);
+      onChange?.(e);
+    };
+
+    const handleClear = () => {
+      const input = innerRef.current;
+      if (!input) return;
+
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+      )?.set;
+      nativeInputValueSetter?.call(input, '');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      if (!isControlled) setInternalValue('');
+      onClear?.();
+      input.focus();
+    };
+
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      setFocused(true);
+      onFocus?.(e);
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      setFocused(false);
+      onBlur?.(e);
+    };
 
     return (
       <div className="w-full">
@@ -80,13 +131,32 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               'input-field',
               sizeClass,
-              shouldShowToggle && 'pr-12',
+              (shouldShowToggle || showClear) && 'pr-10',
               error && 'error-border',
               className
             )}
-            ref={ref}
+            ref={innerRef}
+            value={isControlled ? value : undefined}
+            defaultValue={isControlled ? undefined : defaultValue}
+            onChange={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             {...props}
           />
+
+          {/* 清除按钮 */}
+          {showClear && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClear}
+              className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-text-secondary hover:text-text-primary transition-colors"
+              tabIndex={-1}
+              aria-label="Clear input"
+            >
+              <Cross2Icon className="size-4" />
+            </button>
+          )}
 
           {/* 密码显示/隐藏按钮 */}
           {shouldShowToggle && (

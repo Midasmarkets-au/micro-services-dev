@@ -971,7 +971,9 @@
       "next": "下一页",
       "prev": "上一步",
       "details": "详情",
-      "uploadReceipt": "上传收据"
+      "uploadReceipt": "上传收据",
+      "reset": "重置",
+      "search": "搜索"
     },
     "fields": {
       "equity": "净值",
@@ -1080,7 +1082,23 @@
         "search": "搜索",
         "allHistory": "全部历史",
         "noRecords": "暂无交易记录",
-        "showingResults": "显示{count}条结果"
+        "showingResults": "显示{count}条结果",
+        "ticket": "订单号",
+        "symbol": "品种",
+        "volume": "交易量",
+        "openTime": "开盘时间",
+        "openPrice": "开仓价",
+        "sl": "止损/止盈",
+        "tp": "止盈",
+        "closeTime": "收盘时间",
+        "closePrice": "平仓价",
+        "commission": "佣金",
+        "swap": "隔夜利息",
+        "pl": "盈亏",
+        "buy": "买入",
+        "sell": "卖出",
+        "subTotal": "小计",
+        "total": "总计"
       }
     },
     "tip": {
@@ -1122,6 +1140,14 @@
       "all": "全部",
       "pending": "待处理",
       "completed": "已完成"
+    },
+    "trade": {
+      "openOrder": "未关闭订单",
+      "closedOrder": "已关闭订单",
+      "service": "服务",
+      "product": "产品",
+      "account": "账号",
+      "allHistory": "全部历史"
     }
   },
   "deposit": {
@@ -2095,11 +2121,58 @@
     },
     "customers": {
       "title": "客户",
-      "ibType": "IB",
+      "all": "全部",
+      "ibType": "代理",
       "clientType": "客户",
-      "salesType": "Sales",
+      "salesType": "销售",
       "noTradeAccount": "无交易账户",
       "searchPlaceholder": "搜索姓名、邮箱、账号..."
+    },
+    "customerDetail": {
+      "backToList": "返回客户列表",
+      "balance": "余额",
+      "equity": "净值",
+      "credit": "信用",
+      "role": "角色",
+      "account": "账户",
+      "roleClient": "客户",
+      "roleIB": "IB",
+      "roleSales": "销售",
+      "showResults": "显示<num>{count}</num>条结果",
+      "noData": "暂无数据",
+      "tabs": {
+        "transaction": "转账",
+        "deposit": "入金",
+        "withdrawal": "出金",
+        "tradeReport": "交易报告"
+      },
+      "columns": {
+        "transaction": "转账",
+        "deposit": "入金",
+        "withdrawal": "出金",
+        "status": "状态",
+        "currency": "币种",
+        "amount": "金额",
+        "time": "时间",
+        "account": "账户",
+        "group": "群组",
+        "exchangeRate": "汇率",
+        "ticket": "单号",
+        "symbol": "品种",
+        "type": "类型",
+        "volume": "手数",
+        "openTime": "开仓时间",
+        "openPrice": "开仓价",
+        "sl": "止损",
+        "tp": "止盈",
+        "closeTime": "平仓时间",
+        "closePrice": "平仓价",
+        "commission": "佣金",
+        "swap": "隔夜费",
+        "profit": "盈亏",
+        "subTotal": "小计",
+        "total": "合计"
+      }
     },
     "rebateEdit": {
       "title": "返佣方案编辑",
@@ -2483,6 +2556,19 @@
       "incompleteWithdrawal": "未完成出金",
       "client": "客户",
       "ib": "代理"
+    }
+  },
+  "type": {
+    "cmd": {
+      "0": "买入",
+      "1": "卖出",
+      "2": "限价买入",
+      "3": "限价卖出",
+      "4": "止损买入",
+      "5": "止损卖出",
+      "6": "余额",
+      "7": "信用",
+      "undefined": "未定义"
     }
   },
   "unlockEmail": {

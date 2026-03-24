@@ -157,7 +157,7 @@ export function SalesRebateSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[750px] p-4! sm:p-6!">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('link.rebateSettings')}</DialogTitle>
           <DialogDescription className="sr-only">
