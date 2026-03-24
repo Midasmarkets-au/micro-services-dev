@@ -33,6 +33,10 @@ spec:
           env:
             - name: HTTP_ADDR
               value: "http://[::]:9001"
+            - name: RUST_LOG
+              value: "info"
+            - name: LOG_DIR
+              value: "/app/logs"
           resources:
             requests:
               memory: "128Mi"

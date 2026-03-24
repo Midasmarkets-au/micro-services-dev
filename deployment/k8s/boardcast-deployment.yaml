@@ -38,6 +38,11 @@ spec:
               containerPort: 9003
             - name: grpc
               containerPort: 50003
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: LOG_DIR
+              value: "/app/logs"
           livenessProbe:
             tcpSocket:
               port: http

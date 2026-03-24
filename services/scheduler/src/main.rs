@@ -16,7 +16,6 @@ use tokio::sync::RwLock;
 use tonic::transport::Server as TonicServer;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cache;
 mod config;
@@ -114,12 +113,7 @@ async fn health() -> Json<serde_json::Value> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    let _tracing_guard = otel::init_tracing("scheduler");
 
     let config = Config::from_env()?;
     let http_port = config.port;

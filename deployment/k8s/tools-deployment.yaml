@@ -56,3 +56,8 @@ spec:
           envFrom:
             - secretRef:
                 name: tools-env
+          env:
+            - name: RUST_LOG
+              value: "info"
+            - name: LOG_DIR
+              value: "/app/logs"

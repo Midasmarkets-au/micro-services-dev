@@ -391,9 +391,7 @@ async fn start_health_server(port: u16) {
 async fn main() -> Result<()> {
     let _ = dotenvy::dotenv();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(std::env::var("RUST_LOG").unwrap_or_else(|_| "tools=info".to_string()))
-        .init();
+    let _tracing_guard = otel::init_tracing("tools");
 
     let health_port: u16 = std::env::var("HEALTH_PORT")
         .ok()
