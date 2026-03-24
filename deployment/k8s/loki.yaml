@@ -1,6 +1,6 @@
 # ============================================================================
 #  loki — 日志聚合服务，单二进制模式，S3 存储后端
-#  镜像：grafana/loki:3.3
+#  镜像：grafana/loki:3.3.2
 #  端口：3100 (HTTP), 9096 (gRPC)
 #  依赖：Secret loki-env（含 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION）
 # ============================================================================
@@ -27,6 +27,7 @@ data:
           region: ${AWS_REGION}
           access_key_id: ${AWS_ACCESS_KEY_ID}
           secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+      replication_factor: 1
       ring:
         kvstore:
           store: inmemory
@@ -67,7 +68,7 @@ spec:
     spec:
       containers:
         - name: loki
-          image: grafana/loki:3.3
+          image: grafana/loki:3.3.2
           args:
             - -config.file=/etc/loki/config.yaml
             - -config.expand-env=true

@@ -1,9 +1,20 @@
 # ============================================================================
 #  grafana — 日志可视化，预配置 Loki 数据源
-#  镜像：grafana/grafana:11.4
-#  端口：3000 (HTTP)，NodePort 30300 对外暴露（测试环境免 Ingress）
+#  镜像：grafana/grafana:11.4.0
+#  端口：3000 (HTTP)，通过 Ingress /grafana 路径访问
 #  依赖：loki Service（loki:3100）
 # ============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  labels:
+    app: grafana
+type: Opaque
+stringData:
+  admin-user: "admin"
+  admin-password: "changeme"
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -40,15 +51,29 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana:11.4
+          image: grafana/grafana:11.4.0
           ports:
             - name: http
               containerPort: 3000
           env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: admin-password
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "true"
             - name: GF_AUTH_ANONYMOUS_ORG_ROLE
               value: "Viewer"
+            - name: GF_SERVER_ROOT_URL
+              value: "https://tenant.trademdm.com/grafana/"
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
           resources:
             requests:
               cpu: "100m"
@@ -71,12 +96,31 @@ metadata:
   labels:
     app: grafana
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
     - name: http
       port: 80
       targetPort: 3000
-      nodePort: 30300
       protocol: TCP
   selector:
     app: grafana
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  labels:
+    app: grafana
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
