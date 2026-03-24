@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use tonic::{Request, Response, Status};
 use tower_http::cors::CorsLayer;
+use tracing::{debug, info};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use idgen::api::v1::api_service_server::{ApiService, ApiServiceServer};
 use idgen::api::v1::{
@@ -88,7 +90,7 @@ async fn dispatch_http_get(
 fn http_app() -> Router {
     let mut router = Router::new();
     for (path, rpc) in http_routes::HTTP_GET_ROUTES {
-        println!("http get : {}", path);
+        debug!("http get : {}", path);
         router =
             router.route(
                 path,
@@ -104,6 +106,13 @@ fn http_app() -> Router {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     let grpc_addr = std::env::var("GRPC_ADDR")
         .unwrap_or_else(|_| "[::]:50001".to_string())
         .parse()?;
@@ -124,8 +133,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind(http_addr).await?;
     let http = axum::serve(listener, http_app());
 
-    println!("gRPC 服务监听 {}", grpc_addr);
-    println!("HTTP 服务监听 http://{}", http_addr);
+    info!("gRPC 服务监听 {}", grpc_addr);
+    info!("HTTP 服务监听 http://{}", http_addr);
 
     tokio::select! {
         r = grpc => r?,

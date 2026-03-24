@@ -235,6 +235,7 @@ dependencies = [
  "axum 0.7.9",
  "base64 0.22.1",
  "chrono",
+ "dotenvy",
  "harsh",
  "hmac",
  "jsonwebtoken",
@@ -246,6 +247,8 @@ dependencies = [
  "tokio",
  "tower 0.4.13",
  "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 
@@ -957,6 +960,8 @@ dependencies = [
  "tonic-reflection",
  "tower 0.4.13",
  "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2122,6 +2127,8 @@ dependencies = [
  "tonic-reflection",
  "tower 0.4.13",
  "tower-http 0.5.2",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

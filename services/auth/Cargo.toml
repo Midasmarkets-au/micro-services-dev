@@ -20,3 +20,6 @@ sha2 = { workspace = true }
 hmac = { workspace = true }
 base64 = { workspace = true }
 harsh = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy = { workspace = true }

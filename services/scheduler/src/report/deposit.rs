@@ -809,11 +809,11 @@ mod tests {
             .await
             .expect("generate csv");
 
-        println!("CSV rows bytes: {}", csv_bytes.len());
-        println!("CSV preview:\n{}", String::from_utf8_lossy(&csv_bytes[..csv_bytes.len().min(500)]));
+        tracing::debug!("CSV rows bytes: {}", csv_bytes.len());
+        tracing::debug!("CSV preview:\n{}", String::from_utf8_lossy(&csv_bytes[..csv_bytes.len().min(500)]));
 
         let key = "test/wallet_transaction_test.csv".to_string();
         s3.upload_csv(&key, csv_bytes).await.expect("s3 upload");
-        println!("Uploaded to S3 key: {}", key);
+        tracing::info!("Uploaded to S3 key: {}", key);
     }
 }
