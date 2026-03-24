@@ -1,5 +1,5 @@
 # ============================================================================
-#  auth — Rust 认证服务
+#  auth — .NET 认证服务
 #  镜像：docker build -f services/auth/Dockerfile -t auth .
 #  端口：9001 (HTTP)
 #  入口：/connect/token 由 gateway-ingress 路由到此服务
@@ -30,6 +30,9 @@ spec:
           envFrom:
             - secretRef:
                 name: auth-env
+          env:
+            - name: HTTP_ADDR
+              value: "http://[::]:9001"
           resources:
             requests:
               memory: "128Mi"
