@@ -1,7 +1,7 @@
 # ============================================================================
-#  auth — .NET 8 认证服务
+#  auth — Rust 认证服务
 #  镜像：docker build -f services/auth/Dockerfile -t auth .
-#  端口：8081 (HTTP)
+#  端口：9001 (HTTP)
 #  入口：/connect/token 由 gateway-ingress 路由到此服务
 # ============================================================================
 apiVersion: apps/v1
@@ -26,13 +26,10 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 8081
+              containerPort: 9001
           envFrom:
             - secretRef:
                 name: auth-env
-          env:
-            - name: HTTP_ADDR
-              value: "http://[::]:8081"
           resources:
             requests:
               memory: "128Mi"
@@ -43,12 +40,12 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8081
+              port: 9001
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
-              port: 8081
+              port: 9001
             initialDelaySeconds: 5
             periodSeconds: 5

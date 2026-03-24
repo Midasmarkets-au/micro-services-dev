@@ -9,27 +9,41 @@
 Internet            │  ┌─────────────────────────────────────────────┐ │
    │                │  │           NGINX Ingress (bacera-ingress)     │ │
    │                │  │  portal.trademdm.com/                        │ │
-   ├─ /event ──────►│  │    /event  ──────────► boardcast:8081 (SSE) │ │
-   └─ /api|...  ───►│  │    /api|.. ──────────► mono:80              │ │
+   ├─ /event ──────►│  │    /event  ──────────► boardcast:9003 (SSE) │ │
+   └─ /api|...  ───►│  │    /api|.. ──────────► mono:9005             │ │
                     │  │    /       ──────────► front-client:80       │ │
                     │  └─────────────────────────────────────────────┘ │
                     │                                                   │
-                    │  mono (.NET 8) ──gRPC:50051──► idgen (Rust)      │
-                    │       │        ──gRPC:50052──► boardcast (Rust)  │
+                    │  mono (.NET 8) ──gRPC:50001──► idgen (Rust)      │
+                    │       │        ──gRPC:50003──► boardcast (Rust)  │
                     │       └──────────────────────► Redis :6379       │
                     └──────────────────────────────────────────────────┘
 ```
+
+## 端口一览
+
+| Service   | HTTP  | gRPC  |
+|-----------|-------|-------|
+| auth      | 9001  | —     |
+| idgen     | —     | 50001 |
+| boardcast | 9003  | 50003 |
+| scheduler | 9004  | 50004 |
+| mono      | 9005  | 50005 |
 
 ## 文件说明
 
 | 文件 | 说明 |
 |------|------|
-| `idgen-deployment.yaml` | idgen Deployment（Rust，HTTP :8080 + gRPC :50051） |
+| `idgen-deployment.yaml` | idgen Deployment（Rust，gRPC :50001） |
 | `idgen-service.yaml` | idgen Service（ClusterIP） |
-| `boardcast-deployment.yaml` | boardcast Deployment（Rust，HTTP :8081 + gRPC :50052） |
+| `auth-deployment.yaml` | auth Deployment（Rust，HTTP :9001） |
+| `auth-service.yaml` | auth Service（ClusterIP） |
+| `boardcast-deployment.yaml` | boardcast Deployment（Rust，HTTP :9003 + gRPC :50003） |
 | `boardcast-service.yaml` | boardcast Service（ClusterIP） |
-| `mono-deployment.yaml` | mono Deployment（.NET 8，HTTP :80） |
-| `mono-service.yaml` | mono Service（LoadBalancer，公网暴露 :80） |
+| `scheduler-deployment.yaml` | scheduler Deployment（Rust，HTTP :9004 + gRPC :50004） |
+| `scheduler-service.yaml` | scheduler Service（ClusterIP） |
+| `mono-deployment.yaml` | mono Deployment（.NET 8，HTTP :9005 + gRPC :50005） |
+| `mono-service.yaml` | mono Service（ClusterIP） |
 | `redis-deployment.yaml` | Redis Deployment + Service（ClusterIP `redis:6379`） |
 | `gateway-ingress.yaml` | 所有 Ingress 规则（bacera-ingress + boardcast-event-ingress） |
 | `nodepool.yaml` | Karpenter NodePool（arm64） |
@@ -64,8 +78,12 @@ kubectl apply -f deployment/k8s/redis-deployment.yaml
 # Rust 服务
 kubectl apply -f deployment/k8s/idgen-deployment.yaml
 kubectl apply -f deployment/k8s/idgen-service.yaml
+kubectl apply -f deployment/k8s/auth-deployment.yaml
+kubectl apply -f deployment/k8s/auth-service.yaml
 kubectl apply -f deployment/k8s/boardcast-deployment.yaml
 kubectl apply -f deployment/k8s/boardcast-service.yaml
+kubectl apply -f deployment/k8s/scheduler-deployment.yaml
+kubectl apply -f deployment/k8s/scheduler-service.yaml
 
 # .NET 服务
 kubectl apply -f deployment/k8s/mono-deployment.yaml
@@ -82,8 +100,12 @@ kubectl apply \
   -f deployment/k8s/redis-deployment.yaml \
   -f deployment/k8s/idgen-deployment.yaml \
   -f deployment/k8s/idgen-service.yaml \
+  -f deployment/k8s/auth-deployment.yaml \
+  -f deployment/k8s/auth-service.yaml \
   -f deployment/k8s/boardcast-deployment.yaml \
   -f deployment/k8s/boardcast-service.yaml \
+  -f deployment/k8s/scheduler-deployment.yaml \
+  -f deployment/k8s/scheduler-service.yaml \
   -f deployment/k8s/mono-deployment.yaml \
   -f deployment/k8s/mono-service.yaml \
   -f deployment/k8s/gateway-ingress.yaml
@@ -95,23 +117,16 @@ kubectl apply \
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `IDGEN_GRPC_ADDR` | `http://idgen:50051` | idgen gRPC 地址 |
-| `BOARDCAST_GRPC_ADDR` | `http://boardcast:50052` | boardcast gRPC 地址 |
+| `IDGEN_GRPC_ADDR` | `http://idgen:50001` | idgen gRPC 地址 |
+| `BOARDCAST_GRPC_ADDR` | `http://boardcast:50003` | boardcast gRPC 地址 |
+| `SCHEDULER_GRPC_URL` | `http://scheduler:50004` | scheduler gRPC 地址 |
 | `REDIS_CONNECTION` | `redis:6379` | Redis 地址 |
 
-### boardcast
+### scheduler
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `GRPC_ADDR` | `[::]:50052` | gRPC 监听地址 |
-| `HTTP_ADDR` | `[::]:8081` | HTTP/SSE 监听地址 |
-
-### idgen
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `GRPC_ADDR` | `[::]:50051` | gRPC 监听地址 |
-| `HTTP_ADDR` | `[::]:8080` | HTTP 监听地址 |
+| `MONO_GRPC_URL` | `http://mono:50005` | mono gRPC 回调地址 |
 
 ## 4. Ingress 路由说明
 
@@ -121,14 +136,14 @@ kubectl apply \
 
 | 路径 | 后端 | 说明 |
 |------|------|------|
-| `/(api\|connect\|hub\|live\|swagger\|.well-known)/` | `mono:80` | REST API / SignalR / Swagger |
+| `/(api\|connect\|hub\|live\|swagger\|.well-known)/` | `mono:9005` | REST API / SignalR / Swagger |
 | `/` | `front-client:80` | 前端静态资源 |
 
 **`boardcast-event-ingress`** — SSE 路由（`proxy-buffering: off`）
 
 | 路径 | 后端 | 说明 |
 |------|------|------|
-| `/event` | `boardcast:8081` | SSE 长连接，实时事件推送 |
+| `/event` | `boardcast:9003` | SSE 长连接，实时事件推送 |
 
 两个对象分开的原因：`proxy-buffering: off` 作用于整个 Ingress 对象，若合并会影响所有路由的缓冲行为。
 
@@ -154,16 +169,16 @@ GitHub Actions 工作流在 `staging` 分支推送时自动构建并部署：
 # 查看所有 Pod 状态
 kubectl get pods
 
-# idgen
-curl http://<idgen-pod-ip>:8080/api/v1/health
+# idgen（gRPC only）
+grpcurl -plaintext <idgen-pod-ip>:50001 grpc.health.v1.Health/Check
 
 # boardcast（TCP 连接即健康）
-kubectl port-forward svc/boardcast 8081:8081
-curl -N http://localhost:8081/event?channel=ping
+kubectl port-forward svc/boardcast 9003:9003
+curl -N http://localhost:9003/event?channel=ping
 
 # mono
-kubectl port-forward svc/mono 8080:80
-curl http://localhost:8080/api/v1/health
+kubectl port-forward svc/mono 9005:9005
+curl http://localhost:9005/api/v1/health
 
 # 查看 Ingress 地址
 kubectl get ingress
@@ -174,7 +189,7 @@ kubectl get ingress
 ALB/NLB 仅在 EKS 上有效。本地开发改用 port-forward：
 
 ```bash
-kubectl port-forward svc/mono 5000:80
-kubectl port-forward svc/boardcast 8081:8081
-kubectl port-forward svc/idgen 8080:8080
+kubectl port-forward svc/mono 9005:9005
+kubectl port-forward svc/boardcast 9003:9003
+kubectl port-forward svc/idgen 50001:50001
 ```

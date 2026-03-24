@@ -1,7 +1,7 @@
 # ============================================================================
-#  idgen — Rust gRPC + HTTP 服务
+#  idgen — Rust gRPC 服务
 #  镜像：docker build --target idgen
-#  端口：8080 (HTTP REST)、50051 (gRPC)
+#  端口：50001 (gRPC)
 # ============================================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -35,24 +35,5 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           ports:
-            - name: http
-              containerPort: 8080
             - name: grpc
-              containerPort: 50051
-          env:
-            - name: HTTP_ADDR
-              value: "[::]:8080"
-            - name: GRPC_ADDR
-              value: "[::]:50051"
-          livenessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: http
-            initialDelaySeconds: 3
-            periodSeconds: 5
+              containerPort: 50001

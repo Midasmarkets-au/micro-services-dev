@@ -293,7 +293,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()
         .unwrap_or(86400);
 
-    let http_addr: SocketAddr = env("HTTP_ADDR", "[::]:8081").parse()?;
+    let http_addr: SocketAddr = env("HTTP_ADDR", "[::]:9001").parse()?;
 
     println!(
         "Connecting to database at {}:{}",

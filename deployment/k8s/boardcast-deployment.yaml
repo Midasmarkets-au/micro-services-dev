@@ -1,6 +1,6 @@
 # ============================================================================
 #  boardcast — Rust SSE 消息推送 + gRPC 广播服务
-#  端口：8081 (HTTP/SSE)、50052 (gRPC)
+#  端口：9003 (HTTP/SSE)、50003 (gRPC)
 # ============================================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -35,14 +35,9 @@ spec:
               cpu: "500m"
           ports:
             - name: http
-              containerPort: 8081
+              containerPort: 9003
             - name: grpc
-              containerPort: 50052
-          env:
-            - name: HTTP_ADDR
-              value: "[::]:8081"
-            - name: GRPC_ADDR
-              value: "[::]:50052"
+              containerPort: 50003
           livenessProbe:
             tcpSocket:
               port: http
