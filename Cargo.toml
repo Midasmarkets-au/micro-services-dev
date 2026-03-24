@@ -5,6 +5,7 @@ members = [
   "services/boardcast",
   "services/scheduler",
   "services/tools",
+  "services/otel",
 ]
 resolver = "1"
 
@@ -44,7 +45,8 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 dashmap = "5"
 # Logging
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 dotenvy = "0.15"
 
 [patch.crates-io]
