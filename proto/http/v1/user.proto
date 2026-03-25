@@ -478,15 +478,6 @@ service UserServiceV2 {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 用户实体
 message User {
   int64  id         = 1; // 用户主键 ID

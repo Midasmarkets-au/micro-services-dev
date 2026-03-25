@@ -88,12 +88,6 @@ service TenantExchangeRateService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1; // 操作是否成功
-  string message = 2; // 附加说明或错误信息
-}
-
 // 品种实体
 message Symbol {
   int32  id          = 1; // 品种 ID

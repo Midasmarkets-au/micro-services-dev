@@ -52,7 +52,7 @@ builder.Services.SetupCors();
 builder.Services.SetupGeoIp();
 builder.Services.SetupChatGpt();
 builder.Services.SetupHangFireServer();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc().AddJsonTranscoding();
 builder.Services.AddGrpcReflection();
 
 builder.Services.AddControllers()
@@ -155,6 +155,10 @@ app.MapControllerRoute(
 app.MapControllerRoute(
     name: "Default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// ─── gRPC JSON Transcoding services (replace RESTful controllers incrementally) ───
+// Discovery: public endpoints, no authentication required
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Discovery.DiscoveryGrpcService>().AllowAnonymous();
 
 // MonoCallbackService: called by the Rust scheduler via standard gRPC (tonic, HTTP/2).
 // No UseGrpcWeb: gRPC-Web is for browsers; tonic uses standard gRPC and is incompatible with gRPC-Web encoding.

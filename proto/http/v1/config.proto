@@ -56,15 +56,6 @@ service TenantConfigurationService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1; // 操作是否成功
-  string message = 2; // 附加说明或错误信息
-}
-
 // 站点列表响应
 message SitesResponse {
   repeated SiteItem sites = 1;
@@ -147,12 +138,3 @@ message UpdateSiteIntValueRequest {
   IntValue spec    = 2;
 }
 
-// 字符串值封装
-message StringValue {
-  string value = 1;
-}
-
-// 整型值封装
-message IntValue {
-  int32 value = 1;
-}

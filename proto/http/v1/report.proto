@@ -71,15 +71,6 @@ service TenantAccountReportService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 报表请求实体
 message ReportRequest {
   int64  id         = 1; // 报表请求 ID

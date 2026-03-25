@@ -119,14 +119,6 @@ service TenantStatisticsServiceV2 {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
 
 // 审计记录实体
 message Audit {

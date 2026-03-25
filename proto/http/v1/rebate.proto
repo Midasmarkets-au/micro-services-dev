@@ -67,8 +67,8 @@ service TenantRebateAgentRuleService {
   rpc DeleteRebateAgentRule(GetRebateRuleRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-agent-rule/{id}" };
   }
-  // 更新规则的顶层等级设置（多层 IB 结构中最高层的 LevelSetting 配置）
-  rpc UpdateLevelSetting(UpdateLevelSettingRequest) returns (RebateAgentRule) {
+  // 更新规则的顶层等级设置（多层 IB 结构中最高层的 RebateLevelSetting 消息类型配置）
+  rpc UpdateLevelSetting(UpdateRebateLevelSettingRequest) returns (RebateAgentRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/level-setting", body: "spec" };
   }
   // 清除规则的等级设置（恢复为默认等级计算逻辑）
@@ -80,7 +80,7 @@ service TenantRebateAgentRuleService {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/schema", body: "spec" };
   }
   // 获取指定账户（account_id）的默认等级返佣设置（按账户类型预设）
-  rpc GetDefaultLevelSetting(GetDefaultLevelSettingRequest) returns (LevelSettingResponse) {
+  rpc GetDefaultLevelSetting(GetDefaultRebateLevelSettingRequest) returns (RebateLevelSettingResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule/{account_id}/default-level-setting" };
   }
 }
@@ -398,15 +398,6 @@ service SalesRebateService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求（无参数接口占位）
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 返佣记录实体（由系统在交易关闭后自动生成）
 message Rebate {
   int64  id          = 1; // 返佣记录 ID
@@ -504,12 +495,12 @@ message TradeRebate {
 }
 
 // 返佣等级设置响应（共用于多个接口）
-message LevelSettingResponse {
-  repeated LevelSetting levels = 1;
+message RebateLevelSettingResponse {
+  repeated RebateLevelSetting levels = 1;
 }
 
 // 单个等级设置条目
-message LevelSetting {
+message RebateLevelSetting {
   int32  level  = 1; // 层级编号（从 1 开始，1=直接上级）
   string name   = 2; // 等级名称，如 "Level 1"、"Senior IB"
   double amount = 3; // 该层级的返佣金额或触发阈值
@@ -590,14 +581,14 @@ message UpdateRebateAgentRuleSpec {
 }
 
 // 更新顶层等级设置请求
-message UpdateLevelSettingRequest {
+message UpdateRebateLevelSettingRequest {
   int64              id   = 1; // AgentRule ID
   RebateLevelSchema  spec = 2;
 }
 
 // 等级设置列表（用于规则配置）
 message RebateLevelSchema {
-  repeated LevelSetting levels = 1;
+  repeated RebateLevelSetting levels = 1;
 }
 
 // 更新下层 Schema 请求（AgentRule 引用的 BaseSchema 变更）
@@ -607,7 +598,7 @@ message UpdateSchemaRequest {
 }
 
 // 获取账户默认等级设置请求
-message GetDefaultLevelSettingRequest {
+message GetDefaultRebateLevelSettingRequest {
   int64 account_id = 1; // 目标账户 ID
 }
 
@@ -922,7 +913,7 @@ message GetDefaultRebateLevelDetailRequest {
 
 // 默认等级设置详情响应（包含该组合下的多级等级配置）
 message DefaultRebateLevelDetailResponse {
-  repeated LevelSetting levels = 1;
+  repeated RebateLevelSetting levels = 1;
 }
 
 // 批量更新默认返佣等级请求

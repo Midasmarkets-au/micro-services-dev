@@ -40,14 +40,6 @@ service DiscoveryService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求，无需任何参数的 RPC 使用
-message EmptyRequest {}
-
-// 可用语言列表，语言值为可读字符串（如 "English"、"Chinese"）
-message LanguagesResponse {
-  repeated string languages = 1;
-}
-
 // 新闻条目实体
 message NewsItem {
   string hash_id      = 1; // 唯一标识，URL 友好

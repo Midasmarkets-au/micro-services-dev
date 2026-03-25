@@ -6,6 +6,7 @@ option csharp_namespace = "Http.V1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
+import "http/v1/payment.proto";
 
 // ─── Tenant Account API (api/v1/tenant/account) ─────────────────────────────
 // 管理平台所有账户（IB/Client/Sales/Rep），支持状态变更、标签、资金类型、
@@ -188,7 +189,7 @@ service ClientAccountServiceV2 {
     option (google.api.http) = { post: "/api/v2/client/account/{id}/change-leverage", body: "spec" };
   }
   // 修改 MT 账户交易密码（需同时提供旧密码验证）
-  rpc ChangePassword(ChangePasswordRequest) returns (Account) {
+  rpc ChangePassword(AccountChangePasswordRequest) returns (Account) {
     option (google.api.http) = { post: "/api/v2/client/account/{id}/change-password", body: "spec" };
   }
   // 查询关联账户上某笔支付（payment_number）的当前处理状态
@@ -351,9 +352,6 @@ service RepAccountService {
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────
-
-// 空请求（无参数接口占位）
-message EmptyRequest {}
 
 // 账户实体（含关键标识字段）
 message Account {
@@ -668,7 +666,7 @@ message ChangeLeverageSpec {
 }
 
 // 修改密码请求
-message ChangePasswordRequest {
+message AccountChangePasswordRequest {
   int64              id   = 1; // 账户 ID
   ChangePasswordSpec spec = 2;
 }
@@ -689,31 +687,6 @@ message GetPaymentStatusRequest {
 message PaymentStatusResponse {
   int32  status  = 1; // 支付状态枚举值
   string message = 2; // 状态描述或失败原因
-}
-
-// 充值记录列表查询请求
-message ListDepositsRequest {
-  int64             account_uid = 1; // 账户 UID
-  PaginationRequest pagination  = 2;
-  optional string   date_from   = 3; // ISO 8601 格式
-  optional string   date_to     = 4; // ISO 8601 格式
-  optional int32    status      = 5; // 充值状态过滤
-}
-
-message ListDepositsResponse {
-  repeated Deposit data = 1;
-  PaginationMeta   meta = 2;
-}
-
-// 充值记录实体
-message Deposit {
-  int64  id          = 1; // 充值记录 ID
-  string hash_id     = 2; // URL 友好的哈希标识（用于对外接口）
-  int64  account_uid = 3; // 关联账户 UID
-  double amount      = 4; // 充值金额
-  string currency    = 5; // 货币代码，如 "USD"
-  int32  status      = 6; // 充值状态（pending→processing→completed/failed）
-  string created_at  = 7; // 创建时间，ISO 8601 格式
 }
 
 // 创建充值请求
@@ -744,36 +717,6 @@ message DepositGuideResponse {
 message GetDepositReceiptRequest {
   int64  account_uid     = 1; // 账户 UID
   string deposit_hash_id = 2; // 充值单 hash_id
-}
-
-// 充值回执响应
-message DepositReceiptResponse {
-  string url = 1; // 回执凭证文件 URL（图片或 PDF）
-}
-
-// 提款记录列表查询请求
-message ListWithdrawalsRequest {
-  int64             account_uid = 1; // 账户 UID
-  PaginationRequest pagination  = 2;
-  optional string   date_from   = 3; // ISO 8601 格式
-  optional string   date_to     = 4; // ISO 8601 格式
-  optional int32    status      = 5; // 提款状态过滤
-}
-
-message ListWithdrawalsResponse {
-  repeated Withdrawal data = 1;
-  PaginationMeta      meta = 2;
-}
-
-// 提款记录实体
-message Withdrawal {
-  int64  id          = 1; // 提款记录 ID
-  string hash_id     = 2; // URL 友好的哈希标识（用于对外接口）
-  int64  account_uid = 3; // 关联账户 UID
-  double amount      = 4; // 提款金额
-  string currency    = 5; // 货币代码，如 "USD"
-  int32  status      = 6; // 提款状态（pending→processing→completed/rejected）
-  string created_at  = 7; // 创建时间，ISO 8601 格式
 }
 
 // 创建提款请求

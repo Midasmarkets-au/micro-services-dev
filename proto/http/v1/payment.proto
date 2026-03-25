@@ -492,15 +492,6 @@ service ClientWalletService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 充值实体
 message Deposit {
   int64  id          = 1; // 充值记录 ID

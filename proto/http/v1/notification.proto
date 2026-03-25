@@ -133,15 +133,6 @@ service TenantTopicService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 站内信实体
 message Message {
   int64  id         = 1; // 站内信 ID
@@ -304,11 +295,6 @@ message GetTopicRequest {
 // 仅按 id 查询 Topic（不带语言参数）
 message GetTopicIdRequest {
   int32 id = 1;
-}
-
-// 可用语言列表响应
-message LanguagesResponse {
-  repeated string languages = 1; // 语言代码列表，如 ["en", "zh", "jp"]
 }
 
 // 创建 Topic 请求
