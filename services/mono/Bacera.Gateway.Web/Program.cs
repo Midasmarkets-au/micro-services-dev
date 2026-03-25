@@ -160,6 +160,10 @@ app.MapControllerRoute(
 // Discovery: public endpoints, no authentication required
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Discovery.DiscoveryGrpcService>().AllowAnonymous();
 
+// Report: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Report.TenantReportGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Report.TenantAccountReportGrpcService>();
+
 // Symbol + ExchangeRate: tenant-scoped, requires authentication
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantSymbolGrpcService>();
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantExchangeRateGrpcService>();
