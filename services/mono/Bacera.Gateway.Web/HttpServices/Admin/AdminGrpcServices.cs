@@ -1,0 +1,598 @@
+using Bacera.Gateway.Auth;
+using Bacera.Gateway.Context;
+using Bacera.Gateway.Core.Types;
+using Bacera.Gateway.Services;
+using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
+using Grpc.Core;
+using Http.V1;
+using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
+using ProtoAudit  = Http.V1.Audit;
+using ProtoApiLog = Http.V1.ApiLog;
+
+namespace Bacera.Gateway.Web.HttpServices.Admin;
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Replaces Areas/Tenant/Controllers/AuditController.cs
+/// Routes defined in admin.proto via google.api.http annotations.
+/// </summary>
+public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenantDb)
+    : TenantAuditService.TenantAuditServiceBase
+{
+    public override async Task<ListAuditsResponse> ListAudits(
+        ListAuditsRequest request, ServerCallContext context)
+    {
+        var criteria = new Audit.Criteria
+        {
+            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
+            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+        };
+
+        var items = await tenantDb.Audits
+            .PagedFilterBy(criteria)
+            .ToTenantPageModel()
+            .ToListAsync();
+
+        var response = new ListAuditsResponse
+        {
+            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+        };
+        response.Data.AddRange(items.Select(a => new ProtoAudit
+        {
+            Id        = a.Id,
+            AccountId = a.RowId,
+            Action    = a.Type.ToString(),
+            Detail    = a.Data,
+            Ip        = "",
+            CreatedAt = a.CreatedOn.ToString("O"),
+        }));
+        return response;
+    }
+
+    public override async Task<ProtoAudit> GetAudit(GetAuditRequest request, ServerCallContext context)
+    {
+        var item = await tenantDb.Audits
+            .Where(x => x.Id == request.Id)
+            .ToTenantPageModel()
+            .FirstOrDefaultAsync();
+        if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Audit not found"));
+
+        return new ProtoAudit
+        {
+            Id        = item.Id,
+            AccountId = item.RowId,
+            Action    = item.Type.ToString(),
+            Detail    = item.Data,
+            Ip        = "",
+            CreatedAt = item.CreatedOn.ToString("O"),
+        };
+    }
+
+    public override async Task<ListAuditsResponse> ListAccountChangeBalanceAudits(
+        ListAuditsRequest request, ServerCallContext context)
+    {
+        var criteria = new Audit.Criteria
+        {
+            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
+            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Type = AuditTypes.TradeAccountBalance,
+        };
+
+        var items = await tenantDb.Audits
+            .PagedFilterBy(criteria)
+            .ToTenantPageModel()
+            .ToListAsync();
+
+        var response = new ListAuditsResponse
+        {
+            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+        };
+        response.Data.AddRange(items.Select(a => new ProtoAudit
+        {
+            Id        = a.Id,
+            AccountId = a.RowId,
+            Action    = a.Type.ToString(),
+            Detail    = a.Data,
+            Ip        = "",
+            CreatedAt = a.CreatedOn.ToString("O"),
+        }));
+        return response;
+    }
+
+    public override async Task<ListAuditsResponse> GetHighDollarLatest(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var key = Enum.GetName(typeof(ConfigurationTypes), ConfigurationTypes.HighDollarValue) ?? string.Empty;
+        var rowId = await tenantDb.Configurations
+            .Where(x => x.Category == nameof(Public) && x.Key == key && x.RowId == 0)
+            .Select(x => x.Id)
+            .FirstOrDefaultAsync();
+
+        var criteria = new Audit.Criteria { Type = AuditTypes.Configuration, RowId = rowId, Page = 1, Size = 1 };
+        var items = await tenantDb.Audits
+            .PagedFilterBy(criteria)
+            .OrderByDescending(x => x.Id)
+            .ToTenantPageModel()
+            .ToListAsync();
+
+        var response = new ListAuditsResponse { Meta = BuildMeta(1, 1, items.Count) };
+        response.Data.AddRange(items.Select(a => new ProtoAudit
+        {
+            Id        = a.Id,
+            AccountId = a.RowId,
+            Action    = a.Type.ToString(),
+            Detail    = a.Data,
+            Ip        = "",
+            CreatedAt = a.CreatedOn.ToString("O"),
+        }));
+        return response;
+    }
+
+    private static long GetTenantId(ServerCallContext ctx)
+    {
+        // Tenant ID is injected by MultiTenantServiceMiddleware into HttpContext items
+        var httpCtx = ctx.GetHttpContext();
+        return httpCtx.Items.TryGetValue("TenantId", out var v) && v is long id ? id : 0;
+    }
+
+    private static PaginationMeta BuildMeta(int page, int size, int total) => new()
+    {
+        Page      = page,
+        Size      = size,
+        Total     = total,
+        PageCount = total > 0 ? (int)Math.Ceiling((double)total / size) : 0,
+        HasMore   = page * size < total,
+    };
+}
+
+// ─── IP Blacklist ─────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Replaces Areas/Tenant/Controllers/IpBlackListController.cs
+/// </summary>
+public class TenantIpBlacklistGrpcService(
+    CentralDbContext centralDb,
+    AuthDbContext authDb,
+    IMyCache myCache)
+    : TenantIpBlacklistService.TenantIpBlacklistServiceBase
+{
+    private readonly string _ipKey = CacheKeys.GetBlackedIpHashKey();
+
+    public override async Task<ListIpBlacklistResponse> ListIpBlacklist(
+        ListIpBlacklistRequest request, ServerCallContext context)
+    {
+        var criteria = new IpBlackList.Criteria
+        {
+            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
+            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Ip   = request.HasIp ? request.Ip : null,
+        };
+
+        var items = await centralDb.IpBlackLists
+            .PagedFilterBy(criteria)
+            .ToTenantPageModel()
+            .ToListAsync();
+
+        var response = new ListIpBlacklistResponse
+        {
+            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+        };
+        response.Data.AddRange(items.Select(MapToProto));
+        return response;
+    }
+
+    public override async Task<IpBlacklistItem> CreateIpBlacklist(
+        CreateIpBlacklistRequest request, ServerCallContext context)
+    {
+        if (!System.Net.IPAddress.TryParse(request.Ip, out _))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__INVALID_IP_ADDRESS__"));
+        if (await centralDb.IpBlackLists.AnyAsync(x => x.Ip == request.Ip))
+            throw new RpcException(new Status(StatusCode.AlreadyExists, "__IP_ALREADY_EXISTS__"));
+
+        var spec = new IpBlackList.CreateSpec { Ip = request.Ip, Note = request.Reason };
+        var entity = spec.ToEntity(await GetOperatorNameAsync(context));
+        centralDb.IpBlackLists.Add(entity);
+        await centralDb.SaveChangesAsync();
+        await myCache.HSetStringAsync(_ipKey, entity.Ip, "1");
+        return MapToProto(new IpBlackList.TenantPageModel
+        {
+            Id = entity.Id, Ip = entity.Ip, Note = entity.Note,
+            Enabled = entity.Enabled, CreatedOn = entity.CreatedOn
+        });
+    }
+
+    public override async Task<IpBlacklistItem> UpdateIpBlacklist(
+        UpdateIpBlacklistRequest request, ServerCallContext context)
+    {
+        var entity = await centralDb.IpBlackLists.FindAsync(request.Id)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
+        await myCache.HSetDeleteByKeyFieldAsync(_ipKey, entity.Ip);
+        var spec = new IpBlackList.UpdateSpec { Ip = request.Spec?.Ip ?? entity.Ip, Note = request.Spec?.Reason ?? entity.Note };
+        spec.ApplyTo(entity, await GetOperatorNameAsync(context));
+        await centralDb.SaveChangesAsync();
+        await myCache.HSetStringAsync(_ipKey, entity.Ip, "1");
+        return MapToProto(new IpBlackList.TenantPageModel
+        {
+            Id = entity.Id, Ip = entity.Ip, Note = entity.Note,
+            Enabled = entity.Enabled, CreatedOn = entity.CreatedOn
+        });
+    }
+
+    public override async Task<OperationResponse> DeleteIpBlacklist(
+        GetIpBlacklistRequest request, ServerCallContext context)
+    {
+        var entity = await centralDb.IpBlackLists.FindAsync(request.Id)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
+        centralDb.IpBlackLists.Remove(entity);
+        await centralDb.SaveChangesAsync();
+        await myCache.HSetDeleteByKeyFieldAsync(_ipKey, entity.Ip);
+        return new OperationResponse { Success = true };
+    }
+
+    public override async Task<OperationResponse> ReloadCache(EmptyRequest request, ServerCallContext context)
+    {
+        await myCache.HSetDeleteByKeyAsync(_ipKey);
+        var ips = await centralDb.IpBlackLists.Select(x => x.Ip).ToListAsync();
+        foreach (var ip in ips) await myCache.HSetStringAsync(_ipKey, ip, "1");
+        return new OperationResponse { Success = true, Message = $"Reloaded {ips.Count} entries" };
+    }
+
+    private static IpBlacklistItem MapToProto(IpBlackList.TenantPageModel m) => new()
+    {
+        Id        = m.Id,
+        Ip        = m.Ip,
+        Reason    = m.Note,
+        Status    = m.Enabled ? 1 : 0,
+        CreatedAt = m.CreatedOn.ToString("O"),
+    };
+
+    private async Task<string> GetOperatorNameAsync(ServerCallContext ctx)
+    {
+        var httpCtx = ctx.GetHttpContext();
+        var tenantId = httpCtx.Items.TryGetValue("TenantId", out var t) && t is long tid ? tid : 0L;
+        var partyId  = httpCtx.Items.TryGetValue("PartyId",  out var p) && p is long pid ? pid : 0L;
+        var user = await authDb.Users
+            .Where(x => x.TenantId == tenantId && x.PartyId == partyId)
+            .ToUserNameModel()
+            .SingleAsync();
+        return user.GuessNativeName();
+    }
+
+    private static PaginationMeta BuildMeta(int page, int size, int total) => new()
+    {
+        Page      = page,
+        Size      = size,
+        Total     = total,
+        PageCount = total > 0 ? (int)Math.Ceiling((double)total / size) : 0,
+        HasMore   = page * size < total,
+    };
+}
+
+// ─── User Blacklist ───────────────────────────────────────────────────────────
+
+/// <summary>
+/// Replaces Areas/Tenant/Controllers/UserBlackListController.cs
+/// </summary>
+public class TenantUserBlacklistGrpcService(
+    CentralDbContext centralDb,
+    AuthDbContext authDb,
+    IMyCache myCache)
+    : TenantUserBlacklistService.TenantUserBlacklistServiceBase
+{
+    private readonly string _nameKey   = CacheKeys.GetBlackedUserNameHashKey();
+    private readonly string _phoneKey  = CacheKeys.GetBlackedUserPhoneHashKey();
+    private readonly string _emailKey  = CacheKeys.GetBlackedUserEmailHashKey();
+    private readonly string _idNumKey  = CacheKeys.GetBlackedUserIdNumberHashKey();
+
+    public override async Task<ListUserBlacklistResponse> ListUserBlacklist(
+        ListUserBlacklistRequest request, ServerCallContext context)
+    {
+        var criteria = new UserBlackList.Criteria
+        {
+            Page  = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
+            Size  = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Email = request.HasEmail ? request.Email : null,
+        };
+
+        var items = await centralDb.UserBlackLists
+            .PagedFilterBy(criteria)
+            .ToTenantPageModel()
+            .ToListAsync();
+
+        var response = new ListUserBlacklistResponse
+        {
+            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+        };
+        response.Data.AddRange(items.Select(MapToProto));
+        return response;
+    }
+
+    public override async Task<UserBlacklistItem> CreateUserBlacklist(
+        CreateUserBlacklistRequest request, ServerCallContext context)
+    {
+        var exists = await centralDb.UserBlackLists.AnyAsync(x => x.Email == request.Email);
+        if (exists) throw new RpcException(new Status(StatusCode.AlreadyExists, "__USER_ALREADY_EXISTS__"));
+
+        var spec = new UserBlackList.CreateSpec { Email = request.Email };
+        var entity = spec.ToEntity(await GetOperatorNameAsync(context));
+        centralDb.UserBlackLists.Add(entity);
+        await centralDb.SaveChangesAsync();
+        await AddCacheAsync(entity);
+        return MapToProto(new UserBlackList.TenantPageModel
+        {
+            Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
+        });
+    }
+
+    public override async Task<UserBlacklistItem> UpdateUserBlacklist(
+        UpdateUserBlacklistRequest request, ServerCallContext context)
+    {
+        var entity = await centralDb.UserBlackLists.FindAsync(request.Id)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
+        await RemoveCacheAsync(entity);
+        var spec = new UserBlackList.UpdateSpec
+        {
+            Email    = request.Spec?.Email    ?? entity.Email,
+            Name     = entity.Name,
+            Phone    = entity.Phone,
+            IdNumber = entity.IdNumber,
+        };
+        spec.ApplyTo(entity, await GetOperatorNameAsync(context));
+        await centralDb.SaveChangesAsync();
+        await AddCacheAsync(entity);
+        return MapToProto(new UserBlackList.TenantPageModel
+        {
+            Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
+        });
+    }
+
+    public override async Task<OperationResponse> DeleteUserBlacklist(
+        GetUserBlacklistRequest request, ServerCallContext context)
+    {
+        var entity = await centralDb.UserBlackLists.FindAsync(request.Id)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
+        centralDb.UserBlackLists.Remove(entity);
+        await centralDb.SaveChangesAsync();
+        await RemoveCacheAsync(entity);
+        return new OperationResponse { Success = true };
+    }
+
+    private Task RemoveCacheAsync(UserBlackList e) => Task.WhenAll(
+        myCache.HSetDeleteByKeyFieldAsync(_nameKey, e.Name),
+        myCache.HSetDeleteByKeyFieldAsync(_phoneKey, e.Phone),
+        myCache.HSetDeleteByKeyFieldAsync(_emailKey, e.Email),
+        myCache.HSetDeleteByKeyFieldAsync(_idNumKey, e.IdNumber));
+
+    private Task AddCacheAsync(UserBlackList e) => Task.WhenAll(
+        myCache.HSetStringAsync(_nameKey, e.Name, "1"),
+        myCache.HSetStringAsync(_phoneKey, e.Phone, "1"),
+        myCache.HSetStringAsync(_emailKey, e.Email, "1"),
+        myCache.HSetStringAsync(_idNumKey, e.IdNumber, "1"));
+
+    private static UserBlacklistItem MapToProto(UserBlackList.TenantPageModel m) => new()
+    {
+        Id        = m.Id,
+        Email     = m.Email,
+        Reason    = m.OperatorName,
+        Status    = 1,
+        CreatedAt = m.CreatedOn.ToString("O"),
+    };
+
+    private async Task<string> GetOperatorNameAsync(ServerCallContext ctx)
+    {
+        var httpCtx = ctx.GetHttpContext();
+        var tenantId = httpCtx.Items.TryGetValue("TenantId", out var t) && t is long tid ? tid : 0L;
+        var partyId  = httpCtx.Items.TryGetValue("PartyId",  out var p) && p is long pid ? pid : 0L;
+        var user = await authDb.Users
+            .Where(x => x.TenantId == tenantId && x.PartyId == partyId)
+            .ToUserNameModel()
+            .SingleAsync();
+        return user.GuessNativeName();
+    }
+
+    private static PaginationMeta BuildMeta(int page, int size, int total) => new()
+    {
+        Page      = page,
+        Size      = size,
+        Total     = total,
+        PageCount = total > 0 ? (int)Math.Ceiling((double)total / size) : 0,
+        HasMore   = page * size < total,
+    };
+}
+
+// ─── API Log ──────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Replaces Areas/Tenant/Controllers/ApiLogController.cs
+/// </summary>
+public class TenantApiLogGrpcService(TenantDbContext tenantDb)
+    : TenantApiLogService.TenantApiLogServiceBase
+{
+    public override async Task<ListApiLogsResponse> ListApiLogs(
+        ListApiLogsRequest request, ServerCallContext context)
+    {
+        var criteria = new ApiLog.Criteria
+        {
+            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
+            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Action     = request.HasPath       ? request.Path       : null,
+            StatusCode = request.HasStatusCode ? (short)request.StatusCode : null,
+        };
+
+        var items = await tenantDb.ApiLogs
+            .PagedFilterBy(criteria)
+            .ToTenantPageModel(false)
+            .ToListAsync();
+
+        var partyIds  = items.Select(x => x.PartyId).Distinct().ToList();
+        var partyEmails = await tenantDb.Parties
+            .Where(x => partyIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.Email);
+        items.ForEach(x => x.Email = partyEmails.GetValueOrDefault(x.PartyId, string.Empty));
+
+        var response = new ListApiLogsResponse
+        {
+            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+        };
+        response.Data.AddRange(items.Select(l => new ProtoApiLog
+        {
+            Id         = l.Id ?? 0,
+            Method     = l.Method ?? "",
+            Path       = l.Action ?? "",
+            StatusCode = l.StatusCode ?? 0,
+            Duration   = 0,
+            CreatedAt  = "",
+        }));
+        return response;
+    }
+
+    private static PaginationMeta BuildMeta(int page, int size, int total) => new()
+    {
+        Page      = page,
+        Size      = size,
+        Total     = total,
+        PageCount = total > 0 ? (int)Math.Ceiling((double)total / size) : 0,
+        HasMore   = page * size < total,
+    };
+}
+
+// ─── Statistics V1 ────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Online admin/user statistics.
+/// Routes moved from api/v2 (StatisticControllerV2) to api/v1 as defined in admin.proto.
+/// </summary>
+public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cache, MyDbContextPool pool)
+    : TenantStatisticsService.TenantStatisticsServiceBase
+{
+    public override async Task<OnlineUsersResponse> GetOnlineAdmins(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var rawInfos = await monitorSvc.GetOnlineAdminAsync();
+        var users = rawInfos
+            .Select(x =>
+            {
+                var raw         = x.ToString()!;
+                var lastUs      = raw.LastIndexOf('_');
+                var dateStr     = raw[(lastUs + 1)..];
+                var rest        = raw[..lastUs];
+                var secondUs    = rest.LastIndexOf('_');
+                rest            = rest[..secondUs];
+                var thirdUs     = rest.LastIndexOf('_');
+                var partyId     = rest[(thirdUs + 1)..];
+                var email       = rest[..thirdUs];
+                return new OnlineUser
+                {
+                    PartyId = long.TryParse(partyId, out var pid) ? pid : 0,
+                    Email   = email,
+                    Since   = dateStr,
+                };
+            })
+            .ToList();
+
+        var response = new OnlineUsersResponse { Count = users.Count };
+        response.Users.AddRange(users);
+        return response;
+    }
+
+    public override async Task<OnlineUsersResponse> GetOnlineUsers(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var db = cache.GetDatabase();
+        var tenantIds = pool.GetTenantIds();
+        var users = new List<OnlineUser>();
+
+        foreach (var tenantId in tenantIds)
+        {
+            var pattern = $"portal_online:{tenantId}:*";
+            long cursor = 0;
+            do
+            {
+                var scan   = await db.ExecuteAsync("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "100");
+                var result = (RedisResult[])scan!;
+                cursor = long.Parse((string)result[0]!);
+                foreach (var key in (string[])result[1]!)
+                {
+                    var parts = key.Split(':').TakeLast(3).ToArray();
+                    users.Add(new OnlineUser { Email = parts[1], Since = parts[2] });
+                }
+            } while (cursor != 0);
+        }
+
+        var response = new OnlineUsersResponse { Count = users.Count };
+        response.Users.AddRange(users);
+        return response;
+    }
+}
+
+// ─── Statistics V2 ────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Server list and metrics (replaces StatisticControllerV2 server endpoints).
+/// </summary>
+public class TenantStatisticsV2GrpcService(MybcrDbContext bcrCtx, IHttpClientFactory httpFactory)
+    : TenantStatisticsServiceV2.TenantStatisticsServiceV2Base
+{
+    public override async Task<ServersResponse> GetServers(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var items = await bcrCtx.Servers
+            .PagedFilterBy<Server, ulong>(new Server.Criteria())
+            .ToTenantPageModel()
+            .OrderBy(x => x.Stat)
+            .ThenBy(x => x.Name)
+            .ToListAsync();
+
+        var response = new ServersResponse();
+        response.Servers.AddRange(items.Select(s => new ServerItem
+        {
+            Id   = (int)s.Id,
+            Name = s.Name,
+            Host = s.Ip,
+        }));
+        return response;
+    }
+
+    public override async Task<ServerMetricsResponse> GetServerMetrics(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var servers = await bcrCtx.Servers
+            .ToTenantPageModel()
+            .ToListAsync();
+
+        var metrics = new List<ServerMetric>();
+        using var client = httpFactory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(5);
+
+        await Task.WhenAll(servers.Select(async server =>
+        {
+            double cpu = 0, mem = 0;
+            try
+            {
+                var baseUrl = $"http://{server.Ip}:60618/bcrstat/api/4";
+                var cpuJson = await (await client.GetAsync(baseUrl + "/cpu")).Content.ReadAsStringAsync();
+                var memJson = await (await client.GetAsync(baseUrl + "/mem")).Content.ReadAsStringAsync();
+                // Parse simplified values from raw JSON
+                using var cpuDoc = System.Text.Json.JsonDocument.Parse(cpuJson);
+                using var memDoc = System.Text.Json.JsonDocument.Parse(memJson);
+                if (cpuDoc.RootElement.TryGetProperty("usage", out var cpuVal)) cpu = cpuVal.GetDouble();
+                if (memDoc.RootElement.TryGetProperty("usedPercent", out var memVal)) mem = memVal.GetDouble();
+            }
+            catch { /* timeout or unreachable — leave as 0 */ }
+
+            metrics.Add(new ServerMetric
+            {
+                ServerId  = (int)server.Id,
+                CpuUsage  = cpu,
+                MemUsage  = mem,
+                UpdatedAt = DateTime.UtcNow.ToString("O"),
+            });
+        }));
+
+        var response = new ServerMetricsResponse();
+        response.Metrics.AddRange(metrics);
+        return response;
+    }
+}

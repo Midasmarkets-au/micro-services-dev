@@ -160,6 +160,14 @@ app.MapControllerRoute(
 // Discovery: public endpoints, no authentication required
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Discovery.DiscoveryGrpcService>().AllowAnonymous();
 
+// Admin: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantAuditGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantIpBlacklistGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantUserBlacklistGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantApiLogGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantStatisticsGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantStatisticsV2GrpcService>();
+
 // MonoCallbackService: called by the Rust scheduler via standard gRPC (tonic, HTTP/2).
 // No UseGrpcWeb: gRPC-Web is for browsers; tonic uses standard gRPC and is incompatible with gRPC-Web encoding.
 // AllowAnonymous: internal cluster call from scheduler, no JWT token.
