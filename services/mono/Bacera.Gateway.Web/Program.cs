@@ -172,6 +172,11 @@ app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantExchangeRateGrpc
 // ConfigurationController is kept for site-specific toggle endpoints not yet in proto.
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Config.TenantConfigurationGrpcService>();
 
+// Notification: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantMessageGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantEmailGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantTopicGrpcService>();
+
 // Admin: tenant-scoped, requires authentication
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantAuditGrpcService>();
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantIpBlacklistGrpcService>();
