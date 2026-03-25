@@ -1706,13 +1706,13 @@
       "title": "新客户",
       "all": "全部",
       "hasDeposit": "已完成入金",
-      "noDeposit": "未完成入金",
+      "noDeposit": "已创建入金",
       "customer": "客户",
       "email": "电子邮件",
       "createdTime": "创建时间",
       "status": "状态",
       "statusDeposited": "已完成入金",
-      "statusNotDeposited": "未完成入金"
+      "statusNotDeposited": "已创建入金"
     },
     "customers": {
       "title": "客户",
@@ -1802,7 +1802,7 @@
       "status": "状态",
       "createdOn": "创建时间",
       "completedDeposit": "已完成入金",
-      "incompleteDeposit": "未完成入金",
+      "incompleteDeposit": "已创建入金",
       "client": "客户",
       "ib": "代理"
     },
@@ -2112,13 +2112,13 @@
       "title": "新客户",
       "all": "全部",
       "hasDeposit": "已完成入金",
-      "noDeposit": "未完成入金",
+      "noDeposit": "已创建入金",
       "customer": "客户",
       "email": "电子邮件",
       "createdTime": "创建时间",
       "status": "状态",
       "statusDeposited": "已完成入金",
-      "statusNotDeposited": "未完成入金"
+      "statusNotDeposited": "已创建入金"
     },
     "customers": {
       "title": "客户",
@@ -2536,7 +2536,7 @@
       "status": "状态",
       "createdOn": "创建时间",
       "completedDeposit": "已完成入金",
-      "incompleteDeposit": "未完成入金",
+      "incompleteDeposit": "已创建入金",
       "client": "客户",
       "ib": "代理"
     },

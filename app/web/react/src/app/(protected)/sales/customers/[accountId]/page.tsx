@@ -87,6 +87,57 @@ function formatGroupKey(dateStr: string) {
   return `${monthYear}||${weekday}`;
 }
 
+const DEFAULT_DEPOSIT_STATE_IDS = [
+  DepositState.DepositCompleted,
+  DepositState.DepositCallbackComplete,
+];
+
+const DEFAULT_WITHDRAWAL_STATE_IDS = [
+  WithdrawalState.WithdrawalCompleted,
+];
+
+const TRADE_ACCOUNT_TYPE = 2;
+const DEFAULT_TRANSACTION_STATE_IDS = [
+  TransferState.TransferCompleted,
+];
+
+function isDateInDST_US(): boolean {
+  const now = new Date();
+  const jan = new Date(now.getFullYear(), 0, 1);
+  const jul = new Date(now.getFullYear(), 6, 1);
+  const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+  return now.getTimezoneOffset() < stdOffset;
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function formatDateStr(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function convertTradeTime(from: string | null, to: string | null): [string | null, string | null] {
+  const isDST = isDateInDST_US();
+  const startHour = isDST ? 21 : 22;
+  const endHour = isDST ? 20 : 21;
+
+  let createdFrom: string | null = null;
+  if (from) {
+    const d = new Date(from);
+    d.setDate(d.getDate() - 1);
+    createdFrom = `${formatDateStr(d)}T${pad2(startHour)}:00:00.000Z`;
+  }
+
+  let createdTo: string | null = null;
+  if (to) {
+    const d = new Date(to);
+    createdTo = `${formatDateStr(d)}T${pad2(endHour)}:59:59.000Z`;
+  }
+
+  return [createdFrom, createdTo];
+}
+
 function getRoleLabel(
   role: number,
   td: (key: string) => string,
@@ -144,9 +195,9 @@ export default function SalesCustomerDetailPage({
   // ---- Tabs 动态生成 ----
   const tabs: TabItem<DetailTab>[] = useMemo(() => {
     const list: TabItem<DetailTab>[] = [
-      { key: 'transaction', label: td('tabs.transaction') },
       { key: 'deposit', label: td('tabs.deposit') },
       { key: 'withdrawal', label: td('tabs.withdrawal') },
+      { key: 'transaction', label: td('tabs.transaction') }, 
     ];
     if (accountDetail?.tradeAccount?.accountNumber && accountDetail.tradeAccount.accountNumber !== 0) {
       list.push({ key: 'tradeReport', label: td('tabs.tradeReport') });
@@ -154,11 +205,69 @@ export default function SalesCustomerDetailPage({
     return list;
   }, [td, accountDetail]);
 
-  // ---- 日期参数构建 ----
-  const buildDateParams = useCallback(() => {
-    const p: Record<string, unknown> = {};
-    if (dateRange?.from) p.from = dateRange.from.toISOString();
-    if (dateRange?.to) p.to = dateRange.to.toISOString();
+  const buildDepositFilterParams = useCallback(() => {
+    const p: Record<string, unknown> = {
+      StateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    };
+
+    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
+    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
+
+    if (fromDateStr) {
+      const [from] = convertTradeTime(fromDateStr, null);
+      if (from) p.from = from;
+    }
+
+    if (toDateStr) {
+      const [, to] = convertTradeTime(fromDateStr, toDateStr);
+      if (to) p.to = to;
+    }
+
+    return p;
+  }, [dateRange]);
+
+  const buildTransactionFilterParams = useCallback(() => {
+    const p: Record<string, unknown> = {
+      sourceAccountType: TRADE_ACCOUNT_TYPE,
+      targetAccountType: TRADE_ACCOUNT_TYPE,
+      StateIds: DEFAULT_TRANSACTION_STATE_IDS,
+    };
+
+    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
+    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
+
+    if (fromDateStr) {
+      const [from] = convertTradeTime(fromDateStr, null);
+      if (from) p.from = from;
+    }
+
+    if (toDateStr) {
+      const [, to] = convertTradeTime(fromDateStr, toDateStr);
+      if (to) p.to = to;
+    }
+
+    return p;
+  }, [dateRange]);
+
+  const buildWithdrawalFilterParams = useCallback(() => {
+    const p: Record<string, unknown> = {
+      StateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+      isClosed: false,
+    };
+
+    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
+    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
+
+    if (fromDateStr) {
+      const [from] = convertTradeTime(fromDateStr, null);
+      if (from) p.from = from;
+    }
+
+    if (toDateStr) {
+      const [, to] = convertTradeTime(fromDateStr, toDateStr);
+      if (to) p.to = to;
+    }
+
     return p;
   }, [dateRange]);
 
@@ -167,11 +276,10 @@ export default function SalesCustomerDetailPage({
     if (!salesAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
-      const dateParams = buildDateParams();
-
       if (tab === 'transaction') {
+        const transactionFilterParams = buildTransactionFilterParams();
         const result = await execute(getSalesClientTransactions, salesAccount.uid, accountUid, {
-          page: p, size: pageSize, ...dateParams,
+          page: p, size: pageSize, ...transactionFilterParams,
         });
         if (result.success && result.data) {
           const d = result.data as { data?: SalesTransactionRecord[]; criteria?: { total?: number } };
@@ -179,16 +287,18 @@ export default function SalesCustomerDetailPage({
           setTotal(d.criteria?.total || 0);
         }
       } else if (tab === 'deposit') {
+        const depositFilterParams = buildDepositFilterParams();
         const result = await execute(getSalesDeposits, salesAccount.uid, {
-          page: p, size: pageSize, accountUid, ...dateParams,
+          page: p, size: pageSize, accountUid, ...depositFilterParams,
         });
         if (result.success && result.data) {
           setDeposits(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'withdrawal') {
+        const withdrawalFilterParams = buildWithdrawalFilterParams();
         const result = await execute(getSalesWithdrawals, salesAccount.uid, {
-          page: p, size: pageSize, accountUid, ...dateParams,
+          page: p, size: pageSize, accountUid, ...withdrawalFilterParams,
         });
         if (result.success && result.data) {
           setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
@@ -198,7 +308,7 @@ export default function SalesCustomerDetailPage({
     } finally {
       setIsLoading(false);
     }
-  }, [salesAccount, accountUid, tab, execute, buildDateParams]);
+  }, [salesAccount, accountUid, tab, execute, buildDepositFilterParams, buildTransactionFilterParams, buildWithdrawalFilterParams]);
 
   useEffect(() => {
     if (salesAccount) loadData(page);
