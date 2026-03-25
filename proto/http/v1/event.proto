@@ -1,0 +1,675 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Event API (api/v1/tenant/event) ──────────────────────────────────
+
+service TenantEventService {
+  // 列表查询
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event" };
+  }
+  // 获取单条
+  rpc GetEvent(GetEventRequest) returns (Event) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/{id}" };
+  }
+  // 创建
+  rpc CreateEvent(CreateEventRequest) returns (Event) {
+    option (google.api.http) = { post: "/api/v1/tenant/event", body: "*" };
+  }
+  // 更新
+  rpc UpdateEvent(UpdateEventRequest) returns (Event) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/{id}", body: "spec" };
+  }
+  // 发布
+  rpc PublishEvent(GetEventRequest) returns (Event) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/{id}/publish" };
+  }
+  // 关闭
+  rpc CloseEvent(GetEventRequest) returns (Event) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/{id}/close" };
+  }
+  // 更新语言内容
+  rpc UpdateEventLang(UpdateEventLangRequest) returns (Event) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/{id}/lang/{lang}", body: "spec" };
+  }
+  // 查询参与用户
+  rpc ListEventUsers(ListEventUsersRequest) returns (ListEventUsersResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/users" };
+  }
+  // 审批通过用户
+  rpc ApproveEventUser(EventUserPartyRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/approve" };
+  }
+  // 拒绝用户
+  rpc RejectEventUser(EventUserPartyRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/reject" };
+  }
+  // 取消用户
+  rpc CancelEventUser(EventUserPartyRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/cancel" };
+  }
+}
+
+// ─── Tenant Shop Item API (api/v1/tenant/event/shop/item) ────────────────────
+
+service TenantShopItemService {
+  // 列表查询
+  rpc ListShopItems(ListShopItemsRequest) returns (ListShopItemsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/item" };
+  }
+  // 获取单条
+  rpc GetShopItem(GetShopItemRequest) returns (ShopItem) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/item/{id}" };
+  }
+  // 创建
+  rpc CreateShopItem(CreateShopItemRequest) returns (ShopItem) {
+    option (google.api.http) = { post: "/api/v1/tenant/event/shop/item", body: "*" };
+  }
+  // 更新
+  rpc UpdateShopItem(UpdateShopItemRequest) returns (ShopItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}", body: "spec" };
+  }
+  // 发布
+  rpc PublishShopItem(GetShopItemRequest) returns (ShopItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/publish" };
+  }
+  // 关闭
+  rpc CloseShopItem(GetShopItemRequest) returns (ShopItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/close" };
+  }
+  // 更新语言内容
+  rpc UpdateShopItemLang(UpdateShopItemLangRequest) returns (ShopItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/{lang}", body: "spec" };
+  }
+  // 获取分类列表
+  rpc ListShopCategories(EmptyRequest) returns (ShopCategoriesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/item/category" };
+  }
+  // 更新分类
+  rpc UpdateShopCategory(UpdateShopCategoryRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/category", body: "*" };
+  }
+  // 更新分类状态
+  rpc UpdateShopCategoryStatus(UpdateShopCategoryStatusRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/category/{key}/status", body: "spec" };
+  }
+}
+
+// ─── Tenant Shop Reward API (api/v1/tenant/event/shop/reward) ────────────────
+
+service TenantShopRewardService {
+  // 列表查询
+  rpc ListShopRewards(ListShopRewardsRequest) returns (ListShopRewardsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward" };
+  }
+  // 获取单条
+  rpc GetShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward/{id}" };
+  }
+  // 获取返佣列表
+  rpc GetShopRewardRebate(ListShopRewardsRequest) returns (ListShopRewardsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward/rebate" };
+  }
+  // 设为待处理
+  rpc PendingShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/pending" };
+  }
+  // 处理中
+  rpc ProcessShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/process" };
+  }
+  // 审批通过
+  rpc ApproveShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/approve" };
+  }
+  // 标记成功
+  rpc SucceedShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/succeed" };
+  }
+  // 取消
+  rpc CancelShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/cancel" };
+  }
+  // 过期
+  rpc ExpireShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/expire" };
+  }
+  // 激活
+  rpc ActivateShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/active" };
+  }
+  // 停用
+  rpc DeactivateShopReward(GetShopRewardRequest) returns (ShopReward) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/inactive" };
+  }
+}
+
+// ─── Tenant Shop Order API (api/v1/tenant/event/shop/order) ──────────────────
+
+service TenantShopOrderService {
+  // 列表查询
+  rpc ListShopOrders(ListShopOrdersRequest) returns (ListShopOrdersResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/order" };
+  }
+  // 获取详情
+  rpc GetShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/order/{id}" };
+  }
+  // 设为待处理
+  rpc PendingShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/pending" };
+  }
+  // 处理中
+  rpc ProcessShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/process" };
+  }
+  // 发货
+  rpc ShipShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/ship" };
+  }
+  // 标记成功
+  rpc SucceedShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/succeed" };
+  }
+  // 取消
+  rpc CancelShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/cancel" };
+  }
+  // 更新快递单号
+  rpc UpdateShopOrderShipping(UpdateShopOrderShippingRequest) returns (ShopOrder) {
+    option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/update-shipping", body: "spec" };
+  }
+}
+
+// ─── Tenant Shop Point API (api/v1/tenant/event/shop/point) ──────────────────
+
+service TenantShopPointService {
+  // 调整积分
+  rpc AdjustShopPoint(AdjustShopPointRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/event/shop/point/adjust", body: "*" };
+  }
+  // 积分流水
+  rpc ListShopPointTransactions(ListShopPointTransactionsRequest) returns (ListShopPointTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/event/shop/point/transaction" };
+  }
+}
+
+// ─── Client Event API (api/v1/client/event) ──────────────────────────────────
+
+service ClientEventService {
+  // 获取活动（by key）
+  rpc GetClientEvent(GetClientEventRequest) returns (ClientEvent) {
+    option (google.api.http) = { get: "/api/v1/client/event/{key}" };
+  }
+  // 报名参与活动
+  rpc ApplyClientEvent(ApplyClientEventRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/client/event/{key}/apply" };
+  }
+  // 获取当前用户活动参与详情
+  rpc GetClientEventUser(GetClientEventUserRequest) returns (ClientEventUser) {
+    option (google.api.http) = { get: "/api/v1/client/event/{event_key}/user" };
+  }
+  // 获取商城活动
+  rpc GetShopEvent(EmptyRequest) returns (ClientEvent) {
+    option (google.api.http) = { get: "/api/v1/client/event/ShopEvent" };
+  }
+  // 获取商城分类名称
+  rpc GetClientShopCategories(EmptyRequest) returns (ClientShopCategoriesResponse) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/item/category-name" };
+  }
+  // 获取商城商品列表
+  rpc ListClientShopItems(ListClientShopItemsRequest) returns (ListClientShopItemsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/item" };
+  }
+  // 获取商城商品详情
+  rpc GetClientShopItem(GetClientShopItemRequest) returns (ClientShopItem) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/item/{hash_id}" };
+  }
+  // 获取兑换订单列表
+  rpc ListClientShopOrders(ListClientShopOrdersRequest) returns (ListClientShopOrdersResponse) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/order" };
+  }
+  // 购买商品（创建订单）
+  rpc CreateClientShopOrder(CreateClientShopOrderRequest) returns (ClientShopOrder) {
+    option (google.api.http) = { post: "/api/v1/client/event/shop/order", body: "*" };
+  }
+  // 获取订单详情
+  rpc GetClientShopOrder(GetClientShopOrderRequest) returns (ClientShopOrder) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/order/{hash_id}" };
+  }
+  // 更新收货地址
+  rpc UpdateClientShopOrderAddress(UpdateClientShopOrderAddressRequest) returns (ClientShopOrder) {
+    option (google.api.http) = { put: "/api/v1/client/event/shop/order/{hash_id}/address/{address_hash_id}" };
+  }
+  // 确认收货
+  rpc SucceedClientShopOrder(GetClientShopOrderRequest) returns (ClientShopOrder) {
+    option (google.api.http) = { put: "/api/v1/client/event/shop/order/{hash_id}/succeed" };
+  }
+  // 获取奖励列表
+  rpc ListClientShopRewards(ListClientShopRewardsRequest) returns (ListClientShopRewardsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/reward" };
+  }
+  // 购买奖励
+  rpc CreateClientShopReward(CreateClientShopRewardRequest) returns (ClientShopReward) {
+    option (google.api.http) = { post: "/api/v1/client/event/shop/reward", body: "*" };
+  }
+  // 获取返佣奖励列表
+  rpc ListClientShopRewardRebate(ListClientShopRewardsRequest) returns (ListClientShopRewardsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/reward/rebate" };
+  }
+  // 积分流水
+  rpc ListClientShopPointTransactions(ListClientShopPointTransactionsRequest) returns (ListClientShopPointTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/event/shop/point/transaction" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// Event 实体
+message Event {
+  int32  id         = 1;
+  string key        = 2;
+  string title      = 3;
+  int32  type       = 4;
+  int32  status     = 5;
+  string start_at   = 6;
+  string end_at     = 7;
+  string created_at = 8;
+}
+
+// ShopItem 实体
+message ShopItem {
+  int32  id           = 1;
+  string hash_id      = 2;
+  string name         = 3;
+  string description  = 4;
+  string category_key = 5;
+  int32  point_cost   = 6;
+  int32  stock        = 7;
+  int32  status       = 8;
+  string created_at   = 9;
+}
+
+// ShopCategory 实体
+message ShopCategory {
+  string key    = 1;
+  string name   = 2;
+  int32  status = 3;
+  int32  sort   = 4;
+}
+
+// ShopReward 实体
+message ShopReward {
+  int64  id         = 1;
+  string hash_id    = 2;
+  int64  party_id   = 3;
+  int32  item_id    = 4;
+  string item_name  = 5;
+  int32  point_cost = 6;
+  int32  status     = 7;
+  string created_at = 8;
+}
+
+// ShopOrder 实体
+message ShopOrder {
+  int64  id              = 1;
+  string hash_id         = 2;
+  int64  party_id        = 3;
+  int32  item_id         = 4;
+  string item_name       = 5;
+  int32  quantity        = 6;
+  int32  point_cost      = 7;
+  int32  status          = 8;
+  string tracking_number = 9;
+  string created_at      = 10;
+}
+
+// ShopPointTransaction 实体
+message ShopPointTransaction {
+  int64  id          = 1;
+  int64  party_id    = 2;
+  int32  amount      = 3;
+  int32  type        = 4;
+  string description = 5;
+  string created_at  = 6;
+}
+
+// EventUser 实体
+message EventUser {
+  int64  party_id  = 1;
+  string email     = 2;
+  int32  status    = 3;
+  string joined_at = 4;
+}
+
+// Client-facing entities
+message ClientEvent {
+  string key        = 1;
+  string title      = 2;
+  int32  type       = 3;
+  int32  status     = 4;
+  string start_at   = 5;
+  string end_at     = 6;
+  string content    = 7;
+}
+
+message ClientEventUser {
+  int64  party_id  = 1;
+  int32  status    = 2;
+  string joined_at = 3;
+}
+
+message ClientShopItem {
+  string hash_id      = 1;
+  string name         = 2;
+  string description  = 3;
+  string category_key = 4;
+  int32  point_cost   = 5;
+  int32  stock        = 6;
+}
+
+message ClientShopOrder {
+  string hash_id         = 1;
+  string item_name       = 2;
+  int32  quantity        = 3;
+  int32  point_cost      = 4;
+  int32  status          = 5;
+  string tracking_number = 6;
+  string created_at      = 7;
+}
+
+message ClientShopReward {
+  string hash_id    = 1;
+  string item_name  = 2;
+  int32  point_cost = 3;
+  int32  status     = 4;
+  string created_at = 5;
+}
+
+message ClientShopPointTransaction {
+  int64  id          = 1;
+  int32  amount      = 2;
+  int32  type        = 3;
+  string description = 4;
+  string created_at  = 5;
+}
+
+// Event messages
+message ListEventsRequest {
+  PaginationRequest pagination = 1;
+  optional int32    type       = 2;
+  optional int32    status     = 3;
+  optional string   keywords   = 4;
+  optional string   date_from  = 5;
+  optional string   date_to    = 6;
+}
+
+message ListEventsResponse {
+  repeated Event data = 1;
+  PaginationMeta meta = 2;
+}
+
+message GetEventRequest {
+  int32 id = 1;
+}
+
+message CreateEventRequest {
+  string key      = 1;
+  string title    = 2;
+  int32  type     = 3;
+  string start_at = 4;
+  string end_at   = 5;
+}
+
+message UpdateEventRequest {
+  int32             id   = 1;
+  CreateEventRequest spec = 2;
+}
+
+message UpdateEventLangRequest {
+  int32  id      = 1;
+  string lang    = 2;
+  EventLangSpec  spec = 3;
+}
+
+message EventLangSpec {
+  string title   = 1;
+  string content = 2;
+}
+
+message ListEventUsersRequest {
+  PaginationRequest pagination = 1;
+  optional int32    status     = 2;
+  optional string   keywords   = 3;
+}
+
+message ListEventUsersResponse {
+  repeated EventUser data = 1;
+  PaginationMeta     meta = 2;
+}
+
+message EventUserPartyRequest {
+  int64 party_id = 1;
+}
+
+// ShopItem messages
+message ListShopItemsRequest {
+  PaginationRequest pagination   = 1;
+  optional string   category_key = 2;
+  optional int32    status       = 3;
+  optional string   keywords     = 4;
+}
+
+message ListShopItemsResponse {
+  repeated ShopItem data = 1;
+  PaginationMeta    meta = 2;
+}
+
+message GetShopItemRequest {
+  int32 id = 1;
+}
+
+message CreateShopItemRequest {
+  string name         = 1;
+  string description  = 2;
+  string category_key = 3;
+  int32  point_cost   = 4;
+  int32  stock        = 5;
+}
+
+message UpdateShopItemRequest {
+  int32               id   = 1;
+  CreateShopItemRequest spec = 2;
+}
+
+message UpdateShopItemLangRequest {
+  int32         id   = 1;
+  string        lang = 2;
+  ShopItemLangSpec spec = 3;
+}
+
+message ShopItemLangSpec {
+  string name        = 1;
+  string description = 2;
+}
+
+message ShopCategoriesResponse {
+  repeated ShopCategory categories = 1;
+}
+
+message UpdateShopCategoryRequest {
+  repeated ShopCategory categories = 1;
+}
+
+message UpdateShopCategoryStatusRequest {
+  string key  = 1;
+  IntValue spec = 2;
+}
+
+message IntValue {
+  int32 value = 1;
+}
+
+// ShopReward messages
+message ListShopRewardsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    party_id   = 2;
+  optional int32    status     = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message ListShopRewardsResponse {
+  repeated ShopReward data = 1;
+  PaginationMeta      meta = 2;
+}
+
+message GetShopRewardRequest {
+  int64 id = 1;
+}
+
+// ShopOrder messages
+message ListShopOrdersRequest {
+  PaginationRequest pagination = 1;
+  optional int64    party_id   = 2;
+  optional int32    status     = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message ListShopOrdersResponse {
+  repeated ShopOrder data = 1;
+  PaginationMeta     meta = 2;
+}
+
+message GetShopOrderRequest {
+  int64 id = 1;
+}
+
+message UpdateShopOrderShippingRequest {
+  int64               id   = 1;
+  ShippingSpec        spec = 2;
+}
+
+message ShippingSpec {
+  string tracking_number = 1;
+}
+
+// ShopPoint messages
+message AdjustShopPointRequest {
+  int64  party_id    = 1;
+  int32  amount      = 2;
+  string description = 3;
+}
+
+message ListShopPointTransactionsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    party_id   = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+
+message ListShopPointTransactionsResponse {
+  repeated ShopPointTransaction data = 1;
+  PaginationMeta                meta = 2;
+}
+
+// Client Event messages
+message GetClientEventRequest {
+  string key = 1;
+}
+
+message ApplyClientEventRequest {
+  string key = 1;
+}
+
+message GetClientEventUserRequest {
+  string event_key = 1;
+}
+
+message ClientShopCategoriesResponse {
+  repeated ClientShopCategory categories = 1;
+}
+
+message ClientShopCategory {
+  string key  = 1;
+  string name = 2;
+}
+
+message ListClientShopItemsRequest {
+  PaginationRequest pagination   = 1;
+  optional string   category_key = 2;
+  optional string   keywords     = 3;
+}
+
+message ListClientShopItemsResponse {
+  repeated ClientShopItem data = 1;
+  PaginationMeta          meta = 2;
+}
+
+message GetClientShopItemRequest {
+  string hash_id = 1;
+}
+
+message ListClientShopOrdersRequest {
+  PaginationRequest pagination = 1;
+  optional int32    status     = 2;
+}
+
+message ListClientShopOrdersResponse {
+  repeated ClientShopOrder data = 1;
+  PaginationMeta           meta = 2;
+}
+
+message CreateClientShopOrderRequest {
+  string item_hash_id      = 1;
+  int32  quantity          = 2;
+  string address_hash_id   = 3;
+}
+
+message GetClientShopOrderRequest {
+  string hash_id = 1;
+}
+
+message UpdateClientShopOrderAddressRequest {
+  string hash_id         = 1;
+  string address_hash_id = 2;
+}
+
+message ListClientShopRewardsRequest {
+  PaginationRequest pagination = 1;
+  optional int32    status     = 2;
+}
+
+message ListClientShopRewardsResponse {
+  repeated ClientShopReward data = 1;
+  PaginationMeta            meta = 2;
+}
+
+message CreateClientShopRewardRequest {
+  string item_hash_id = 1;
+}
+
+message ListClientShopPointTransactionsRequest {
+  PaginationRequest pagination = 1;
+  optional string   date_from  = 2;
+  optional string   date_to    = 3;
+}
+
+message ListClientShopPointTransactionsResponse {
+  repeated ClientShopPointTransaction data = 1;
+  PaginationMeta                      meta = 2;
+}

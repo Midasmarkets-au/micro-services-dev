@@ -1,0 +1,918 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Account API (api/v1/tenant/account) ─────────────────────────────
+
+service TenantAccountService {
+  // 列表查询
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account" };
+  }
+  // 获取单条
+  rpc GetAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}" };
+  }
+  // 刷新账户
+  rpc RefreshAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/refresh" };
+  }
+  // 获取账户日志
+  rpc ListAccountLogs(ListAccountLogsRequest) returns (ListAccountLogsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/log" };
+  }
+  // 获取日志动作枚举
+  rpc GetLogActions(EmptyRequest) returns (LogActionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/log-actions" };
+  }
+  // 更新账户类型
+  rpc UpdateAccountType(UpdateAccountTypeRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/type", body: "spec" };
+  }
+  // 更新站点
+  rpc UpdateAccountSite(UpdateAccountSiteRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/site", body: "spec" };
+  }
+  // 更新状态
+  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/status/{status}", body: "spec" };
+  }
+  // 更新标签
+  rpc UpdateAccountTags(UpdateAccountTagsRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/tags", body: "spec" };
+  }
+  // 更新是否有等级规则
+  rpc UpdateHasLevelRule(UpdateHasLevelRuleRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/has-level-rule" };
+  }
+  // 更新资金类型
+  rpc UpdateFundType(UpdateFundTypeRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/fund-type" };
+  }
+  // 获取等级设置
+  rpc GetLevelSetting(GetAccountRequest) returns (LevelSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/level-setting" };
+  }
+  // 获取推荐码列表
+  rpc GetReferralCodes(GetAccountRequest) returns (ReferralCodesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/referral-codes" };
+  }
+  // 获取向导数据
+  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/wizard" };
+  }
+  // MT 组合品种查询
+  rpc GetMtGroupSymbol(GetMtGroupSymbolRequest) returns (MtGroupSymbolResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/mt-group-symbol" };
+  }
+  // 校验账户号码
+  rpc CheckAccountNumber(CheckAccountNumberRequest) returns (CheckAccountNumberResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/check-account-number/{account_number}" };
+  }
+  // 更改账户号码
+  rpc ChangeAccountNumber(ChangeAccountNumberRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/change-account-number/{account_number}" };
+  }
+  // IB 转 Sales 操作
+  rpc IbToSales(IbToSalesRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/ib-to-sales/{uid}/{code}/{real_code}" };
+  }
+}
+
+// ─── Tenant Account V2 API (api/v2/tenant/account) ──────────────────────────
+
+service TenantAccountServiceV2 {
+  // 确认自动创建账户
+  rpc ConfirmAutoCreate(ConfirmAutoCreateRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/tenant/account/{id}/confirm-auto-create" };
+  }
+  // 分配钱包
+  rpc AssignWallet(AssignWalletRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/tenant/account/{id}/assign-wallet/{wallet_id}" };
+  }
+  // 获取账户交易统计
+  rpc GetAccountTradeStat(GetAccountTradeStatRequest) returns (TradeStatResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/{id}/trade/stat" };
+  }
+  // 获取多账户交易统计
+  rpc GetMultiAccountTradeStat(GetMultiAccountTradeStatRequest) returns (TradeStatResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/trade/stat" };
+  }
+  // 获取账户日报
+  rpc GetDailyReport(GetDailyReportRequest) returns (DailyReportResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/daily-report/{account_number}" };
+  }
+  // 启用转账
+  rpc EnableTransfer(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/tenant/account/{id}/enable-transfer" };
+  }
+  // 禁用转账
+  rpc DisableTransfer(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/tenant/account/{id}/disable-transfer" };
+  }
+  // 获取顶级账户统计
+  rpc GetStatTop(GetStatTopRequest) returns (StatTopResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/stat-top" };
+  }
+}
+
+// ─── Client Account API (api/v1/client/account) ─────────────────────────────
+
+service ClientAccountService {
+  // 列表查询
+  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/account" };
+  }
+  // 获取单条
+  rpc GetAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/client/account/{id}" };
+  }
+  // 获取向导数据
+  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {
+    option (google.api.http) = { get: "/api/v1/client/account/{id}/wizard" };
+  }
+  // 刷新账户
+  rpc RefreshAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/client/account/{id}/refresh" };
+  }
+}
+
+// ─── Client Account V2 API (api/v2/client/account) ──────────────────────────
+
+service ClientAccountServiceV2 {
+  // 列表查询
+  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account" };
+  }
+  // 获取模拟账户列表
+  rpc ListDemoAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/demo" };
+  }
+  // 创建模拟账户
+  rpc CreateDemoAccount(CreateDemoAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/client/account/demo", body: "*" };
+  }
+  // 获取开户配置
+  rpc GetApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/application-config" };
+  }
+  // 获取模拟账户开户配置
+  rpc GetDemoApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/demo/application-config" };
+  }
+  // 按推荐码获取账户类型
+  rpc GetAccountTypeByReferral(GetAccountTypeByReferralRequest) returns (AccountTypesResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/type/referral" };
+  }
+  // 获取账户配置
+  rpc GetAccountConfig(GetAccountRequest) returns (AccountConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{id}/config" };
+  }
+  // 设置为默认父账户
+  rpc SetDefaultParent(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/client/account/{id}/default-parent" };
+  }
+  // 修改杠杆
+  rpc ChangeLeverage(ChangeLeverageRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/client/account/{id}/change-leverage", body: "spec" };
+  }
+  // 修改交易密码
+  rpc ChangePassword(ChangePasswordRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/client/account/{id}/change-password", body: "spec" };
+  }
+  // 查询支付状态
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (PaymentStatusResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{id}/payment/{payment_number}/status" };
+  }
+  // 查询充值列表
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit" };
+  }
+  // 创建充值
+  rpc CreateDeposit(CreateDepositRequest) returns (Deposit) {
+    option (google.api.http) = { post: "/api/v2/client/account/{account_uid}/deposit", body: "spec" };
+  }
+  // 获取充值引导
+  rpc GetDepositGuide(GetDepositGuideRequest) returns (DepositGuideResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit/{deposit_hash_id}/guide" };
+  }
+  // 获取充值回执
+  rpc GetDepositReceipt(GetDepositReceiptRequest) returns (DepositReceiptResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit/{deposit_hash_id}/receipt" };
+  }
+  // 查询提款列表
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/withdrawal" };
+  }
+  // 创建提款
+  rpc CreateWithdrawal(CreateWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v2/client/account/{account_uid}/withdrawal", body: "spec" };
+  }
+  // 查询转账列表
+  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/transfer" };
+  }
+}
+
+// ─── Sales Account API (api/v1/sales/{salesUid}/account) ────────────────────
+
+service SalesAccountService {
+  // 列表查询
+  rpc ListAccounts(ListSalesAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account" };
+  }
+  // 获取单条
+  rpc GetAccount(GetSalesAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}" };
+  }
+  // 获取 level 账户
+  rpc GetLevelAccount(GetLevelAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{child_account_uid}/level-account" };
+  }
+  // 获取子账户统计
+  rpc GetChildAccountStat(GetChildAccountStatRequest) returns (ChildStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/stat" };
+  }
+  // 获取子账户网络统计
+  rpc GetChildNetStat(GetChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat" };
+  }
+  // 按品种分组获取返佣统计
+  rpc GetChildRebateBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/rebate/symbol-grouped" };
+  }
+  // 按品种分组获取交易统计
+  rpc GetChildTradeBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/trade/symbol-grouped" };
+  }
+  // 获取账户配置
+  rpc GetAccountConfiguration(GetSalesAccountConfigRequest) returns (AccountConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/configuration/{agent_uid}" };
+  }
+  // 获取默认等级设置
+  rpc GetDefaultLevelSetting(GetSalesDefaultLevelRequest) returns (LevelSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{agent_uid}/default-level-setting" };
+  }
+  // 获取可用账户类型
+  rpc GetAvailableAccountTypes(GetSalesUidRequest) returns (AccountTypesResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/configuration/account-type-available" };
+  }
+  // 获取推荐路径
+  rpc GetReferralPath(GetSalesReferralPathRequest) returns (ReferralPathResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/referralPath/{uid}" };
+  }
+  // 获取查看邮箱验证码
+  rpc GetViewEmailCode(GetSalesAccountRequest) returns (EmailCodeResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/view-email-code" };
+  }
+  // 查看邮箱
+  rpc GetViewEmail(GetViewEmailRequest) returns (EmailResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/view-email/{code}" };
+  }
+}
+
+// ─── Agent Account API (api/v1/agent/{agentUid}/account) ────────────────────
+
+service AgentAccountService {
+  // 列表查询
+  rpc ListAccounts(ListAgentAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account" };
+  }
+  // 获取单条
+  rpc GetAccount(GetAgentAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}" };
+  }
+  // 刷新账户
+  rpc RefreshAccount(GetAgentAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/refresh" };
+  }
+  // 获取子账户网络统计
+  rpc GetChildNetStat(GetAgentChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/child/stat" };
+  }
+  // 按品种分组获取返佣统计
+  rpc GetChildRebateBySymbol(GetAgentChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/child/stat/rebate/symbol-grouped" };
+  }
+  // 获取默认等级设置
+  rpc GetDefaultLevelSetting(GetAgentAccountRequest) returns (LevelSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/default-level-setting" };
+  }
+  // 获取查看邮箱验证码
+  rpc GetViewEmailCode(GetAgentAccountRequest) returns (EmailCodeResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/view-email-code" };
+  }
+  // 查看邮箱
+  rpc GetViewEmail(GetAgentViewEmailRequest) returns (EmailResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/view-email/{code}" };
+  }
+}
+
+// ─── Rep Account API (api/v1/rep/{repUid}/account) ──────────────────────────
+
+service RepAccountService {
+  // 列表查询
+  rpc ListAccounts(ListRepAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account" };
+  }
+  // 获取单条
+  rpc GetAccount(GetRepAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/{uid}" };
+  }
+  // 获取组名列表
+  rpc GetGroupNameList(GetGroupNameListRequest) returns (GroupNameListResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/group/name-list" };
+  }
+  // 获取子账户网络统计
+  rpc GetChildNetStat(GetRepChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/child/stat" };
+  }
+  // 按品种分组获取返佣统计
+  rpc GetChildRebateBySymbol(GetRepChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/child/stat/rebate/symbol-grouped" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+// Account 实体（简化，含关键标识字段）
+message Account {
+  int64  id          = 1;
+  string name        = 2;
+  string email       = 3;
+  int32  status      = 4;  // AccountStatus enum value
+  int32  role        = 5;  // AccountRoleTypes enum value
+  int32  fund_type   = 6;
+  int64  tenant_id   = 7;
+  int64  party_id    = 8;
+  string created_at  = 9;  // ISO 8601
+  string updated_at  = 10;
+}
+
+// Tenant 账户列表请求
+message ListAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2;
+  optional int32    status      = 3;
+  optional int64    uid         = 4;
+  repeated int64    uids        = 5;
+  optional int32    role        = 6;
+  optional string   date_from   = 7;
+  optional string   date_to     = 8;
+  optional int64    party_id    = 9;
+  optional int32    fund_type   = 10;
+}
+
+message ListAccountsResponse {
+  repeated Account data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message GetAccountRequest {
+  int64 id = 1;
+}
+
+// 账户日志列表请求
+message ListAccountLogsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    account_id = 2;
+  optional string   action     = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message ListAccountLogsResponse {
+  repeated AccountLog data = 1;
+  PaginationMeta      meta = 2;
+}
+
+message AccountLog {
+  int64  id         = 1;
+  int64  account_id = 2;
+  string action     = 3;
+  string detail     = 4;
+  string created_at = 5;
+}
+
+message LogActionsResponse {
+  repeated string actions = 1;
+}
+
+message UpdateAccountTypeRequest {
+  int64             id  = 1;
+  UpdateAccountType spec = 2;
+}
+
+message UpdateAccountType {
+  int32 type = 1;
+}
+
+message UpdateAccountSiteRequest {
+  int64            id   = 1;
+  UpdateAccountSite spec = 2;
+}
+
+message UpdateAccountSite {
+  int32 site_id = 1;
+}
+
+message UpdateAccountStatusRequest {
+  int64              id      = 1;
+  int32              status  = 2;
+  WithCommentSpec    spec    = 3;
+}
+
+message WithCommentSpec {
+  string comment = 1;
+}
+
+message UpdateAccountTagsRequest {
+  int64         id   = 1;
+  UpdateTagSpec spec = 2;
+}
+
+message UpdateTagSpec {
+  repeated string tags = 1;
+}
+
+message UpdateHasLevelRuleRequest {
+  int64 id             = 1;
+  bool  has_level_rule = 2;
+}
+
+message UpdateFundTypeRequest {
+  int64 id        = 1;
+  int32 fund_type = 2;
+}
+
+message LevelSettingResponse {
+  repeated LevelSetting items = 1;
+}
+
+message LevelSetting {
+  int32  level      = 1;
+  string name       = 2;
+  double amount     = 3;
+}
+
+message ReferralCodesResponse {
+  repeated ReferralCode items = 1;
+}
+
+message ReferralCode {
+  string code       = 1;
+  int32  type       = 2;
+  bool   is_default = 3;
+}
+
+message AccountWizardResponse {
+  int32 step         = 1;
+  bool  completed    = 2;
+}
+
+message GetMtGroupSymbolRequest {
+  int32  service_id = 1;
+  string group      = 2;
+  string symbol     = 3;
+  int32  trans_id   = 4;
+}
+
+message MtGroupSymbolResponse {
+  repeated string items = 1;
+}
+
+message CheckAccountNumberRequest {
+  int64 account_number = 1;
+}
+
+message CheckAccountNumberResponse {
+  bool   valid   = 1;
+  string message = 2;
+}
+
+message ChangeAccountNumberRequest {
+  int64 id             = 1;
+  int64 account_number = 2;
+}
+
+message IbToSalesRequest {
+  int64  uid       = 1;
+  string code      = 2;
+  int32  real_code = 3;
+}
+
+// V2 Tenant messages
+message ConfirmAutoCreateRequest {
+  int64 id = 1;
+}
+
+message AssignWalletRequest {
+  int64 id        = 1;
+  int64 wallet_id = 2;
+}
+
+message GetAccountTradeStatRequest {
+  int64           id        = 1;
+  optional string date_from = 2;
+  optional string date_to   = 3;
+}
+
+message GetMultiAccountTradeStatRequest {
+  repeated int64  account_numbers = 1;
+  optional string date_from       = 2;
+  optional string date_to         = 3;
+}
+
+message TradeStatResponse {
+  double volume      = 1;
+  double profit      = 2;
+  int32  trade_count = 3;
+}
+
+message GetDailyReportRequest {
+  int64  account_number = 1;
+  string date           = 2;
+}
+
+message DailyReportResponse {
+  string date    = 1;
+  double balance = 2;
+  double equity  = 3;
+}
+
+message GetStatTopRequest {
+  optional string date_from      = 1;
+  optional string date_to        = 2;
+  optional int64  account_number = 3;
+  int32           count          = 4;
+}
+
+message StatTopResponse {
+  repeated StatTopItem items = 1;
+}
+
+message StatTopItem {
+  int64  account_id = 1;
+  string name       = 2;
+  double value      = 3;
+}
+
+// Client Account messages
+message ListClientAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message CreateDemoAccountRequest {
+  string account_type = 1;
+  double initial_deposit = 2;
+  int32  leverage     = 3;
+}
+
+message ApplicationConfigResponse {
+  repeated AccountTypeConfig types = 1;
+}
+
+message AccountTypeConfig {
+  int32  id   = 1;
+  string name = 2;
+}
+
+message GetAccountTypeByReferralRequest {
+  string code = 1;
+}
+
+message AccountTypesResponse {
+  repeated AccountTypeConfig types = 1;
+}
+
+message AccountConfigResponse {
+  int64  account_id      = 1;
+  int32  leverage        = 2;
+  bool   transfer_enabled = 3;
+}
+
+message ChangeLeverageRequest {
+  int64              id   = 1;
+  ChangeLeverageSpec spec = 2;
+}
+
+message ChangeLeverageSpec {
+  int32 leverage = 1;
+}
+
+message ChangePasswordRequest {
+  int64              id   = 1;
+  ChangePasswordSpec spec = 2;
+}
+
+message ChangePasswordSpec {
+  string password     = 1;
+  string old_password = 2;
+}
+
+message GetPaymentStatusRequest {
+  int64  id             = 1;
+  string payment_number = 2;
+}
+
+message PaymentStatusResponse {
+  int32  status  = 1;
+  string message = 2;
+}
+
+message ListDepositsRequest {
+  int64             account_uid = 1;
+  PaginationRequest pagination  = 2;
+  optional string   date_from   = 3;
+  optional string   date_to     = 4;
+  optional int32    status      = 5;
+}
+
+message ListDepositsResponse {
+  repeated Deposit data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message Deposit {
+  int64  id          = 1;
+  string hash_id     = 2;
+  int64  account_uid = 3;
+  double amount      = 4;
+  string currency    = 5;
+  int32  status      = 6;
+  string created_at  = 7;
+}
+
+message CreateDepositRequest {
+  int64             account_uid = 1;
+  CreateDepositSpec spec        = 2;
+}
+
+message CreateDepositSpec {
+  int64  payment_method_id = 1;
+  double amount            = 2;
+  string currency          = 3;
+}
+
+message GetDepositGuideRequest {
+  int64  account_uid     = 1;
+  string deposit_hash_id = 2;
+}
+
+message DepositGuideResponse {
+  string instructions = 1;
+}
+
+message GetDepositReceiptRequest {
+  int64  account_uid     = 1;
+  string deposit_hash_id = 2;
+}
+
+message DepositReceiptResponse {
+  string url = 1;
+}
+
+message ListWithdrawalsRequest {
+  int64             account_uid = 1;
+  PaginationRequest pagination  = 2;
+  optional string   date_from   = 3;
+  optional string   date_to     = 4;
+  optional int32    status      = 5;
+}
+
+message ListWithdrawalsResponse {
+  repeated Withdrawal data = 1;
+  PaginationMeta      meta = 2;
+}
+
+message Withdrawal {
+  int64  id          = 1;
+  string hash_id     = 2;
+  int64  account_uid = 3;
+  double amount      = 4;
+  string currency    = 5;
+  int32  status      = 6;
+  string created_at  = 7;
+}
+
+message CreateWithdrawalRequest {
+  int64                account_uid = 1;
+  CreateWithdrawalSpec spec        = 2;
+}
+
+message CreateWithdrawalSpec {
+  int64  payment_info_id = 1;
+  double amount          = 2;
+  string currency        = 3;
+}
+
+message ListTransfersRequest {
+  int64             account_uid = 1;
+  PaginationRequest pagination  = 2;
+  optional string   date_from   = 3;
+  optional string   date_to     = 4;
+}
+
+message ListTransfersResponse {
+  repeated Transfer data = 1;
+  PaginationMeta    meta = 2;
+}
+
+message Transfer {
+  int64  id          = 1;
+  int64  from_uid    = 2;
+  int64  to_uid      = 3;
+  double amount      = 4;
+  int32  status      = 5;
+  string created_at  = 6;
+}
+
+// Sales Account messages
+message ListSalesAccountsRequest {
+  int64             sales_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3;
+  optional int32    status     = 4;
+  optional string   date_from  = 5;
+  optional string   date_to    = 6;
+}
+
+message GetSalesAccountRequest {
+  int64 sales_uid = 1;
+  int64 uid       = 2;
+}
+
+message GetLevelAccountRequest {
+  int64 sales_uid        = 1;
+  int64 child_account_uid = 2;
+}
+
+message GetChildAccountStatRequest {
+  int64           sales_uid = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+
+message ChildStatResponse {
+  double volume      = 1;
+  double profit      = 2;
+  int32  trade_count = 3;
+}
+
+message GetChildNetStatRequest {
+  int64           sales_uid  = 1;
+  int64           uid        = 2;
+  optional string date_from  = 3;
+  optional string date_to    = 4;
+  bool            view_client = 5;
+}
+
+message ChildNetStatResponse {
+  double net_deposit = 1;
+  double volume      = 2;
+}
+
+message GetChildStatByRangeRequest {
+  int64           sales_uid = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+
+message SymbolGroupStatResponse {
+  repeated SymbolStat items = 1;
+}
+
+message SymbolStat {
+  string symbol = 1;
+  double volume = 2;
+  double amount = 3;
+}
+
+message GetSalesAccountConfigRequest {
+  int64 sales_uid = 1;
+  int64 agent_uid = 2;
+}
+
+message GetSalesDefaultLevelRequest {
+  int64 sales_uid = 1;
+  int64 agent_uid = 2;
+}
+
+message GetSalesUidRequest {
+  int64 sales_uid = 1;
+}
+
+message GetSalesReferralPathRequest {
+  int64 sales_uid = 1;
+  int64 uid       = 2;
+}
+
+message ReferralPathResponse {
+  repeated ReferralPathItem path = 1;
+}
+
+message ReferralPathItem {
+  int64  account_id = 1;
+  string name       = 2;
+  int32  level      = 3;
+}
+
+message EmailCodeResponse {
+  string code       = 1;
+  string expires_at = 2;
+}
+
+message EmailResponse {
+  string email = 1;
+}
+
+message GetViewEmailRequest {
+  int64  sales_uid = 1;
+  int64  uid       = 2;
+  string code      = 3;
+}
+
+// Agent Account messages
+message ListAgentAccountsRequest {
+  int64             agent_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3;
+  optional int32    status     = 4;
+}
+
+message GetAgentAccountRequest {
+  int64 agent_uid = 1;
+  int64 uid       = 2;
+}
+
+message GetAgentChildNetStatRequest {
+  int64           agent_uid  = 1;
+  int64           uid        = 2;
+  optional string date_from  = 3;
+  optional string date_to    = 4;
+  bool            view_client = 5;
+}
+
+message GetAgentChildStatByRangeRequest {
+  int64           agent_uid = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+
+message GetAgentViewEmailRequest {
+  int64  agent_uid = 1;
+  int64  uid       = 2;
+  string code      = 3;
+}
+
+// Rep Account messages
+message ListRepAccountsRequest {
+  int64             rep_uid    = 1;
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3;
+  optional int32    status     = 4;
+}
+
+message GetRepAccountRequest {
+  int64 rep_uid = 1;
+  int64 uid     = 2;
+}
+
+message GetGroupNameListRequest {
+  int64           rep_uid   = 1;
+  optional int32  type      = 2;
+  optional string keywords  = 3;
+}
+
+message GroupNameListResponse {
+  repeated string names = 1;
+}
+
+message GetRepChildNetStatRequest {
+  int64           rep_uid   = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+  bool            view_client = 5;
+}
+
+message GetRepChildStatByRangeRequest {
+  int64           rep_uid   = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}

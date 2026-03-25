@@ -1,0 +1,630 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Trade Account API (api/v1/tenant/trade-account) ─────────────────
+
+service TenantTradeAccountService {
+  // 列表查询
+  rpc ListTradeAccounts(ListTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade-account" };
+  }
+  // 获取单条
+  rpc GetTradeAccount(GetTradeAccountRequest) returns (TradeAccount) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade-account/{uid}" };
+  }
+  // 创建交易账户
+  rpc CreateTradeAccount(CreateTradeAccountRequest) returns (TradeAccount) {
+    option (google.api.http) = { post: "/api/v1/tenant/trade-account", body: "*" };
+  }
+  // 设置返佣规则模板
+  rpc SetRebateRuleTemplate(SetRebateRuleTemplateRequest) returns (TradeAccount) {
+    option (google.api.http) = { put: "/api/v1/tenant/trade-account/{id}/template/{rebate_rule_template_id}" };
+  }
+  // 获取只读密码
+  rpc GetReadOnlyCode(GetTradeAccountRequest) returns (ReadOnlyCodeResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade-account/{uid}/read-only-code" };
+  }
+  // 预览只读密码通知邮件
+  rpc PreviewReadOnlyCodeNotice(ReadOnlyCodeNoticeRequest) returns (EmailPreviewResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/trade-account/{id}/read-only-code/notice/preview" };
+  }
+  // 发送只读密码通知邮件
+  rpc SendReadOnlyCodeNotice(ReadOnlyCodeNoticeRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/trade-account/{id}/read-only-code/notice" };
+  }
+  // 更新杠杆
+  rpc UpdateLeverage(UpdateLeverageRequest) returns (TradeAccount) {
+    option (google.api.http) = { put: "/api/v1/tenant/trade-account/{account_id}/leverage/{leverage}" };
+  }
+  // 检查余额
+  rpc CheckBalance(GetTradeAccountRequest) returns (TradeAccount) {
+    option (google.api.http) = { put: "/api/v1/tenant/trade-account/{uid}/check-balance" };
+  }
+}
+
+// ─── Tenant Trade Demo Account API (api/v1/tenant/trade-demo-account) ────────
+
+service TenantTradeDemoAccountService {
+  // 列表查询
+  rpc ListTradeDemoAccounts(ListTradeDemoAccountsRequest) returns (ListTradeDemoAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade-demo-account" };
+  }
+  // 删除模拟账户
+  rpc DeleteTradeDemoAccount(GetTradeAccountRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/trade-demo-account/{uid}" };
+  }
+}
+
+// ─── Tenant Trade API (api/v1/tenant/trade) ──────────────────────────────────
+
+service TenantTradeService {
+  // 交易记录列表
+  rpc ListTrades(ListTradesRequest) returns (ListTradesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade" };
+  }
+  // 获取服务列表
+  rpc ListServices(EmptyRequest) returns (TradeServicesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade/service" };
+  }
+  // 获取服务分组
+  rpc GetServiceGroups(GetServiceRequest) returns (ServiceGroupsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/trade/service/{id}/group" };
+  }
+  // 添加服务分组
+  rpc AddServiceGroup(AddServiceGroupRequest) returns (ServiceGroupsResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/trade/service/{id}/group", body: "spec" };
+  }
+  // 删除服务分组
+  rpc DeleteServiceGroup(DeleteServiceGroupRequest) returns (ServiceGroupsResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/trade/service/{id}/group" };
+  }
+  // 更新服务分组
+  rpc UpdateServiceGroups(UpdateServiceGroupsRequest) returns (ServiceGroupsResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/trade/service/{id}/group", body: "spec" };
+  }
+}
+
+// ─── Tenant Trade Password API (api/v1/tenant/tradepassword) ─────────────────
+
+service TenantTradePasswordService {
+  // 重置 CRM 密码
+  rpc ResetCrmPassword(ResetCrmPasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/tradepassword/account/{account_id}/crm-password/reset", body: "request" };
+  }
+  // 获取初始交易密码
+  rpc GetInitialTradePassword(GetTradeAccountIdRequest) returns (InitialPasswordResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/initial" };
+  }
+  // 修改主密码
+  rpc ChangeMainPassword(ChangeTradePasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/main", body: "request" };
+  }
+  // 修改观察密码
+  rpc ChangeInvestorPassword(ChangeTradePasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/investor", body: "request" };
+  }
+  // 重置为初始密码
+  rpc ResetToInitialPassword(ResetToInitialPasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/reset-to-initial", body: "request" };
+  }
+  // 获取密码修改历史
+  rpc GetPasswordHistory(GetPasswordHistoryRequest) returns (PasswordHistoryResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/history" };
+  }
+}
+
+// ─── Tenant Trade Service Configuration (api/v1/tenant/tradeserviceconfiguration) ──
+
+service TenantTradeServiceConfigurationService {
+  // 获取服务配置
+  rpc GetConfiguration(GetTradeServiceConfigRequest) returns (TradeServiceConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/configuration" };
+  }
+  // 获取 MT5 模拟账户前缀
+  rpc GetAccountPrefixes(GetTradeServiceConfigRequest) returns (AccountPrefixesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/account-prefixes" };
+  }
+  // 更新 MT5 模拟账户前缀
+  rpc UpdateAccountPrefixes(UpdateAccountPrefixesRequest) returns (AccountPrefixesResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/account-prefixes", body: "prefixes" };
+  }
+}
+
+// ─── Client Trade Account API (api/v1/client/trade-account) ──────────────────
+
+service ClientTradeAccountService {
+  // 列表查询
+  rpc ListTradeAccounts(ListTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade-account" };
+  }
+  // 获取单条
+  rpc GetTradeAccount(GetTradeAccountRequest) returns (TradeAccount) {
+    option (google.api.http) = { get: "/api/v1/client/trade-account/{uid}" };
+  }
+  // 校验目标邮箱
+  rpc CheckTargetEmail(CheckTargetEmailRequest) returns (CheckTargetEmailResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade-account/check-target-email" };
+  }
+  // 获取批发推荐检查
+  rpc WholesaleReferralCheck(WholesaleReferralCheckRequest) returns (WholesaleReferralCheckResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade-account/wholesale-referral-check" };
+  }
+  // 获取交易记录列表
+  rpc ListTrades(GetTradeAccountTradesRequest) returns (ListTradesResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade-account/{uid}/trade" };
+  }
+  // 请求修改密码 OTP
+  rpc RequestChangePasswordOtp(GetTradeAccountRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/client/trade-account/{uid}/change-password" };
+  }
+  // 获取账户交易流水
+  rpc ListTransactions(GetTradeAccountTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade-account/{uid}/transaction" };
+  }
+}
+
+// ─── Client Trade Account V2 API (api/v2/client/trade-account) ───────────────
+
+service ClientTradeAccountServiceV2 {
+  // 列表查询
+  rpc ListTradeAccounts(ListTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/trade-account" };
+  }
+}
+
+// ─── Client Trade Demo Account API (api/v1/client/trade-demo-account) ────────
+
+service ClientTradeDemoAccountService {
+  // 列表查询
+  rpc ListTradeDemoAccounts(ListTradeDemoAccountsRequest) returns (ListTradeDemoAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade-demo-account" };
+  }
+  // 创建模拟账户
+  rpc CreateTradeDemoAccount(CreateTradeDemoAccountRequest) returns (TradeDemoAccount) {
+    option (google.api.http) = { post: "/api/v1/client/trade-demo-account", body: "*" };
+  }
+}
+
+// ─── Client Trade Service API (api/v1/client/trade) ──────────────────────────
+
+service ClientTradeService {
+  // 获取服务列表
+  rpc ListServices(EmptyRequest) returns (TradeServicesResponse) {
+    option (google.api.http) = { get: "/api/v1/client/trade/service" };
+  }
+}
+
+// ─── IB Trade Account API (api/v1/ib/{agentUid}/trade-account) ───────────────
+
+service IbTradeAccountService {
+  // 列表查询
+  rpc ListTradeAccounts(ListIbTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account" };
+  }
+  // 获取单条
+  rpc GetTradeAccount(GetIbTradeAccountRequest) returns (TradeAccount) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account/{uid}" };
+  }
+  // 获取交易记录
+  rpc ListTrades(GetIbTradeAccountTradesRequest) returns (ListTradesResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account/{uid}/trade" };
+  }
+  // 获取账户交易流水
+  rpc ListTransactions(GetIbTradeAccountTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account/{uid}/transaction" };
+  }
+}
+
+// ─── Sales Trade Account API (api/v1/sales/{salesUid}/trade-account) ─────────
+
+service SalesTradeAccountService {
+  // 列表查询
+  rpc ListTradeAccounts(ListSalesTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account" };
+  }
+  // 获取单条
+  rpc GetTradeAccount(GetSalesTradeAccountRequest) returns (TradeAccount) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account/{uid}" };
+  }
+  // 获取交易记录
+  rpc ListTrades(GetSalesTradeAccountTradesRequest) returns (ListTradesResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account/{uid}/trade" };
+  }
+  // 获取账户交易流水
+  rpc ListTransactions(GetSalesTradeAccountTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account/{uid}/transaction" };
+  }
+}
+
+// ─── Rep Trade Account API (api/v1/rep/{repUid}/trade-account) ───────────────
+
+service RepTradeAccountService {
+  // 获取交易记录
+  rpc ListTrades(GetRepTradeAccountTradesRequest) returns (ListTradesResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/trade-account/{uid}/trade" };
+  }
+  // 获取账户交易流水
+  rpc ListTransactions(GetRepTradeAccountTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/trade-account/{uid}/transaction" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// TradeAccount 实体
+message TradeAccount {
+  int64  id           = 1;
+  int64  account_uid  = 2;   // 关联 Account id
+  int64  login        = 3;   // MT4/MT5 login number
+  int32  server_id    = 4;
+  int32  leverage     = 5;
+  double balance      = 6;
+  double equity       = 7;
+  double credit       = 8;
+  int32  status       = 9;
+  string created_at   = 10;
+}
+
+// TradeDemoAccount 实体
+message TradeDemoAccount {
+  int64  id          = 1;
+  int64  account_uid = 2;
+  int64  login       = 3;
+  int32  server_id   = 4;
+  int32  leverage    = 5;
+  double balance     = 6;
+  int32  status      = 7;
+  string created_at  = 8;
+}
+
+// Trade（交易记录）实体
+message Trade {
+  int64  ticket       = 1;
+  int64  login        = 2;
+  string symbol       = 3;
+  int32  cmd          = 4;   // 交易方向
+  double volume       = 5;
+  double open_price   = 6;
+  double close_price  = 7;
+  double profit       = 8;
+  string open_time    = 9;
+  string close_time   = 10;
+}
+
+// Transaction（账户流水）实体
+message Transaction {
+  int64  id          = 1;
+  int64  account_uid = 2;
+  double amount      = 3;
+  string type        = 4;
+  int32  status      = 5;
+  string created_at  = 6;
+}
+
+// 列表请求/响应
+message ListTradeAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   keywords    = 4;
+  optional string   date_from   = 5;
+  optional string   date_to     = 6;
+}
+
+message ListTradeAccountsResponse {
+  repeated TradeAccount data = 1;
+  PaginationMeta        meta = 2;
+}
+
+message GetTradeAccountRequest {
+  int64 uid = 1;
+}
+
+message ListTradeDemoAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+}
+
+message ListTradeDemoAccountsResponse {
+  repeated TradeDemoAccount data = 1;
+  PaginationMeta            meta = 2;
+}
+
+message CreateTradeAccountRequest {
+  int64  account_uid     = 1;
+  int32  server_id       = 2;
+  int32  leverage        = 3;
+  string account_type    = 4;
+  string currency        = 5;
+}
+
+message SetRebateRuleTemplateRequest {
+  int64 id                       = 1;
+  int64 rebate_rule_template_id  = 2;
+}
+
+message ReadOnlyCodeResponse {
+  string code       = 1;
+  string expires_at = 2;
+}
+
+message ReadOnlyCodeNoticeRequest {
+  int64         id       = 1;
+  string        to       = 2;
+  repeated string bcc    = 3;
+  string        language = 4;
+}
+
+message EmailPreviewResponse {
+  string subject = 1;
+  string body    = 2;
+}
+
+message UpdateLeverageRequest {
+  int64 account_id = 1;
+  int32 leverage   = 2;
+}
+
+// Trade list requests
+message ListTradesRequest {
+  PaginationRequest pagination      = 1;
+  optional int64    trade_account_uid = 2;
+  optional string   date_from       = 3;
+  optional string   date_to         = 4;
+  optional string   symbol          = 5;
+}
+
+message ListTradesResponse {
+  repeated Trade data = 1;
+  PaginationMeta meta = 2;
+}
+
+message GetTradeAccountTradesRequest {
+  int64             uid        = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+
+message GetTradeAccountTransactionsRequest {
+  int64             uid        = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction data = 1;
+  PaginationMeta       meta = 2;
+}
+
+// Trade Service messages
+message GetServiceRequest {
+  int32 id = 1;
+}
+
+message TradeServicesResponse {
+  repeated TradeServiceItem items = 1;
+}
+
+message TradeServiceItem {
+  int32  id   = 1;
+  string name = 2;
+  int32  type = 3;
+}
+
+message ServiceGroupsResponse {
+  repeated string groups = 1;
+}
+
+message AddServiceGroupRequest {
+  int32               id   = 1;
+  ServiceGroupSpec    spec = 2;
+}
+
+message ServiceGroupSpec {
+  string group = 1;
+}
+
+message DeleteServiceGroupRequest {
+  int32            id   = 1;
+  ServiceGroupSpec spec = 2;
+}
+
+message UpdateServiceGroupsRequest {
+  int32                id   = 1;
+  UpdateServiceGroupSpec spec = 2;
+}
+
+message UpdateServiceGroupSpec {
+  repeated string groups = 1;
+}
+
+// Trade Password messages
+message GetTradeAccountIdRequest {
+  int64 account_id = 1;
+}
+
+message ResetCrmPasswordRequest {
+  int64                    account_id = 1;
+  ResetCrmPasswordByAdminSpec request  = 2;
+}
+
+message ResetCrmPasswordByAdminSpec {
+  string new_password = 1;
+}
+
+message InitialPasswordResponse {
+  string password = 1;
+}
+
+message ChangeTradePasswordRequest {
+  int64                    account_id = 1;
+  ChangeTradePasswordSpec  request    = 2;
+}
+
+message ChangeTradePasswordSpec {
+  string old_password = 1;
+  string new_password = 2;
+}
+
+message ResetToInitialPasswordRequest {
+  int64                    account_id = 1;
+  ResetToInitialSpec       request    = 2;
+}
+
+message ResetToInitialSpec {
+  bool notify = 1;
+}
+
+message GetPasswordHistoryRequest {
+  int64           account_id    = 1;
+  optional string password_type = 2;
+  int32           limit         = 3;
+  int32           offset        = 4;
+}
+
+message PasswordHistoryResponse {
+  repeated PasswordHistoryItem items = 1;
+}
+
+message PasswordHistoryItem {
+  string type       = 1;
+  string changed_at = 2;
+  string changed_by = 3;
+}
+
+// Trade Service Configuration messages
+message GetTradeServiceConfigRequest {
+  int32 service_id = 1;
+}
+
+message TradeServiceConfigResponse {
+  int32  service_id = 1;
+  string server     = 2;
+  int32  type       = 3;
+}
+
+message AccountPrefixesResponse {
+  map<string, int64> prefixes = 1;
+}
+
+message UpdateAccountPrefixesRequest {
+  int32              service_id = 1;
+  map<string, int64> prefixes   = 2;
+}
+
+// Client specific messages
+message CheckTargetEmailRequest {
+  string email = 1;
+}
+
+message CheckTargetEmailResponse {
+  bool   exists     = 1;
+  int64  wallet_uid = 2;
+}
+
+message WholesaleReferralCheckRequest {
+  string email   = 1;
+  string ref_code = 2;
+}
+
+message WholesaleReferralCheckResponse {
+  bool   trade_account_exists = 1;
+  bool   email_exists         = 2;
+}
+
+message CreateTradeDemoAccountRequest {
+  string account_type    = 1;
+  double initial_deposit = 2;
+  int32  leverage        = 3;
+}
+
+// IB area messages
+message ListIbTradeAccountsRequest {
+  int64             agent_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional int64    account_uid = 3;
+  optional int32    status     = 4;
+}
+
+message GetIbTradeAccountRequest {
+  int64 agent_uid = 1;
+  int64 uid       = 2;
+}
+
+message GetIbTradeAccountTradesRequest {
+  int64             agent_uid  = 1;
+  int64             uid        = 2;
+  PaginationRequest pagination = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message GetIbTradeAccountTransactionsRequest {
+  int64             agent_uid  = 1;
+  int64             uid        = 2;
+  PaginationRequest pagination = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+// Sales area messages
+message ListSalesTradeAccountsRequest {
+  int64             sales_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional int64    account_uid = 3;
+  optional int32    status     = 4;
+}
+
+message GetSalesTradeAccountRequest {
+  int64 sales_uid = 1;
+  int64 uid       = 2;
+}
+
+message GetSalesTradeAccountTradesRequest {
+  int64             sales_uid  = 1;
+  int64             uid        = 2;
+  PaginationRequest pagination = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message GetSalesTradeAccountTransactionsRequest {
+  int64             sales_uid  = 1;
+  int64             uid        = 2;
+  PaginationRequest pagination = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+// Rep area messages
+message GetRepTradeAccountTradesRequest {
+  int64             rep_uid    = 1;
+  int64             uid        = 2;
+  PaginationRequest pagination = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message GetRepTradeAccountTransactionsRequest {
+  int64             rep_uid    = 1;
+  int64             uid        = 2;
+  PaginationRequest pagination = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}

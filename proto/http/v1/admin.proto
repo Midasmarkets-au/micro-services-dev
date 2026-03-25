@@ -1,0 +1,274 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Audit API (api/v1/tenant/audit) ──────────────────────────────────
+
+service TenantAuditService {
+  // 列表查询
+  rpc ListAudits(ListAuditsRequest) returns (ListAuditsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/audit" };
+  }
+  // 获取单条
+  rpc GetAudit(GetAuditRequest) returns (Audit) {
+    option (google.api.http) = { get: "/api/v1/tenant/audit/{id}" };
+  }
+  // 账户余额变动审计
+  rpc ListAccountChangeBalanceAudits(ListAuditsRequest) returns (ListAuditsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/audit/account-change-balance" };
+  }
+  // 最近高额交易
+  rpc GetHighDollarLatest(EmptyRequest) returns (ListAuditsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/audit/high-dollar/latest" };
+  }
+}
+
+// ─── Tenant IP Blacklist API (api/v1/tenant/ip-black-list) ───────────────────
+
+service TenantIpBlacklistService {
+  // 列表查询
+  rpc ListIpBlacklist(ListIpBlacklistRequest) returns (ListIpBlacklistResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/ip-black-list" };
+  }
+  // 创建
+  rpc CreateIpBlacklist(CreateIpBlacklistRequest) returns (IpBlacklistItem) {
+    option (google.api.http) = { post: "/api/v1/tenant/ip-black-list", body: "*" };
+  }
+  // 更新
+  rpc UpdateIpBlacklist(UpdateIpBlacklistRequest) returns (IpBlacklistItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/{id}", body: "spec" };
+  }
+  // 删除
+  rpc DeleteIpBlacklist(GetIpBlacklistRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/ip-black-list/{id}" };
+  }
+  // 重载缓存
+  rpc ReloadCache(EmptyRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/reload-cache" };
+  }
+}
+
+// ─── Tenant User Blacklist API (api/v1/tenant/user-black-list) ───────────────
+
+service TenantUserBlacklistService {
+  // 列表查询（从 Vue 前端扫描结果推断）
+  rpc ListUserBlacklist(ListUserBlacklistRequest) returns (ListUserBlacklistResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user-black-list" };
+  }
+  // 创建
+  rpc CreateUserBlacklist(CreateUserBlacklistRequest) returns (UserBlacklistItem) {
+    option (google.api.http) = { post: "/api/v1/tenant/user-black-list", body: "*" };
+  }
+  // 更新
+  rpc UpdateUserBlacklist(UpdateUserBlacklistRequest) returns (UserBlacklistItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/user-black-list/{id}", body: "spec" };
+  }
+  // 删除
+  rpc DeleteUserBlacklist(GetUserBlacklistRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user-black-list/{id}" };
+  }
+}
+
+// ─── Tenant API Log API (api/v1/tenant/api-log) ──────────────────────────────
+
+service TenantApiLogService {
+  // 列表查询（从 Vue 前端扫描结果推断）
+  rpc ListApiLogs(ListApiLogsRequest) returns (ListApiLogsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/api-log" };
+  }
+}
+
+// ─── Tenant Statistics API (api/v1/tenant/statistic) ────────────────────────
+
+service TenantStatisticsService {
+  // 在线管理员统计
+  rpc GetOnlineAdmins(EmptyRequest) returns (OnlineUsersResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/statistic/online-admins" };
+  }
+  // 在线用户统计
+  rpc GetOnlineUsers(EmptyRequest) returns (OnlineUsersResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/statistic/online-users" };
+  }
+}
+
+// ─── Tenant Statistics V2 API (api/v2/tenant/statistic) ──────────────────────
+
+service TenantStatisticsServiceV2 {
+  // 获取服务器列表
+  rpc GetServers(EmptyRequest) returns (ServersResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/statistic/server" };
+  }
+  // 获取服务器指标
+  rpc GetServerMetrics(EmptyRequest) returns (ServerMetricsResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/statistic/server/metrics" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// Audit 实体
+message Audit {
+  int64  id         = 1;
+  int64  account_id = 2;
+  string action     = 3;
+  string detail     = 4;
+  string ip         = 5;
+  string created_at = 6;
+}
+
+// IpBlacklistItem 实体
+message IpBlacklistItem {
+  int64  id         = 1;
+  string ip         = 2;
+  string reason     = 3;
+  int32  status     = 4;
+  string created_at = 5;
+}
+
+// UserBlacklistItem 实体
+message UserBlacklistItem {
+  int64  id         = 1;
+  string email      = 2;
+  string reason     = 3;
+  int32  status     = 4;
+  string created_at = 5;
+}
+
+// ApiLog 实体
+message ApiLog {
+  int64  id         = 1;
+  string method     = 2;
+  string path       = 3;
+  int32  status_code = 4;
+  int64  duration   = 5;
+  string created_at = 6;
+}
+
+// Audit messages
+message ListAuditsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2;
+  optional string   action      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message ListAuditsResponse {
+  repeated Audit data = 1;
+  PaginationMeta meta = 2;
+}
+
+message GetAuditRequest {
+  int64 id = 1;
+}
+
+// IP Blacklist messages
+message ListIpBlacklistRequest {
+  PaginationRequest pagination = 1;
+  optional string   ip        = 2;
+  optional int32    status    = 3;
+}
+
+message ListIpBlacklistResponse {
+  repeated IpBlacklistItem data = 1;
+  PaginationMeta           meta = 2;
+}
+
+message GetIpBlacklistRequest {
+  int64 id = 1;
+}
+
+message CreateIpBlacklistRequest {
+  string ip     = 1;
+  string reason = 2;
+}
+
+message UpdateIpBlacklistRequest {
+  int64                    id   = 1;
+  CreateIpBlacklistRequest spec = 2;
+}
+
+// User Blacklist messages
+message ListUserBlacklistRequest {
+  PaginationRequest pagination = 1;
+  optional string   email     = 2;
+  optional int32    status    = 3;
+}
+
+message ListUserBlacklistResponse {
+  repeated UserBlacklistItem data = 1;
+  PaginationMeta             meta = 2;
+}
+
+message GetUserBlacklistRequest {
+  int64 id = 1;
+}
+
+message CreateUserBlacklistRequest {
+  string email  = 1;
+  string reason = 2;
+}
+
+message UpdateUserBlacklistRequest {
+  int64                      id   = 1;
+  CreateUserBlacklistRequest spec = 2;
+}
+
+// API Log messages
+message ListApiLogsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   path        = 2;
+  optional int32    status_code = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message ListApiLogsResponse {
+  repeated ApiLog data = 1;
+  PaginationMeta  meta = 2;
+}
+
+// Statistics messages
+message OnlineUsersResponse {
+  int32  count = 1;
+  repeated OnlineUser users = 2;
+}
+
+message OnlineUser {
+  int64  party_id = 1;
+  string email    = 2;
+  string since    = 3;
+}
+
+message ServersResponse {
+  repeated ServerItem servers = 1;
+}
+
+message ServerItem {
+  int32  id   = 1;
+  string name = 2;
+  string host = 3;
+}
+
+message ServerMetricsResponse {
+  repeated ServerMetric metrics = 1;
+}
+
+message ServerMetric {
+  int32  server_id  = 1;
+  double cpu_usage  = 2;
+  double mem_usage  = 3;
+  string updated_at = 4;
+}

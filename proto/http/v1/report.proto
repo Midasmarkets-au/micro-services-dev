@@ -1,0 +1,175 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Report API (api/v1/tenant/report) ────────────────────────────────
+
+service TenantReportService {
+  // 获取报表请求列表
+  rpc ListReportRequests(ListReportRequestsRequest) returns (ListReportRequestsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/report/request" };
+  }
+  // 获取单条
+  rpc GetReportRequest(GetReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { get: "/api/v1/tenant/report/request/{id}" };
+  }
+  // 获取查询样本
+  rpc GetQuerySample(GetQuerySampleRequest) returns (QuerySampleResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/report/query/{type}/sample" };
+  }
+  // 预览查询
+  rpc PreviewQuery(PreviewQueryRequest) returns (QueryPreviewResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/query/{type}/preview", body: "query" };
+  }
+  // 创建报表请求
+  rpc CreateReportRequest(CreateReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request", body: "*" };
+  }
+  // 重新生成报表
+  rpc RegenReport(GetReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/{id}/regen" };
+  }
+  // 下载报表
+  rpc DownloadReport(CreateReportRequestRequest) returns (DownloadReportResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/download", body: "*" };
+  }
+  // 创建权益报表
+  rpc CreateEquityReport(CreateEquityReportRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity", body: "*" };
+  }
+}
+
+// ─── Tenant Account Report API (api/v1/tenant/account-report) ────────────────
+
+service TenantAccountReportService {
+  // 列表查询
+  rpc ListAccountReports(ListAccountReportsRequest) returns (ListAccountReportsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account-report" };
+  }
+  // 预览
+  rpc PreviewAccountReport(GetAccountReportRequest) returns (AccountReportPreviewResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account-report/{id}/preview" };
+  }
+  // 发送报表
+  rpc SendAccountReport(SendAccountReportRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/account-report/{id}/send-report", body: "spec" };
+  }
+  // 获取今日状态
+  rpc GetTodayStatus(EmptyRequest) returns (AccountReportTodayStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account-report/today-status" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ReportRequest {
+  int64  id         = 1;
+  int32  type       = 2;
+  int32  status     = 3;
+  string file_url   = 4;
+  string created_at = 5;
+}
+
+message ListReportRequestsRequest {
+  PaginationRequest pagination = 1;
+  optional int32    type       = 2;
+  optional int32    status     = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message ListReportRequestsResponse {
+  repeated ReportRequest data = 1;
+  PaginationMeta         meta = 2;
+}
+
+message GetReportRequestRequest {
+  int64 id = 1;
+}
+
+message GetQuerySampleRequest {
+  int32 type = 1;
+}
+
+message QuerySampleResponse {
+  string sample = 1;  // JSON
+}
+
+message PreviewQueryRequest {
+  int32  type  = 1;
+  string query = 2;  // JSON
+}
+
+message QueryPreviewResponse {
+  string data = 1;  // JSON
+}
+
+message CreateReportRequestRequest {
+  int32  type       = 1;
+  string parameters = 2;  // JSON
+}
+
+message DownloadReportResponse {
+  string url = 1;
+}
+
+message CreateEquityReportRequest {
+  string configuration = 1;  // JSON - ReportConfiguration
+}
+
+// Account Report messages
+message AccountReport {
+  int64  id         = 1;
+  int64  account_id = 2;
+  int32  status     = 3;
+  string created_at = 4;
+}
+
+message ListAccountReportsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message ListAccountReportsResponse {
+  repeated AccountReport data = 1;
+  PaginationMeta         meta = 2;
+}
+
+message GetAccountReportRequest {
+  int64 id = 1;
+}
+
+message AccountReportPreviewResponse {
+  string html_content = 1;
+}
+
+message SendAccountReportRequest {
+  int64                    id   = 1;
+  AccountReportSendEmailSpec spec = 2;
+}
+
+message AccountReportSendEmailSpec {
+  string email   = 1;
+  string subject = 2;
+}
+
+message AccountReportTodayStatusResponse {
+  int32 total   = 1;
+  int32 sent    = 2;
+  int32 pending = 3;
+}

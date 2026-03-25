@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Symbol API (api/v1/tenant/symbol) ────────────────────────────────
+
+service TenantSymbolService {
+  // 列表查询
+  rpc ListSymbols(ListSymbolsRequest) returns (ListSymbolsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/symbol" };
+  }
+  // 获取单条
+  rpc GetSymbol(GetSymbolRequest) returns (Symbol) {
+    option (google.api.http) = { get: "/api/v1/tenant/symbol/{id}" };
+  }
+  // 创建
+  rpc CreateSymbol(CreateSymbolRequest) returns (Symbol) {
+    option (google.api.http) = { post: "/api/v1/tenant/symbol", body: "*" };
+  }
+  // 更新
+  rpc UpdateSymbol(UpdateSymbolRequest) returns (Symbol) {
+    option (google.api.http) = { put: "/api/v1/tenant/symbol/{id}", body: "model" };
+  }
+  // 删除
+  rpc DeleteSymbol(GetSymbolRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/symbol/{id}" };
+  }
+  // 批量导入
+  rpc BatchImportSymbols(BatchImportSymbolsRequest) returns (BatchImportSymbolsResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/symbol/batch", body: "*" };
+  }
+  // 批量删除
+  rpc BatchDeleteSymbols(BatchDeleteSymbolsRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/symbol/batch" };
+  }
+  // 获取分类列表
+  rpc GetCategories(GetSymbolCategoriesRequest) returns (SymbolCategoriesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/symbol/categories" };
+  }
+  // 创建分类
+  rpc CreateCategory(CreateSymbolCategoryRequest) returns (SymbolCategory) {
+    option (google.api.http) = { post: "/api/v1/tenant/symbol/category", body: "*" };
+  }
+  // 更新分类
+  rpc UpdateCategory(UpdateSymbolCategoryRequest) returns (SymbolCategory) {
+    option (google.api.http) = { put: "/api/v1/tenant/symbol/category/{category_id}", body: "model" };
+  }
+  // 删除分类
+  rpc DeleteCategory(DeleteSymbolCategoryRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/symbol/type/{type}/category/{category_id}" };
+  }
+}
+
+// ─── Tenant Exchange Rate API (api/v1/tenant/exchange-rate) ──────────────────
+
+service TenantExchangeRateService {
+  // 列表查询
+  rpc ListExchangeRates(ListExchangeRatesRequest) returns (ListExchangeRatesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate" };
+  }
+  // 获取单条
+  rpc GetExchangeRate(GetExchangeRateRequest) returns (ExchangeRate) {
+    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}" };
+  }
+  // 获取历史
+  rpc GetExchangeRateHistory(GetExchangeRateHistoryRequest) returns (ExchangeRateHistoryResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}/history" };
+  }
+  // 创建
+  rpc CreateExchangeRate(CreateExchangeRateRequest) returns (ExchangeRate) {
+    option (google.api.http) = { post: "/api/v1/tenant/exchange-rate", body: "*" };
+  }
+  // 更新
+  rpc UpdateExchangeRate(UpdateExchangeRateRequest) returns (ExchangeRate) {
+    option (google.api.http) = { put: "/api/v1/tenant/exchange-rate/{id}", body: "spec" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// Symbol 实体
+message Symbol {
+  int32  id          = 1;
+  string name        = 2;
+  string description = 3;
+  int32  category_id = 4;
+  int32  type        = 5;
+}
+
+// SymbolCategory 实体
+message SymbolCategory {
+  int32  id   = 1;
+  string name = 2;
+  int32  type = 3;
+}
+
+// ExchangeRate 实体
+message ExchangeRate {
+  int64  id              = 1;
+  string from_currency   = 2;
+  string to_currency     = 3;
+  double rate            = 4;
+  string updated_at      = 5;
+}
+
+// Symbol messages
+message ListSymbolsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2;
+  optional int32    category_id = 3;
+  optional int32    type        = 4;
+}
+
+message ListSymbolsResponse {
+  repeated Symbol data = 1;
+  PaginationMeta  meta = 2;
+}
+
+message GetSymbolRequest {
+  int32 id = 1;
+}
+
+message CreateSymbolRequest {
+  string name        = 1;
+  string description = 2;
+  int32  category_id = 3;
+  int32  type        = 4;
+}
+
+message UpdateSymbolRequest {
+  int32             id    = 1;
+  CreateSymbolRequest model = 2;
+}
+
+message BatchImportSymbolsRequest {
+  repeated CreateSymbolRequest symbols = 1;
+}
+
+message BatchImportSymbolsResponse {
+  int32 imported = 1;
+  int32 skipped  = 2;
+}
+
+message BatchDeleteSymbolsRequest {
+  repeated int32 ids = 1;
+}
+
+message GetSymbolCategoriesRequest {
+  optional int32 type = 1;
+}
+
+message SymbolCategoriesResponse {
+  repeated SymbolCategory categories = 1;
+}
+
+message CreateSymbolCategoryRequest {
+  string name = 1;
+  int32  type = 2;
+}
+
+message UpdateSymbolCategoryRequest {
+  int32               category_id = 1;
+  CreateSymbolCategoryRequest model = 2;
+}
+
+message DeleteSymbolCategoryRequest {
+  int32 type        = 1;
+  int32 category_id = 2;
+}
+
+// ExchangeRate messages
+message ListExchangeRatesRequest {
+  PaginationRequest  pagination    = 1;
+  optional string    from_currency = 2;
+  optional string    to_currency   = 3;
+}
+
+message ListExchangeRatesResponse {
+  repeated ExchangeRate data = 1;
+  PaginationMeta        meta = 2;
+}
+
+message GetExchangeRateRequest {
+  int64 id = 1;
+}
+
+message GetExchangeRateHistoryRequest {
+  int64             id         = 1;
+  PaginationRequest pagination = 2;
+}
+
+message ExchangeRateHistoryResponse {
+  repeated ExchangeRateHistoryItem items = 1;
+}
+
+message ExchangeRateHistoryItem {
+  double rate       = 1;
+  string updated_at = 2;
+}
+
+message CreateExchangeRateRequest {
+  string from_currency = 1;
+  string to_currency   = 2;
+  double rate          = 3;
+}
+
+message UpdateExchangeRateRequest {
+  int64                   id   = 1;
+  CreateExchangeRateRequest spec = 2;
+}

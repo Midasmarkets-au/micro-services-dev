@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Configuration API (api/v1/tenant/configuration) ──────────────────
+
+service TenantConfigurationService {
+  // 获取所有站点
+  rpc GetSites(EmptyRequest) returns (SitesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/sites" };
+  }
+  // 列表查询
+  rpc ListConfigurations(ListConfigurationsRequest) returns (ListConfigurationsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration" };
+  }
+  // 获取某分类所有配置
+  rpc GetCategoryConfig(GetCategoryConfigRequest) returns (CategoryConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/{category}/{row_id}" };
+  }
+  // 获取特定配置项
+  rpc GetConfigValue(GetConfigValueRequest) returns (ConfigValueResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/{category}/{row_id}/{key}" };
+  }
+  // 更新配置项
+  rpc UpdateConfigValue(UpdateConfigValueRequest) returns (ConfigValueResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/{category}/{row_id}/{key}", body: "spec" };
+  }
+  // 删除配置项
+  rpc DeleteConfigValue(GetConfigValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/configuration/{category}/{row_id}/{key}" };
+  }
+  // 更新站点默认邮箱地址
+  rpc UpdateSiteDefaultEmail(UpdateSiteStringValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-email-address", body: "spec" };
+  }
+  // 更新站点默认邮箱显示名
+  rpc UpdateSiteDefaultEmailDisplayName(UpdateSiteStringValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-email-display-name", body: "spec" };
+  }
+  // 更新站点默认资金类型
+  rpc UpdateSiteDefaultFundType(UpdateSiteIntValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-fund-type", body: "spec" };
+  }
+  // 更新站点默认交易服务
+  rpc UpdateSiteDefaultTradeService(UpdateSiteIntValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-trade-service", body: "spec" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message SitesResponse {
+  repeated SiteItem sites = 1;
+}
+
+message SiteItem {
+  int32  id   = 1;
+  string name = 2;
+  string url  = 3;
+}
+
+message ListConfigurationsRequest {
+  PaginationRequest pagination = 1;
+  optional string   category   = 2;
+  optional string   keywords   = 3;
+}
+
+message ListConfigurationsResponse {
+  repeated ConfigItem data = 1;
+  PaginationMeta      meta = 2;
+}
+
+message ConfigItem {
+  string category = 1;
+  int64  row_id   = 2;
+  string key      = 3;
+  string value    = 4;
+}
+
+message GetCategoryConfigRequest {
+  string category = 1;
+  int64  row_id   = 2;
+}
+
+message CategoryConfigResponse {
+  map<string, string> items = 1;
+}
+
+message GetConfigValueRequest {
+  string          category   = 1;
+  int64           row_id     = 2;
+  string          key        = 3;
+  optional bool   is_inherit = 4;
+}
+
+message ConfigValueResponse {
+  string key   = 1;
+  string value = 2;
+}
+
+message UpdateConfigValueRequest {
+  string            category = 1;
+  int64             row_id   = 2;
+  string            key      = 3;
+  ConfigCreateSpec  spec     = 4;
+}
+
+message ConfigCreateSpec {
+  string value = 1;
+}
+
+message UpdateSiteStringValueRequest {
+  int32  site_id = 1;
+  StringValue spec = 2;
+}
+
+message UpdateSiteIntValueRequest {
+  int32    site_id = 1;
+  IntValue spec    = 2;
+}
+
+message StringValue {
+  string value = 1;
+}
+
+message IntValue {
+  int32 value = 1;
+}

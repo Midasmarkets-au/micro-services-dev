@@ -1,0 +1,315 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Message API (api/v1/tenant/message) ──────────────────────────────
+
+service TenantMessageService {
+  // 列表查询
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/message" };
+  }
+  // 获取单条
+  rpc GetMessage(GetMessageRequest) returns (Message) {
+    option (google.api.http) = { get: "/api/v1/tenant/message/{id}" };
+  }
+  // 创建
+  rpc CreateMessage(CreateMessageRequest) returns (Message) {
+    option (google.api.http) = { post: "/api/v1/tenant/message", body: "*" };
+  }
+  // 更新
+  rpc UpdateMessage(UpdateMessageRequest) returns (Message) {
+    option (google.api.http) = { put: "/api/v1/tenant/message/{id}", body: "spec" };
+  }
+  // 删除
+  rpc DeleteMessage(GetMessageRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/message/{id}" };
+  }
+  // 发送弹窗消息
+  rpc SendPopupMessage(SendPopupMessageRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/message/send-popup", body: "*" };
+  }
+}
+
+// ─── Tenant Email API (api/v1/tenant/email) ──────────────────────────────────
+
+service TenantEmailService {
+  // 发送调试邮件
+  rpc DebugEmail(DebugEmailRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/email/debug", body: "*" };
+  }
+  // 发送给用户
+  rpc SendToUser(SendToUserRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/email/send-to-user", body: "*" };
+  }
+  // 创建批次
+  rpc CreateBatch(CreateBatchRequest) returns (EmailBatch) {
+    option (google.api.http) = { post: "/api/v1/tenant/email/batch", body: "*" };
+  }
+  // 获取批次信息
+  rpc GetBatchInfo(EmptyRequest) returns (EmailBatchInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/email/batch/info" };
+  }
+  // 获取批次详情
+  rpc GetBatchDetail(EmptyRequest) returns (EmailBatchDetailResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/email/batch/detail" };
+  }
+  // 测试批次
+  rpc TestBatch(TestBatchEmailRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/email/batch/test", body: "*" };
+  }
+  // 确认发送批次
+  rpc ConfirmBatch(ConfirmBatchRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/email/batch/confirm", body: "*" };
+  }
+  // 检查退订状态
+  rpc CheckSuppression(CheckSuppressionRequest) returns (SuppressionResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/email/suppression-check" };
+  }
+  // 移除退订
+  rpc RemoveSuppression(SuppressionEmailRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/email/suppression-remove" };
+  }
+  // 添加退订
+  rpc AddSuppression(SuppressionEmailRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/email/suppression-add" };
+  }
+}
+
+// ─── Tenant Topic API (api/v1/tenant/topic) ──────────────────────────────────
+
+service TenantTopicService {
+  // 列表查询
+  rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/topic" };
+  }
+  // 获取单条（含语言）
+  rpc GetTopic(GetTopicRequest) returns (Topic) {
+    option (google.api.http) = { get: "/api/v1/tenant/topic/{id}" };
+  }
+  // 获取可用语言
+  rpc GetTopicLanguages(GetTopicIdRequest) returns (LanguagesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/topic/{id}/languages" };
+  }
+  // 创建
+  rpc CreateTopic(CreateTopicRequest) returns (Topic) {
+    option (google.api.http) = { post: "/api/v1/tenant/topic", body: "*" };
+  }
+  // 更新
+  rpc UpdateTopic(UpdateTopicRequest) returns (Topic) {
+    option (google.api.http) = { put: "/api/v1/tenant/topic/{id}", body: "spec" };
+  }
+  // 移至废纸篓
+  rpc MoveToTrash(GetTopicIdRequest) returns (Topic) {
+    option (google.api.http) = { put: "/api/v1/tenant/topic/{id}/move-to-trash" };
+  }
+  // 删除
+  rpc DeleteTopic(GetTopicIdRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/topic/{id}" };
+  }
+  // 创建内容
+  rpc CreateTopicContent(CreateTopicContentRequest) returns (TopicContent) {
+    option (google.api.http) = { post: "/api/v1/tenant/topic/{id}/content", body: "spec" };
+  }
+  // 更新内容
+  rpc UpdateTopicContent(UpdateTopicContentRequest) returns (TopicContent) {
+    option (google.api.http) = { put: "/api/v1/tenant/topic/{id}/content/{content_id}", body: "spec" };
+  }
+  // 删除内容
+  rpc DeleteTopicContent(DeleteTopicContentRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/topic/{id}/content/{content_id}" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// Message 实体
+message Message {
+  int64  id         = 1;
+  int64  account_id = 2;
+  string title      = 3;
+  string body       = 4;
+  int32  type       = 5;
+  int32  status     = 6;
+  string created_at = 7;
+}
+
+// EmailBatch 实体
+message EmailBatch {
+  int64  id         = 1;
+  string subject    = 2;
+  int32  status     = 3;
+  int32  total      = 4;
+  string created_at = 5;
+}
+
+// Topic 实体
+message Topic {
+  int32  id         = 1;
+  string title      = 2;
+  int32  type       = 3;
+  int32  status     = 4;
+  string created_at = 5;
+}
+
+// TopicContent 实体
+message TopicContent {
+  int32  id         = 1;
+  int32  topic_id   = 2;
+  string language   = 3;
+  string content    = 4;
+}
+
+// Message list
+message ListMessagesRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2;
+  optional int32    type        = 3;
+  optional int32    status      = 4;
+  optional string   date_from   = 5;
+  optional string   date_to     = 6;
+}
+
+message ListMessagesResponse {
+  repeated Message data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message GetMessageRequest {
+  int64 id = 1;
+}
+
+message CreateMessageRequest {
+  int64  account_id = 1;
+  string title      = 2;
+  string body       = 3;
+  int32  type       = 4;
+}
+
+message UpdateMessageRequest {
+  int64         id   = 1;
+  CreateMessageRequest spec = 2;
+}
+
+message SendPopupMessageRequest {
+  int64  account_id = 1;
+  string title      = 2;
+  string body       = 3;
+}
+
+// Email messages
+message DebugEmailRequest {
+  string to      = 1;
+  string subject = 2;
+  string body    = 3;
+}
+
+message SendToUserRequest {
+  int64  party_id = 1;
+  string subject  = 2;
+  string body     = 3;
+}
+
+message CreateBatchRequest {
+  int32  topic_content_id = 1;
+  string target_criteria  = 2;  // JSON
+}
+
+message EmailBatchInfoResponse {
+  int32 recipient_count = 1;
+}
+
+message EmailBatchDetailResponse {
+  repeated string emails = 1;
+}
+
+message TestBatchEmailRequest {
+  string test_email = 1;
+}
+
+message ConfirmBatchRequest {
+  int64 batch_id = 1;
+}
+
+message CheckSuppressionRequest {
+  string email = 1;
+}
+
+message SuppressionResponse {
+  bool   suppressed = 1;
+  string reason     = 2;
+}
+
+message SuppressionEmailRequest {
+  string email = 1;
+}
+
+// Topic messages
+message ListTopicsRequest {
+  PaginationRequest pagination = 1;
+  optional int32    type       = 2;
+  optional int32    status     = 3;
+  optional string   keywords   = 4;
+}
+
+message ListTopicsResponse {
+  repeated Topic data = 1;
+  PaginationMeta meta = 2;
+}
+
+message GetTopicRequest {
+  int32           id       = 1;
+  optional string language = 2;
+}
+
+message GetTopicIdRequest {
+  int32 id = 1;
+}
+
+message LanguagesResponse {
+  repeated string languages = 1;
+}
+
+message CreateTopicRequest {
+  string title = 1;
+  int32  type  = 2;
+}
+
+message UpdateTopicRequest {
+  int32         id   = 1;
+  CreateTopicRequest spec = 2;
+}
+
+message CreateTopicContentRequest {
+  int32  id       = 1;
+  string language = 2;
+  string content  = 3;
+}
+
+message TopicContentSpec {
+  string language = 1;
+  string content  = 2;
+}
+
+message UpdateTopicContentRequest {
+  int32            id         = 1;
+  int32            content_id = 2;
+  TopicContentSpec spec       = 3;
+}
+
+message DeleteTopicContentRequest {
+  int32 id         = 1;
+  int32 content_id = 2;
+}

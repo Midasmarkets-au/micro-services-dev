@@ -1,0 +1,1038 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Deposit API (api/v1/tenant/deposit) ──────────────────────────────
+
+service TenantDepositService {
+  // 列表查询
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit" };
+  }
+  // 获取单条
+  rpc GetDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}" };
+  }
+  // 创建充值
+  rpc CreateDeposit(CreateTenantDepositRequest) returns (Deposit) {
+    option (google.api.http) = { post: "/api/v1/tenant/deposit", body: "*" };
+  }
+  // 取消
+  rpc CancelDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/cancel" };
+  }
+  // 拒绝
+  rpc RejectDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/reject" };
+  }
+  // 完成支付
+  rpc CompletePayment(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/complete-payment" };
+  }
+  // 批准
+  rpc ApproveDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/approve" };
+  }
+  // 完成
+  rpc CompleteDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/complete" };
+  }
+  // 删除
+  rpc DeleteDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/delete" };
+  }
+  // 获取回执
+  rpc GetDepositReceipt(GetDepositRequest) returns (DepositReceiptResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}/receipt" };
+  }
+  // 获取参考信息
+  rpc GetDepositReference(GetDepositRequest) returns (DepositReferenceResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}/reference" };
+  }
+  // 获取状态详情
+  rpc GetDepositStateDetail(GetDepositRequest) returns (StateDetailResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}/state-detail" };
+  }
+  // 外部链接：查询收款状态
+  rpc GetExlinkCollectionStatus(GetExlinkByPaymentNumberRequest) returns (ExlinkStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/collections/{payment_number}/status" };
+  }
+  // 外部链接：获取支付类型
+  rpc GetExlinkPaymentTypes(GetByCurrencyRequest) returns (ExlinkPaymentTypesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/payment-types" };
+  }
+  // 外部链接：获取可用货币
+  rpc GetExlinkCurrencies(EmptyRequest) returns (CurrenciesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/currencies" };
+  }
+  // 外部链接：获取汇率
+  rpc GetExlinkExchangeRates(EmptyRequest) returns (ExchangeRatesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/exchange-rates" };
+  }
+}
+
+// ─── Tenant Withdrawal API (api/v1/tenant/withdrawal) ────────────────────────
+
+service TenantWithdrawalService {
+  // 列表查询
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal" };
+  }
+  // 获取单条
+  rpc GetWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/{id}" };
+  }
+  // 创建提款
+  rpc CreateWithdrawal(CreateTenantWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v1/tenant/withdrawal", body: "*" };
+  }
+  // 从账户创建提款
+  rpc CreateWithdrawalFromAccount(CreateWithdrawalFromAccountRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v1/tenant/withdrawal/from-account/{account_uid}", body: "spec" };
+  }
+  // 取消
+  rpc CancelWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/cancel" };
+  }
+  // 批准
+  rpc ApproveWithdrawal(ApproveWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/approve", body: "spec" };
+  }
+  // 拒绝
+  rpc RejectWithdrawal(RejectWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/reject", body: "spec" };
+  }
+  // 完成支付
+  rpc CompletePayment(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/complete-payment" };
+  }
+  // 完成
+  rpc CompleteWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/complete" };
+  }
+  // 恢复已取消
+  rpc RestoreCancelledWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/cancel/{id}/restore" };
+  }
+  // 恢复已拒绝
+  rpc RestoreRejectedWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/reject/{id}/restore" };
+  }
+  // 获取提款信息
+  rpc GetWithdrawalInfo(GetWithdrawalRequest) returns (WithdrawalInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/{id}/info" };
+  }
+  // 退款
+  rpc RefundWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/refund" };
+  }
+  // OFA-DF 提款
+  rpc CreateOfaDfWithdrawal(WithdrawalIdSpecRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v1/tenant/withdrawal/ofa-df", body: "*" };
+  }
+  // 外部链接：获取银行列表
+  rpc GetExlinkBanks(GetByCurrencyRequest) returns (BanksResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/banks" };
+  }
+  // 外部链接：查询出款状态
+  rpc GetExlinkPayoutStatus(GetExlinkByPaymentNumberRequest) returns (ExlinkStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/payouts/{payment_number}/status" };
+  }
+  // 外部链接：获取支付类型
+  rpc GetExlinkPaymentTypes(GetByCurrencyRequest) returns (ExlinkPaymentTypesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/payment-types" };
+  }
+  // 外部链接：获取余额
+  rpc GetExlinkBalance(EmptyRequest) returns (BalanceResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/balance" };
+  }
+}
+
+// ─── Tenant Payment API (api/v1/tenant/payment) ──────────────────────────────
+
+service TenantPaymentService {
+  // 列表查询
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment" };
+  }
+  // 获取单条
+  rpc GetPayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment/{id}" };
+  }
+  // 取消
+  rpc CancelPayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment/{id}/cancel" };
+  }
+  // 执行
+  rpc ExecutePayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment/{id}/execute" };
+  }
+  // 完成
+  rpc CompletePayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment/{id}/complete" };
+  }
+}
+
+// ─── Tenant Transaction API (api/v1/tenant/transaction) ──────────────────────
+
+service TenantTransactionService {
+  // 列表查询
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/transaction" };
+  }
+  // 获取单条
+  rpc GetTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { get: "/api/v1/tenant/transaction/{id}" };
+  }
+  // 获取自动完成设置
+  rpc GetAutoCompleteSetting(EmptyRequest) returns (AutoCompleteSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/transaction/auto-complete-setting" };
+  }
+  // 更新自动完成设置
+  rpc UpdateAutoCompleteSetting(UpdateAutoCompleteSettingRequest) returns (AutoCompleteSettingResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/auto-complete-setting", body: "*" };
+  }
+  // 转入交易账户
+  rpc TransferToTradeAccount(TransferToAccountRequest) returns (TxTransaction) {
+    option (google.api.http) = { post: "/api/v1/tenant/transaction/to-trade-account", body: "*" };
+  }
+  // 转入钱包
+  rpc TransferToWallet(TransferToAccountRequest) returns (TxTransaction) {
+    option (google.api.http) = { post: "/api/v1/tenant/transaction/to-wallet", body: "*" };
+  }
+  // 取消
+  rpc CancelTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/{id}/cancel" };
+  }
+  // 拒绝
+  rpc RejectTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/{id}/reject" };
+  }
+  // 批准
+  rpc ApproveTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/{id}/approve" };
+  }
+}
+
+// ─── Tenant Wallet API (api/v1/tenant/wallet) ────────────────────────────────
+
+service TenantWalletService {
+  // 列表查询
+  rpc ListWallets(ListWalletsRequest) returns (ListWalletsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet" };
+  }
+  // 获取单条
+  rpc GetWallet(GetWalletRequest) returns (Wallet) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/{wallet_id}" };
+  }
+  // 获取快照
+  rpc GetWalletSnapshot(ListWalletsRequest) returns (ListWalletSnapshotsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/snapshot" };
+  }
+  // 获取统计
+  rpc GetWalletStatistic(ListWalletsRequest) returns (WalletStatisticResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/statistic" };
+  }
+  // 获取钱包流水
+  rpc ListWalletTransactions(ListWalletTransactionsRequest) returns (ListWalletTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/{wallet_id}/transaction" };
+  }
+  // 更新资金类型
+  rpc UpdateWalletFundType(UpdateWalletFundTypeRequest) returns (Wallet) {
+    option (google.api.http) = { put: "/api/v1/tenant/wallet/{wallet_id}/fund-type" };
+  }
+  // 获取钱包调整列表
+  rpc ListWalletAdjustments(ListWalletAdjustmentsRequest) returns (ListWalletAdjustmentsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/adjust" };
+  }
+  // 创建手动调整
+  rpc CreateWalletAdjustment(CreateWalletAdjustmentRequest) returns (WalletAdjustment) {
+    option (google.api.http) = { post: "/api/v1/tenant/wallet/{wallet_id}/adjust", body: "spec" };
+  }
+}
+
+// ─── Tenant Payment Info API (api/v1/tenant/payment-info) ────────────────────
+
+service TenantPaymentInfoService {
+  // 列表查询
+  rpc ListPaymentInfos(ListPaymentInfosRequest) returns (ListPaymentInfosResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment-info" };
+  }
+  // 获取单条
+  rpc GetPaymentInfo(GetPaymentInfoRequest) returns (PaymentInfo) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment-info/{id}" };
+  }
+  // 更新
+  rpc UpdatePaymentInfo(UpdatePaymentInfoRequest) returns (PaymentInfo) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment-info/{id}", body: "spec" };
+  }
+  // 删除
+  rpc DeletePaymentInfo(GetPaymentInfoRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/payment-info/{id}" };
+  }
+}
+
+// ─── Tenant Payment Method V2 API (api/v2/tenant/payment-method) ─────────────
+
+service TenantPaymentMethodService {
+  // 获取充值方式列表
+  rpc ListDepositMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/deposit" };
+  }
+  // 获取提款方式列表
+  rpc ListWithdrawalMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/withdrawal" };
+  }
+  // 获取单条
+  rpc GetPaymentMethod(GetPaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/{id}" };
+  }
+  // 创建
+  rpc CreatePaymentMethod(CreatePaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { post: "/api/v2/tenant/payment-method", body: "*" };
+  }
+  // 更新
+  rpc UpdatePaymentMethod(UpdatePaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}", body: "spec" };
+  }
+  // 删除
+  rpc DeletePaymentMethod(GetPaymentMethodRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v2/tenant/payment-method/{id}" };
+  }
+  // 恢复已删除
+  rpc RestorePaymentMethod(GetPaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/restore" };
+  }
+  // 批量更新排序
+  rpc BatchUpdateSort(BatchUpdateSortRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/batch-update-sort", body: "*" };
+  }
+  // 重载缓存
+  rpc ReloadCache(EmptyRequest) returns (OperationResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/cache/reload" };
+  }
+  // 获取使用说明
+  rpc GetInstruction(GetPaymentMethodRequest) returns (InstructionResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/{id}/instruction" };
+  }
+  // 更新使用说明
+  rpc UpdateInstruction(UpdateInstructionRequest) returns (InstructionResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/instruction", body: "content" };
+  }
+  // 获取政策
+  rpc GetPolicy(GetPaymentMethodRequest) returns (PolicyResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/{id}/policy" };
+  }
+  // 更新政策
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/policy", body: "content" };
+  }
+  // 获取账户访问权限
+  rpc GetAccountAccess(GetAccessRequest) returns (AccessResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/account/{account_id}/access" };
+  }
+  // 获取钱包访问权限
+  rpc GetWalletAccess(GetWalletAccessRequest) returns (AccessResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/wallet/{wallet_id}/access" };
+  }
+  // 启用账户支付方式
+  rpc EnableForAccount(EnableForAccountRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/account-enable/{account_id}" };
+  }
+  // 禁用账户支付方式
+  rpc DisableForAccount(EnableForAccountRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/account-disable/{account_id}" };
+  }
+  // 批量启用账户组支付方式
+  rpc EnableGroupForAccount(GroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/account-group-enable/{account_id}", body: "spec" };
+  }
+  // 批量禁用账户组支付方式
+  rpc DisableGroupForAccount(GroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/account-group-disable/{account_id}", body: "spec" };
+  }
+  // 启用钱包支付方式
+  rpc EnableForWallet(EnableForWalletRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/wallet-enable/{wallet_id}" };
+  }
+  // 禁用钱包支付方式
+  rpc DisableForWallet(EnableForWalletRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/wallet-disable/{wallet_id}" };
+  }
+  // 批量启用钱包组支付方式
+  rpc EnableGroupForWallet(WalletGroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/wallet-group-enable/{wallet_id}", body: "spec" };
+  }
+  // 批量禁用钱包组支付方式
+  rpc DisableGroupForWallet(WalletGroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/wallet-group-disable/{wallet_id}", body: "spec" };
+  }
+  // 按已有账户开通
+  rpc OpenByExisting(OpenByExistingRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/account/open-by-existing", body: "*" };
+  }
+}
+
+// ─── Client Deposit API (api/v1/client/deposit) ──────────────────────────────
+
+service ClientDepositService {
+  // 列表查询
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit" };
+  }
+  // 获取单条
+  rpc GetDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{id}" };
+  }
+  // 更新
+  rpc UpdateDeposit(UpdateClientDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/client/deposit/{id}", body: "spec" };
+  }
+  // 取消
+  rpc CancelDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/client/deposit/{id}/cancel" };
+  }
+  // 获取回执
+  rpc GetDepositReceipt(GetDepositRequest) returns (DepositReceiptResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{id}/receipt" };
+  }
+  // 获取参考信息
+  rpc GetDepositReference(GetDepositRequest) returns (DepositReferenceResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{id}/reference" };
+  }
+  // 货币兑换查询
+  rpc GetCurrencyConversion(GetCurrencyConversionRequest) returns (CurrencyConversionResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{from_currency_id}/to/{to_currency_id}" };
+  }
+}
+
+// ─── Client Withdrawal API (api/v1/client/withdrawal) ────────────────────────
+
+service ClientWithdrawalService {
+  // 列表查询
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/withdrawal" };
+  }
+  // 获取单条
+  rpc GetWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { get: "/api/v1/client/withdrawal/{id}" };
+  }
+  // 取消（by hashId）
+  rpc CancelWithdrawal(CancelByHashIdRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/client/withdrawal/{hash_id}/cancel" };
+  }
+  // 更新
+  rpc UpdateWithdrawal(UpdateClientWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/client/withdrawal/{id}", body: "spec" };
+  }
+  // 货币兑换查询
+  rpc GetCurrencyConversion(GetCurrencyConversionRequest) returns (CurrencyConversionResponse) {
+    option (google.api.http) = { get: "/api/v1/client/withdrawal/{from_currency_id}/to/{to_currency_id}" };
+  }
+}
+
+// ─── Client Wallet V2 API (api/v2/client/wallet) ─────────────────────────────
+
+service ClientWalletService {
+  // 列表查询
+  rpc ListWallets(ListClientWalletsRequest) returns (ListWalletsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet" };
+  }
+  // 获取钱包转账列表
+  rpc ListWalletTransfers(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/transfer" };
+  }
+  // 获取钱包提款列表
+  rpc ListWalletWithdrawals(GetClientWalletRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/withdrawal" };
+  }
+  // 从钱包创建提款
+  rpc CreateWalletWithdrawal(CreateWalletWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v2/client/wallet/{hash_id}/withdrawal", body: "spec" };
+  }
+  // 获取返佣列表
+  rpc ListWalletRebates(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/rebate" };
+  }
+  // 获取退款列表
+  rpc ListWalletRefunds(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/refund" };
+  }
+  // 获取调整列表
+  rpc ListWalletAdjustments(GetClientWalletRequest) returns (ListWalletAdjustmentsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/adjust" };
+  }
+  // 获取下线奖励转账列表
+  rpc ListDownlineRewardTransfers(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/downline-reward-transfer" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// Deposit 实体
+message Deposit {
+  int64  id           = 1;
+  string hash_id      = 2;
+  int64  account_uid  = 3;
+  double amount       = 4;
+  string currency     = 5;
+  int32  status       = 6;
+  string created_at   = 7;
+  string updated_at   = 8;
+}
+
+// Withdrawal 实体
+message Withdrawal {
+  int64  id           = 1;
+  string hash_id      = 2;
+  int64  account_uid  = 3;
+  double amount       = 4;
+  string currency     = 5;
+  int32  status       = 6;
+  string created_at   = 7;
+  string updated_at   = 8;
+}
+
+// Payment 实体
+message Payment {
+  int64  id         = 1;
+  double amount     = 2;
+  string currency   = 3;
+  int32  status     = 4;
+  int32  type       = 5;
+  string created_at = 6;
+}
+
+// Transaction 实体（含 TX 前缀避免与 account.proto 中 Transfer 冲突）
+message TxTransaction {
+  int64  id          = 1;
+  int64  account_uid = 2;
+  double amount      = 3;
+  string type        = 4;
+  int32  status      = 5;
+  string created_at  = 6;
+}
+
+// Wallet 实体
+message Wallet {
+  int64  id          = 1;
+  string hash_id     = 2;
+  int64  account_uid = 3;
+  double balance     = 4;
+  string currency    = 5;
+  int32  fund_type   = 6;
+  string created_at  = 7;
+}
+
+// WalletAdjustment 实体
+message WalletAdjustment {
+  int64  id        = 1;
+  int64  wallet_id = 2;
+  double amount    = 3;
+  string reason    = 4;
+  string created_at = 5;
+}
+
+// PaymentInfo 实体
+message PaymentInfo {
+  int64  id         = 1;
+  int64  account_uid = 2;
+  int32  type       = 3;
+  string details    = 4;
+  int32  status     = 5;
+  string created_at = 6;
+}
+
+// PaymentMethod 实体
+message PaymentMethod {
+  int64  id          = 1;
+  string name        = 2;
+  int32  type        = 3;  // 0=deposit, 1=withdrawal, 2=both
+  int32  status      = 4;
+  int32  sort_order  = 5;
+  string created_at  = 6;
+}
+
+// Deposit list
+message ListDepositsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+  optional string   currency    = 6;
+}
+
+message ListDepositsResponse {
+  repeated Deposit data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message GetDepositRequest {
+  int64 id = 1;
+}
+
+message CreateTenantDepositRequest {
+  int64  account_uid       = 1;
+  int64  payment_method_id = 2;
+  double amount            = 3;
+  string currency          = 4;
+  string note              = 5;
+}
+
+// Withdrawal list
+message ListWithdrawalsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+  optional string   currency    = 6;
+}
+
+message ListWithdrawalsResponse {
+  repeated Withdrawal data = 1;
+  PaginationMeta      meta = 2;
+}
+
+message GetWithdrawalRequest {
+  int64 id = 1;
+}
+
+message CreateTenantWithdrawalRequest {
+  int64  account_uid     = 1;
+  int64  payment_info_id = 2;
+  double amount          = 3;
+  string currency        = 4;
+  string note            = 5;
+}
+
+message CreateWithdrawalFromAccountRequest {
+  int64                          account_uid = 1;
+  CreateWithdrawalFromAccountSpec spec        = 2;
+}
+
+message CreateWithdrawalFromAccountSpec {
+  int64  payment_info_id = 1;
+  double amount          = 2;
+  string currency        = 3;
+}
+
+message ApproveWithdrawalRequest {
+  int64               id   = 1;
+  ApproveWithdrawalSpec spec = 2;
+}
+
+message ApproveWithdrawalSpec {
+  string note = 1;
+}
+
+message RejectWithdrawalRequest {
+  int64              id   = 1;
+  RejectWithdrawalSpec spec = 2;
+}
+
+message RejectWithdrawalSpec {
+  string reason = 1;
+}
+
+message WithdrawalIdSpecRequest {
+  int64 id = 1;
+}
+
+// Payment list
+message ListPaymentsRequest {
+  PaginationRequest pagination  = 1;
+  optional int32    type        = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message ListPaymentsResponse {
+  repeated Payment data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message GetPaymentRequest {
+  int64 id = 1;
+}
+
+// Transaction list
+message ListTransactionsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message ListTransactionsResponse {
+  repeated TxTransaction data = 1;
+  PaginationMeta         meta = 2;
+}
+
+message GetTransactionRequest {
+  int64 id = 1;
+}
+
+message AutoCompleteSettingResponse {
+  bool   enabled   = 1;
+  double threshold = 2;
+}
+
+message UpdateAutoCompleteSettingRequest {
+  bool   enabled   = 1;
+  double threshold = 2;
+}
+
+message TransferToAccountRequest {
+  int64  from_uid    = 1;
+  int64  to_uid      = 2;
+  double amount      = 3;
+  string currency    = 4;
+  string note        = 5;
+}
+
+// Wallet list
+message ListWalletsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    fund_type   = 3;
+  optional string   currency    = 4;
+}
+
+message ListWalletsResponse {
+  repeated Wallet data = 1;
+  PaginationMeta  meta = 2;
+}
+
+message ListWalletSnapshotsResponse {
+  repeated WalletSnapshot data = 1;
+  PaginationMeta          meta = 2;
+}
+
+message WalletSnapshot {
+  int64  wallet_id = 1;
+  double balance   = 2;
+  string date      = 3;
+}
+
+message WalletStatisticResponse {
+  double total_balance = 1;
+  int32  wallet_count  = 2;
+}
+
+message GetWalletRequest {
+  int64 wallet_id = 1;
+}
+
+message ListWalletTransactionsRequest {
+  int64             wallet_id  = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+
+message ListWalletTransactionsResponse {
+  repeated TxTransaction data = 1;
+  PaginationMeta         meta = 2;
+}
+
+message UpdateWalletFundTypeRequest {
+  int64 wallet_id = 1;
+  int32 fund_type = 2;
+}
+
+message ListWalletAdjustmentsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    wallet_id   = 2;
+  optional string   date_from   = 3;
+  optional string   date_to     = 4;
+}
+
+message ListWalletAdjustmentsResponse {
+  repeated WalletAdjustment data = 1;
+  PaginationMeta            meta = 2;
+}
+
+message CreateWalletAdjustmentRequest {
+  int64                   wallet_id = 1;
+  WalletAdjustmentSpec    spec      = 2;
+}
+
+message WalletAdjustmentSpec {
+  double amount = 1;
+  string reason = 2;
+}
+
+// PaymentInfo list
+message ListPaymentInfosRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    type        = 3;
+  optional int32    status      = 4;
+}
+
+message ListPaymentInfosResponse {
+  repeated PaymentInfo data = 1;
+  PaginationMeta       meta = 2;
+}
+
+message GetPaymentInfoRequest {
+  int64 id = 1;
+}
+
+message UpdatePaymentInfoRequest {
+  int64              id   = 1;
+  UpdatePaymentInfoSpec spec = 2;
+}
+
+message UpdatePaymentInfoSpec {
+  string details = 1;
+  int32  status  = 2;
+}
+
+// PaymentMethod messages
+message ListPaymentMethodsRequest {
+  PaginationRequest pagination      = 1;
+  bool              include_deleted = 2;
+  optional string   keywords        = 3;
+}
+
+message ListPaymentMethodsResponse {
+  repeated PaymentMethod data = 1;
+  PaginationMeta         meta = 2;
+}
+
+message GetPaymentMethodRequest {
+  int64 id = 1;
+}
+
+message CreatePaymentMethodRequest {
+  string name    = 1;
+  int32  type    = 2;
+  string details = 3;
+}
+
+message UpdatePaymentMethodRequest {
+  int64                   id   = 1;
+  UpdatePaymentMethodSpec spec = 2;
+}
+
+message UpdatePaymentMethodSpec {
+  string name    = 1;
+  int32  status  = 2;
+  string details = 3;
+}
+
+message BatchUpdateSortRequest {
+  repeated SortItem items = 1;
+}
+
+message SortItem {
+  int64 id         = 1;
+  int32 sort_order = 2;
+}
+
+message InstructionResponse {
+  map<string, string> content = 1;
+}
+
+message UpdateInstructionRequest {
+  int64               id      = 1;
+  map<string, string> content = 2;
+}
+
+message PolicyResponse {
+  map<string, string> content = 1;
+}
+
+message UpdatePolicyRequest {
+  int64               id      = 1;
+  map<string, string> content = 2;
+}
+
+message GetAccessRequest {
+  int64 account_id = 1;
+}
+
+message GetWalletAccessRequest {
+  int64 wallet_id = 1;
+}
+
+message AccessResponse {
+  repeated int64 enabled_method_ids = 1;
+}
+
+message EnableForAccountRequest {
+  int64 id         = 1;
+  int64 account_id = 2;
+}
+
+message GroupAccessRequest {
+  int64           account_id = 1;
+  GroupAccessSpec spec       = 2;
+}
+
+message GroupAccessSpec {
+  repeated int64 method_ids = 1;
+}
+
+message EnableForWalletRequest {
+  int64 id        = 1;
+  int64 wallet_id = 2;
+}
+
+message WalletGroupAccessRequest {
+  int64           wallet_id = 1;
+  GroupAccessSpec spec      = 2;
+}
+
+message OpenByExistingRequest {
+  int64 source_account_id = 1;
+  int64 target_account_id = 2;
+}
+
+// Deposit/Withdrawal helper responses
+message DepositReceiptResponse {
+  string url      = 1;
+  string filename = 2;
+}
+
+message DepositReferenceResponse {
+  string reference = 1;
+  string note      = 2;
+}
+
+message StateDetailResponse {
+  string state   = 1;
+  string detail  = 2;
+}
+
+message WithdrawalInfoResponse {
+  string bank_name    = 1;
+  string account_no   = 2;
+  string account_name = 3;
+}
+
+message ExlinkStatusResponse {
+  string status  = 1;
+  string message = 2;
+}
+
+message GetExlinkByPaymentNumberRequest {
+  string payment_number = 1;
+}
+
+message ExlinkPaymentTypesResponse {
+  repeated ExlinkPaymentType types = 1;
+}
+
+message ExlinkPaymentType {
+  string id   = 1;
+  string name = 2;
+}
+
+message CurrenciesResponse {
+  repeated string currencies = 1;
+}
+
+message ExchangeRatesResponse {
+  repeated ExchangeRateItem rates = 1;
+}
+
+message ExchangeRateItem {
+  string from_currency = 1;
+  string to_currency   = 2;
+  double rate          = 3;
+}
+
+message BanksResponse {
+  repeated BankItem banks = 1;
+}
+
+message BankItem {
+  string id   = 1;
+  string name = 2;
+}
+
+message BalanceResponse {
+  double balance  = 1;
+  string currency = 2;
+}
+
+message GetByCurrencyRequest {
+  string currency = 1;
+}
+
+// Client Deposit/Withdrawal update
+message UpdateClientDepositRequest {
+  int64              id   = 1;
+  UpdateDepositSpec  spec = 2;
+}
+
+message UpdateDepositSpec {
+  string note = 1;
+}
+
+message UpdateClientWithdrawalRequest {
+  int64                 id   = 1;
+  UpdateWithdrawalSpec  spec = 2;
+}
+
+message UpdateWithdrawalSpec {
+  int64  payment_info_id = 1;
+  string note            = 2;
+}
+
+message CancelByHashIdRequest {
+  string hash_id = 1;
+}
+
+message GetCurrencyConversionRequest {
+  int32 from_currency_id = 1;
+  int32 to_currency_id   = 2;
+}
+
+message CurrencyConversionResponse {
+  double rate   = 1;
+  double amount = 2;
+}
+
+// Client Wallet
+message ListClientWalletsRequest {
+  PaginationRequest pagination = 1;
+  optional string   currency   = 2;
+}
+
+message GetClientWalletRequest {
+  string            hash_id    = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+
+message CreateWalletWithdrawalRequest {
+  string                       hash_id = 1;
+  CreateWalletWithdrawalSpec   spec    = 2;
+}
+
+message CreateWalletWithdrawalSpec {
+  int64  payment_info_id = 1;
+  double amount          = 2;
+  string currency        = 3;
+}

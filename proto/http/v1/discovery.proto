@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Discovery API (api/v1/discovery) — 公开接口，无需认证 ───────────────────
+
+service DiscoveryService {
+  // 获取新闻语言列表
+  rpc GetNewsLanguages(EmptyRequest) returns (LanguagesResponse) {
+    option (google.api.http) = { get: "/api/v1/discovery/news/languages" };
+  }
+  // 获取新闻列表
+  rpc ListNews(ListDiscoveryRequest) returns (ListNewsResponse) {
+    option (google.api.http) = { get: "/api/v1/discovery/news" };
+  }
+  // 获取文章列表
+  rpc ListPosts(ListDiscoveryRequest) returns (ListPostsResponse) {
+    option (google.api.http) = { get: "/api/v1/discovery/post" };
+  }
+  // 获取文章详情
+  rpc GetPost(GetPostRequest) returns (Post) {
+    option (google.api.http) = { get: "/api/v1/discovery/post/{hash_id}" };
+  }
+  // 获取经济日历语言列表
+  rpc GetEconomicCalendarLanguages(EmptyRequest) returns (LanguagesResponse) {
+    option (google.api.http) = { get: "/api/v1/discovery/economic-calendar/languages" };
+  }
+  // 获取经济日历
+  rpc ListEconomicCalendar(ListDiscoveryRequest) returns (ListEconomicCalendarResponse) {
+    option (google.api.http) = { get: "/api/v1/discovery/economic-calendar" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message LanguagesResponse {
+  repeated string languages = 1;
+}
+
+// News 实体
+message NewsItem {
+  string hash_id    = 1;
+  string title      = 2;
+  string content    = 3;
+  string language   = 4;
+  string published_at = 5;
+}
+
+// Post 实体
+message Post {
+  string hash_id    = 1;
+  string title      = 2;
+  string content    = 3;
+  string language   = 4;
+  string published_at = 5;
+}
+
+// EconomicCalendar 实体
+message EconomicCalendarItem {
+  string date       = 1;
+  string event_name = 2;
+  string impact     = 3;
+  string language   = 4;
+}
+
+// Discovery list request
+message ListDiscoveryRequest {
+  string language = 1;  // default: "English"
+  int32  page     = 2;  // default: 1
+  int32  size     = 3;  // default: 20
+}
+
+message ListNewsResponse {
+  repeated NewsItem data = 1;
+  PaginationMeta    meta = 2;
+}
+
+message ListPostsResponse {
+  repeated Post  data = 1;
+  PaginationMeta meta = 2;
+}
+
+message GetPostRequest {
+  string hash_id = 1;
+}
+
+message ListEconomicCalendarResponse {
+  repeated EconomicCalendarItem data = 1;
+  PaginationMeta                meta = 2;
+}

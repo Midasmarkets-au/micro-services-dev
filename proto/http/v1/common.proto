@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+// 通用分页请求
+message PaginationRequest {
+  int32  page       = 1; // 页码，从 1 开始
+  int32  size       = 2; // 每页条数，默认 20
+  string sort_field = 3; // 排序字段名
+  bool   sort_desc  = 4; // true = 降序，false = 升序
+}
+
+// 通用分页元数据（响应中携带）
+message PaginationMeta {
+  int32 page       = 1; // 当前页码
+  int32 size       = 2; // 每页条数
+  int32 total      = 3; // 总条数
+  int32 page_count = 4; // 总页数
+  bool  has_more   = 5; // 是否还有下一页
+}

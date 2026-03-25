@@ -1,0 +1,895 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant User API (api/v1/tenant/user) ────────────────────────────────────
+
+service TenantUserService {
+  // 列表查询
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user" };
+  }
+  // 获取用户（by partyId）
+  rpc GetUser(GetUserRequest) returns (User) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}" };
+  }
+  // 获取用户（by partyId，另一接口）
+  rpc GetUserByPid(GetUserByPidRequest) returns (User) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/pid/{party_id}" };
+  }
+  // 获取用户摘要列表
+  rpc GetUserSummary(ListUsersRequest) returns (ListUsersResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/summary" };
+  }
+  // 获取用户（by uid）
+  rpc GetUserByUid(GetUserByUidRequest) returns (User) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/uid/{uid}" };
+  }
+  // 获取用户（by id）
+  rpc GetUserById(GetUserByIdRequest) returns (User) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/id/{id}" };
+  }
+  // 添加标签
+  rpc AddUserTag(UserTagRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/tag/{tag}" };
+  }
+  // 删除标签
+  rpc RemoveUserTag(UserTagRequest) returns (User) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/tag/{tag}" };
+  }
+  // 获取所有角色
+  rpc GetAllRoles(EmptyRequest) returns (RolesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/role" };
+  }
+  // 添加角色
+  rpc AddRole(UserRoleRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/role/{role_id}/add" };
+  }
+  // 移除角色
+  rpc RemoveRole(UserRoleRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/role/{role_id}/remove" };
+  }
+  // 获取权限列表
+  rpc GetUserPermissions(GetUserRequest) returns (UserPermissionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/permission" };
+  }
+  // 获取 Claims
+  rpc GetUserClaims(GetUserRequest) returns (UserClaimsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/claim" };
+  }
+  // 添加角色（by name）
+  rpc AddRoleByName(UserRoleByNameRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/role/{role}" };
+  }
+  // 移除角色（by name）
+  rpc RemoveRoleByName(UserRoleByNameRequest) returns (User) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/role/{role}" };
+  }
+  // 添加权限
+  rpc AddPermission(UserPermissionRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/permission/{permission}" };
+  }
+  // 移除权限
+  rpc RemovePermission(UserPermissionRequest) returns (User) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/permission/{permission}" };
+  }
+  // 禁用批发申请权限
+  rpc DisableWholesalePermission(GetUserRequest) returns (User) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/permission/application-wholesale-disabled" };
+  }
+  // 绑定销售账户
+  rpc AddSalesAccount(UserAccountLinkRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/sales-account/{account_uid}" };
+  }
+  // 解绑销售账户
+  rpc RemoveSalesAccount(UserAccountLinkRequest) returns (User) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/sales-account/{account_uid}" };
+  }
+  // 绑定代理账户
+  rpc AddAgentAccount(UserAccountLinkRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/agent-account/{account_uid}" };
+  }
+  // 解绑代理账户
+  rpc RemoveAgentAccount(UserAccountLinkRequest) returns (User) {
+    option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/agent-account/{account_uid}" };
+  }
+  // 获取用户审计记录
+  rpc ListUserAudits(ListUserAuditsRequest) returns (ListUserAuditsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/audit" };
+  }
+  // 获取审计详情
+  rpc GetUserAudit(GetUserAuditRequest) returns (UserAudit) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/audit/{id}" };
+  }
+  // 获取支付服务设置
+  rpc GetUserPaymentService(GetUserRequest) returns (PaymentServiceResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/payment-service" };
+  }
+  // 更新支付服务设置
+  rpc UpdateUserPaymentService(UpdatePaymentServiceRequest) returns (PaymentServiceResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/payment-service", body: "spec" };
+  }
+  // 更新用户资料
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/profile", body: "spec" };
+  }
+  // 更新用户状态
+  rpc UpdateUserStatus(UpdateUserStatusRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/status", body: "spec" };
+  }
+  // 更新站点
+  rpc UpdateUserSite(UpdateUserSiteRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/site/{site_id}" };
+  }
+  // 锁定账户
+  rpc LockUser(GetUserRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/lock" };
+  }
+  // 解锁账户
+  rpc UnlockUser(GetUserRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/unlock" };
+  }
+  // 测验解锁
+  rpc UnlockByQuiz(GetUserRequest) returns (User) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/unlock/quiz" };
+  }
+  // 启用上帝模式
+  rpc EnableGodMode(GetUserRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/god-mode" };
+  }
+  // 获取地址列表
+  rpc ListUserAddresses(ListAddressesRequest) returns (ListAddressesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/address" };
+  }
+  // 获取地址
+  rpc GetUserAddress(GetAddressRequest) returns (Address) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/address/{address_id}" };
+  }
+  // 迁移用户到其他 tenant
+  rpc MigrateUser(MigrateUserRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/migrate-to/{tenant_id}" };
+  }
+  // 复制用户到其他 tenant
+  rpc DuplicateUser(DuplicateUserRequest) returns (User) {
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/duplicate-to/{tenant_id}", body: "spec" };
+  }
+  // 获取旧版个人信息
+  rpc GetLegacyPersonalInfo(GetUserRequest) returns (LegacyInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/personal-info" };
+  }
+  // 获取旧版财务信息
+  rpc GetLegacyFinancialInfo(GetUserRequest) returns (LegacyInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/financial-info" };
+  }
+  // 获取旧版 KYC 表单
+  rpc GetLegacyKycForm(GetUserRequest) returns (LegacyInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/kyc-form" };
+  }
+  // 获取旧版 KYC 修正
+  rpc GetLegacyKycCorrection(GetUserRequest) returns (LegacyInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/kyc-correction" };
+  }
+  // 获取社交媒体信息
+  rpc GetSocialMediaInfo(GetUserRequest) returns (SocialMediaInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/social-media-info" };
+  }
+  // 更新社交媒体信息
+  rpc UpdateSocialMediaInfo(UpdateSocialMediaRequest) returns (SocialMediaInfoResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/social-media-info", body: "spec" };
+  }
+}
+
+// ─── Tenant Role API (api/v1/tenant/role) ────────────────────────────────────
+
+service TenantRoleService {
+  // 获取所有角色
+  rpc ListRoles(EmptyRequest) returns (RolesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/role" };
+  }
+  // 获取角色
+  rpc GetRole(GetRoleRequest) returns (Role) {
+    option (google.api.http) = { get: "/api/v1/tenant/role/{id}" };
+  }
+}
+
+// ─── Tenant Permission API (api/v1/tenant/permission) ────────────────────────
+
+service TenantPermissionService {
+  // 获取所有权限
+  rpc ListPermissions(EmptyRequest) returns (PermissionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/permission" };
+  }
+}
+
+// ─── Tenant KYC API (api/v1/tenant/kyc) ─────────────────────────────────────
+
+service TenantKycService {
+  // 列表查询
+  rpc ListKycs(ListKycsRequest) returns (ListKycsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/kyc" };
+  }
+  // 获取单条
+  rpc GetKyc(GetKycRequest) returns (KycForm) {
+    option (google.api.http) = { get: "/api/v1/tenant/kyc/{party_id}" };
+  }
+  // 创建
+  rpc CreateKyc(CreateKycRequest) returns (KycForm) {
+    option (google.api.http) = { post: "/api/v1/tenant/kyc/{party_id}", body: "spec" };
+  }
+  // 更新
+  rpc UpdateKyc(UpdateKycRequest) returns (KycForm) {
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}", body: "spec" };
+  }
+  // 等待审核
+  rpc AwaitingReview(GetKycRequest) returns (KycForm) {
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/awaiting-review" };
+  }
+  // 签名
+  rpc SignKyc(UpdateKycRequest) returns (KycForm) {
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/sign", body: "spec" };
+  }
+  // 最终确认
+  rpc FinalizeKyc(UpdateKycRequest) returns (KycForm) {
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/finalize", body: "spec" };
+  }
+  // 获取历史
+  rpc GetKycHistory(GetKycRequest) returns (KycHistoryResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/kyc/{party_id}/history" };
+  }
+  // 拒绝
+  rpc RejectKyc(GetKycRequest) returns (KycForm) {
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/reject" };
+  }
+  // 获取合规签名
+  rpc GetComplianceSig(EmptyRequest) returns (ComplianceSigResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/kyc/complianceSig" };
+  }
+}
+
+// ─── Tenant Verification API (api/v1/tenant/verification) ────────────────────
+
+service TenantVerificationService {
+  // 列表查询
+  rpc ListVerifications(ListVerificationsRequest) returns (ListVerificationsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/verification" };
+  }
+  // 获取单条
+  rpc GetVerification(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { get: "/api/v1/tenant/verification/{id}" };
+  }
+  // 获取 item
+  rpc GetVerificationItem(GetVerificationItemRequest) returns (VerificationItem) {
+    option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/item/{item_id}" };
+  }
+  // 获取 item list
+  rpc GetVerificationItemList(GetVerificationRequest) returns (VerificationItemListResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/item-list" };
+  }
+  // 设为审核中
+  rpc SetUnderReview(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/under-review" };
+  }
+  // 设为等待批准
+  rpc SetAwaitingApprove(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-approve" };
+  }
+  // 批准
+  rpc ApproveVerification(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/approve" };
+  }
+  // 延迟批准
+  rpc DelayedApprove(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/delayed-approve" };
+  }
+  // 等待审核
+  rpc SetAwaitingReview(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-review" };
+  }
+  // 拒绝
+  rpc RejectVerification(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/reject" };
+  }
+  // 拒绝文件并发通知
+  rpc RejectDocumentNotice(GetVerificationRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/reject-notice" };
+  }
+  // 拒绝特定文件
+  rpc RejectDocument(RejectVerificationDocumentRequest) returns (VerificationItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/{medium_id}/reject", body: "spec" };
+  }
+  // 批准特定文件
+  rpc ApproveDocument(VerificationDocumentRequest) returns (VerificationItem) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/{medium_id}/approve" };
+  }
+  // 删除文件
+  rpc DeleteDocument(VerificationDocumentRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/verification/{id}/document/{medium_id}" };
+  }
+  // 等待地址验证
+  rpc SetAwaitingAddressVerify(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-address-verify" };
+  }
+  // 等待验证码验证
+  rpc SetAwaitingCodeVerify(GetVerificationRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-code-verify" };
+  }
+  // 获取邮件验证码
+  rpc GetMailCode(GetVerificationRequest) returns (MailCodeResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/mail-code" };
+  }
+  // 发送邮件验证码
+  rpc SendMailCode(GetVerificationRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/verification/{id}/mail-code" };
+  }
+}
+
+// ─── Client Verification API (api/v1/client/verification) ────────────────────
+
+service ClientVerificationService {
+  // 获取当前验证状态
+  rpc GetVerificationStatus(EmptyRequest) returns (VerificationStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/client/verification" };
+  }
+  // 创建新验证申请
+  rpc CreateNewVerification(EmptyRequest) returns (Verification) {
+    option (google.api.http) = { post: "/api/v1/client/verification/new" };
+  }
+  // 获取已有验证
+  rpc GetExistingVerification(EmptyRequest) returns (Verification) {
+    option (google.api.http) = { get: "/api/v1/client/verification/existing" };
+  }
+  // 标记开始
+  rpc MarkStarted(MarkStartedRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/client/verification/started", body: "*" };
+  }
+  // 提交基本信息
+  rpc SubmitPersonalInfo(SubmitVerificationInfoRequest) returns (Verification) {
+    option (google.api.http) = { post: "/api/v1/client/verification/info", body: "*" };
+  }
+  // 提交财务信息
+  rpc SubmitFinancialInfo(SubmitVerificationInfoRequest) returns (Verification) {
+    option (google.api.http) = { post: "/api/v1/client/verification/financial", body: "*" };
+  }
+  // 提交协议确认
+  rpc SubmitAgreement(SubmitVerificationInfoRequest) returns (Verification) {
+    option (google.api.http) = { post: "/api/v1/client/verification/agreement", body: "*" };
+  }
+  // 提交问卷
+  rpc SubmitQuiz(SubmitQuizRequest) returns (Verification) {
+    option (google.api.http) = { post: "/api/v1/client/verification/quiz", body: "*" };
+  }
+  // 获取问卷
+  rpc GetQuiz(EmptyRequest) returns (QuizResponse) {
+    option (google.api.http) = { get: "/api/v1/client/verification/quiz" };
+  }
+  // 提交审核申请
+  rpc SubmitVerification(EmptyRequest) returns (Verification) {
+    option (google.api.http) = { put: "/api/v1/client/verification/submit" };
+  }
+  // 提交验证码
+  rpc SubmitVerifyCode(SubmitVerifyCodeRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/client/verification/verify-code", body: "*" };
+  }
+}
+
+// ─── Auth V2 API (api/v2/auth) ───────────────────────────────────────────────
+
+service AuthServiceV2 {
+  // 获取域名信息
+  rpc GetDomainInfo(EmptyRequest) returns (DomainInfoResponse) {
+    option (google.api.http) = { get: "/api/v2/domain" };
+  }
+  // 获取欢迎信息
+  rpc GetWelcomeInfo(EmptyRequest) returns (WelcomeInfoResponse) {
+    option (google.api.http) = { get: "/api/v2/welcome" };
+  }
+  // 获取 IP 信息
+  rpc GetIpInfo(EmptyRequest) returns (IpInfoResponse) {
+    option (google.api.http) = { get: "/api/v2/auth/ip-info" };
+  }
+  // 获取站点配置
+  rpc GetSiteConfig(GetSiteConfigRequest) returns (SiteConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/auth/c" };
+  }
+  // 用户注册
+  rpc Register(RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/register", body: "*" };
+  }
+  // 登出
+  rpc Logout(EmptyRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/logout" };
+  }
+  // 忘记密码
+  rpc ForgotPassword(ForgotPasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password/forgot", body: "*" };
+  }
+  // 修改密码
+  rpc ChangePassword(ChangePasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password/change", body: "*" };
+  }
+  // 重置密码（by token）
+  rpc ResetPassword(ResetPasswordRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password/reset", body: "*" };
+  }
+  // 获取登录验证码
+  rpc GetLoginAuthCode(EmptyRequest) returns (AuthCodeResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/token/code" };
+  }
+  // 确认登录验证码
+  rpc ConfirmLoginAuthCode(ConfirmAuthCodeRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/token/code/confirm", body: "*" };
+  }
+  // 获取密码重置验证码
+  rpc GetPasswordResetCode(GetPasswordResetCodeRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password-reset/code", body: "*" };
+  }
+  // 确认密码重置验证码
+  rpc ConfirmPasswordResetCode(ConfirmPasswordResetCodeRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password-reset/code/confirm", body: "*" };
+  }
+}
+
+// ─── User V2 API (api/v2/user) ───────────────────────────────────────────────
+
+service UserServiceV2 {
+  // 健康检查
+  rpc Ping(EmptyRequest) returns (PingResponse) {
+    option (google.api.http) = { get: "/api/v2/user/ping" };
+  }
+  // 获取当前用户
+  rpc GetMe(EmptyRequest) returns (User) {
+    option (google.api.http) = { get: "/api/v2/user/me" };
+  }
+  // 获取地址列表
+  rpc ListAddresses(ListAddressesRequest) returns (ListAddressesResponse) {
+    option (google.api.http) = { get: "/api/v2/user/address" };
+  }
+  // 获取地址
+  rpc GetAddress(GetAddressByHashRequest) returns (Address) {
+    option (google.api.http) = { get: "/api/v2/user/address/{hash_id}" };
+  }
+  // 创建地址
+  rpc CreateAddress(CreateAddressRequest) returns (Address) {
+    option (google.api.http) = { post: "/api/v2/user/address", body: "*" };
+  }
+  // 更新地址
+  rpc UpdateAddress(UpdateAddressRequest) returns (Address) {
+    option (google.api.http) = { put: "/api/v2/user/address/{hash_id}", body: "spec" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+message EmptyRequest {}
+
+message OperationResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// User 实体
+message User {
+  int64  id         = 1;
+  int64  party_id   = 2;
+  string email      = 3;
+  string first_name = 4;
+  string last_name  = 5;
+  int32  status     = 6;
+  string created_at = 7;
+}
+
+// Role 实体
+message Role {
+  int64  id   = 1;
+  string name = 2;
+}
+
+// Address 实体
+message Address {
+  int64  id          = 1;
+  string hash_id     = 2;
+  int64  party_id    = 3;
+  string country     = 4;
+  string city        = 5;
+  string address     = 6;
+  bool   is_default  = 7;
+}
+
+// KycForm 实体
+message KycForm {
+  int64  id        = 1;
+  int64  party_id  = 2;
+  int32  status    = 3;
+  string form_data = 4;  // JSON
+}
+
+// Verification 实体
+message Verification {
+  int64  id        = 1;
+  int64  party_id  = 2;
+  int32  status    = 3;
+  string created_at = 4;
+}
+
+// VerificationItem 实体
+message VerificationItem {
+  int64  id              = 1;
+  int64  verification_id = 2;
+  int32  type            = 3;
+  int32  status          = 4;
+}
+
+// User list
+message ListUsersRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+
+message ListUsersResponse {
+  repeated User  data = 1;
+  PaginationMeta meta = 2;
+}
+
+message GetUserRequest {
+  int64 party_id = 1;
+}
+
+message GetUserByPidRequest {
+  int64 party_id = 1;
+}
+
+message GetUserByUidRequest {
+  int64 uid = 1;
+}
+
+message GetUserByIdRequest {
+  int64 id = 1;
+}
+
+message UserTagRequest {
+  int64  party_id = 1;
+  string tag      = 2;
+}
+
+message RolesResponse {
+  repeated Role roles = 1;
+}
+
+message UserRoleRequest {
+  int64 party_id = 1;
+  int64 role_id  = 2;
+}
+
+message UserPermissionsResponse {
+  repeated string permissions = 1;
+}
+
+message UserClaimsResponse {
+  map<string, string> claims = 1;
+}
+
+message UserRoleByNameRequest {
+  int64  party_id = 1;
+  string role     = 2;
+}
+
+message UserPermissionRequest {
+  int64  party_id   = 1;
+  string permission = 2;
+}
+
+message UserAccountLinkRequest {
+  int64 party_id   = 1;
+  int64 account_uid = 2;
+}
+
+message ListUserAuditsRequest {
+  int64             party_id   = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+
+message ListUserAuditsResponse {
+  repeated UserAudit data = 1;
+  PaginationMeta     meta = 2;
+}
+
+message UserAudit {
+  int64  id         = 1;
+  int64  party_id   = 2;
+  string action     = 3;
+  string created_at = 4;
+}
+
+message GetUserAuditRequest {
+  int64 party_id = 1;
+  int64 id       = 2;
+}
+
+message PaymentServiceResponse {
+  string settings = 1;  // JSON
+}
+
+message UpdatePaymentServiceRequest {
+  int64  party_id = 1;
+  string spec     = 2;  // JSON
+}
+
+message UpdateUserProfileRequest {
+  int64  party_id    = 1;
+  string spec        = 2;  // JSON - User.TenantUpdateSpec
+}
+
+message UpdateUserStatusRequest {
+  int64 party_id = 1;
+  int32 status   = 2;
+}
+
+message UpdateUserSiteRequest {
+  int64 party_id = 1;
+  int32 site_id  = 2;
+}
+
+message ListAddressesRequest {
+  PaginationRequest pagination = 1;
+  optional int64    party_id   = 2;
+}
+
+message ListAddressesResponse {
+  repeated Address data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message GetAddressRequest {
+  int64 address_id = 1;
+}
+
+message GetAddressByHashRequest {
+  string hash_id = 1;
+}
+
+message CreateAddressRequest {
+  string country  = 1;
+  string city     = 2;
+  string address  = 3;
+  bool   is_default = 4;
+}
+
+message UpdateAddressRequest {
+  string hash_id  = 1;
+  CreateAddressRequest spec = 2;
+}
+
+message MigrateUserRequest {
+  int64 party_id  = 1;
+  int64 tenant_id = 2;
+}
+
+message DuplicateUserRequest {
+  int64  party_id  = 1;
+  int64  tenant_id = 2;
+  string spec      = 3;  // JSON - User
+}
+
+message LegacyInfoResponse {
+  string data = 1;  // JSON
+}
+
+message SocialMediaInfoResponse {
+  string platform = 1;
+  string handle   = 2;
+}
+
+message UpdateSocialMediaRequest {
+  int64  party_id  = 1;
+  string platform  = 2;
+  string handle    = 3;
+}
+
+// Role/Permission messages
+message GetRoleRequest {
+  int64 id = 1;
+}
+
+message PermissionsResponse {
+  repeated string permissions = 1;
+}
+
+// KYC messages
+message ListKycsRequest {
+  PaginationRequest pagination = 1;
+  optional int32    status     = 2;
+}
+
+message ListKycsResponse {
+  repeated KycForm data = 1;
+  PaginationMeta   meta = 2;
+}
+
+message GetKycRequest {
+  int64 party_id = 1;
+}
+
+message CreateKycRequest {
+  int64  party_id = 1;
+  string spec     = 2;  // JSON - KycFormViewModel
+}
+
+message UpdateKycRequest {
+  int64  party_id = 1;
+  string spec     = 2;  // JSON - KycFormViewModel
+}
+
+message KycHistoryResponse {
+  repeated KycHistoryItem items = 1;
+}
+
+message KycHistoryItem {
+  int32  status     = 1;
+  string updated_at = 2;
+}
+
+message ComplianceSigResponse {
+  string signature = 1;
+}
+
+// Verification messages
+message ListVerificationsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    party_id   = 2;
+  optional int32    status     = 3;
+}
+
+message ListVerificationsResponse {
+  repeated Verification data = 1;
+  PaginationMeta        meta = 2;
+}
+
+message GetVerificationRequest {
+  int64 id = 1;
+}
+
+message GetVerificationItemRequest {
+  int64 id      = 1;
+  int64 item_id = 2;
+}
+
+message VerificationItemListResponse {
+  repeated VerificationItem items = 1;
+}
+
+message RejectVerificationDocumentRequest {
+  int64  id        = 1;
+  int64  medium_id = 2;
+  string spec      = 3;  // reason
+}
+
+message VerificationDocumentRequest {
+  int64 id        = 1;
+  int64 medium_id = 2;
+}
+
+message MailCodeResponse {
+  string code       = 1;
+  string expires_at = 2;
+}
+
+// Client Verification messages
+message VerificationStatusResponse {
+  int32  status     = 1;
+  string updated_at = 2;
+}
+
+message MarkStartedRequest {
+  string step = 1;
+}
+
+message SubmitVerificationInfoRequest {
+  string data = 1;  // JSON - form data
+}
+
+message SubmitQuizRequest {
+  repeated QuizAnswer answers = 1;
+}
+
+message QuizAnswer {
+  int32  question_id = 1;
+  string answer      = 2;
+}
+
+message QuizResponse {
+  repeated QuizQuestion questions = 1;
+}
+
+message QuizQuestion {
+  int32           id       = 1;
+  string          question = 2;
+  repeated string options  = 3;
+}
+
+message SubmitVerifyCodeRequest {
+  string code = 1;
+}
+
+// Auth V2 messages
+message DomainInfoResponse {
+  string domain     = 1;
+  string tenant_id  = 2;
+}
+
+message WelcomeInfoResponse {
+  string title    = 1;
+  string message  = 2;
+}
+
+message IpInfoResponse {
+  string ip      = 1;
+  string country = 2;
+}
+
+message GetSiteConfigRequest {
+  optional string open_at = 1;
+}
+
+message SiteConfigResponse {
+  string config = 1;  // JSON
+}
+
+message RegisterRequest {
+  string email     = 1;
+  string password  = 2;
+  string ref_code  = 3;
+  string first_name = 4;
+  string last_name  = 5;
+}
+
+message RegisterResponse {
+  int64  party_id = 1;
+  string email    = 2;
+}
+
+message ForgotPasswordRequest {
+  string email = 1;
+}
+
+message ChangePasswordRequest {
+  string old_password = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordRequest {
+  string token       = 1;
+  string new_password = 2;
+}
+
+message AuthCodeResponse {
+  string code       = 1;
+  string expires_at = 2;
+}
+
+message ConfirmAuthCodeRequest {
+  string code = 1;
+}
+
+message GetPasswordResetCodeRequest {
+  string email = 1;
+}
+
+message ConfirmPasswordResetCodeRequest {
+  string email = 1;
+  string code  = 2;
+}
+
+// User V2 messages
+message PingResponse {
+  string status = 1;
+}
