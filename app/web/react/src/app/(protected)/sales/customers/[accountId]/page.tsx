@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, use, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, use, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -36,11 +36,9 @@ import {
   getCurrencyCode,
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
-import { TradeFilter } from '@/components/TradeFilter';
+import { TradeReportTable } from '@/components/TradeReportTable';
 import type {
   SalesClientAccount,
-  SalesTradeRecord,
-  SalesTradeListResponse,
   SalesDepositRecord,
   SalesWithdrawalRecord,
   SalesTransactionRecord,
@@ -89,11 +87,6 @@ function formatGroupKey(dateStr: string) {
   return `${monthYear}||${weekday}`;
 }
 
-function handleTradeFormatted(price: number | undefined | null, digits: number): string {
-  if (price == null || isNaN(price)) return '--';
-  return parseFloat(price.toFixed(digits)).toString();
-}
-
 function getRoleLabel(
   role: number,
   td: (key: string) => string,
@@ -128,11 +121,7 @@ export default function SalesCustomerDetailPage({
   const [deposits, setDeposits] = useState<SalesDepositRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<SalesWithdrawalRecord[]>([]);
   const [transactions, setTransactions] = useState<SalesTransactionRecord[]>([]);
-  const [trades, setTrades] = useState<SalesTradeRecord[]>([]);
-  const [tradeCriteria, setTradeCriteria] = useState<SalesTradeListResponse['criteria'] | null>(null);
-
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const tradeFilterParamsRef = useRef<Record<string, unknown>>({ isClosed: false });
 
   // ---- 加载账户详情（使用 queryAccounts 查询参数 uid=xxx） ----
   useEffect(() => {
@@ -175,7 +164,7 @@ export default function SalesCustomerDetailPage({
 
   // ---- 数据加载 ----
   const loadData = useCallback(async (p: number) => {
-    if (!salesAccount || !accountUid) return;
+    if (!salesAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
       const dateParams = buildDateParams();
@@ -205,15 +194,6 @@ export default function SalesCustomerDetailPage({
           setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
-      } else if (tab === 'tradeReport') {
-        const result = await execute(getSalesClientTrades, salesAccount.uid, accountUid, {
-          page: p, size: pageSize, ...tradeFilterParamsRef.current,
-        });
-        if (result.success && result.data) {
-          setTrades(Array.isArray(result.data.data) ? result.data.data : []);
-          setTradeCriteria(result.data.criteria);
-          setTotal(result.data.criteria?.total || 0);
-        }
       }
     } finally {
       setIsLoading(false);
@@ -227,16 +207,14 @@ export default function SalesCustomerDetailPage({
   const handleTabChange = (key: DetailTab) => { setTab(key); setPage(1); setTotal(0); };
   const handleSearch = () => { setPage(1); loadData(1); };
   const handleReset = () => { setDateRange(undefined); setPage(1); };
-  const handleTradeFilterSearch = useCallback((params: Record<string, unknown>) => {
-    tradeFilterParamsRef.current = params;
-    setPage(1);
-    loadData(1);
-  }, [loadData]);
-  const handleTradeFilterReset = useCallback(() => {
-    tradeFilterParamsRef.current = { isClosed: false };
-    setPage(1);
-    loadData(1);
-  }, [loadData]);
+  const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
+    if (!salesAccount || !accountUid) return null;
+    const result = await execute(getSalesClientTrades, salesAccount.uid, accountUid, params);
+    if (result.success && result.data) {
+      return { data: result.data.data, criteria: result.data.criteria };
+    }
+    return null;
+  }, [salesAccount, accountUid, execute]);
 
   // ---- 用户信息 ----
   const user = accountDetail?.user;
@@ -259,12 +237,6 @@ export default function SalesCustomerDetailPage({
 
   const dateGroupConfig = useMemo<DataTableGroupConfig<{ createdOn: string }>>(() => ({
     groupBy: (item) => formatGroupKey(item.createdOn),
-    renderGroupHeader: groupHeaderRender,
-    headerWidth: 'w-[120px]',
-  }), [groupHeaderRender]);
-
-  const tradeGroupConfig = useMemo<DataTableGroupConfig<SalesTradeRecord>>(() => ({
-    groupBy: (item) => formatGroupKey(item.openTime || item.openAt || ''),
     renderGroupHeader: groupHeaderRender,
     headerWidth: 'w-[120px]',
   }), [groupHeaderRender]);
@@ -426,82 +398,6 @@ export default function SalesCustomerDetailPage({
     },
   ], [td, tState, getCurrencyName]);
 
-  // ---- Trade 列定义 ----
-  const isClosed = tradeFilterParamsRef.current?.isClosed as boolean | undefined;
-
-  const tradeColumns = useMemo<DataTableColumn<SalesTradeRecord>[]>(() => {
-    const cols: DataTableColumn<SalesTradeRecord>[] = [
-      { key: 'ticket', title: td('columns.ticket'), align: 'center', skeletonWidth: 'w-16', render: (item) => <span className="text-sm">{item.ticket}</span> },
-      { key: 'symbol', title: td('columns.symbol'), align: 'center', skeletonWidth: 'w-16', render: (item) => <span className="text-sm">{item.symbol}</span> },
-      { key: 'type', title: td('columns.type'), align: 'center', skeletonWidth: 'w-12', render: (item) => <span className="text-sm">{item.cmd === 0 ? 'Buy' : 'Sell'}</span> },
-      { key: 'volume', title: td('columns.volume'), align: 'center', skeletonWidth: 'w-12', render: (item) => <span className="text-sm">{item.volume}</span> },
-      { key: 'openTime', title: td('columns.openTime'), align: 'center', skeletonWidth: 'w-28', render: (item) => <span className="text-xs">{formatDateTime(item.openTime || item.openAt || '')}</span> },
-      { key: 'openPrice', title: td('columns.openPrice'), align: 'center', skeletonWidth: 'w-16', render: (item) => <span className="text-sm">{handleTradeFormatted(item.openPrice, item.digits || 5)}</span> },
-      { key: 'sl', title: td('columns.sl'), align: 'center', skeletonWidth: 'w-12', render: (item) => <span className="text-sm">{item.sl ?? '--'}</span> },
-      { key: 'tp', title: td('columns.tp'), align: 'center', skeletonWidth: 'w-12', render: (item) => <span className="text-sm">{item.tp ?? '--'}</span> },
-    ];
-
-    if (isClosed) {
-      cols.push(
-        { key: 'closeTime', title: td('columns.closeTime'), align: 'center', skeletonWidth: 'w-28', render: (item) => <span className="text-xs">{formatDateTime(item.closeTime || item.closeAt || '')}</span> },
-        { key: 'closePrice', title: td('columns.closePrice'), align: 'center', skeletonWidth: 'w-16', render: (item) => <span className="text-sm">{handleTradeFormatted(item.closePrice, item.digits || 5)}</span> },
-      );
-    }
-
-    cols.push(
-      { key: 'commission', title: td('columns.commission'), align: 'center', skeletonWidth: 'w-16', render: (item) => <span className="text-sm">{item.commission?.toFixed(2) ?? '--'}</span> },
-      { key: 'swap', title: td('columns.swap'), align: 'center', skeletonWidth: 'w-12', render: (item) => <span className="text-sm">{(item.swap ?? item.swaps)?.toFixed(2) ?? '--'}</span> },
-      {
-        key: 'profit', title: td('columns.profit'), align: 'center', skeletonWidth: 'w-16',
-        render: (item) => (
-          <span className={
-            (item.profit || 0) > 0 ? 'text-green-600' : (item.profit || 0) < 0 ? 'text-red-600' : ''
-          }>
-            {handleTradeFormatted(item.profit, 2)}
-          </span>
-        ),
-      },
-    );
-
-    return cols;
-  }, [td, isClosed]);
-
-  // ---- 交易汇总行 ----
-  const renderTradeSummary = () => {
-    if (!tradeCriteria || tab !== 'tradeReport' || trades.length === 0) return null;
-    const closedColSpan = isClosed ? 6 : 4;
-    return (
-      <div className="overflow-x-auto border-t border-border">
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-b border-border">
-              <td className="px-3 py-2 font-semibold text-text-primary">{td('columns.subTotal')}</td>
-              <td colSpan={2} />
-              <td className="px-3 py-2 text-center">{tradeCriteria.pageTotalVolume ?? 0}</td>
-              <td colSpan={closedColSpan} />
-              <td className="px-3 py-2 text-center">{tradeCriteria.pageTotalCommission ?? 0}</td>
-              <td className="px-3 py-2 text-center">{tradeCriteria.pageTotalSwap ?? 0}</td>
-              <td className={`px-3 py-2 text-center ${(tradeCriteria.pageTotalProfit || 0) > 0 ? 'text-green-600' : (tradeCriteria.pageTotalProfit || 0) < 0 ? 'text-red-600' : ''}`}>
-                {tradeCriteria.pageTotalProfit ?? 0}
-              </td>
-            </tr>
-            <tr className="bg-surface-secondary">
-              <td className="px-3 py-2 font-semibold text-text-primary">{td('columns.total')}</td>
-              <td colSpan={2} />
-              <td className="px-3 py-2 text-center">{tradeCriteria.totalVolume ?? 0}</td>
-              <td colSpan={closedColSpan} />
-              <td className="px-3 py-2 text-center">{tradeCriteria.totalCommission ?? 0}</td>
-              <td className="px-3 py-2 text-center">{tradeCriteria.totalSwap ?? 0}</td>
-              <td className={`px-3 py-2 text-center ${(tradeCriteria.totalProfit || 0) > 0 ? 'text-green-600' : (tradeCriteria.totalProfit || 0) < 0 ? 'text-red-600' : ''}`}>
-                {tradeCriteria.totalProfit ?? 0}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
   // ---- 表格渲染 ----
   const renderTable = () => {
     switch (tab) {
@@ -537,20 +433,6 @@ export default function SalesCustomerDetailPage({
             skeletonRows={5}
             groupConfig={dateGroupConfig as DataTableGroupConfig<SalesWithdrawalRecord>}
           />
-        );
-      case 'tradeReport':
-        return (
-          <>
-            <DataTable<SalesTradeRecord>
-              columns={tradeColumns}
-              data={trades}
-              rowKey={(item, idx) => item.id ?? idx}
-              loading={isLoading}
-              skeletonRows={5}
-              groupConfig={tradeGroupConfig}
-            />
-            {renderTradeSummary()}
-          </>
         );
       default:
         return null;
@@ -680,33 +562,33 @@ export default function SalesCustomerDetailPage({
           )}
         </div>
 
-        {/* Trade Report 专用筛选 */}
-        {tab === 'tradeReport' && (
-          <TradeFilter
-            type="trade"
-            translationNamespace="sales"
+        {tab === 'tradeReport' ? (
+          <TradeReportTable
+            fetchData={fetchTradeData}
             filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
-            onSearch={handleTradeFilterSearch}
-            onReset={handleTradeFilterReset}
-            isLoading={isLoading}
+            filterTranslationNamespace="sales"
+            pageSize={pageSize}
+            autoFetchKey={`${salesAccount?.uid}-${accountUid}`}
           />
+        ) : (
+          <>
+            {/* 结果数量 */}
+            <p className="text-xl font-semibold text-text-secondary">
+              {td.rich('showResults', {
+                count: String(total),
+                num: (chunks) => <span className="text-text-primary">{chunks}</span>,
+              })}
+            </p>
+
+            {/* 表格内容 */}
+            <div className="flex-1 overflow-x-auto">
+              {renderTable()}
+            </div>
+
+            {/* 分页 */}
+            <Pagination page={page} total={total} size={pageSize} onPageChange={setPage} />
+          </>
         )}
-
-        {/* 结果数量 */}
-        <p className="text-xl font-semibold text-text-secondary">
-          {td.rich('showResults', {
-            count: String(total),
-            num: (chunks) => <span className="text-text-primary">{chunks}</span>,
-          })}
-        </p>
-
-        {/* 表格内容 */}
-        <div className="flex-1 overflow-x-auto">
-          {renderTable()}
-        </div>
-
-        {/* 分页 */}
-        <Pagination page={page} total={total} size={pageSize} onPageChange={setPage} />
       </div>
     </div>
   );

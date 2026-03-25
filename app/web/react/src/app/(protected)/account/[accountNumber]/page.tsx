@@ -8,8 +8,8 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
 import { TimeShow } from '@/components/TimeShow';
-import { BalanceShow, Button, Skeleton, DatePicker, Tabs, DataTable } from '@/components/ui';
-import { TradeFilter } from '@/components/TradeFilter';
+import { BalanceShow, Button, Skeleton, DatePicker, Tabs, DataTable, Icon } from '@/components/ui';
+import { TradeReportTable } from '@/components/TradeReportTable';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { DateRange } from '@/components/ui';
 import {
@@ -39,8 +39,6 @@ import type {
   AccountDeposit,
   AccountWithdrawal,
   AccountTransaction,
-  AccountTrade,
-  AccountTradeCriteria,
 } from '@/types/accounts';
 import {
   AccountStatusTypes,
@@ -51,8 +49,6 @@ import {
   TransferState,
   getCurrencyFlag,
 } from '@/types/accounts';
-import { handleTradeBuySellDisplay } from '@/lib/trade';
-
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport';
 
 
@@ -67,17 +63,6 @@ const CopyIcon = () => (
     />
   </svg>
 );
-
-function toFixedSafe(value: number | undefined | null, digits: number, fallback = '--') {
-  if (value == null || Number.isNaN(value)) return fallback;
-  return value.toFixed(digits);
-}
-
-function getProfitColorClass(value: number): string {
-  if (value < 0) return 'text-[#800020] dark:text-[#800020]';
-  if (value > 0) return 'text-[#004EFF] dark:text-[#004EFF]';
-  return 'text-text-primary';
-}
 
 const PENDING_STATES = new Set([
   DepositState.DepositCreated, DepositState.DepositPaymentCompleted, DepositState.DepositTenantApproved,
@@ -122,7 +107,6 @@ export default function AccountDetailPage() {
   const params = useParams();
   const accountNumber = Number(params.accountNumber);
   const t = useTranslations('accounts');
-  const tType = useTranslations();
   const { isDark, mounted } = useTheme();
   const { execute } = useServerAction({ showErrorToast: true });
 
@@ -137,8 +121,6 @@ export default function AccountDetailPage() {
   const [deposits, setDeposits] = useState<AccountDeposit[]>([]);
   const [withdrawals, setWithdrawals] = useState<AccountWithdrawal[]>([]);
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
-  const [trades, setTrades] = useState<AccountTrade[]>([]);
-  const [tradeCriteria, setTradeCriteria] = useState<AccountTradeCriteria | null>(null);
   const [tabLoading, setTabLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -155,8 +137,6 @@ export default function AccountDetailPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
-  const tradeFilterParamsRef = useRef<Record<string, unknown>>({ isClosed: false });
-
   const isLoadedRef = useRef(false);
 
   const decorationImage = isDark
@@ -204,7 +184,7 @@ export default function AccountDetailPage() {
   }, [loadAccountData]);
 
   const loadTabData = useCallback(async () => {
-    if (!currentAccount) return;
+    if (!currentAccount || activeTab === 'tradeReport') return;
     setTabLoading(true);
     try {
       const uid = currentAccount.uid;
@@ -233,18 +213,6 @@ export default function AccountDetailPage() {
           if (result.success) {
             setTransactions(result.data?.data || []);
             setTotalCount(result.data?.total || 0);
-          }
-          break;
-        }
-        case 'tradeReport': {
-          const result = await execute(getAccountTrades, uid, {
-            size: pageSize,
-            ...tradeFilterParamsRef.current,
-          });
-          if (result.success) {
-            setTrades(result.data?.data || []);
-            setTradeCriteria(result.data?.criteria || null);
-            setTotalCount(result.data?.criteria?.total || 0);
           }
           break;
         }
@@ -315,14 +283,14 @@ export default function AccountDetailPage() {
     setTotalCount(0);
   };
 
-  const handleTradeFilterSearch = useCallback((params: Record<string, unknown>) => {
-    tradeFilterParamsRef.current = params;
-    loadTabData();
-  }, [loadTabData]);
-
-  const handleTradeFilterReset = useCallback(() => {
-    tradeFilterParamsRef.current = { isClosed: false };
-  }, []);
+  const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
+    if (!currentAccount) return null;
+    const result = await execute(getAccountTrades, currentAccount.uid, params);
+    if (result.success && result.data) {
+      return { data: result.data.data, criteria: result.data.criteria };
+    }
+    return null;
+  }, [currentAccount, execute]);
 
   const tradeAccount = currentAccount?.tradeAccount;
   const service = tradeAccount ? serviceMap[tradeAccount.serviceId] : undefined;
@@ -558,99 +526,6 @@ export default function AccountDetailPage() {
     },
   ], [t, tradeAccount?.accountNumber, tradeAccount?.currencyId]);
 
-  const isTradeClosed = (tradeCriteria?.isClosed ?? tradeFilterParamsRef.current?.isClosed) === true;
-
-  const tradeColumns = useMemo<DataTableColumn<AccountTrade>[]>(() => [
-    { key: 'ticket', title: t('detail.table.ticket'), skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.ticket}</span> },
-    { key: 'symbol', title: t('detail.table.symbol'), skeletonWidth: 'w-16', render: (item) => <span className="text-text-primary">{item.symbol}</span> },
-    {
-      key: 'type', title: t('fields.type'), skeletonWidth: 'w-12',
-      render: (item) => {
-        const typeCmd = handleTradeBuySellDisplay(item);
-        return <span>{tType(`type.cmd.${typeCmd}`)}</span>;
-      },
-    },
-    { key: 'volume', title: t('detail.table.volume'), align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-primary">{toFixedSafe(item.volume, 2)}</span> },
-    { key: 'openAt', title: t('detail.table.openTime'), skeletonWidth: 'w-24', render: (item) => <TimeShow type="inFields" dateIsoString={item.openAt} /> },
-    { key: 'openPrice', title: t('detail.table.openPrice'), align: 'right', skeletonWidth: 'w-20', render: (item) => <span className="text-text-primary">{toFixedSafe(item.openPrice, 5)}</span> },
-    { key: 'sl', title: t('detail.table.sl'), align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.sl != null && item.sl > 0 ? toFixedSafe(item.sl, 5) : '--'}</span> },
-    { key: 'tp', title: t('detail.table.tp'), align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{item.tp != null && item.tp > 0 ? toFixedSafe(item.tp, 5) : '--'}</span> },
-    ...(isTradeClosed ? [
-      { key: 'closeAt', title: t('detail.table.closeTime'), skeletonWidth: 'w-24', render: (item: AccountTrade) => <TimeShow type="inFields" dateIsoString={item.closeAt} /> },
-      { key: 'closePrice', title: t('detail.table.closePrice'), align: 'right' as const, skeletonWidth: 'w-20', render: (item: AccountTrade) => <span className="text-text-primary">{item.closePrice != null && item.closePrice > 0 ? toFixedSafe(item.closePrice, 5) : '--'}</span> },
-    ] : []),
-    { key: 'commission', title: t('detail.table.commission'), align: 'right', skeletonWidth: 'w-16', render: (item) => <span className="text-text-secondary">{toFixedSafe(item.commission, 2)}</span> },
-    { key: 'swap', title: t('detail.table.swap'), align: 'right', skeletonWidth: 'w-12', render: (item) => <span className="text-text-secondary">{toFixedSafe(item.swap, 2)}</span> },
-    {
-      key: 'profit',
-      title: t('detail.table.pl'),
-      align: 'right',
-      skeletonWidth: 'w-16',
-      render: (item) => {
-        const profit = item.profit ?? 0;
-        return (
-          <span className={`font-semibold ${getProfitColorClass(profit)}`}>
-            {profit > 0 ? '+' : ''}{toFixedSafe(profit, 2, '0.00')}
-          </span>
-        );
-      },
-    },
-  ], [t, tType, isTradeClosed]);
-
-  const tradeFooterRows = useMemo(() => {
-    if (!tradeCriteria || trades.length === 0) return null;
-    const volumeColIndex = tradeColumns.findIndex((col) => col.key === 'volume');
-    const commissionColIndex = tradeColumns.findIndex((col) => col.key === 'commission');
-    const swapColIndex = tradeColumns.findIndex((col) => col.key === 'swap');
-    const profitColIndex = tradeColumns.findIndex((col) => col.key === 'profit');
-
-    if (volumeColIndex < 0 || commissionColIndex < 0 || swapColIndex < 0 || profitColIndex < 0) return null;
-
-    const beforeVolumeColSpan = Math.max(volumeColIndex - 1, 0);
-    const middleColSpan = Math.max(commissionColIndex - volumeColIndex - 1, 0);
-
-    const buildSummaryRow = (
-      label: string,
-      volume: number,
-      commission: number,
-      swap: number,
-      profit: number,
-      highlight?: boolean,
-    ) => (
-      <tr key={label} className={highlight ? 'bg-surface-secondary/50 font-semibold' : 'font-medium'}>
-        <td className="px-5 py-3 text-text-primary">{label}</td>
-        {beforeVolumeColSpan > 0 && <td className="px-5 py-3" colSpan={beforeVolumeColSpan} />}
-        <td className="px-5 py-3 text-right text-text-primary">{toFixedSafe(volume, 2, '0.00')}</td>
-        {middleColSpan > 0 && <td className="px-5 py-3" colSpan={middleColSpan} />}
-        <td className="px-5 py-3 text-right text-text-primary">{toFixedSafe(commission, 2, '0.00')}</td>
-        <td className="px-5 py-3 text-right text-text-primary">{toFixedSafe(swap, 2, '0.00')}</td>
-        <td className={`px-5 py-3 text-right font-semibold ${getProfitColorClass(profit)}`}>
-          {profit > 0 ? '+' : ''}{toFixedSafe(profit, 2, '0.00')}
-        </td>
-      </tr>
-    );
-
-    return (
-      <>
-        {buildSummaryRow(
-          t('detail.table.subTotal'),
-          tradeCriteria.pageTotalVolume ?? 0,
-          tradeCriteria.pageTotalCommission ?? 0,
-          tradeCriteria.pageTotalSwap ?? 0,
-          tradeCriteria.pageTotalProfit ?? 0,
-        )}
-        {buildSummaryRow(
-          t('detail.table.total'),
-          tradeCriteria.totalVolume ?? 0,
-          tradeCriteria.totalCommission ?? 0,
-          tradeCriteria.totalSwap ?? 0,
-          tradeCriteria.totalProfit ?? 0,
-          true,
-        )}
-      </>
-    );
-  }, [tradeCriteria, trades.length, tradeColumns, t]);
-
   if (isLoading) {
     return (
       <div className="flex w-full flex-col gap-6">
@@ -839,155 +714,140 @@ export default function AccountDetailPage() {
         size="base"
       />
 
-      {/* 筛选栏 */}
       {activeTab === 'tradeReport' ? (
-        <div className="mb-4 mt-4">
-          <TradeFilter
-            type="trade"
-            translationNamespace="accounts"
+       <div className="flex flex-col gap-5 mt-4">
+        <TradeReportTable
+            fetchData={fetchTradeData}
             filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
-            onSearch={handleTradeFilterSearch}
-            onReset={handleTradeFilterReset}
-            isLoading={tabLoading}
+            filterTranslationNamespace="accounts"
+            autoFetchKey={currentAccount?.uid}
           />
         </div>
       ) : (
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* 页面大小 */}
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.pageSize')}</span>
-              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                <SelectTrigger className="h-[28px]!">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 状态筛选 */}
-            {showStatusFilter && (
+        <>
+          {/* 筛选栏 */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* 页面大小 */}
               <div className="flex items-center gap-1">
-                <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.status')}</span>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-[28px]!">
+                <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.pageSize')}</span>
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger triggerSize="sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {statusOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={String(size)}>{size}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {/* 时间选择 */}
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.period')}</span>
-              <DatePicker
-                mode="range"
-                value={dateRange}
-                onChange={handleDateChange}
-                placeholder={t('detail.table.selectDate')}
-                className="h-[28px]! w-auto! min-w-0 rounded! border-border bg-input-bg px-2.5! py-1! text-sm!"
-              />
+              {/* 状态筛选 */}
+              {showStatusFilter && (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.status')}</span>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger triggerSize="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* 时间选择 */}
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.period')}</span>
+                <DatePicker
+                  mode="range"
+                  size="sm"
+                  value={dateRange}
+                  onChange={handleDateChange}
+                  placeholder={t('detail.table.selectDate')}
+                  className="w-auto"
+                />
+              </div>
+
+              {/* 重置 / 搜索 / 全部历史 */}
+              <Button variant="secondary" size="sm" onClick={handleReset} className="gap-1 bg-[#000f32] text-white hover:bg-[#000f32]/90">
+                <Image src="/images/icons/refresh.svg" alt="" width={14} height={14} />
+                {t('detail.table.reset')}
+              </Button>
+              <Button variant="primary" size="sm" onClick={loadTabData} className="gap-1">
+                <Image src="/images/icons/search.svg" alt="" width={14} height={14} />
+                {t('detail.table.search')}
+              </Button>
+              <Button variant="secondary" size="sm" className="bg-[#000f32] text-white hover:bg-[#000f32]/90">
+                {t('detail.table.allHistory')}
+              </Button>
             </div>
 
-            {/* 重置 / 搜索 / 全部历史 */}
-            <Button size="xs" onClick={handleReset} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
-              <Image src="/images/icons/refresh.svg" alt="" width={14} height={14} />
-              {t('detail.table.reset')}
-            </Button>
-            <Button size="xs" onClick={loadTabData} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
-              <Image src="/images/icons/search.svg" alt="" width={14} height={14} />
-              {t('detail.table.search')}
-            </Button>
-            <Button size="xs" className="bg-[#000f32] text-white hover:bg-[#001a4d]">
-              {t('detail.table.allHistory')}
-            </Button>
+            {/* 右侧快捷按钮 */}
+            {activeTab === 'deposit' && (
+              <Button variant="primary" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowDepositModal(true)}>
+                <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+                {t('detail.tabs.deposit')}
+              </Button>
+            )}
+            {activeTab === 'withdrawal' && tradeAccount && (
+              <Button variant="primary" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
+                 <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+                {t('detail.tabs.withdrawal')}
+              </Button>
+            )}
+            {activeTab === 'transfer' && currentAccount && (
+              <Button variant="primary" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowTransferModal(true)}>
+                <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+                {t('detail.tabs.transfer')}
+              </Button>
+            )}
           </div>
 
-          {/* 右侧快捷按钮 */}
-          {activeTab === 'deposit' && (
-            <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowDepositModal(true)}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              {t('detail.tabs.deposit')}
-            </Button>
-          )}
-          {activeTab === 'withdrawal' && tradeAccount && (
-            <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              {t('detail.tabs.withdrawal')}
-            </Button>
-          )}
-          {activeTab === 'transfer' && currentAccount && (
-            <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowTransferModal(true)}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              {t('detail.tabs.transfer')}
-            </Button>
-          )}
-        </div>
+          {/* 结果计数 */}
+          <p className="text-sm text-text-secondary">
+            {t('detail.table.showingResults', { count: totalCount })}
+          </p>
+
+          {/* Tab 内容 */}
+          <div className="overflow-x-auto">
+            {activeTab === 'deposit' && (
+              <DataTable<AccountDeposit>
+                columns={depositColumns}
+                data={deposits}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={tabLoading}
+                skeletonRows={3}
+                groupConfig={dateGroupConfig as DataTableGroupConfig<AccountDeposit>}
+              />
+            )}
+            {activeTab === 'withdrawal' && (
+              <DataTable<AccountWithdrawal>
+                columns={withdrawalColumns}
+                data={withdrawals}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={tabLoading}
+                skeletonRows={3}
+                groupConfig={dateGroupConfig as DataTableGroupConfig<AccountWithdrawal>}
+              />
+            )}
+            {activeTab === 'transfer' && (
+              <DataTable<AccountTransaction>
+                columns={transferColumns}
+                data={transactions}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={tabLoading}
+                skeletonRows={3}
+                groupConfig={transferDateGroupConfig as DataTableGroupConfig<AccountTransaction>}
+              />
+            )}
+          </div>
+        </>
       )}
-
-      {/* 结果计数 */}
-      <p className="text-sm text-text-secondary">
-        {t('detail.table.showingResults', { count: totalCount })}
-      </p>
-
-      {/* Tab 内容 */}
-      <div className="overflow-x-auto">
-        {activeTab === 'deposit' && (
-          <DataTable<AccountDeposit>
-            columns={depositColumns}
-            data={deposits}
-            rowKey={(item, idx) => item.id ?? idx}
-            loading={tabLoading}
-            skeletonRows={3}
-            groupConfig={dateGroupConfig as DataTableGroupConfig<AccountDeposit>}
-          />
-        )}
-        {activeTab === 'withdrawal' && (
-          <DataTable<AccountWithdrawal>
-            columns={withdrawalColumns}
-            data={withdrawals}
-            rowKey={(item, idx) => item.id ?? idx}
-            loading={tabLoading}
-            skeletonRows={3}
-            groupConfig={dateGroupConfig as DataTableGroupConfig<AccountWithdrawal>}
-          />
-        )}
-        {activeTab === 'transfer' && (
-          <DataTable<AccountTransaction>
-            columns={transferColumns}
-            data={transactions}
-            rowKey={(item, idx) => item.id ?? idx}
-            loading={tabLoading}
-            skeletonRows={3}
-            groupConfig={transferDateGroupConfig as DataTableGroupConfig<AccountTransaction>}
-          />
-        )}
-        {activeTab === 'tradeReport' && (
-          <DataTable<AccountTrade>
-            columns={tradeColumns}
-            data={trades}
-            rowKey={(item) => item.id || item.ticket}
-            loading={tabLoading}
-            skeletonRows={5}
-            footer={tradeFooterRows}
-          />
-        )}
-      </div>
 
       </div>
       {/* end: Tab + 筛选 + 内容 白色容器 */}

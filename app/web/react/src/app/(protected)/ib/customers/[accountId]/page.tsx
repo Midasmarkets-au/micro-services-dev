@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, use, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, use, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -24,14 +24,12 @@ import {
   getIBWithdrawals,
   getIBAccountTrades,
   getIBAccountTransactions,
-  getIBRebates,
 } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
 import type {
   IBClientAccount,
   IBDepositRecord,
   IBWithdrawalRecord,
-  IBTradeRecord,
   IBRebateRecord,
 } from '@/types/ib';
 import {
@@ -39,11 +37,10 @@ import {
   WithdrawalState,
   TransferState,
   CurrencyTypes,
-  ServiceTypes,
   getCurrencyCode,
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
-import { TradeFilter } from '@/components/TradeFilter';
+import { TradeReportTable } from '@/components/TradeReportTable';
 
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport' | 'commissionReport';
 
@@ -130,20 +127,7 @@ export default function IBCustomerDetailPage({
   const [deposits, setDeposits] = useState<IBDepositRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<IBWithdrawalRecord[]>([]);
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
-  const [trades, setTrades] = useState<IBTradeRecord[]>([]);
-  const [rebates, setRebates] = useState<IBRebateRecord[]>([]);
-  const todayRange = useMemo<DateRange>(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return { from: d, to: d };
-  }, []);
-
-  const tradeFilterParamsRef = useRef<Record<string, unknown>>({
-    isClosed: false,
-    serviceId: ServiceTypes.MetaTrader5,
-    from: todayRange.from?.toISOString(),
-    to: todayRange.to?.toISOString(),
-  });
+  const [rebates] = useState<IBRebateRecord[]>([]);
 
   const loadCustomer = useCallback(async () => {
     if (!agentAccount || !accountUid) return;
@@ -166,7 +150,7 @@ export default function IBCustomerDetailPage({
   }, [dateRange]);
 
   const loadData = useCallback(async (p: number) => {
-    if (!agentAccount || !accountUid) return;
+    if (!agentAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
       const dateParams = buildDateParams();
@@ -196,14 +180,6 @@ export default function IBCustomerDetailPage({
           }));
           setTotal((result.data.criteria as Record<string, number>)?.total || 0);
         }
-      } else if (tab === 'tradeReport') {
-        const result = await execute(getIBAccountTrades, agentAccount.uid, accountUid, {
-          page: p, size: pageSize, ...tradeFilterParamsRef.current,
-        });
-        if (result.success && result.data) {
-          setTrades(Array.isArray(result.data.data) ? result.data.data : []);
-          setTotal(result.data.criteria?.total || 0);
-        }
       } else if (tab === 'commissionReport') {
         // TODO: 原项目中此 tab 未实现数据渲染，暂用 getIBRebates 占位，后续需确认正确的 API 和字段
         // const result = await execute(getIBRebates, agentAccount.uid, {
@@ -230,11 +206,14 @@ export default function IBCustomerDetailPage({
   const handleSearch = () => { setPage(1); loadData(1); };
   const handleReset = () => { setDateRange(undefined); setPage(1); };
   const handleTabChange = (key: DetailTab) => { setTab(key); setPage(1); setTotal(0); };
-  const handleTradeFilterSearch = useCallback((params: Record<string, unknown>) => {
-    tradeFilterParamsRef.current = params;
-    setPage(1);
-    loadData(1);
-  }, [loadData]);
+  const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
+    if (!agentAccount || !accountUid) return null;
+    const result = await execute(getIBAccountTrades, agentAccount.uid, accountUid, params);
+    if (result.success && result.data) {
+      return { data: result.data.data, criteria: result.data.criteria };
+    }
+    return null;
+  }, [agentAccount, accountUid, execute]);
 
   const userName = customer?.user?.nativeName || customer?.user?.displayName || 'Customer';
   const roleLabel = customer?.role === 1 ? td('roleIB') : td('roleClient');
@@ -264,12 +243,6 @@ export default function IBCustomerDetailPage({
 
   const dateGroupConfig = useMemo<DataTableGroupConfig<{ createdOn: string }>>(() => ({
     groupBy: (item) => formatGroupKey(item.createdOn),
-    renderGroupHeader: groupHeaderRender,
-    headerWidth: 'w-[120px]',
-  }), [groupHeaderRender]);
-
-  const tradeGroupConfig = useMemo<DataTableGroupConfig<IBTradeRecord>>(() => ({
-    groupBy: (item) => formatGroupKey(item.openTime || item.openAt || ''),
     renderGroupHeader: groupHeaderRender,
     headerWidth: 'w-[120px]',
   }), [groupHeaderRender]);
@@ -423,17 +396,6 @@ export default function IBCustomerDetailPage({
     },
   ], [td, tState, getCurrencyName]);
 
-  const tradeColumns = useMemo<DataTableColumn<IBTradeRecord>[]>(() => [
-    { key: 'ticket', title: td('columns.ticket'), skeletonWidth: 'w-16', render: (item) => item.ticket },
-    { key: 'symbol', title: td('columns.symbol'), skeletonWidth: 'w-16', render: (item) => item.symbol },
-    { key: 'volume', title: td('columns.volume'), skeletonWidth: 'w-12', render: (item) => item.volume },
-    { key: 'openTime', title: td('columns.openTime'), skeletonWidth: 'w-28', render: (item) => <span className="text-xs">{item.openTime ? formatDateTime(item.openTime) : '-'}</span> },
-    { key: 'closeTime', title: td('columns.closeTime'), skeletonWidth: 'w-28', render: (item) => <span className="text-xs">{item.closeTime ? formatDateTime(item.closeTime) : '-'}</span> },
-    { key: 'profit', title: td('columns.profit'), skeletonWidth: 'w-16', render: (item) => <span className={(item.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>{item.profit?.toFixed(2)}</span> },
-    { key: 'commission', title: td('columns.commission'), skeletonWidth: 'w-16', render: (item) => item.commission?.toFixed(2) },
-    { key: 'swap', title: td('columns.swap'), skeletonWidth: 'w-12', render: (item) => item.swap?.toFixed(2) },
-  ], [td]);
-
   const rebateColumns = useMemo<DataTableColumn<IBRebateRecord>[]>(() => [
     { key: 'ticket', title: td('columns.ticket'), skeletonWidth: 'w-16', render: (item) => item.trade?.ticket || '-' },
     { key: 'symbol', title: td('columns.symbol'), skeletonWidth: 'w-16', render: (item) => item.trade?.symbol || '-' },
@@ -477,17 +439,6 @@ export default function IBCustomerDetailPage({
             loading={isLoading}
             skeletonRows={5}
             groupConfig={dateGroupConfig as DataTableGroupConfig<TransferItem>}
-          />
-        );
-      case 'tradeReport':
-        return (
-          <DataTable<IBTradeRecord>
-            columns={tradeColumns}
-            data={trades}
-            rowKey={(item, idx) => item.id ?? idx}
-            loading={isLoading}
-            skeletonRows={5}
-            groupConfig={tradeGroupConfig}
           />
         );
       case 'commissionReport':
@@ -607,31 +558,32 @@ export default function IBCustomerDetailPage({
           )}
         </div>
 
-        {tab === 'tradeReport' && (
-          <TradeFilter
-            type="trade"
+        {tab === 'tradeReport' ? (
+          <TradeReportTable
+            fetchData={fetchTradeData}
             filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
-            defaultDateRange={todayRange}
-            onSearch={handleTradeFilterSearch}
-            isLoading={isLoading}
+            pageSize={pageSize}
+            autoFetchKey={`${agentAccount?.uid}-${accountUid}`}
           />
+        ) : (
+          <>
+            {/* Results count */}
+            <p className="text-xl font-semibold text-text-secondary">
+              {td.rich('showResults', {
+                count: String(total),
+                num: (chunks) => <span className="text-text-primary">{chunks}</span>,
+              })}
+            </p>
+
+            {/* Table Content */}
+            <div className="flex-1 overflow-x-auto">
+              {renderTable()}
+            </div>
+
+            {/* Pagination */}
+            <Pagination page={page} total={total} size={pageSize} onPageChange={setPage} />
+          </>
         )}
-
-        {/* Results count */}
-        <p className="text-xl font-semibold text-text-secondary">
-          {td.rich('showResults', {
-            count: String(total),
-            num: (chunks) => <span className="text-text-primary">{chunks}</span>,
-          })}
-        </p>
-
-        {/* Table Content */}
-        <div className="flex-1 overflow-x-auto">
-          {renderTable()}
-        </div>
-
-        {/* Pagination */}
-        <Pagination page={page} total={total} size={pageSize} onPageChange={setPage} />
       </div>
     </div>
   );

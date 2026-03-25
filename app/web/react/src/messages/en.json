@@ -1080,6 +1080,7 @@
         "allHistory": "All History",
         "noRecords": "No transaction records",
         "showingResults": "Showing {count} results",
+        "accountNumber": "Account",
         "ticket": "Ticket",
         "symbol": "Symbol",
         "volume": "Volume",

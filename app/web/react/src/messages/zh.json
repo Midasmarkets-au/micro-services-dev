@@ -1083,6 +1083,7 @@
         "allHistory": "全部历史",
         "noRecords": "暂无交易记录",
         "showingResults": "显示{count}条结果",
+        "accountNumber": "账号",
         "ticket": "订单号",
         "symbol": "品种",
         "volume": "交易量",
