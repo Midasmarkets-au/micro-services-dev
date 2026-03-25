@@ -160,6 +160,10 @@ app.MapControllerRoute(
 // Discovery: public endpoints, no authentication required
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Discovery.DiscoveryGrpcService>().AllowAnonymous();
 
+// Symbol + ExchangeRate: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantSymbolGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantExchangeRateGrpcService>();
+
 // Config: tenant-scoped, requires authentication
 // ConfigurationController is kept for site-specific toggle endpoints not yet in proto.
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Config.TenantConfigurationGrpcService>();
