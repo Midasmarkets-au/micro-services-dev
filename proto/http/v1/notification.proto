@@ -8,119 +8,124 @@ import "google/api/annotations.proto";
 import "http/v1/common.proto";
 
 // ─── Tenant Message API (api/v1/tenant/message) ──────────────────────────────
+// 管理站内信（Message）的完整生命周期：CRUD 及弹窗推送。
+// 站内信与账户绑定，通过 SignalR 或 SSE 实时推送给前端。
 
 service TenantMessageService {
-  // 列表查询
+  // 分页查询站内信列表；可按 account_id、type、status 及日期范围过滤
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/message" };
   }
-  // 获取单条
+  // 按 id 获取单条站内信详情
   rpc GetMessage(GetMessageRequest) returns (Message) {
     option (google.api.http) = { get: "/api/v1/tenant/message/{id}" };
   }
-  // 创建
+  // 创建新站内信（body 为完整 Message 字段）
   rpc CreateMessage(CreateMessageRequest) returns (Message) {
     option (google.api.http) = { post: "/api/v1/tenant/message", body: "*" };
   }
-  // 更新
+  // 更新站内信（body 字段名为 spec）
   rpc UpdateMessage(UpdateMessageRequest) returns (Message) {
     option (google.api.http) = { put: "/api/v1/tenant/message/{id}", body: "spec" };
   }
-  // 删除
+  // 删除站内信
   rpc DeleteMessage(GetMessageRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/message/{id}" };
   }
-  // 发送弹窗消息
+  // 向指定账户发送弹窗消息（通过 SignalR 实时推送）
   rpc SendPopupMessage(SendPopupMessageRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/message/send-popup", body: "*" };
   }
 }
 
 // ─── Tenant Email API (api/v1/tenant/email) ──────────────────────────────────
+// 提供 tenant 级别的邮件发送能力，包括调试邮件、单发、批量发送及退订名单管理。
 
 service TenantEmailService {
-  // 发送调试邮件
+  // 发送调试邮件（仅测试用，直接指定 to/subject/body）
   rpc DebugEmail(DebugEmailRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/email/debug", body: "*" };
   }
-  // 发送给用户
+  // 按 party_id 向指定用户发送邮件
   rpc SendToUser(SendToUserRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/email/send-to-user", body: "*" };
   }
-  // 创建批次
+  // 创建批量邮件任务（基于 topic_content_id 和受众筛选条件）
   rpc CreateBatch(CreateBatchRequest) returns (EmailBatch) {
     option (google.api.http) = { post: "/api/v1/tenant/email/batch", body: "*" };
   }
-  // 获取批次信息
+  // 获取当前批量邮件任务的收件人数量汇总
   rpc GetBatchInfo(EmptyRequest) returns (EmailBatchInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/email/batch/info" };
   }
-  // 获取批次详情
+  // 获取当前批量邮件任务的收件人邮箱列表（用于预检）
   rpc GetBatchDetail(EmptyRequest) returns (EmailBatchDetailResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/email/batch/detail" };
   }
-  // 测试批次
+  // 向测试邮箱发送批量邮件预览
   rpc TestBatch(TestBatchEmailRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/email/batch/test", body: "*" };
   }
-  // 确认发送批次
+  // 确认发送批量邮件（触发实际发送任务）
   rpc ConfirmBatch(ConfirmBatchRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/email/batch/confirm", body: "*" };
   }
-  // 检查退订状态
+  // 检查指定邮箱是否在退订名单（suppression list）中
   rpc CheckSuppression(CheckSuppressionRequest) returns (SuppressionResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/email/suppression-check" };
   }
-  // 移除退订
+  // 将邮箱从退订名单移除（恢复接收邮件）
   rpc RemoveSuppression(SuppressionEmailRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/email/suppression-remove" };
   }
-  // 添加退订
+  // 将邮箱加入退订名单（阻止接收邮件）
   rpc AddSuppression(SuppressionEmailRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/email/suppression-add" };
   }
 }
 
 // ─── Tenant Topic API (api/v1/tenant/topic) ──────────────────────────────────
+// 管理邮件/通知模板主题（Topic），每个 Topic 可包含多语言内容（TopicContent）。
+// Topic 用于批量邮件（EmailBatch.topic_content_id）和站内信模板。
 
 service TenantTopicService {
-  // 列表查询
+  // 分页查询 Topic 列表；可按 type、status、关键字过滤
   rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/topic" };
   }
-  // 获取单条（含语言）
+  // 按 id 获取 Topic（可指定 language 只返回该语言的内容）
   rpc GetTopic(GetTopicRequest) returns (Topic) {
     option (google.api.http) = { get: "/api/v1/tenant/topic/{id}" };
   }
-  // 获取可用语言
+  // 获取指定 Topic 已有的语言列表
   rpc GetTopicLanguages(GetTopicIdRequest) returns (LanguagesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/topic/{id}/languages" };
   }
-  // 创建
+  // 创建新 Topic（body 为完整字段）
   rpc CreateTopic(CreateTopicRequest) returns (Topic) {
     option (google.api.http) = { post: "/api/v1/tenant/topic", body: "*" };
   }
-  // 更新
+  // 更新 Topic（body 字段名为 spec）
   rpc UpdateTopic(UpdateTopicRequest) returns (Topic) {
     option (google.api.http) = { put: "/api/v1/tenant/topic/{id}", body: "spec" };
   }
-  // 移至废纸篓
+  // 将 Topic 移至废纸篓（软删，status 变更为 trash）
   rpc MoveToTrash(GetTopicIdRequest) returns (Topic) {
     option (google.api.http) = { put: "/api/v1/tenant/topic/{id}/move-to-trash" };
   }
-  // 删除
+  // 永久删除 Topic（不可恢复）
   rpc DeleteTopic(GetTopicIdRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/topic/{id}" };
   }
-  // 创建内容
+  // 为 Topic 创建指定语言的内容
   rpc CreateTopicContent(CreateTopicContentRequest) returns (TopicContent) {
     option (google.api.http) = { post: "/api/v1/tenant/topic/{id}/content", body: "spec" };
   }
-  // 更新内容
+  // 更新 Topic 指定语言的内容
   rpc UpdateTopicContent(UpdateTopicContentRequest) returns (TopicContent) {
     option (google.api.http) = { put: "/api/v1/tenant/topic/{id}/content/{content_id}", body: "spec" };
   }
-  // 删除内容
+  // 删除 Topic 指定语言的内容
   rpc DeleteTopicContent(DeleteTopicContentRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/topic/{id}/content/{content_id}" };
   }
@@ -128,58 +133,62 @@ service TenantTopicService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
+// 空请求
 message EmptyRequest {}
 
+// 通用操作结果
 message OperationResponse {
   bool   success = 1;
   string message = 2;
 }
 
-// Message 实体
+// 站内信实体
 message Message {
-  int64  id         = 1;
-  int64  account_id = 2;
-  string title      = 3;
-  string body       = 4;
-  int32  type       = 5;
-  int32  status     = 6;
-  string created_at = 7;
+  int64  id         = 1; // 站内信 ID
+  int64  account_id = 2; // 关联账户 ID
+  string title      = 3; // 消息标题
+  string body       = 4; // 消息正文（支持 HTML）
+  int32  type       = 5; // 消息类型（枚举：1=info、2=warning、3=popup 等）
+  int32  status     = 6; // 状态：0=unread、1=read、2=archived
+  string created_at = 7; // 创建时间，ISO 8601 格式
 }
 
-// EmailBatch 实体
+// 批量邮件任务实体
 message EmailBatch {
-  int64  id         = 1;
-  string subject    = 2;
-  int32  status     = 3;
-  int32  total      = 4;
-  string created_at = 5;
+  int64  id         = 1; // 批次 ID
+  string subject    = 2; // 邮件主题
+  int32  status     = 3; // 状态：0=draft、1=pending、2=sending、3=completed、4=failed
+  int32  total      = 4; // 收件人总数
+  string created_at = 5; // 创建时间，ISO 8601 格式
 }
 
-// Topic 实体
+// Topic（邮件/通知模板主题）实体
 message Topic {
-  int32  id         = 1;
-  string title      = 2;
-  int32  type       = 3;
-  int32  status     = 4;
-  string created_at = 5;
+  int32  id         = 1; // Topic ID
+  string title      = 2; // 主题标题
+  int32  type       = 3; // 主题类型（枚举，如 1=email、2=notification）
+  int32  status     = 4; // 状态：0=active、1=inactive、2=trash
+  string created_at = 5; // 创建时间，ISO 8601 格式
 }
 
-// TopicContent 实体
+// Topic 的多语言内容实体
 message TopicContent {
-  int32  id         = 1;
-  int32  topic_id   = 2;
-  string language   = 3;
-  string content    = 4;
+  int32  id         = 1; // 内容记录 ID
+  int32  topic_id   = 2; // 关联 Topic ID
+  string language   = 3; // 语言代码，如 "en"、"zh"
+  string content    = 4; // 内容正文（HTML 或纯文本）
 }
 
-// Message list
+// ─── Message 相关消息 ──────────────────────────────────────────────────────────
+
+// 站内信列表查询
 message ListMessagesRequest {
   PaginationRequest pagination  = 1;
-  optional int64    account_id  = 2;
-  optional int32    type        = 3;
-  optional int32    status      = 4;
-  optional string   date_from   = 5;
-  optional string   date_to     = 6;
+  optional int64    account_id  = 2; // 按账户 ID 过滤
+  optional int32    type        = 3; // 按消息类型过滤
+  optional int32    status      = 4; // 按状态过滤
+  optional string   date_from   = 5; // ISO 8601 格式
+  optional string   date_to     = 6; // ISO 8601 格式
 }
 
 message ListMessagesResponse {
@@ -187,81 +196,98 @@ message ListMessagesResponse {
   PaginationMeta   meta = 2;
 }
 
+// 按 id 查询站内信
 message GetMessageRequest {
   int64 id = 1;
 }
 
+// 创建站内信请求
 message CreateMessageRequest {
-  int64  account_id = 1;
+  int64  account_id = 1; // 目标账户 ID
   string title      = 2;
   string body       = 3;
-  int32  type       = 4;
+  int32  type       = 4; // 消息类型枚举
 }
 
+// 更新站内信请求
 message UpdateMessageRequest {
-  int64         id   = 1;
+  int64                id   = 1;
   CreateMessageRequest spec = 2;
 }
 
+// 弹窗消息发送请求
 message SendPopupMessageRequest {
-  int64  account_id = 1;
+  int64  account_id = 1; // 目标账户 ID
   string title      = 2;
   string body       = 3;
 }
 
-// Email messages
+// ─── Email 相关消息 ────────────────────────────────────────────────────────────
+
+// 调试邮件请求
 message DebugEmailRequest {
-  string to      = 1;
-  string subject = 2;
-  string body    = 3;
+  string to      = 1; // 收件人邮箱
+  string subject = 2; // 邮件主题
+  string body    = 3; // 邮件正文（HTML）
 }
 
+// 向用户发送邮件请求
 message SendToUserRequest {
-  int64  party_id = 1;
+  int64  party_id = 1; // 目标用户 party_id
   string subject  = 2;
-  string body     = 3;
+  string body     = 3; // HTML 正文
 }
 
+// 创建批量邮件任务请求
 message CreateBatchRequest {
-  int32  topic_content_id = 1;
-  string target_criteria  = 2;  // JSON
+  int32  topic_content_id = 1; // 使用的 TopicContent ID（确定邮件语言和内容）
+  string target_criteria  = 2; // JSON 字符串，描述目标受众筛选条件
 }
 
+// 批量邮件收件人汇总
 message EmailBatchInfoResponse {
-  int32 recipient_count = 1;
+  int32 recipient_count = 1; // 符合条件的收件人数量
 }
 
+// 批量邮件收件人详细列表（预检用）
 message EmailBatchDetailResponse {
-  repeated string emails = 1;
+  repeated string emails = 1; // 收件人邮箱列表
 }
 
+// 测试批量邮件请求
 message TestBatchEmailRequest {
-  string test_email = 1;
+  string test_email = 1; // 接收测试邮件的邮箱地址
 }
 
+// 确认发送批量邮件请求
 message ConfirmBatchRequest {
-  int64 batch_id = 1;
+  int64 batch_id = 1; // 待发送的 EmailBatch ID
 }
 
+// 退订检查请求
 message CheckSuppressionRequest {
   string email = 1;
 }
 
+// 退订状态响应
 message SuppressionResponse {
-  bool   suppressed = 1;
-  string reason     = 2;
+  bool   suppressed = 1; // true 表示该邮箱已退订
+  string reason     = 2; // 退订原因说明
 }
 
+// 退订名单操作请求（增/删）
 message SuppressionEmailRequest {
   string email = 1;
 }
 
-// Topic messages
+// ─── Topic 相关消息 ────────────────────────────────────────────────────────────
+
+// Topic 列表查询
 message ListTopicsRequest {
   PaginationRequest pagination = 1;
-  optional int32    type       = 2;
-  optional int32    status     = 3;
-  optional string   keywords   = 4;
+  optional int32    type       = 2; // 按类型过滤
+  optional int32    status     = 3; // 按状态过滤（0=active、1=inactive、2=trash）
+  optional string   keywords   = 4; // 按标题关键字搜索
 }
 
 message ListTopicsResponse {
@@ -269,47 +295,56 @@ message ListTopicsResponse {
   PaginationMeta meta = 2;
 }
 
+// 按 id（含可选语言）查询 Topic
 message GetTopicRequest {
   int32           id       = 1;
-  optional string language = 2;
+  optional string language = 2; // 若指定，只返回该语言的 content；不指定返回所有
 }
 
+// 仅按 id 查询 Topic（不带语言参数）
 message GetTopicIdRequest {
   int32 id = 1;
 }
 
+// 可用语言列表响应
 message LanguagesResponse {
-  repeated string languages = 1;
+  repeated string languages = 1; // 语言代码列表，如 ["en", "zh", "jp"]
 }
 
+// 创建 Topic 请求
 message CreateTopicRequest {
   string title = 1;
-  int32  type  = 2;
+  int32  type  = 2; // Topic 类型枚举
 }
 
+// 更新 Topic 请求
 message UpdateTopicRequest {
-  int32         id   = 1;
+  int32            id   = 1;
   CreateTopicRequest spec = 2;
 }
 
+// 创建 Topic 多语言内容请求
 message CreateTopicContentRequest {
-  int32  id       = 1;
-  string language = 2;
-  string content  = 3;
+  int32  id       = 1; // Topic ID
+  string language = 2; // 语言代码，如 "en"
+  string content  = 3; // 内容正文（HTML）
 }
 
+// 多语言内容规格（用于创建和更新）
 message TopicContentSpec {
   string language = 1;
   string content  = 2;
 }
 
+// 更新 Topic 多语言内容请求
 message UpdateTopicContentRequest {
-  int32            id         = 1;
-  int32            content_id = 2;
+  int32            id         = 1; // Topic ID
+  int32            content_id = 2; // TopicContent ID
   TopicContentSpec spec       = 3;
 }
 
+// 删除 Topic 多语言内容请求
 message DeleteTopicContentRequest {
-  int32 id         = 1;
-  int32 content_id = 2;
+  int32 id         = 1; // Topic ID
+  int32 content_id = 2; // TopicContent ID
 }

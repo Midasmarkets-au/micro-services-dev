@@ -8,102 +8,110 @@ import "google/api/annotations.proto";
 import "http/v1/common.proto";
 
 // ─── Tenant Audit API (api/v1/tenant/audit) ──────────────────────────────────
+// 查询后台操作审计记录，包括账户余额变动和高额交易监控。
+// 审计记录由系统自动写入，仅支持只读查询。
 
 service TenantAuditService {
-  // 列表查询
+  // 分页查询审计记录；可按 account_id、action 关键字及日期范围过滤
   rpc ListAudits(ListAuditsRequest) returns (ListAuditsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/audit" };
   }
-  // 获取单条
+  // 按 id 获取单条审计记录详情
   rpc GetAudit(GetAuditRequest) returns (Audit) {
     option (google.api.http) = { get: "/api/v1/tenant/audit/{id}" };
   }
-  // 账户余额变动审计
+  // 查询账户余额变动类型的审计记录（action 固定为 account-change-balance）
   rpc ListAccountChangeBalanceAudits(ListAuditsRequest) returns (ListAuditsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/audit/account-change-balance" };
   }
-  // 最近高额交易
+  // 获取最近的高额交易审计记录（固定返回最新若干条，无需分页参数）
   rpc GetHighDollarLatest(EmptyRequest) returns (ListAuditsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/audit/high-dollar/latest" };
   }
 }
 
 // ─── Tenant IP Blacklist API (api/v1/tenant/ip-black-list) ───────────────────
+// 管理 IP 黑名单，被加入黑名单的 IP 地址将被系统拒绝访问。
+// 修改后需调用 ReloadCache 使变更立即生效。
 
 service TenantIpBlacklistService {
-  // 列表查询
+  // 分页查询 IP 黑名单；可按 IP 地址前缀或 status 过滤
   rpc ListIpBlacklist(ListIpBlacklistRequest) returns (ListIpBlacklistResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/ip-black-list" };
   }
-  // 创建
+  // 新增 IP 黑名单条目
   rpc CreateIpBlacklist(CreateIpBlacklistRequest) returns (IpBlacklistItem) {
     option (google.api.http) = { post: "/api/v1/tenant/ip-black-list", body: "*" };
   }
-  // 更新
+  // 更新 IP 黑名单条目（body 字段名为 spec）
   rpc UpdateIpBlacklist(UpdateIpBlacklistRequest) returns (IpBlacklistItem) {
     option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/{id}", body: "spec" };
   }
-  // 删除
+  // 删除 IP 黑名单条目
   rpc DeleteIpBlacklist(GetIpBlacklistRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/ip-black-list/{id}" };
   }
-  // 重载缓存
+  // 重载 IP 黑名单缓存（增删改后需调用此接口使变更立即生效）
   rpc ReloadCache(EmptyRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/reload-cache" };
   }
 }
 
 // ─── Tenant User Blacklist API (api/v1/tenant/user-black-list) ───────────────
+// 管理用户邮箱黑名单，被加入黑名单的邮箱无法注册或登录。
 
 service TenantUserBlacklistService {
-  // 列表查询（从 Vue 前端扫描结果推断）
+  // 分页查询用户黑名单；可按邮箱或 status 过滤
   rpc ListUserBlacklist(ListUserBlacklistRequest) returns (ListUserBlacklistResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user-black-list" };
   }
-  // 创建
+  // 新增用户邮箱黑名单条目
   rpc CreateUserBlacklist(CreateUserBlacklistRequest) returns (UserBlacklistItem) {
     option (google.api.http) = { post: "/api/v1/tenant/user-black-list", body: "*" };
   }
-  // 更新
+  // 更新用户黑名单条目（body 字段名为 spec）
   rpc UpdateUserBlacklist(UpdateUserBlacklistRequest) returns (UserBlacklistItem) {
     option (google.api.http) = { put: "/api/v1/tenant/user-black-list/{id}", body: "spec" };
   }
-  // 删除
+  // 删除用户黑名单条目
   rpc DeleteUserBlacklist(GetUserBlacklistRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/user-black-list/{id}" };
   }
 }
 
 // ─── Tenant API Log API (api/v1/tenant/api-log) ──────────────────────────────
+// 查询 HTTP API 访问日志，用于调试和安全审查。
 
 service TenantApiLogService {
-  // 列表查询（从 Vue 前端扫描结果推断）
+  // 分页查询 API 日志；可按 path 前缀、HTTP 状态码及日期范围过滤
   rpc ListApiLogs(ListApiLogsRequest) returns (ListApiLogsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/api-log" };
   }
 }
 
 // ─── Tenant Statistics API (api/v1/tenant/statistic) ────────────────────────
+// 实时在线用户统计，包括管理员和客户端在线人数。
 
 service TenantStatisticsService {
-  // 在线管理员统计
+  // 获取当前在线管理员列表及数量（通过 SignalR 连接状态统计）
   rpc GetOnlineAdmins(EmptyRequest) returns (OnlineUsersResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/statistic/online-admins" };
   }
-  // 在线用户统计
+  // 获取当前在线客户端用户列表及数量
   rpc GetOnlineUsers(EmptyRequest) returns (OnlineUsersResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/statistic/online-users" };
   }
 }
 
 // ─── Tenant Statistics V2 API (api/v2/tenant/statistic) ──────────────────────
+// MT4/MT5 服务器指标监控（CPU、内存使用率）。
 
 service TenantStatisticsServiceV2 {
-  // 获取服务器列表
+  // 获取 MT 服务器列表（id、name、host）
   rpc GetServers(EmptyRequest) returns (ServersResponse) {
     option (google.api.http) = { get: "/api/v2/tenant/statistic/server" };
   }
-  // 获取服务器指标
+  // 获取所有 MT 服务器的最新指标（CPU/内存使用率）
   rpc GetServerMetrics(EmptyRequest) returns (ServerMetricsResponse) {
     option (google.api.http) = { get: "/api/v2/tenant/statistic/server/metrics" };
   }
@@ -111,58 +119,62 @@ service TenantStatisticsServiceV2 {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
+// 空请求
 message EmptyRequest {}
 
+// 通用操作结果
 message OperationResponse {
   bool   success = 1;
   string message = 2;
 }
 
-// Audit 实体
+// 审计记录实体
 message Audit {
-  int64  id         = 1;
-  int64  account_id = 2;
-  string action     = 3;
-  string detail     = 4;
-  string ip         = 5;
-  string created_at = 6;
+  int64  id         = 1; // 审计记录 ID
+  int64  account_id = 2; // 触发操作的账户 ID（0 表示系统操作）
+  string action     = 3; // 操作类型标识，如 "account-change-balance"
+  string detail     = 4; // 操作详情（JSON 字符串或可读文本）
+  string ip         = 5; // 操作者 IP 地址
+  string created_at = 6; // 操作时间，ISO 8601 格式
 }
 
-// IpBlacklistItem 实体
+// IP 黑名单条目实体
 message IpBlacklistItem {
-  int64  id         = 1;
-  string ip         = 2;
-  string reason     = 3;
-  int32  status     = 4;
-  string created_at = 5;
+  int64  id         = 1; // 黑名单记录 ID
+  string ip         = 2; // IP 地址或 CIDR 段，如 "1.2.3.4" 或 "1.2.3.0/24"
+  string reason     = 3; // 加入黑名单的原因
+  int32  status     = 4; // 状态：1=active（生效中）、0=inactive（已禁用）
+  string created_at = 5; // 创建时间，ISO 8601 格式
 }
 
-// UserBlacklistItem 实体
+// 用户邮箱黑名单条目实体
 message UserBlacklistItem {
-  int64  id         = 1;
-  string email      = 2;
-  string reason     = 3;
-  int32  status     = 4;
-  string created_at = 5;
+  int64  id         = 1; // 黑名单记录 ID
+  string email      = 2; // 被封禁的邮箱地址
+  string reason     = 3; // 加入黑名单的原因
+  int32  status     = 4; // 状态：1=active（生效中）、0=inactive（已禁用）
+  string created_at = 5; // 创建时间，ISO 8601 格式
 }
 
-// ApiLog 实体
+// API 访问日志实体
 message ApiLog {
-  int64  id         = 1;
-  string method     = 2;
-  string path       = 3;
-  int32  status_code = 4;
-  int64  duration   = 5;
-  string created_at = 6;
+  int64  id          = 1; // 日志 ID
+  string method      = 2; // HTTP 方法，如 "GET"、"POST"
+  string path        = 3; // 请求路径，如 "/api/v1/tenant/deposit"
+  int32  status_code = 4; // HTTP 响应状态码，如 200、401、500
+  int64  duration    = 5; // 请求耗时（毫秒）
+  string created_at  = 6; // 请求时间，ISO 8601 格式
 }
 
-// Audit messages
+// ─── Audit 相关消息 ────────────────────────────────────────────────────────────
+
+// 审计记录列表查询
 message ListAuditsRequest {
   PaginationRequest pagination  = 1;
-  optional int64    account_id  = 2;
-  optional string   action      = 3;
-  optional string   date_from   = 4;
-  optional string   date_to     = 5;
+  optional int64    account_id  = 2; // 按账户 ID 过滤
+  optional string   action      = 3; // 按 action 关键字过滤，如 "account-change-balance"
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
 }
 
 message ListAuditsResponse {
@@ -170,15 +182,18 @@ message ListAuditsResponse {
   PaginationMeta meta = 2;
 }
 
+// 按 id 查询审计记录
 message GetAuditRequest {
   int64 id = 1;
 }
 
-// IP Blacklist messages
+// ─── IP Blacklist 相关消息 ────────────────────────────────────────────────────
+
+// IP 黑名单列表查询
 message ListIpBlacklistRequest {
   PaginationRequest pagination = 1;
-  optional string   ip        = 2;
-  optional int32    status    = 3;
+  optional string   ip        = 2; // 按 IP 地址前缀过滤
+  optional int32    status    = 3; // 按状态过滤：1=active、0=inactive
 }
 
 message ListIpBlacklistResponse {
@@ -186,25 +201,30 @@ message ListIpBlacklistResponse {
   PaginationMeta           meta = 2;
 }
 
+// 按 id 查询 IP 黑名单
 message GetIpBlacklistRequest {
   int64 id = 1;
 }
 
+// 创建 IP 黑名单请求
 message CreateIpBlacklistRequest {
-  string ip     = 1;
-  string reason = 2;
+  string ip     = 1; // IP 地址或 CIDR 段
+  string reason = 2; // 加入原因
 }
 
+// 更新 IP 黑名单请求
 message UpdateIpBlacklistRequest {
   int64                    id   = 1;
   CreateIpBlacklistRequest spec = 2;
 }
 
-// User Blacklist messages
+// ─── User Blacklist 相关消息 ──────────────────────────────────────────────────
+
+// 用户邮箱黑名单列表查询
 message ListUserBlacklistRequest {
   PaginationRequest pagination = 1;
-  optional string   email     = 2;
-  optional int32    status    = 3;
+  optional string   email     = 2; // 按邮箱前缀过滤
+  optional int32    status    = 3; // 按状态过滤：1=active、0=inactive
 }
 
 message ListUserBlacklistResponse {
@@ -212,27 +232,32 @@ message ListUserBlacklistResponse {
   PaginationMeta             meta = 2;
 }
 
+// 按 id 查询用户黑名单
 message GetUserBlacklistRequest {
   int64 id = 1;
 }
 
+// 创建用户黑名单请求
 message CreateUserBlacklistRequest {
   string email  = 1;
   string reason = 2;
 }
 
+// 更新用户黑名单请求
 message UpdateUserBlacklistRequest {
   int64                      id   = 1;
   CreateUserBlacklistRequest spec = 2;
 }
 
-// API Log messages
+// ─── API Log 相关消息 ─────────────────────────────────────────────────────────
+
+// API 日志列表查询
 message ListApiLogsRequest {
   PaginationRequest pagination  = 1;
-  optional string   path        = 2;
-  optional int32    status_code = 3;
-  optional string   date_from   = 4;
-  optional string   date_to     = 5;
+  optional string   path        = 2; // 按路径前缀过滤，如 "/api/v1/tenant/deposit"
+  optional int32    status_code = 3; // 按 HTTP 状态码过滤，如 500
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
 }
 
 message ListApiLogsResponse {
@@ -240,35 +265,42 @@ message ListApiLogsResponse {
   PaginationMeta  meta = 2;
 }
 
-// Statistics messages
+// ─── Statistics 相关消息 ──────────────────────────────────────────────────────
+
+// 在线用户响应（含数量和列表）
 message OnlineUsersResponse {
-  int32  count = 1;
-  repeated OnlineUser users = 2;
+  int32            count = 1; // 当前在线用户数量
+  repeated OnlineUser users = 2; // 在线用户详情列表
 }
 
+// 在线用户条目
 message OnlineUser {
-  int64  party_id = 1;
-  string email    = 2;
-  string since    = 3;
+  int64  party_id = 1; // 用户 party_id
+  string email    = 2; // 用户邮箱
+  string since    = 3; // 上线时间，ISO 8601 格式
 }
 
+// MT 服务器列表响应
 message ServersResponse {
   repeated ServerItem servers = 1;
 }
 
+// MT 服务器实体
 message ServerItem {
-  int32  id   = 1;
-  string name = 2;
-  string host = 3;
+  int32  id   = 1; // 服务器 ID（对应 TradeServiceItem.id）
+  string name = 2; // 服务器名称
+  string host = 3; // 服务器主机地址，如 "mt5.example.com:443"
 }
 
+// MT 服务器指标列表响应
 message ServerMetricsResponse {
   repeated ServerMetric metrics = 1;
 }
 
+// MT 服务器实时指标
 message ServerMetric {
-  int32  server_id  = 1;
-  double cpu_usage  = 2;
-  double mem_usage  = 3;
-  string updated_at = 4;
+  int32  server_id  = 1; // MT 服务器 ID
+  double cpu_usage  = 2; // CPU 使用率（0.0–1.0）
+  double mem_usage  = 3; // 内存使用率（0.0–1.0）
+  string updated_at = 4; // 指标采集时间，ISO 8601 格式
 }

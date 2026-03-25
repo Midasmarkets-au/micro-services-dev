@@ -8,365 +8,389 @@ import "google/api/annotations.proto";
 import "http/v1/common.proto";
 
 // ─── Tenant Rebate API (api/v1/tenant/rebate) ────────────────────────────────
+// 管理返佣记录总表，提供全局返佣品种和分类查询，以及返佣释放开关和重发功能。
+// 返佣记录由系统在交易关闭后自动生成，仅支持只读查询和运维操作。
 
 service TenantRebateService {
-  // 列表查询
+  // 分页查询返佣记录；可按 account_id、status、symbol 及日期范围过滤
   rpc ListRebates(ListRebatesRequest) returns (ListRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate" };
   }
-  // 获取单条
+  // 按 id 获取单条返佣记录详情
   rpc GetRebate(GetRebateRequest) returns (Rebate) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate/{id}" };
   }
-  // 获取所有返佣品种
+  // 获取当前租户所有配置了返佣规则的交易品种列表
   rpc GetAllSymbols(EmptyRequest) returns (RebateSymbolsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate/symbol/all" };
   }
-  // 获取返佣品种分类
+  // 获取返佣品种分类列表（如 "Forex"、"Metal"、"Crypto"），用于前端分组展示
   rpc GetSymbolCategories(EmptyRequest) returns (RebateSymbolCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate/symbol/category" };
   }
-  // 禁用释放返佣
+  // 暂停返佣自动释放（可选指定暂停时长，单位：分钟；不传则持续暂停至手动恢复）
   rpc DisableRelease(DisableReleaseRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate/disable-release" };
   }
-  // 启用释放返佣
+  // 恢复返佣自动释放（与 DisableRelease 配对使用）
   rpc EnableRelease(EmptyRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate/enable-release" };
   }
-  // 重发返佣
+  // 重新触发指定返佣记录的发放流程（用于修复异常状态的返佣）
   rpc ResendRebate(ResendRebateRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate/resend", body: "*" };
   }
 }
 
 // ─── Tenant Rebate Agent Rule API (api/v1/tenant/rebate-agent-rule) ──────────
+// 管理 IB（Agent）账户的返佣规则，控制 IB 是否启用返佣及其使用的 schema 和等级设置。
+// 每个 IB 账户最多关联一条 AgentRule，规则中引用 BaseSchema 定义各品种返佣基础费率。
 
 service TenantRebateAgentRuleService {
-  // 列表查询
+  // 分页查询 Agent 返佣规则；可按 account_id 和 status 过滤
   rpc ListRebateAgentRules(ListRebateAgentRulesRequest) returns (ListRebateAgentRulesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule" };
   }
-  // 获取单条
+  // 按 id 获取单条 Agent 返佣规则详情
   rpc GetRebateAgentRule(GetRebateRuleRequest) returns (RebateAgentRule) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule/{id}" };
   }
-  // 创建
+  // 为指定账户（account_id）创建 Agent 返佣规则，关联指定 BaseSchema（schema_id）
   rpc CreateRebateAgentRule(CreateRebateAgentRuleRequest) returns (RebateAgentRule) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-agent-rule", body: "*" };
   }
-  // 更新
+  // 更新 Agent 返佣规则状态（如启用/禁用）
   rpc UpdateRebateAgentRule(UpdateRebateAgentRuleRequest) returns (RebateAgentRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}", body: "spec" };
   }
-  // 删除
+  // 删除 Agent 返佣规则
   rpc DeleteRebateAgentRule(GetRebateRuleRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-agent-rule/{id}" };
   }
-  // 更新顶层等级设置
+  // 更新规则的顶层等级设置（多层 IB 结构中最高层的 LevelSetting 配置）
   rpc UpdateLevelSetting(UpdateLevelSettingRequest) returns (RebateAgentRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/level-setting", body: "spec" };
   }
-  // 清除等级设置
+  // 清除规则的等级设置（恢复为默认等级计算逻辑）
   rpc ClearLevelSetting(GetRebateRuleRequest) returns (RebateAgentRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/clear-level-setting" };
   }
-  // 更新下层 schema
+  // 更新规则关联的下层 schema（变更 IB 使用的 BaseSchema）
   rpc UpdateSchema(UpdateSchemaRequest) returns (RebateAgentRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/schema", body: "spec" };
   }
-  // 获取账户默认等级设置
+  // 获取指定账户（account_id）的默认等级返佣设置（按账户类型预设）
   rpc GetDefaultLevelSetting(GetDefaultLevelSettingRequest) returns (LevelSettingResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule/{account_id}/default-level-setting" };
   }
 }
 
 // ─── Tenant Rebate Client Rule API (api/v1/tenant/rebate-client-rule) ─────────
+// 管理客户账户的返佣分配规则，控制返佣如何在客户和其上级 IB 之间分配。
+// ClientRule 只读，分配类型通过 UpdateDistributionType 修改。
 
 service TenantRebateClientRuleService {
-  // 列表查询
+  // 分页查询客户返佣规则；可按 account_id 过滤
   rpc ListRebateClientRules(ListRebateClientRulesRequest) returns (ListRebateClientRulesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-client-rule" };
   }
-  // 获取单条
+  // 按 id 获取单条客户返佣规则详情
   rpc GetRebateClientRule(GetRebateRuleRequest) returns (RebateClientRule) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-client-rule/{id}" };
   }
-  // 更新分配类型
+  // 修改客户返佣规则的分配类型（distribution_type 枚举，决定返佣归属比例）
   rpc UpdateDistributionType(UpdateDistributionTypeRequest) returns (RebateClientRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-client-rule/{id}", body: "spec" };
   }
 }
 
 // ─── Tenant Rebate Direct Rule API (api/v1/tenant/rebate-direct-rule) ─────────
+// 管理直接返佣规则（Direct Rule），用于将特定 DirectSchema 直接绑定到账户，
+// 实现绕过层级计算的固定费率返佣（如专属客户或 VIP 协议）。
+// DirectRule 创建后需调用 Confirm 才能正式生效。
 
 service TenantRebateDirectRuleService {
-  // 列表查询
+  // 分页查询直接返佣规则；可按 account_id 和 status 过滤
   rpc ListRebateDirectRules(ListRebateDirectRulesRequest) returns (ListRebateDirectRulesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-rule" };
   }
-  // 获取单条
+  // 按 id 获取单条直接返佣规则详情
   rpc GetRebateDirectRule(GetRebateRuleRequest) returns (RebateDirectRule) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-rule/{id}" };
   }
-  // 创建
+  // 为指定账户（account_id）创建直接返佣规则，关联指定 DirectSchema（schema_id）
   rpc CreateRebateDirectRule(CreateRebateDirectRuleRequest) returns (RebateDirectRule) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-direct-rule", body: "*" };
   }
-  // 更新
+  // 更新直接返佣规则状态
   rpc UpdateRebateDirectRule(UpdateRebateDirectRuleRequest) returns (RebateDirectRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-rule/{id}", body: "spec" };
   }
-  // 确认
+  // 确认直接返佣规则使其正式生效（创建后处于待确认状态，确认后开始计算返佣）
   rpc ConfirmRebateDirectRule(GetRebateRuleRequest) returns (RebateDirectRule) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-rule/{id}/confirm" };
   }
-  // 删除
+  // 删除直接返佣规则
   rpc DeleteRebateDirectRule(GetRebateRuleRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-direct-rule/{id}" };
   }
 }
 
 // ─── Tenant Rebate Base Schema API (api/v1/tenant/rebate-base-schema) ─────────
+// 管理基础返佣 Schema（BaseSchema），定义各品种（symbol）的基础返佣费率（rate）。
+// BaseSchema 作为所有 AgentRule 的费率基础，支持条目级增删改和批量更新。
 
 service TenantRebateBaseSchemaService {
-  // 列表查询
+  // 分页查询 BaseSchema 列表；可按关键字和 status 过滤
   rpc ListRebateBaseSchemas(ListRebateSchemasRequest) returns (ListRebateBaseSchemasResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema" };
   }
-  // 获取 ID/Name 列表
+  // 获取 BaseSchema ID/Name 精简列表（供下拉选择框使用，不含 items 详情）
   rpc ListRebateBaseSchemaNames(ListRebateSchemasRequest) returns (SchemaNameListResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema/list" };
   }
-  // 获取单条（含 items）
+  // 按 base_schema_id 获取 BaseSchema 详情（含全部 items 费率条目）
   rpc GetRebateBaseSchema(GetSchemaRequest) returns (RebateBaseSchema) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema/{base_schema_id}" };
   }
-  // 创建
+  // 创建新的 BaseSchema（初始无 items，后续通过 CreateItem 添加品种费率）
   rpc CreateRebateBaseSchema(CreateRebateBaseSchemaRequest) returns (RebateBaseSchema) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-base-schema", body: "*" };
   }
-  // 更新
+  // 更新 BaseSchema 名称或状态
   rpc UpdateRebateBaseSchema(UpdateRebateBaseSchemaRequest) returns (RebateBaseSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-base-schema/{base_schema_id}", body: "spec" };
   }
-  // 删除
+  // 删除 BaseSchema（需确保无 AgentRule 引用该 schema）
   rpc DeleteRebateBaseSchema(GetSchemaRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-base-schema/{base_schema_id}" };
   }
-  // 获取 item
+  // 获取 BaseSchema 下单条 item（品种费率条目）详情
   rpc GetRebateBaseSchemaItem(GetSchemaItemRequest) returns (RebateSchemaItem) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/item/{base_schema_item_id}" };
   }
-  // 创建 item
+  // 向 BaseSchema 添加新的品种费率条目（symbol + rate + currency）
   rpc CreateRebateBaseSchemaItem(CreateSchemaItemRequest) returns (RebateSchemaItem) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/item", body: "spec" };
   }
-  // 更新 item
+  // 更新 BaseSchema 下单条 item 的费率或货币
   rpc UpdateRebateBaseSchemaItem(UpdateSchemaItemRequest) returns (RebateSchemaItem) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/item/{base_schema_item_id}", body: "spec" };
   }
-  // 批量更新 items
+  // 批量替换 BaseSchema 的全部 items（全量覆盖，适合从外部导入费率表）
   rpc BatchUpdateRebateBaseSchemaItems(BatchUpdateSchemaItemsRequest) returns (RebateBaseSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/items", body: "items" };
   }
 }
 
 // ─── Tenant Rebate Direct Schema API (api/v1/tenant/rebate-direct-schema) ─────
+// 管理直接返佣 Schema（DirectSchema），为 DirectRule 提供固定费率配置。
+// DirectSchema 创建后需调用 Confirm 才能生效；支持查询哪些 Rule 引用了该 schema。
 
 service TenantRebateDirectSchemaService {
-  // 列表查询
+  // 分页查询 DirectSchema 列表；可按关键字和 status 过滤
   rpc ListRebateDirectSchemas(ListRebateSchemasRequest) returns (ListRebateDirectSchemasResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema" };
   }
-  // 获取 ID/Name 列表
+  // 获取 DirectSchema ID/Name 精简列表（供下拉选择框使用，不含 items 详情）
   rpc ListRebateDirectSchemaNames(ListRebateSchemasRequest) returns (SchemaNameListResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/list" };
   }
-  // 获取单条（含 items）
+  // 按 schema_id 获取 DirectSchema 详情（含全部 items 费率条目）
   rpc GetRebateDirectSchema(GetSchemaRequest) returns (RebateDirectSchema) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}" };
   }
-  // 创建
+  // 创建新的 DirectSchema（初始无 items，后续通过 CreateItem 添加品种费率）
   rpc CreateRebateDirectSchema(CreateRebateDirectSchemaRequest) returns (RebateDirectSchema) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-direct-schema", body: "*" };
   }
-  // 确认
+  // 确认 DirectSchema 使其生效（创建后处于草稿状态，确认后可被 DirectRule 引用）
   rpc ConfirmRebateDirectSchema(GetSchemaRequest) returns (RebateDirectSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/confirm" };
   }
-  // 更新备注
+  // 更新 DirectSchema 备注信息（remark 字段）
   rpc UpdateRebateDirectSchema(UpdateRebateDirectSchemaRequest) returns (RebateDirectSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}", body: "spec" };
   }
-  // 获取 item
+  // 获取 DirectSchema 下单条 item（品种费率条目）详情
   rpc GetRebateDirectSchemaItem(GetDirectSchemaItemRequest) returns (RebateSchemaItem) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}/item/{schema_item_id}" };
   }
-  // 创建 item
+  // 向 DirectSchema 添加新的品种费率条目（symbol + rate + currency）
   rpc CreateRebateDirectSchemaItem(CreateDirectSchemaItemRequest) returns (RebateSchemaItem) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-direct-schema/{schema_id}/item", body: "spec" };
   }
-  // 更新 item
+  // 更新 DirectSchema 下单条 item 的费率或货币
   rpc UpdateRebateDirectSchemaItem(UpdateDirectSchemaItemRequest) returns (RebateSchemaItem) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/item/{schema_item_id}", body: "spec" };
   }
-  // 批量更新 items
+  // 批量替换 DirectSchema 的全部 items（全量覆盖，适合从外部导入费率表）
   rpc BatchUpdateRebateDirectSchemaItems(BatchUpdateDirectSchemaItemsRequest) returns (RebateDirectSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/items", body: "items" };
   }
-  // 获取使用该 schema 的 direct rules
+  // 查询哪些 DirectRule 引用了该 DirectSchema（用于变更前影响范围评估）
   rpc GetUsedDirectRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateDirectRulesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}/used-direct-rule-schema" };
   }
-  // 获取使用该 schema 的 client rules
+  // 查询哪些 ClientRule 引用了该 DirectSchema（用于变更前影响范围评估）
   rpc GetUsedClientRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateClientRulesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}/used-client-rule-schema" };
   }
 }
 
 // ─── Tenant Rebate Schema Bundle API (api/v1/tenant/rebate-schema-bundle) ─────
+// 管理 Schema Bundle（捆绑包），将多个 BaseSchema 组合为一个可复用的配置集合，
+// 方便对具有相同费率组合的账户批量应用策略。
 
 service TenantRebateSchemaBundleService {
-  // 列表查询
+  // 分页查询 SchemaBundle 列表；可按关键字和 status 过滤
   rpc ListRebateSchemaBundles(ListRebateSchemasRequest) returns (ListRebateSchemaBundlesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-schema-bundle" };
   }
-  // 获取 ID/Name 列表
+  // 获取 SchemaBundle ID/Name 精简列表（供下拉选择框使用）
   rpc ListRebateSchemaBundleNames(ListRebateSchemasRequest) returns (SchemaNameListResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-schema-bundle/list" };
   }
-  // 获取单条
+  // 按 bundle_id 获取 SchemaBundle 详情
   rpc GetRebateSchemaBundle(GetBundleRequest) returns (RebateSchemaBundle) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-schema-bundle/{bundle_id}" };
   }
-  // 创建
+  // 创建新的 SchemaBundle（指定名称和包含的 schema_ids 列表）
   rpc CreateRebateSchemaBundle(CreateRebateSchemaBundleRequest) returns (RebateSchemaBundle) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-schema-bundle", body: "*" };
   }
-  // 更新
+  // 更新 SchemaBundle 的名称或包含的 schema 列表
   rpc UpdateRebateSchemaBundle(UpdateRebateSchemaBundleRequest) returns (RebateSchemaBundle) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-schema-bundle/{bundle_id}", body: "spec" };
   }
-  // 删除
+  // 删除 SchemaBundle
   rpc DeleteRebateSchemaBundle(GetBundleRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-schema-bundle/{bundle_id}" };
   }
 }
 
 // ─── Tenant Sales Rebate API (api/v1/tenant/sales-rebate) ────────────────────
+// 管理 Sales 角色的返佣记录，支持按账户和日期查询及手动更新状态。
 
 service TenantSalesRebateService {
-  // 列表查询
+  // 分页查询 Sales 返佣记录；可按 account_id、status 及日期范围过滤
   rpc ListSalesRebates(ListSalesRebatesRequest) returns (ListSalesRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/sales-rebate" };
   }
-  // 更新
+  // 手动更新 Sales 返佣记录状态（如强制完成或标记异常）
   rpc UpdateSalesRebate(UpdateSalesRebateRequest) returns (SalesRebate) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate/{record_id}", body: "spec" };
   }
 }
 
 // ─── Tenant Sales Rebate Schema API (api/v1/tenant/sales-rebate-schema) ───────
+// 管理 Sales 返佣 Schema，定义 Sales 角色的固定返佣金额方案（非费率型）。
+// Schema 创建后需经过 Approve 审批才能正式使用，删除为软删除。
 
 service TenantSalesRebateSchemaService {
-  // 列表查询
+  // 分页查询 Sales 返佣 Schema 列表；可按 status 过滤
   rpc ListSalesRebateSchemas(ListSalesRebateSchemasRequest) returns (ListSalesRebateSchemasResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/sales-rebate-schema" };
   }
-  // 创建
+  // 创建新的 Sales 返佣 Schema（指定名称、金额和货币）
   rpc CreateSalesRebateSchema(CreateSalesRebateSchemaRequest) returns (SalesRebateSchema) {
     option (google.api.http) = { post: "/api/v1/tenant/sales-rebate-schema", body: "*" };
   }
-  // 更新
+  // 更新 Sales 返佣 Schema 的名称或金额
   rpc UpdateSalesRebateSchema(UpdateSalesRebateSchemaRequest) returns (SalesRebateSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate-schema/{schema_id}", body: "spec" };
   }
-  // 审批
+  // 审批通过 Sales 返佣 Schema（审批后 status 变为 active，可被 SalesRebate 引用）
   rpc ApproveSalesRebateSchema(GetSchemaRequest) returns (SalesRebateSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate-schema/{schema_id}/approve" };
   }
-  // 删除（软删）
+  // 软删除 Sales 返佣 Schema（标记为已删除，不物理删除，已引用的记录不受影响）
   rpc DeleteSalesRebateSchema(GetSchemaRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate-schema/{schema_id}/delete" };
   }
 }
 
 // ─── Tenant Trade Rebate API (api/v1/tenant/trade-rebate) ────────────────────
+// 查看和管理基于交易（trade）产生的返佣计算记录，提供返佣校验、
+// 交易同步状态检查和返佣重置功能（运维使用）。
 
 service TenantTradeRebateService {
-  // 列表查询
+  // 分页查询 TradeRebate 记录；可按 account_id、status 及日期范围过滤
   rpc ListTradeRebates(ListTradeRebatesRequest) returns (ListTradeRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate" };
   }
-  // 获取单条
+  // 按 id 获取单条 TradeRebate 详情
   rpc GetTradeRebate(GetRebateRequest) returns (TradeRebate) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate/{id}" };
   }
-  // 检查返佣
+  // 校验指定 TradeRebate 记录的返佣计算是否正确（返回 valid 和说明信息）
   rpc CheckRebates(GetRebateRequest) returns (TradeRebateCheckResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate/{id}/check-rebates" };
   }
-  // 检查交易同步
+  // 检查指定日期（格式 YYYY-MM-DD）的 MT 交易数据是否已完整同步到本地
   rpc CheckTradeSync(CheckTradeSyncRequest) returns (TradeSyncResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate/check-trade-sync" };
   }
-  // 重置返佣
+  // 重置 TradeRebate 记录状态（清除异常标记，允许系统重新计算返佣）
   rpc ResetTradeRebate(GetRebateRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/trade-rebate/{id}/reset" };
   }
 }
 
 // ─── Tenant Default Rebate Level API (api/v1/tenant/defaultrebatelevel) ───────
+// 管理不同账户类型和选项（option_name）下的默认返佣等级设置，
+// 用于在未单独配置 AgentRule 时的返佣计算兜底逻辑。
 
 service TenantDefaultRebateLevelService {
-  // 获取所有默认等级设置
+  // 获取所有账户类型的默认返佣等级设置列表（account_type_id + option_name + amount）
   rpc GetAllDefaultRebateLevels(EmptyRequest) returns (DefaultRebateLevelsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/defaultrebatelevel" };
   }
-  // 获取特定账户类型/选项的等级设置
+  // 获取指定账户类型（account_type_id）和选项（option_name）的详细等级设置
   rpc GetDefaultRebateLevelDetail(GetDefaultRebateLevelDetailRequest) returns (DefaultRebateLevelDetailResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/defaultrebatelevel/{account_type_id}/{option_name}" };
   }
-  // 更新默认等级设置
+  // 批量更新默认返佣等级设置（全量替换，传入所有账户类型的配置）
   rpc UpdateDefaultRebateLevels(UpdateDefaultRebateLevelsRequest) returns (DefaultRebateLevelsResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/defaultrebatelevel", body: "*" };
   }
-  // 获取所有品种分类
+  // 获取所有可用的品种分类列表（与 TenantRebateService.GetSymbolCategories 数据源相同）
   rpc GetCategories(EmptyRequest) returns (RebateSymbolCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/defaultrebatelevel/categories" };
   }
 }
 
 // ─── Client Rebate API (api/v1/client/rebate) ────────────────────────────────
+// 客户端返佣查询接口，当前登录客户仅能查看自己的返佣记录、品种列表和品种分类。
 
 service ClientRebateService {
-  // 列表查询
+  // 分页查询当前客户的返佣记录；可按 account_id、status、symbol 及日期范围过滤
   rpc ListRebates(ListRebatesRequest) returns (ListRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate" };
   }
-  // 获取单条
+  // 按 id 获取当前客户的单条返佣记录详情
   rpc GetRebate(GetRebateRequest) returns (Rebate) {
     option (google.api.http) = { get: "/api/v1/client/rebate/{id}" };
   }
-  // 获取所有品种
+  // 获取客户账户适用的所有返佣品种列表
   rpc GetAllSymbols(EmptyRequest) returns (RebateSymbolsResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate/symbol/all" };
   }
-  // 获取品种分类
+  // 获取客户账户适用的品种分类列表（用于前端分组展示）
   rpc GetSymbolCategories(EmptyRequest) returns (RebateSymbolCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate/symbol/category" };
   }
 }
 
 // ─── Sales Rebate API (api/v1/sales/{salesUid}/rebate) ───────────────────────
+// Sales 角色的返佣查询接口，仅能查看指定 Sales（sales_uid）下辖账户产生的返佣记录。
 
 service SalesRebateService {
-  // 列表查询
+  // 分页查询 Sales 下辖的返佣记录；可按日期范围过滤
   rpc ListRebates(ListSalesAreaRebatesRequest) returns (ListRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/rebate" };
   }
-  // 获取单条
+  // 按 id 获取 Sales 下辖的单条返佣记录详情
   rpc GetRebate(GetSalesAreaRebateRequest) returns (Rebate) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/rebate/{id}" };
   }
@@ -374,128 +398,131 @@ service SalesRebateService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
+// 空请求（无参数接口占位）
 message EmptyRequest {}
 
+// 通用操作结果
 message OperationResponse {
   bool   success = 1;
   string message = 2;
 }
 
-// Rebate 实体
+// 返佣记录实体（由系统在交易关闭后自动生成）
 message Rebate {
-  int64  id          = 1;
-  int64  account_id  = 2;
-  int64  trade_id    = 3;
-  double amount      = 4;
-  string currency    = 5;
-  int32  status      = 6;
-  string created_at  = 7;
+  int64  id          = 1; // 返佣记录 ID
+  int64  account_id  = 2; // 受益账户 ID（即获得返佣的 IB 或客户）
+  int64  trade_id    = 3; // 关联的 MT4/MT5 交易 ID
+  double amount      = 4; // 返佣金额
+  string currency    = 5; // 货币代码，如 "USD"
+  int32  status      = 6; // 返佣状态：0=pending（待释放）、1=released（已释放）、2=failed（失败）
+  string created_at  = 7; // 创建时间，ISO 8601 格式
 }
 
-// RebateAgentRule 实体
+// Agent 返佣规则实体（每个 IB 账户最多一条）
 message RebateAgentRule {
-  int64  id         = 1;
-  int64  account_id = 2;
-  int32  status     = 3;
-  string created_at = 4;
+  int64  id         = 1; // 规则 ID
+  int64  account_id = 2; // 关联 IB 账户 ID
+  int32  status     = 3; // 规则状态：0=disabled（禁用）、1=enabled（启用）
+  string created_at = 4; // 创建时间，ISO 8601 格式
 }
 
-// RebateClientRule 实体
+// 客户返佣规则实体（控制返佣在客户和上级 IB 间的分配方式）
 message RebateClientRule {
-  int64  id                  = 1;
-  int64  account_id          = 2;
-  int32  distribution_type   = 3;
-  int32  status              = 4;
+  int64  id                  = 1; // 规则 ID
+  int64  account_id          = 2; // 关联客户账户 ID
+  int32  distribution_type   = 3; // 分配类型枚举（决定返佣归属比例，如全给 IB 或部分给客户）
+  int32  status              = 4; // 规则状态：0=disabled、1=enabled
 }
 
-// RebateDirectRule 实体
+// 直接返佣规则实体（将 DirectSchema 直接绑定到账户，绕过层级计算）
 message RebateDirectRule {
-  int64  id          = 1;
-  int64  account_id  = 2;
-  int64  schema_id   = 3;
-  int32  status      = 4;
-  string created_at  = 5;
+  int64  id          = 1; // 规则 ID
+  int64  account_id  = 2; // 关联账户 ID
+  int64  schema_id   = 3; // 引用的 DirectSchema ID
+  int32  status      = 4; // 规则状态：0=pending（待确认）、1=active（生效中）、2=disabled（禁用）
+  string created_at  = 5; // 创建时间，ISO 8601 格式
 }
 
-// RebateBaseSchema 实体
+// 基础返佣 Schema 实体（包含各品种的基础费率条目列表）
 message RebateBaseSchema {
-  int64              id     = 1;
-  string             name   = 2;
-  int32              status = 3;
-  repeated RebateSchemaItem items = 4;
+  int64              id     = 1; // Schema ID
+  string             name   = 2; // Schema 名称
+  int32              status = 3; // 状态：0=inactive、1=active
+  repeated RebateSchemaItem items = 4; // 品种费率条目列表（每品种一条）
 }
 
-// RebateDirectSchema 实体
+// 直接返佣 Schema 实体（包含各品种的固定费率条目列表及备注）
 message RebateDirectSchema {
-  int64              id      = 1;
-  string             name    = 2;
-  string             remark  = 3;
-  int32              status  = 4;
-  repeated RebateSchemaItem items = 5;
+  int64              id      = 1; // Schema ID
+  string             name    = 2; // Schema 名称
+  string             remark  = 3; // 备注说明（如适用客户、协议内容摘要）
+  int32              status  = 4; // 状态：0=draft（草稿）、1=confirmed（已确认/生效）
+  repeated RebateSchemaItem items = 5; // 品种费率条目列表（每品种一条）
 }
 
-// RebateSchemaItem 实体（base 和 direct schema 共用）
+// 返佣 Schema 品种费率条目（BaseSchema 和 DirectSchema 共用）
 message RebateSchemaItem {
-  int64  id        = 1;
-  int64  schema_id = 2;
-  string symbol    = 3;
-  double rate      = 4;
-  string currency  = 5;
+  int64  id        = 1; // 条目 ID
+  int64  schema_id = 2; // 所属 Schema ID
+  string symbol    = 3; // 交易品种名称，如 "EURUSD"（对应 Symbol 实体）
+  double rate      = 4; // 每手返佣费率（以 currency 计价的固定金额）
+  string currency  = 5; // 费率货币代码，如 "USD"
 }
 
-// RebateSchemaBundle 实体
+// Schema Bundle 实体（将多个 BaseSchema 组合为一个可复用配置集合）
 message RebateSchemaBundle {
-  int64  id         = 1;
-  string name       = 2;
-  int32  status     = 3;
-  string created_at = 4;
+  int64  id         = 1; // Bundle ID
+  string name       = 2; // Bundle 名称
+  int32  status     = 3; // 状态：0=inactive、1=active
+  string created_at = 4; // 创建时间，ISO 8601 格式
 }
 
-// SalesRebate 实体
+// Sales 返佣记录实体
 message SalesRebate {
-  int64  id         = 1;
-  int64  account_id = 2;
-  double amount     = 3;
-  int32  status     = 4;
-  string created_at = 5;
+  int64  id         = 1; // 记录 ID
+  int64  account_id = 2; // 关联 Sales 账户 ID
+  double amount     = 3; // 返佣金额
+  int32  status     = 4; // 状态：0=pending、1=completed、2=failed
+  string created_at = 5; // 创建时间，ISO 8601 格式
 }
 
-// SalesRebateSchema 实体
+// Sales 返佣 Schema 实体（定义固定金额的 Sales 返佣方案）
 message SalesRebateSchema {
-  int64  id         = 1;
-  string name       = 2;
-  int32  status     = 3;
-  string created_at = 4;
+  int64  id         = 1; // Schema ID
+  string name       = 2; // Schema 名称
+  int32  status     = 3; // 状态：0=draft（草稿）、1=approved（已审批/生效）、2=deleted（已软删）
+  string created_at = 4; // 创建时间，ISO 8601 格式
 }
 
-// TradeRebate 实体
+// 基于交易产生的返佣计算记录实体
 message TradeRebate {
-  int64  id             = 1;
-  int64  trade_id       = 2;
-  double amount         = 3;
-  int32  status         = 4;
-  string created_at     = 5;
+  int64  id             = 1; // 记录 ID
+  int64  trade_id       = 2; // 关联的 MT4/MT5 交易 ID
+  double amount         = 3; // 计算出的返佣金额
+  int32  status         = 4; // 状态：0=pending、1=processed（已处理）、2=error（异常）
+  string created_at     = 5; // 创建时间，ISO 8601 格式
 }
 
-// LevelSetting (shared)
+// 返佣等级设置响应（共用于多个接口）
 message LevelSettingResponse {
   repeated LevelSetting levels = 1;
 }
 
+// 单个等级设置条目
 message LevelSetting {
-  int32  level  = 1;
-  string name   = 2;
-  double amount = 3;
+  int32  level  = 1; // 层级编号（从 1 开始，1=直接上级）
+  string name   = 2; // 等级名称，如 "Level 1"、"Senior IB"
+  double amount = 3; // 该层级的返佣金额或触发阈值
 }
 
-// Rebate list
+// 返佣记录列表查询请求（Tenant 和 Client 共用）
 message ListRebatesRequest {
   PaginationRequest pagination  = 1;
-  optional int64    account_id  = 2;
-  optional int32    status      = 3;
-  optional string   date_from   = 4;
-  optional string   date_to     = 5;
-  optional string   symbol      = 6;
+  optional int64    account_id  = 2; // 按账户 ID 过滤
+  optional int32    status      = 3; // 按返佣状态过滤（0=pending、1=released、2=failed）
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+  optional string   symbol      = 6; // 按交易品种过滤，如 "EURUSD"
 }
 
 message ListRebatesResponse {
@@ -503,31 +530,36 @@ message ListRebatesResponse {
   PaginationMeta  meta = 2;
 }
 
+// 按 id 查询返佣/TradeRebate 记录
 message GetRebateRequest {
   int64 id = 1;
 }
 
+// 暂停返佣释放请求
 message DisableReleaseRequest {
-  optional int64 time_in_minutes = 1;
+  optional int64 time_in_minutes = 1; // 暂停时长（分钟）；不传则持续暂停至手动调用 EnableRelease
 }
 
+// 重发返佣请求
 message ResendRebateRequest {
-  int64 rebate_id = 1;
+  int64 rebate_id = 1; // 需要重发的返佣记录 ID
 }
 
+// 返佣品种列表响应
 message RebateSymbolsResponse {
-  repeated string symbols = 1;
+  repeated string symbols = 1; // 配置了返佣规则的交易品种名称列表
 }
 
+// 返佣品种分类列表响应
 message RebateSymbolCategoriesResponse {
-  repeated string categories = 1;
+  repeated string categories = 1; // 品种分类名称列表，如 "Forex"、"Metal"、"Crypto"
 }
 
-// RebateAgentRule messages
+// Agent 返佣规则列表查询请求
 message ListRebateAgentRulesRequest {
   PaginationRequest pagination  = 1;
-  optional int64    account_id  = 2;
-  optional int32    status      = 3;
+  optional int64    account_id  = 2; // 按 IB 账户 ID 过滤
+  optional int32    status      = 3; // 按规则状态过滤：0=disabled、1=enabled
 }
 
 message ListRebateAgentRulesResponse {
@@ -535,46 +567,54 @@ message ListRebateAgentRulesResponse {
   PaginationMeta           meta = 2;
 }
 
+// 按 id 查询规则
 message GetRebateRuleRequest {
   int64 id = 1;
 }
 
+// 创建 Agent 返佣规则请求
 message CreateRebateAgentRuleRequest {
-  int64 account_id = 1;
-  int64 schema_id  = 2;
+  int64 account_id = 1; // IB 账户 ID
+  int64 schema_id  = 2; // 关联的 BaseSchema ID
 }
 
+// 更新 Agent 返佣规则请求
 message UpdateRebateAgentRuleRequest {
   int64                   id   = 1;
   UpdateRebateAgentRuleSpec spec = 2;
 }
 
+// Agent 返佣规则更新体
 message UpdateRebateAgentRuleSpec {
-  int32 status = 1;
+  int32 status = 1; // 新状态：0=disabled、1=enabled
 }
 
+// 更新顶层等级设置请求
 message UpdateLevelSettingRequest {
-  int64              id   = 1;
+  int64              id   = 1; // AgentRule ID
   RebateLevelSchema  spec = 2;
 }
 
+// 等级设置列表（用于规则配置）
 message RebateLevelSchema {
   repeated LevelSetting levels = 1;
 }
 
+// 更新下层 Schema 请求（AgentRule 引用的 BaseSchema 变更）
 message UpdateSchemaRequest {
-  int64             id   = 1;
+  int64             id   = 1; // AgentRule ID
   RebateLevelSchema spec = 2;
 }
 
+// 获取账户默认等级设置请求
 message GetDefaultLevelSettingRequest {
-  int64 account_id = 1;
+  int64 account_id = 1; // 目标账户 ID
 }
 
-// RebateClientRule messages
+// 客户返佣规则列表查询请求
 message ListRebateClientRulesRequest {
   PaginationRequest pagination = 1;
-  optional int64    account_id = 2;
+  optional int64    account_id = 2; // 按客户账户 ID 过滤
 }
 
 message ListRebateClientRulesResponse {
@@ -582,20 +622,22 @@ message ListRebateClientRulesResponse {
   PaginationMeta            meta = 2;
 }
 
+// 更新分配类型请求
 message UpdateDistributionTypeRequest {
-  int64                       id   = 1;
+  int64                       id   = 1; // ClientRule ID
   UpdateRebateClientRuleSpec  spec = 2;
 }
 
+// 客户返佣规则更新体
 message UpdateRebateClientRuleSpec {
-  int32 distribution_type = 1;
+  int32 distribution_type = 1; // 分配类型枚举值（决定返佣归属比例）
 }
 
-// RebateDirectRule messages
+// 直接返佣规则列表查询请求
 message ListRebateDirectRulesRequest {
   PaginationRequest pagination = 1;
-  optional int64    account_id = 2;
-  optional int32    status     = 3;
+  optional int64    account_id = 2; // 按账户 ID 过滤
+  optional int32    status     = 3; // 按规则状态过滤
 }
 
 message ListRebateDirectRulesResponse {
@@ -603,159 +645,184 @@ message ListRebateDirectRulesResponse {
   PaginationMeta            meta = 2;
 }
 
+// 创建直接返佣规则请求
 message CreateRebateDirectRuleRequest {
-  int64 account_id = 1;
-  int64 schema_id  = 2;
+  int64 account_id = 1; // 目标账户 ID
+  int64 schema_id  = 2; // 关联的 DirectSchema ID
 }
 
+// 更新直接返佣规则请求
 message UpdateRebateDirectRuleRequest {
-  int64                    id   = 1;
+  int64                    id   = 1; // DirectRule ID
   UpdateRebateDirectRuleSpec spec = 2;
 }
 
+// 直接返佣规则更新体
 message UpdateRebateDirectRuleSpec {
-  int32 status = 1;
+  int32 status = 1; // 新状态枚举值
 }
 
-// Schema list messages (shared)
+// Schema 列表查询请求（BaseSchema、DirectSchema、SchemaBundle 共用）
 message ListRebateSchemasRequest {
   PaginationRequest pagination = 1;
-  optional string   keywords   = 2;
-  optional int32    status     = 3;
+  optional string   keywords   = 2; // 按 Schema 名称关键字搜索
+  optional int32    status     = 3; // 按 Schema 状态过滤
 }
 
+// Schema ID/Name 精简列表响应
 message SchemaNameListResponse {
   repeated SchemaNameItem items = 1;
 }
 
+// Schema 精简条目（仅含 id 和 name，供下拉框使用）
 message SchemaNameItem {
-  int64  id   = 1;
-  string name = 2;
+  int64  id   = 1; // Schema ID
+  string name = 2; // Schema 名称
 }
 
-// Base Schema messages
+// BaseSchema 列表响应
 message ListRebateBaseSchemasResponse {
   repeated RebateBaseSchema data = 1;
   PaginationMeta            meta = 2;
 }
 
+// 按 schema_id 查询 Schema
 message GetSchemaRequest {
   int64 schema_id = 1;
 }
 
+// 创建 BaseSchema 请求
 message CreateRebateBaseSchemaRequest {
-  string name = 1;
+  string name = 1; // Schema 名称
 }
 
+// 更新 BaseSchema 请求
 message UpdateRebateBaseSchemaRequest {
   int64                    base_schema_id = 1;
   UpdateRebateBaseSchemaSpec spec          = 2;
 }
 
+// BaseSchema 更新体
 message UpdateRebateBaseSchemaSpec {
-  string name   = 1;
-  int32  status = 2;
+  string name   = 1; // 新名称
+  int32  status = 2; // 新状态：0=inactive、1=active
 }
 
+// 按 schema_id + item_id 查询 BaseSchema item
 message GetSchemaItemRequest {
   int64 base_schema_id      = 1;
   int64 base_schema_item_id = 2;
 }
 
+// 创建 BaseSchema item 请求
 message CreateSchemaItemRequest {
-  int64                schema_id = 1;
+  int64                schema_id = 1; // 所属 BaseSchema ID
   RebateSchemaItemSpec spec      = 2;
 }
 
+// Schema item 创建/更新体
 message RebateSchemaItemSpec {
-  string symbol   = 1;
-  double rate     = 2;
-  string currency = 3;
+  string symbol   = 1; // 交易品种，如 "EURUSD"
+  double rate     = 2; // 每手返佣金额（以 currency 计价）
+  string currency = 3; // 货币代码，如 "USD"
 }
 
+// 更新 BaseSchema item 请求
 message UpdateSchemaItemRequest {
   int64                base_schema_id      = 1;
   int64                base_schema_item_id = 2;
   RebateSchemaItemSpec spec                = 3;
 }
 
+// 批量更新 BaseSchema items 请求（全量覆盖）
 message BatchUpdateSchemaItemsRequest {
   int64                        base_schema_id = 1;
-  repeated RebateSchemaItemSpec items         = 2;
+  repeated RebateSchemaItemSpec items         = 2; // 新 items 列表，替换所有现有条目
 }
 
-// Direct Schema messages
+// DirectSchema 列表响应
 message ListRebateDirectSchemasResponse {
   repeated RebateDirectSchema data = 1;
   PaginationMeta              meta = 2;
 }
 
+// 创建 DirectSchema 请求
 message CreateRebateDirectSchemaRequest {
-  string name = 1;
+  string name = 1; // Schema 名称
 }
 
+// 更新 DirectSchema 请求
 message UpdateRebateDirectSchemaRequest {
   int64                       schema_id = 1;
   UpdateRebateDirectSchemaSpec spec      = 2;
 }
 
+// DirectSchema 更新体（仅支持更新备注）
 message UpdateRebateDirectSchemaSpec {
-  string remark = 1;
+  string remark = 1; // 备注说明
 }
 
+// 按 schema_id + schema_item_id 查询 DirectSchema item
 message GetDirectSchemaItemRequest {
   int64 schema_id      = 1;
   int64 schema_item_id = 2;
 }
 
+// 创建 DirectSchema item 请求
 message CreateDirectSchemaItemRequest {
-  int64                schema_id = 1;
+  int64                schema_id = 1; // 所属 DirectSchema ID
   RebateSchemaItemSpec spec      = 2;
 }
 
+// 更新 DirectSchema item 请求
 message UpdateDirectSchemaItemRequest {
   int64                schema_id      = 1;
   int64                schema_item_id = 2;
   RebateSchemaItemSpec spec           = 3;
 }
 
+// 批量更新 DirectSchema items 请求（全量覆盖）
 message BatchUpdateDirectSchemaItemsRequest {
   int64                        schema_id = 1;
-  repeated RebateSchemaItemSpec items    = 2;
+  repeated RebateSchemaItemSpec items    = 2; // 新 items 列表，替换所有现有条目
 }
 
+// 查询使用指定 Schema 的 Rule 列表请求
 message GetUsedBySchemaRequest {
-  int64             schema_id  = 1;
+  int64             schema_id  = 1; // 目标 DirectSchema ID
   PaginationRequest pagination = 2;
 }
 
-// Schema Bundle messages
+// SchemaBundle 列表响应
 message ListRebateSchemaBundlesResponse {
   repeated RebateSchemaBundle data = 1;
   PaginationMeta              meta = 2;
 }
 
+// 按 bundle_id 查询 SchemaBundle
 message GetBundleRequest {
   int64 bundle_id = 1;
 }
 
+// 创建 SchemaBundle 请求
 message CreateRebateSchemaBundleRequest {
-  string name       = 1;
-  repeated int64 schema_ids = 2;
+  string name            = 1; // Bundle 名称
+  repeated int64 schema_ids = 2; // 包含的 BaseSchema ID 列表
 }
 
+// 更新 SchemaBundle 请求
 message UpdateRebateSchemaBundleRequest {
   int64                       bundle_id = 1;
-  CreateRebateSchemaBundleRequest spec  = 2;
+  CreateRebateSchemaBundleRequest spec  = 2; // 复用创建请求体（全量更新名称和 schema 列表）
 }
 
-// SalesRebate messages
+// Sales 返佣记录列表查询请求
 message ListSalesRebatesRequest {
   PaginationRequest pagination = 1;
-  optional int64    account_id = 2;
-  optional int32    status     = 3;
-  optional string   date_from  = 4;
-  optional string   date_to    = 5;
+  optional int64    account_id = 2; // 按 Sales 账户 ID 过滤
+  optional int32    status     = 3; // 按状态过滤：0=pending、1=completed、2=failed
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
 }
 
 message ListSalesRebatesResponse {
@@ -763,19 +830,21 @@ message ListSalesRebatesResponse {
   PaginationMeta       meta = 2;
 }
 
+// 更新 Sales 返佣记录请求
 message UpdateSalesRebateRequest {
-  int64              record_id = 1;
+  int64              record_id = 1; // 返佣记录 ID
   UpdateSalesRebateSpec spec   = 2;
 }
 
+// Sales 返佣记录更新体
 message UpdateSalesRebateSpec {
-  int32 status = 1;
+  int32 status = 1; // 新状态枚举值
 }
 
-// SalesRebateSchema messages
+// Sales 返佣 Schema 列表查询请求
 message ListSalesRebateSchemasRequest {
   PaginationRequest pagination = 1;
-  optional int32    status     = 2;
+  optional int32    status     = 2; // 按状态过滤：0=draft、1=approved、2=deleted
 }
 
 message ListSalesRebateSchemasResponse {
@@ -783,29 +852,32 @@ message ListSalesRebateSchemasResponse {
   PaginationMeta             meta = 2;
 }
 
+// 创建 Sales 返佣 Schema 请求
 message CreateSalesRebateSchemaRequest {
-  string name       = 1;
-  double amount     = 2;
-  string currency   = 3;
+  string name       = 1; // Schema 名称
+  double amount     = 2; // 固定返佣金额
+  string currency   = 3; // 货币代码，如 "USD"
 }
 
+// 更新 Sales 返佣 Schema 请求
 message UpdateSalesRebateSchemaRequest {
   int64                       schema_id = 1;
   UpdateSalesRebateSchemaSpec spec      = 2;
 }
 
+// Sales 返佣 Schema 更新体
 message UpdateSalesRebateSchemaSpec {
-  string name   = 1;
-  double amount = 2;
+  string name   = 1; // 新名称
+  double amount = 2; // 新固定返佣金额
 }
 
-// TradeRebate messages
+// TradeRebate 列表查询请求
 message ListTradeRebatesRequest {
   PaginationRequest pagination = 1;
-  optional int64    account_id = 2;
-  optional int32    status     = 3;
-  optional string   date_from  = 4;
-  optional string   date_to    = 5;
+  optional int64    account_id = 2; // 按账户 ID 过滤
+  optional int32    status     = 3; // 按状态过滤：0=pending、1=processed、2=error
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
 }
 
 message ListTradeRebatesResponse {
@@ -813,53 +885,61 @@ message ListTradeRebatesResponse {
   PaginationMeta       meta = 2;
 }
 
+// TradeRebate 校验结果
 message TradeRebateCheckResponse {
-  bool   valid   = 1;
-  string message = 2;
+  bool   valid   = 1; // true=返佣计算结果正确
+  string message = 2; // 校验说明或错误原因
 }
 
+// 交易同步状态检查请求
 message CheckTradeSyncRequest {
-  string date = 1;
+  string date = 1; // 查询日期，格式 YYYY-MM-DD
 }
 
+// 交易同步状态响应
 message TradeSyncResponse {
-  bool   synced     = 1;
-  int32  trade_count = 2;
+  bool   synced     = 1; // true=指定日期的交易数据已完整同步
+  int32  trade_count = 2; // 已同步的交易笔数
 }
 
-// DefaultRebateLevel messages
+// 默认返佣等级列表响应
 message DefaultRebateLevelsResponse {
   repeated DefaultRebateLevelItem items = 1;
 }
 
+// 默认返佣等级条目（按账户类型和选项区分）
 message DefaultRebateLevelItem {
-  int32  account_type_id = 1;
-  string option_name     = 2;
-  double amount          = 3;
+  int32  account_type_id = 1; // 账户类型 ID（对应 AccountTypeConfig.id）
+  string option_name     = 2; // 配置选项名称（如品种分类或特定条件）
+  double amount          = 3; // 该组合的默认返佣金额
 }
 
+// 获取特定账户类型和选项的默认等级设置请求
 message GetDefaultRebateLevelDetailRequest {
-  int32  account_type_id = 1;
-  string option_name     = 2;
+  int32  account_type_id = 1; // 账户类型 ID
+  string option_name     = 2; // 配置选项名称
 }
 
+// 默认等级设置详情响应（包含该组合下的多级等级配置）
 message DefaultRebateLevelDetailResponse {
   repeated LevelSetting levels = 1;
 }
 
+// 批量更新默认返佣等级请求
 message UpdateDefaultRebateLevelsRequest {
-  repeated DefaultRebateLevelItem items = 1;
+  repeated DefaultRebateLevelItem items = 1; // 全量替换所有账户类型的默认等级配置
 }
 
-// Sales area rebate messages
+// Sales 区域返佣列表查询请求（Sales 视角）
 message ListSalesAreaRebatesRequest {
-  int64             sales_uid  = 1;
+  int64             sales_uid  = 1; // Sales 账户 UID
   PaginationRequest pagination = 2;
-  optional string   date_from  = 3;
-  optional string   date_to    = 4;
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
 }
 
+// Sales 区域单条返佣查询请求
 message GetSalesAreaRebateRequest {
-  int64 sales_uid = 1;
-  int64 id        = 2;
+  int64 sales_uid = 1; // Sales 账户 UID
+  int64 id        = 2; // 返佣记录 ID
 }

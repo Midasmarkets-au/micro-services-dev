@@ -8,262 +8,276 @@ import "google/api/annotations.proto";
 import "http/v1/common.proto";
 
 // ─── Tenant Event API (api/v1/tenant/event) ──────────────────────────────────
+// 管理营销活动（Event）的生命周期。活动支持多语言内容（lang）。
+// 活动有独立的用户参与记录（EventUser），后台可审批/拒绝参与申请。
 
 service TenantEventService {
-  // 列表查询
+  // 分页查询活动列表；可按 type、status、关键字及日期范围过滤
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event" };
   }
-  // 获取单条
+  // 按 id 获取活动详情
   rpc GetEvent(GetEventRequest) returns (Event) {
     option (google.api.http) = { get: "/api/v1/tenant/event/{id}" };
   }
-  // 创建
+  // 创建新活动（start_at/end_at 为 ISO 8601 格式）
   rpc CreateEvent(CreateEventRequest) returns (Event) {
     option (google.api.http) = { post: "/api/v1/tenant/event", body: "*" };
   }
-  // 更新
+  // 更新活动基本信息（body 字段名为 spec）
   rpc UpdateEvent(UpdateEventRequest) returns (Event) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}", body: "spec" };
   }
-  // 发布
+  // 发布活动（status 变更为 published，对前端可见）
   rpc PublishEvent(GetEventRequest) returns (Event) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}/publish" };
   }
-  // 关闭
+  // 关闭活动（status 变更为 closed，停止接受报名）
   rpc CloseEvent(GetEventRequest) returns (Event) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}/close" };
   }
-  // 更新语言内容
+  // 更新活动指定语言的内容（lang 为语言代码，如 "en"、"zh"）
   rpc UpdateEventLang(UpdateEventLangRequest) returns (Event) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}/lang/{lang}", body: "spec" };
   }
-  // 查询参与用户
+  // 分页查询活动参与用户列表；可按 status 和关键字过滤
   rpc ListEventUsers(ListEventUsersRequest) returns (ListEventUsersResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/users" };
   }
-  // 审批通过用户
+  // 审批通过指定用户的活动参与申请（party_id 为路径参数）
   rpc ApproveEventUser(EventUserPartyRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/approve" };
   }
-  // 拒绝用户
+  // 拒绝指定用户的活动参与申请
   rpc RejectEventUser(EventUserPartyRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/reject" };
   }
-  // 取消用户
+  // 取消指定用户的活动参与资格（已审批后的撤销）
   rpc CancelEventUser(EventUserPartyRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/cancel" };
   }
 }
 
 // ─── Tenant Shop Item API (api/v1/tenant/event/shop/item) ────────────────────
+// 管理积分商城的商品（ShopItem）。
+// 商品按分类（category_key）归类，支持多语言内容。
+// 积分消耗由 point_cost 控制，库存由 stock 控制。
 
 service TenantShopItemService {
-  // 列表查询
+  // 分页查询商品列表；可按 category_key、status 及关键字过滤
   rpc ListShopItems(ListShopItemsRequest) returns (ListShopItemsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/item" };
   }
-  // 获取单条
+  // 按 id 获取商品详情
   rpc GetShopItem(GetShopItemRequest) returns (ShopItem) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/item/{id}" };
   }
-  // 创建
+  // 创建商品
   rpc CreateShopItem(CreateShopItemRequest) returns (ShopItem) {
     option (google.api.http) = { post: "/api/v1/tenant/event/shop/item", body: "*" };
   }
-  // 更新
+  // 更新商品基本信息（body 字段名为 spec）
   rpc UpdateShopItem(UpdateShopItemRequest) returns (ShopItem) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}", body: "spec" };
   }
-  // 发布
+  // 发布商品（status 变更为 active，对客户端可见）
   rpc PublishShopItem(GetShopItemRequest) returns (ShopItem) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/publish" };
   }
-  // 关闭
+  // 下架商品（status 变更为 closed）
   rpc CloseShopItem(GetShopItemRequest) returns (ShopItem) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/close" };
   }
-  // 更新语言内容
+  // 更新商品指定语言内容（lang 为语言代码）
   rpc UpdateShopItemLang(UpdateShopItemLangRequest) returns (ShopItem) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/{lang}", body: "spec" };
   }
-  // 获取分类列表
+  // 获取所有商品分类列表（含 key、name、status、sort）
   rpc ListShopCategories(EmptyRequest) returns (ShopCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/item/category" };
   }
-  // 更新分类
+  // 批量更新分类排序或信息（body 为全量分类列表）
   rpc UpdateShopCategory(UpdateShopCategoryRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/category", body: "*" };
   }
-  // 更新分类状态
+  // 更新指定分类（by key）的 status（body 字段名为 spec，IntValue 类型）
   rpc UpdateShopCategoryStatus(UpdateShopCategoryStatusRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/category/{key}/status", body: "spec" };
   }
 }
 
 // ─── Tenant Shop Reward API (api/v1/tenant/event/shop/reward) ────────────────
+// 管理用户通过积分兑换的虚拟奖励（ShopReward，如现金返还、加成奖励等）。
+// Reward 与 Order 的区别：Order 是实物商品，Reward 是虚拟/返佣类奖励。
+// 状态流转：pending → process → approve → succeed / cancel / expire
 
 service TenantShopRewardService {
-  // 列表查询
+  // 分页查询奖励列表；可按 party_id、status 及日期范围过滤
   rpc ListShopRewards(ListShopRewardsRequest) returns (ListShopRewardsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward" };
   }
-  // 获取单条
+  // 按 id 获取奖励详情
   rpc GetShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward/{id}" };
   }
-  // 获取返佣列表
+  // 查询返佣类奖励列表（类型为 rebate 的 ShopReward）
   rpc GetShopRewardRebate(ListShopRewardsRequest) returns (ListShopRewardsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward/rebate" };
   }
-  // 设为待处理
+  // 设为待处理（status → pending）
   rpc PendingShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/pending" };
   }
-  // 处理中
+  // 设为处理中（status → processing）
   rpc ProcessShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/process" };
   }
-  // 审批通过
+  // 审批通过奖励（status → approved）
   rpc ApproveShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/approve" };
   }
-  // 标记成功
+  // 标记奖励发放成功（status → succeeded）
   rpc SucceedShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/succeed" };
   }
-  // 取消
+  // 取消奖励（status → cancelled，积分返还）
   rpc CancelShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/cancel" };
   }
-  // 过期
+  // 设为过期（status → expired）
   rpc ExpireShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/expire" };
   }
-  // 激活
+  // 激活奖励（status → active，使其对客户端可见）
   rpc ActivateShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/active" };
   }
-  // 停用
+  // 停用奖励（status → inactive）
   rpc DeactivateShopReward(GetShopRewardRequest) returns (ShopReward) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/inactive" };
   }
 }
 
 // ─── Tenant Shop Order API (api/v1/tenant/event/shop/order) ──────────────────
+// 管理用户兑换实物商品的订单（ShopOrder）。
+// 状态流转：pending → process → ship → succeed / cancel
+// 发货后需填写快递单号（UpdateShopOrderShipping）。
 
 service TenantShopOrderService {
-  // 列表查询
+  // 分页查询订单列表；可按 party_id、status 及日期范围过滤
   rpc ListShopOrders(ListShopOrdersRequest) returns (ListShopOrdersResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/order" };
   }
-  // 获取详情
+  // 按 id 获取订单详情（含快递单号等）
   rpc GetShopOrder(GetShopOrderRequest) returns (ShopOrder) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/order/{id}" };
   }
-  // 设为待处理
+  // 设为待处理（status → pending）
   rpc PendingShopOrder(GetShopOrderRequest) returns (ShopOrder) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/pending" };
   }
-  // 处理中
+  // 设为处理中（status → processing）
   rpc ProcessShopOrder(GetShopOrderRequest) returns (ShopOrder) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/process" };
   }
-  // 发货
+  // 标记为已发货（status → shipped）
   rpc ShipShopOrder(GetShopOrderRequest) returns (ShopOrder) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/ship" };
   }
-  // 标记成功
+  // 标记为已完成/已签收（status → succeeded）
   rpc SucceedShopOrder(GetShopOrderRequest) returns (ShopOrder) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/succeed" };
   }
-  // 取消
+  // 取消订单（status → cancelled，积分返还）
   rpc CancelShopOrder(GetShopOrderRequest) returns (ShopOrder) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/cancel" };
   }
-  // 更新快递单号
+  // 填写快递单号（发货后调用，body 字段名为 spec）
   rpc UpdateShopOrderShipping(UpdateShopOrderShippingRequest) returns (ShopOrder) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/update-shipping", body: "spec" };
   }
 }
 
 // ─── Tenant Shop Point API (api/v1/tenant/event/shop/point) ──────────────────
+// 管理用户积分：手动调整积分余额，以及查询积分流水记录。
 
 service TenantShopPointService {
-  // 调整积分
+  // 手动调整指定用户的积分（amount 可为正（增加）或负（扣减））
   rpc AdjustShopPoint(AdjustShopPointRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/shop/point/adjust", body: "*" };
   }
-  // 积分流水
+  // 分页查询积分流水记录；可按 party_id 及日期范围过滤
   rpc ListShopPointTransactions(ListShopPointTransactionsRequest) returns (ListShopPointTransactionsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/point/transaction" };
   }
 }
 
 // ─── Client Event API (api/v1/client/event) ──────────────────────────────────
+// 客户端活动及积分商城接口，供已登录客户使用。
+// 包括查看活动、报名参与、浏览/购买商品、查看订单及积分流水。
 
 service ClientEventService {
-  // 获取活动（by key）
+  // 按活动 key 获取活动详情（含当前语言的内容）
   rpc GetClientEvent(GetClientEventRequest) returns (ClientEvent) {
     option (google.api.http) = { get: "/api/v1/client/event/{key}" };
   }
-  // 报名参与活动
+  // 报名参与指定活动（key 为路径参数）
   rpc ApplyClientEvent(ApplyClientEventRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/client/event/{key}/apply" };
   }
-  // 获取当前用户活动参与详情
+  // 获取当前登录用户在指定活动中的参与状态（event_key 为路径参数）
   rpc GetClientEventUser(GetClientEventUserRequest) returns (ClientEventUser) {
     option (google.api.http) = { get: "/api/v1/client/event/{event_key}/user" };
   }
-  // 获取商城活动
+  // 获取积分商城活动（固定 key 为 "ShopEvent"）
   rpc GetShopEvent(EmptyRequest) returns (ClientEvent) {
     option (google.api.http) = { get: "/api/v1/client/event/ShopEvent" };
   }
-  // 获取商城分类名称
+  // 获取积分商城所有商品分类的名称列表
   rpc GetClientShopCategories(EmptyRequest) returns (ClientShopCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/item/category-name" };
   }
-  // 获取商城商品列表
+  // 分页查询积分商城商品列表；可按 category_key 或关键字过滤
   rpc ListClientShopItems(ListClientShopItemsRequest) returns (ListClientShopItemsResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/item" };
   }
-  // 获取商城商品详情
+  // 按 hash_id 获取商品详情
   rpc GetClientShopItem(GetClientShopItemRequest) returns (ClientShopItem) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/item/{hash_id}" };
   }
-  // 获取兑换订单列表
+  // 分页查询当前用户的兑换订单列表；可按 status 过滤
   rpc ListClientShopOrders(ListClientShopOrdersRequest) returns (ListClientShopOrdersResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/order" };
   }
-  // 购买商品（创建订单）
+  // 购买商品（消耗积分创建订单）；body 含 item_hash_id、quantity、address_hash_id
   rpc CreateClientShopOrder(CreateClientShopOrderRequest) returns (ClientShopOrder) {
     option (google.api.http) = { post: "/api/v1/client/event/shop/order", body: "*" };
   }
-  // 获取订单详情
+  // 按 hash_id 获取订单详情
   rpc GetClientShopOrder(GetClientShopOrderRequest) returns (ClientShopOrder) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/order/{hash_id}" };
   }
-  // 更新收货地址
+  // 更新订单收货地址（在发货前可修改）
   rpc UpdateClientShopOrderAddress(UpdateClientShopOrderAddressRequest) returns (ClientShopOrder) {
     option (google.api.http) = { put: "/api/v1/client/event/shop/order/{hash_id}/address/{address_hash_id}" };
   }
-  // 确认收货
+  // 确认收货（status → succeeded）
   rpc SucceedClientShopOrder(GetClientShopOrderRequest) returns (ClientShopOrder) {
     option (google.api.http) = { put: "/api/v1/client/event/shop/order/{hash_id}/succeed" };
   }
-  // 获取奖励列表
+  // 分页查询当前用户的虚拟奖励列表；可按 status 过滤
   rpc ListClientShopRewards(ListClientShopRewardsRequest) returns (ListClientShopRewardsResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/reward" };
   }
-  // 购买奖励
+  // 购买虚拟奖励（消耗积分）
   rpc CreateClientShopReward(CreateClientShopRewardRequest) returns (ClientShopReward) {
     option (google.api.http) = { post: "/api/v1/client/event/shop/reward", body: "*" };
   }
-  // 获取返佣奖励列表
+  // 分页查询当前用户的返佣类虚拟奖励列表
   rpc ListClientShopRewardRebate(ListClientShopRewardsRequest) returns (ListClientShopRewardsResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/reward/rebate" };
   }
-  // 积分流水
+  // 分页查询当前用户的积分流水记录；可按日期范围过滤
   rpc ListClientShopPointTransactions(ListClientShopPointTransactionsRequest) returns (ListClientShopPointTransactionsResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/point/transaction" };
   }
@@ -271,150 +285,161 @@ service ClientEventService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
+// 空请求
 message EmptyRequest {}
 
+// 通用操作结果
 message OperationResponse {
   bool   success = 1;
   string message = 2;
 }
 
-// Event 实体
+// 活动实体（后台视图）
 message Event {
-  int32  id         = 1;
-  string key        = 2;
-  string title      = 3;
-  int32  type       = 4;
-  int32  status     = 5;
-  string start_at   = 6;
-  string end_at     = 7;
-  string created_at = 8;
+  int32  id         = 1; // 活动 ID
+  string key        = 2; // 活动唯一标识键（URL 友好，如 "summer-2024"）
+  string title      = 3; // 活动标题
+  int32  type       = 4; // 活动类型（枚举：1=general、2=trading contest 等）
+  int32  status     = 5; // 状态：0=draft、1=published、2=closed
+  string start_at   = 6; // 活动开始时间，ISO 8601 格式
+  string end_at     = 7; // 活动结束时间，ISO 8601 格式
+  string created_at = 8; // 创建时间，ISO 8601 格式
 }
 
-// ShopItem 实体
+// 积分商城商品实体（后台视图）
 message ShopItem {
-  int32  id           = 1;
-  string hash_id      = 2;
-  string name         = 3;
-  string description  = 4;
-  string category_key = 5;
-  int32  point_cost   = 6;
-  int32  stock        = 7;
-  int32  status       = 8;
-  string created_at   = 9;
+  int32  id           = 1; // 商品 ID
+  string hash_id      = 2; // 商品哈希 ID（URL 友好，对外暴露）
+  string name         = 3; // 商品名称
+  string description  = 4; // 商品描述
+  string category_key = 5; // 所属分类 key，如 "electronics"
+  int32  point_cost   = 6; // 兑换所需积分数量
+  int32  stock        = 7; // 剩余库存数量（-1 表示不限库存）
+  int32  status       = 8; // 状态：0=inactive、1=active、2=closed
+  string created_at   = 9; // 创建时间，ISO 8601 格式
 }
 
-// ShopCategory 实体
+// 商品分类实体
 message ShopCategory {
-  string key    = 1;
-  string name   = 2;
-  int32  status = 3;
-  int32  sort   = 4;
+  string key    = 1; // 分类唯一 key（字符串，非数字 ID）
+  string name   = 2; // 分类名称
+  int32  status = 3; // 状态：0=inactive、1=active
+  int32  sort   = 4; // 排序权重，数值越小越靠前
 }
 
-// ShopReward 实体
+// 虚拟奖励实体（后台视图）
 message ShopReward {
-  int64  id         = 1;
-  string hash_id    = 2;
-  int64  party_id   = 3;
-  int32  item_id    = 4;
-  string item_name  = 5;
-  int32  point_cost = 6;
-  int32  status     = 7;
-  string created_at = 8;
+  int64  id         = 1; // 奖励记录 ID
+  string hash_id    = 2; // 哈希 ID（URL 友好）
+  int64  party_id   = 3; // 用户 party_id
+  int32  item_id    = 4; // 关联商品 ID
+  string item_name  = 5; // 商品名称快照
+  int32  point_cost = 6; // 消耗积分数量
+  int32  status     = 7; // 状态：0=pending、1=processing、2=approved、3=succeeded、4=cancelled、5=expired
+  string created_at = 8; // 创建时间，ISO 8601 格式
 }
 
-// ShopOrder 实体
+// 实物订单实体（后台视图）
 message ShopOrder {
-  int64  id              = 1;
-  string hash_id         = 2;
-  int64  party_id        = 3;
-  int32  item_id         = 4;
-  string item_name       = 5;
-  int32  quantity        = 6;
-  int32  point_cost      = 7;
-  int32  status          = 8;
-  string tracking_number = 9;
-  string created_at      = 10;
+  int64  id              = 1; // 订单 ID
+  string hash_id         = 2; // 哈希 ID（URL 友好）
+  int64  party_id        = 3; // 用户 party_id
+  int32  item_id         = 4; // 关联商品 ID
+  string item_name       = 5; // 商品名称快照
+  int32  quantity        = 6; // 购买数量
+  int32  point_cost      = 7; // 总积分消耗（point_cost × quantity）
+  int32  status          = 8; // 状态：0=pending、1=processing、2=shipped、3=succeeded、4=cancelled
+  string tracking_number = 9; // 快递单号（发货后填写）
+  string created_at      = 10; // 创建时间，ISO 8601 格式
 }
 
-// ShopPointTransaction 实体
+// 积分流水实体（后台视图）
 message ShopPointTransaction {
-  int64  id          = 1;
-  int64  party_id    = 2;
-  int32  amount      = 3;
-  int32  type        = 4;
-  string description = 5;
-  string created_at  = 6;
+  int64  id          = 1; // 流水 ID
+  int64  party_id    = 2; // 用户 party_id
+  int32  amount      = 3; // 积分变动数量（正=增加，负=扣减）
+  int32  type        = 4; // 流水类型（枚举：1=earn、2=spend、3=manual_adjust 等）
+  string description = 5; // 流水说明
+  string created_at  = 6; // ISO 8601 格式
 }
 
-// EventUser 实体
+// 活动参与用户实体（后台视图）
 message EventUser {
-  int64  party_id  = 1;
-  string email     = 2;
-  int32  status    = 3;
-  string joined_at = 4;
+  int64  party_id  = 1; // 用户 party_id
+  string email     = 2; // 用户邮箱
+  int32  status    = 3; // 状态：0=pending、1=approved、2=rejected、3=cancelled
+  string joined_at = 4; // 报名时间，ISO 8601 格式
 }
 
-// Client-facing entities
+// ─── Client-facing 实体 ────────────────────────────────────────────────────────
+
+// 活动实体（客户端视图，不含内部字段）
 message ClientEvent {
-  string key        = 1;
-  string title      = 2;
-  int32  type       = 3;
-  int32  status     = 4;
-  string start_at   = 5;
-  string end_at     = 6;
-  string content    = 7;
+  string key      = 1; // 活动 key
+  string title    = 2; // 活动标题（当前用户语言）
+  int32  type     = 3; // 活动类型
+  int32  status   = 4; // 状态
+  string start_at = 5; // 开始时间，ISO 8601 格式
+  string end_at   = 6; // 结束时间，ISO 8601 格式
+  string content  = 7; // 活动详情内容（当前用户语言，HTML）
 }
 
+// 当前用户在活动中的参与状态
 message ClientEventUser {
   int64  party_id  = 1;
-  int32  status    = 2;
-  string joined_at = 3;
+  int32  status    = 2; // 状态：0=pending、1=approved、2=rejected、3=cancelled
+  string joined_at = 3; // ISO 8601 格式
 }
 
+// 商品实体（客户端视图，不含后台字段）
 message ClientShopItem {
-  string hash_id      = 1;
-  string name         = 2;
-  string description  = 3;
-  string category_key = 4;
-  int32  point_cost   = 5;
-  int32  stock        = 6;
+  string hash_id      = 1; // 商品哈希 ID
+  string name         = 2; // 商品名称（当前用户语言）
+  string description  = 3; // 商品描述（当前用户语言）
+  string category_key = 4; // 所属分类 key
+  int32  point_cost   = 5; // 兑换所需积分
+  int32  stock        = 6; // 剩余库存（-1=不限）
 }
 
+// 订单实体（客户端视图）
 message ClientShopOrder {
-  string hash_id         = 1;
-  string item_name       = 2;
-  int32  quantity        = 3;
-  int32  point_cost      = 4;
-  int32  status          = 5;
-  string tracking_number = 6;
-  string created_at      = 7;
+  string hash_id         = 1; // 订单哈希 ID
+  string item_name       = 2; // 商品名称快照
+  int32  quantity        = 3; // 购买数量
+  int32  point_cost      = 4; // 总积分消耗
+  int32  status          = 5; // 状态
+  string tracking_number = 6; // 快递单号（发货后可见）
+  string created_at      = 7; // ISO 8601 格式
 }
 
+// 虚拟奖励实体（客户端视图）
 message ClientShopReward {
-  string hash_id    = 1;
-  string item_name  = 2;
-  int32  point_cost = 3;
-  int32  status     = 4;
-  string created_at = 5;
+  string hash_id    = 1; // 奖励哈希 ID
+  string item_name  = 2; // 商品名称快照
+  int32  point_cost = 3; // 消耗积分数量
+  int32  status     = 4; // 状态
+  string created_at = 5; // ISO 8601 格式
 }
 
+// 积分流水实体（客户端视图，不含 party_id）
 message ClientShopPointTransaction {
   int64  id          = 1;
-  int32  amount      = 2;
-  int32  type        = 3;
-  string description = 4;
-  string created_at  = 5;
+  int32  amount      = 2; // 积分变动数量（正/负）
+  int32  type        = 3; // 流水类型枚举
+  string description = 4; // 流水说明
+  string created_at  = 5; // ISO 8601 格式
 }
 
-// Event messages
+// ─── Event 相关消息 ────────────────────────────────────────────────────────────
+
+// 活动列表查询
 message ListEventsRequest {
   PaginationRequest pagination = 1;
-  optional int32    type       = 2;
-  optional int32    status     = 3;
-  optional string   keywords   = 4;
-  optional string   date_from  = 5;
-  optional string   date_to    = 6;
+  optional int32    type       = 2; // 按活动类型过滤
+  optional int32    status     = 3; // 按状态过滤
+  optional string   keywords   = 4; // 按标题关键字搜索
+  optional string   date_from  = 5; // ISO 8601 格式
+  optional string   date_to    = 6; // ISO 8601 格式
 }
 
 message ListEventsResponse {
@@ -422,38 +447,44 @@ message ListEventsResponse {
   PaginationMeta meta = 2;
 }
 
+// 按 id 查询活动
 message GetEventRequest {
   int32 id = 1;
 }
 
+// 创建活动请求
 message CreateEventRequest {
-  string key      = 1;
+  string key      = 1; // 活动唯一标识键（小写字母+连字符）
   string title    = 2;
   int32  type     = 3;
-  string start_at = 4;
-  string end_at   = 5;
+  string start_at = 4; // ISO 8601 格式
+  string end_at   = 5; // ISO 8601 格式
 }
 
+// 更新活动请求
 message UpdateEventRequest {
-  int32             id   = 1;
+  int32              id   = 1;
   CreateEventRequest spec = 2;
 }
 
+// 更新活动多语言内容请求
 message UpdateEventLangRequest {
-  int32  id      = 1;
-  string lang    = 2;
-  EventLangSpec  spec = 3;
+  int32         id   = 1;
+  string        lang = 2; // 语言代码，如 "en"、"zh"
+  EventLangSpec spec = 3;
 }
 
+// 活动多语言内容规格
 message EventLangSpec {
-  string title   = 1;
-  string content = 2;
+  string title   = 1; // 该语言的活动标题
+  string content = 2; // 该语言的活动详情（HTML）
 }
 
+// 活动参与用户列表查询
 message ListEventUsersRequest {
   PaginationRequest pagination = 1;
-  optional int32    status     = 2;
-  optional string   keywords   = 3;
+  optional int32    status     = 2; // 按参与状态过滤
+  optional string   keywords   = 3; // 按邮箱关键字搜索
 }
 
 message ListEventUsersResponse {
@@ -461,16 +492,19 @@ message ListEventUsersResponse {
   PaginationMeta     meta = 2;
 }
 
+// 按 party_id 操作活动用户
 message EventUserPartyRequest {
   int64 party_id = 1;
 }
 
-// ShopItem messages
+// ─── ShopItem 相关消息 ─────────────────────────────────────────────────────────
+
+// 商品列表查询
 message ListShopItemsRequest {
   PaginationRequest pagination   = 1;
-  optional string   category_key = 2;
-  optional int32    status       = 3;
-  optional string   keywords     = 4;
+  optional string   category_key = 2; // 按分类 key 过滤
+  optional int32    status       = 3; // 按状态过滤
+  optional string   keywords     = 4; // 按名称关键字搜索
 }
 
 message ListShopItemsResponse {
@@ -478,58 +512,69 @@ message ListShopItemsResponse {
   PaginationMeta    meta = 2;
 }
 
+// 按 id 查询商品
 message GetShopItemRequest {
   int32 id = 1;
 }
 
+// 创建商品请求
 message CreateShopItemRequest {
   string name         = 1;
   string description  = 2;
-  string category_key = 3;
-  int32  point_cost   = 4;
-  int32  stock        = 5;
+  string category_key = 3; // 所属分类 key
+  int32  point_cost   = 4; // 兑换积分数量
+  int32  stock        = 5; // 初始库存（-1=不限）
 }
 
+// 更新商品请求
 message UpdateShopItemRequest {
   int32               id   = 1;
   CreateShopItemRequest spec = 2;
 }
 
+// 更新商品多语言内容请求
 message UpdateShopItemLangRequest {
-  int32         id   = 1;
-  string        lang = 2;
+  int32            id   = 1;
+  string           lang = 2; // 语言代码
   ShopItemLangSpec spec = 3;
 }
 
+// 商品多语言内容规格
 message ShopItemLangSpec {
   string name        = 1;
   string description = 2;
 }
 
+// 商品分类列表响应
 message ShopCategoriesResponse {
   repeated ShopCategory categories = 1;
 }
 
+// 批量更新分类请求
 message UpdateShopCategoryRequest {
-  repeated ShopCategory categories = 1;
+  repeated ShopCategory categories = 1; // 全量分类列表（排序即为新排序）
 }
 
+// 更新分类状态请求
 message UpdateShopCategoryStatusRequest {
-  string key  = 1;
-  IntValue spec = 2;
+  string   key  = 1; // 分类 key
+  IntValue spec = 2; // 新 status 值（0=inactive、1=active）
 }
 
+// 整型值封装（与 config.proto 中同名，各文件独立定义）
 message IntValue {
   int32 value = 1;
 }
 
-// ShopReward messages
+// ─── ShopReward 相关消息 ───────────────────────────────────────────────────────
+
+// 奖励列表查询
 message ListShopRewardsRequest {
   PaginationRequest pagination = 1;
-  optional int64    party_id   = 2;
-  optional int32    status     = 3;
-  optional string   date_from  = 4;
-  optional string   date_to    = 5;
+  optional int64    party_id   = 2; // 按用户 party_id 过滤
+  optional int32    status     = 3; // 按状态过滤
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
 }
 
 message ListShopRewardsResponse {
@@ -537,17 +582,20 @@ message ListShopRewardsResponse {
   PaginationMeta      meta = 2;
 }
 
+// 按 id 查询奖励
 message GetShopRewardRequest {
   int64 id = 1;
 }
 
-// ShopOrder messages
+// ─── ShopOrder 相关消息 ────────────────────────────────────────────────────────
+
+// 订单列表查询
 message ListShopOrdersRequest {
   PaginationRequest pagination = 1;
-  optional int64    party_id   = 2;
-  optional int32    status     = 3;
-  optional string   date_from  = 4;
-  optional string   date_to    = 5;
+  optional int64    party_id   = 2; // 按用户 party_id 过滤
+  optional int32    status     = 3; // 按状态过滤
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
 }
 
 message ListShopOrdersResponse {
@@ -555,31 +603,37 @@ message ListShopOrdersResponse {
   PaginationMeta     meta = 2;
 }
 
+// 按 id 查询订单
 message GetShopOrderRequest {
   int64 id = 1;
 }
 
+// 更新快递单号请求
 message UpdateShopOrderShippingRequest {
-  int64               id   = 1;
-  ShippingSpec        spec = 2;
+  int64        id   = 1;
+  ShippingSpec spec = 2;
 }
 
+// 快递单号规格
 message ShippingSpec {
-  string tracking_number = 1;
+  string tracking_number = 1; // 快递公司单号
 }
 
-// ShopPoint messages
+// ─── ShopPoint 相关消息 ────────────────────────────────────────────────────────
+
+// 手动调整积分请求
 message AdjustShopPointRequest {
-  int64  party_id    = 1;
-  int32  amount      = 2;
-  string description = 3;
+  int64  party_id    = 1; // 目标用户 party_id
+  int32  amount      = 2; // 积分调整数量（正=增加，负=扣减）
+  string description = 3; // 调整说明
 }
 
+// 积分流水列表查询
 message ListShopPointTransactionsRequest {
   PaginationRequest pagination = 1;
-  optional int64    party_id   = 2;
-  optional string   date_from  = 3;
-  optional string   date_to    = 4;
+  optional int64    party_id   = 2; // 按用户 party_id 过滤
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
 }
 
 message ListShopPointTransactionsResponse {
@@ -587,32 +641,39 @@ message ListShopPointTransactionsResponse {
   PaginationMeta                meta = 2;
 }
 
-// Client Event messages
+// ─── Client Event 相关消息 ────────────────────────────────────────────────────
+
+// 按 key 查询活动
 message GetClientEventRequest {
-  string key = 1;
+  string key = 1; // 活动唯一标识键
 }
 
+// 报名参与活动请求
 message ApplyClientEventRequest {
   string key = 1;
 }
 
+// 查询当前用户活动参与状态请求
 message GetClientEventUserRequest {
-  string event_key = 1;
+  string event_key = 1; // 活动 key
 }
 
+// 商品分类名称列表响应（客户端视图）
 message ClientShopCategoriesResponse {
   repeated ClientShopCategory categories = 1;
 }
 
+// 商品分类（客户端视图，仅含 key 和名称）
 message ClientShopCategory {
   string key  = 1;
   string name = 2;
 }
 
+// 商品列表查询（客户端）
 message ListClientShopItemsRequest {
   PaginationRequest pagination   = 1;
-  optional string   category_key = 2;
-  optional string   keywords     = 3;
+  optional string   category_key = 2; // 按分类 key 过滤
+  optional string   keywords     = 3; // 按名称关键字搜索
 }
 
 message ListClientShopItemsResponse {
@@ -620,13 +681,15 @@ message ListClientShopItemsResponse {
   PaginationMeta          meta = 2;
 }
 
+// 按 hash_id 查询商品（客户端）
 message GetClientShopItemRequest {
   string hash_id = 1;
 }
 
+// 订单列表查询（客户端）
 message ListClientShopOrdersRequest {
   PaginationRequest pagination = 1;
-  optional int32    status     = 2;
+  optional int32    status     = 2; // 按状态过滤
 }
 
 message ListClientShopOrdersResponse {
@@ -634,24 +697,28 @@ message ListClientShopOrdersResponse {
   PaginationMeta           meta = 2;
 }
 
+// 购买商品请求（客户端）
 message CreateClientShopOrderRequest {
-  string item_hash_id      = 1;
-  int32  quantity          = 2;
-  string address_hash_id   = 3;
+  string item_hash_id      = 1; // 商品哈希 ID
+  int32  quantity          = 2; // 购买数量（≥1）
+  string address_hash_id   = 3; // 收货地址哈希 ID（实物商品必填）
 }
 
+// 按 hash_id 查询订单（客户端）
 message GetClientShopOrderRequest {
   string hash_id = 1;
 }
 
+// 更新订单收货地址请求（客户端）
 message UpdateClientShopOrderAddressRequest {
-  string hash_id         = 1;
-  string address_hash_id = 2;
+  string hash_id         = 1; // 订单哈希 ID
+  string address_hash_id = 2; // 新收货地址哈希 ID
 }
 
+// 奖励列表查询（客户端）
 message ListClientShopRewardsRequest {
   PaginationRequest pagination = 1;
-  optional int32    status     = 2;
+  optional int32    status     = 2; // 按状态过滤
 }
 
 message ListClientShopRewardsResponse {
@@ -659,14 +726,16 @@ message ListClientShopRewardsResponse {
   PaginationMeta            meta = 2;
 }
 
+// 购买虚拟奖励请求（客户端）
 message CreateClientShopRewardRequest {
-  string item_hash_id = 1;
+  string item_hash_id = 1; // 商品哈希 ID
 }
 
+// 积分流水查询（客户端）
 message ListClientShopPointTransactionsRequest {
   PaginationRequest pagination = 1;
-  optional string   date_from  = 2;
-  optional string   date_to    = 3;
+  optional string   date_from  = 2; // ISO 8601 格式
+  optional string   date_to    = 3; // ISO 8601 格式
 }
 
 message ListClientShopPointTransactionsResponse {

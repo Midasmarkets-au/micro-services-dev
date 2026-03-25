@@ -8,29 +8,31 @@ import "google/api/annotations.proto";
 import "http/v1/common.proto";
 
 // ─── Discovery API (api/v1/discovery) — 公开接口，无需认证 ───────────────────
+// 提供新闻、文章、经济日历等公开内容的只读查询接口。
+// 所有接口均无需认证 token，适合前端匿名访问。
 
 service DiscoveryService {
-  // 获取新闻语言列表
+  // 获取新闻可用语言列表（例如 "English"、"Chinese"）
   rpc GetNewsLanguages(EmptyRequest) returns (LanguagesResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/news/languages" };
   }
-  // 获取新闻列表
+  // 按语言分页查询新闻列表；language 默认 "English"
   rpc ListNews(ListDiscoveryRequest) returns (ListNewsResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/news" };
   }
-  // 获取文章列表
+  // 按语言分页查询文章列表
   rpc ListPosts(ListDiscoveryRequest) returns (ListPostsResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/post" };
   }
-  // 获取文章详情
+  // 按 hash_id 获取文章详情（hash_id 为路径参数）
   rpc GetPost(GetPostRequest) returns (Post) {
     option (google.api.http) = { get: "/api/v1/discovery/post/{hash_id}" };
   }
-  // 获取经济日历语言列表
+  // 获取经济日历可用语言列表
   rpc GetEconomicCalendarLanguages(EmptyRequest) returns (LanguagesResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/economic-calendar/languages" };
   }
-  // 获取经济日历
+  // 按语言分页查询经济日历事件
   rpc ListEconomicCalendar(ListDiscoveryRequest) returns (ListEconomicCalendarResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/economic-calendar" };
   }
@@ -38,43 +40,45 @@ service DiscoveryService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
+// 空请求，无需任何参数的 RPC 使用
 message EmptyRequest {}
 
+// 可用语言列表，语言值为可读字符串（如 "English"、"Chinese"）
 message LanguagesResponse {
   repeated string languages = 1;
 }
 
-// News 实体
+// 新闻条目实体
 message NewsItem {
-  string hash_id    = 1;
-  string title      = 2;
-  string content    = 3;
-  string language   = 4;
-  string published_at = 5;
+  string hash_id      = 1; // 唯一标识，URL 友好
+  string title        = 2; // 新闻标题
+  string content      = 3; // 新闻正文（HTML 或纯文本）
+  string language     = 4; // 内容语言，如 "English"
+  string published_at = 5; // 发布时间，ISO 8601 格式
 }
 
-// Post 实体
+// 文章实体（与 NewsItem 结构相同，语义不同）
 message Post {
-  string hash_id    = 1;
-  string title      = 2;
-  string content    = 3;
-  string language   = 4;
-  string published_at = 5;
+  string hash_id      = 1; // 唯一标识，作为路径参数传入 GetPost
+  string title        = 2; // 文章标题
+  string content      = 3; // 文章正文（HTML 或纯文本）
+  string language     = 4; // 内容语言，如 "English"
+  string published_at = 5; // 发布时间，ISO 8601 格式
 }
 
-// EconomicCalendar 实体
+// 经济日历事件实体
 message EconomicCalendarItem {
-  string date       = 1;
-  string event_name = 2;
-  string impact     = 3;
-  string language   = 4;
+  string date       = 1; // 事件日期，格式 YYYY-MM-DD
+  string event_name = 2; // 事件名称，如 "Non-Farm Payrolls"
+  string impact     = 3; // 预期影响程度，如 "high"、"medium"、"low"
+  string language   = 4; // 内容语言
 }
 
-// Discovery list request
+// 列表分页请求（Discovery 系列共用）
 message ListDiscoveryRequest {
-  string language = 1;  // default: "English"
-  int32  page     = 2;  // default: 1
-  int32  size     = 3;  // default: 20
+  string language = 1; // 内容语言过滤，默认 "English"
+  int32  page     = 2; // 页码，默认 1
+  int32  size     = 3; // 每页条数，默认 20
 }
 
 message ListNewsResponse {
@@ -87,8 +91,9 @@ message ListPostsResponse {
   PaginationMeta meta = 2;
 }
 
+// 按 hash_id 查询文章详情请求
 message GetPostRequest {
-  string hash_id = 1;
+  string hash_id = 1; // 文章唯一标识（路径参数）
 }
 
 message ListEconomicCalendarResponse {

@@ -8,297 +8,306 @@ import "google/api/annotations.proto";
 import "http/v1/common.proto";
 
 // ─── Tenant User API (api/v1/tenant/user) ────────────────────────────────────
+// 后台用户管理接口：查询、标签/角色/权限管理、KYC 关联操作、
+// 账户绑定、锁定/解锁、迁移及社交媒体信息等全量管理功能。
 
 service TenantUserService {
-  // 列表查询
+  // 分页查询用户列表；可按关键字（email/name）、status 及注册日期范围过滤
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user" };
   }
-  // 获取用户（by partyId）
+  // 按 party_id 获取用户完整信息
   rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}" };
   }
-  // 获取用户（by partyId，另一接口）
+  // 按 party_id 获取用户（别名接口，路径前缀为 /pid/）
   rpc GetUserByPid(GetUserByPidRequest) returns (User) {
     option (google.api.http) = { get: "/api/v1/tenant/user/pid/{party_id}" };
   }
-  // 获取用户摘要列表
+  // 获取用户摘要列表（字段精简版，用于下拉选择等场景）
   rpc GetUserSummary(ListUsersRequest) returns (ListUsersResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/summary" };
   }
-  // 获取用户（by uid）
+  // 按 uid 获取用户（uid 为账户维度的用户标识）
   rpc GetUserByUid(GetUserByUidRequest) returns (User) {
     option (google.api.http) = { get: "/api/v1/tenant/user/uid/{uid}" };
   }
-  // 获取用户（by id）
+  // 按主键 id 获取用户
   rpc GetUserById(GetUserByIdRequest) returns (User) {
     option (google.api.http) = { get: "/api/v1/tenant/user/id/{id}" };
   }
-  // 添加标签
+  // 为用户添加自定义标签（tag 为路径参数）
   rpc AddUserTag(UserTagRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/tag/{tag}" };
   }
-  // 删除标签
+  // 移除用户标签
   rpc RemoveUserTag(UserTagRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/tag/{tag}" };
   }
-  // 获取所有角色
+  // 获取 tenant 下所有可用角色列表
   rpc GetAllRoles(EmptyRequest) returns (RolesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/role" };
   }
-  // 添加角色
+  // 按 role_id 为用户添加角色
   rpc AddRole(UserRoleRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/role/{role_id}/add" };
   }
-  // 移除角色
+  // 按 role_id 移除用户角色
   rpc RemoveRole(UserRoleRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/role/{role_id}/remove" };
   }
-  // 获取权限列表
+  // 获取用户的所有权限列表
   rpc GetUserPermissions(GetUserRequest) returns (UserPermissionsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/permission" };
   }
-  // 获取 Claims
+  // 获取用户的所有 Claims（key-value map）
   rpc GetUserClaims(GetUserRequest) returns (UserClaimsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/claim" };
   }
-  // 添加角色（by name）
+  // 按角色名称为用户添加角色
   rpc AddRoleByName(UserRoleByNameRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/role/{role}" };
   }
-  // 移除角色（by name）
+  // 按角色名称移除用户角色
   rpc RemoveRoleByName(UserRoleByNameRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/role/{role}" };
   }
-  // 添加权限
+  // 为用户添加单项权限（permission 为权限字符串，如 "deposit.create"）
   rpc AddPermission(UserPermissionRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/permission/{permission}" };
   }
-  // 移除权限
+  // 移除用户单项权限
   rpc RemovePermission(UserPermissionRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/permission/{permission}" };
   }
-  // 禁用批发申请权限
+  // 禁用批发申请权限（固定 permission="application-wholesale-disabled"）
   rpc DisableWholesalePermission(GetUserRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/permission/application-wholesale-disabled" };
   }
-  // 绑定销售账户
+  // 绑定 Sales 账户到用户（party_id + account_uid 双向关联）
   rpc AddSalesAccount(UserAccountLinkRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/sales-account/{account_uid}" };
   }
-  // 解绑销售账户
+  // 解绑 Sales 账户
   rpc RemoveSalesAccount(UserAccountLinkRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/sales-account/{account_uid}" };
   }
-  // 绑定代理账户
+  // 绑定 Agent（IB）账户到用户
   rpc AddAgentAccount(UserAccountLinkRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/agent-account/{account_uid}" };
   }
-  // 解绑代理账户
+  // 解绑 Agent 账户
   rpc RemoveAgentAccount(UserAccountLinkRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/agent-account/{account_uid}" };
   }
-  // 获取用户审计记录
+  // 分页查询用户的操作审计记录（如登录、修改资料等）
   rpc ListUserAudits(ListUserAuditsRequest) returns (ListUserAuditsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/audit" };
   }
-  // 获取审计详情
+  // 按 id 获取单条用户审计记录
   rpc GetUserAudit(GetUserAuditRequest) returns (UserAudit) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/audit/{id}" };
   }
-  // 获取支付服务设置
+  // 获取用户的支付服务设置（JSON 格式，含支付方式限额等）
   rpc GetUserPaymentService(GetUserRequest) returns (PaymentServiceResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/payment-service" };
   }
-  // 更新支付服务设置
+  // 更新用户的支付服务设置（spec 为 JSON 字符串）
   rpc UpdateUserPaymentService(UpdatePaymentServiceRequest) returns (PaymentServiceResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/payment-service", body: "spec" };
   }
-  // 更新用户资料
+  // 更新用户基本资料（spec 为 JSON 字符串，对应 User.TenantUpdateSpec）
   rpc UpdateUserProfile(UpdateUserProfileRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/profile", body: "spec" };
   }
-  // 更新用户状态
+  // 更新用户状态（status 枚举值）
   rpc UpdateUserStatus(UpdateUserStatusRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/status", body: "spec" };
   }
-  // 更新站点
+  // 将用户迁移至指定站点（site_id 为路径参数）
   rpc UpdateUserSite(UpdateUserSiteRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/site/{site_id}" };
   }
-  // 锁定账户
+  // 锁定用户账户（禁止登录）
   rpc LockUser(GetUserRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/lock" };
   }
-  // 解锁账户
+  // 解锁用户账户
   rpc UnlockUser(GetUserRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/unlock" };
   }
-  // 测验解锁
+  // 通过答题方式解锁用户（用于异常解锁流程）
   rpc UnlockByQuiz(GetUserRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/unlock/quiz" };
   }
-  // 启用上帝模式
+  // 为用户启用上帝模式（绕过部分业务校验，仅限特定管理员）
   rpc EnableGodMode(GetUserRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/god-mode" };
   }
-  // 获取地址列表
+  // 分页查询用户地址列表（可按 party_id 过滤）
   rpc ListUserAddresses(ListAddressesRequest) returns (ListAddressesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/address" };
   }
-  // 获取地址
+  // 按 address_id 获取地址详情
   rpc GetUserAddress(GetAddressRequest) returns (Address) {
     option (google.api.http) = { get: "/api/v1/tenant/user/address/{address_id}" };
   }
-  // 迁移用户到其他 tenant
+  // 将用户迁移至另一 tenant（数据整体迁移，不可逆）
   rpc MigrateUser(MigrateUserRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/migrate-to/{tenant_id}" };
   }
-  // 复制用户到其他 tenant
+  // 将用户复制到另一 tenant（spec 为 JSON 格式的用户覆盖数据）
   rpc DuplicateUser(DuplicateUserRequest) returns (User) {
     option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/duplicate-to/{tenant_id}", body: "spec" };
   }
-  // 获取旧版个人信息
+  // 获取旧版个人信息（兼容历史数据，返回 JSON）
   rpc GetLegacyPersonalInfo(GetUserRequest) returns (LegacyInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/personal-info" };
   }
-  // 获取旧版财务信息
+  // 获取旧版财务信息（兼容历史数据，返回 JSON）
   rpc GetLegacyFinancialInfo(GetUserRequest) returns (LegacyInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/financial-info" };
   }
-  // 获取旧版 KYC 表单
+  // 获取旧版 KYC 表单（兼容历史数据，返回 JSON）
   rpc GetLegacyKycForm(GetUserRequest) returns (LegacyInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/kyc-form" };
   }
-  // 获取旧版 KYC 修正
+  // 获取旧版 KYC 修正记录（兼容历史数据，返回 JSON）
   rpc GetLegacyKycCorrection(GetUserRequest) returns (LegacyInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/kyc-correction" };
   }
-  // 获取社交媒体信息
+  // 获取用户社交媒体信息（平台+账号）
   rpc GetSocialMediaInfo(GetUserRequest) returns (SocialMediaInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/social-media-info" };
   }
-  // 更新社交媒体信息
+  // 更新用户社交媒体信息（body 字段名为 spec）
   rpc UpdateSocialMediaInfo(UpdateSocialMediaRequest) returns (SocialMediaInfoResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/social-media-info", body: "spec" };
   }
 }
 
 // ─── Tenant Role API (api/v1/tenant/role) ────────────────────────────────────
+// 只读角色查询接口（角色定义通过 IdentityServer4 配置）。
 
 service TenantRoleService {
-  // 获取所有角色
+  // 获取 tenant 下所有角色列表
   rpc ListRoles(EmptyRequest) returns (RolesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/role" };
   }
-  // 获取角色
+  // 按 id 获取角色详情
   rpc GetRole(GetRoleRequest) returns (Role) {
     option (google.api.http) = { get: "/api/v1/tenant/role/{id}" };
   }
 }
 
 // ─── Tenant Permission API (api/v1/tenant/permission) ────────────────────────
+// 只读权限查询接口。
 
 service TenantPermissionService {
-  // 获取所有权限
+  // 获取 tenant 下所有可用权限字符串列表
   rpc ListPermissions(EmptyRequest) returns (PermissionsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/permission" };
   }
 }
 
 // ─── Tenant KYC API (api/v1/tenant/kyc) ─────────────────────────────────────
+// KYC 表单的完整管理：创建、更新、签名、审核、拒绝。
+// KYC 状态流转：draft → awaiting_review → signed → finalized / rejected
 
 service TenantKycService {
-  // 列表查询
+  // 分页查询 KYC 列表；可按 status 过滤
   rpc ListKycs(ListKycsRequest) returns (ListKycsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/kyc" };
   }
-  // 获取单条
+  // 按 party_id 获取用户 KYC 表单（含 form_data JSON）
   rpc GetKyc(GetKycRequest) returns (KycForm) {
     option (google.api.http) = { get: "/api/v1/tenant/kyc/{party_id}" };
   }
-  // 创建
+  // 为用户创建新 KYC 表单（spec 为 JSON 格式的 KycFormViewModel）
   rpc CreateKyc(CreateKycRequest) returns (KycForm) {
     option (google.api.http) = { post: "/api/v1/tenant/kyc/{party_id}", body: "spec" };
   }
-  // 更新
+  // 更新 KYC 表单内容（spec 为 JSON 格式的 KycFormViewModel）
   rpc UpdateKyc(UpdateKycRequest) returns (KycForm) {
     option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}", body: "spec" };
   }
-  // 等待审核
+  // 将 KYC 状态设置为等待审核
   rpc AwaitingReview(GetKycRequest) returns (KycForm) {
     option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/awaiting-review" };
   }
-  // 签名
+  // 对 KYC 表单进行合规签名
   rpc SignKyc(UpdateKycRequest) returns (KycForm) {
     option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/sign", body: "spec" };
   }
-  // 最终确认
+  // 最终确认 KYC（status → finalized，账户开户完成）
   rpc FinalizeKyc(UpdateKycRequest) returns (KycForm) {
     option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/finalize", body: "spec" };
   }
-  // 获取历史
+  // 获取 KYC 历史状态变更记录
   rpc GetKycHistory(GetKycRequest) returns (KycHistoryResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/kyc/{party_id}/history" };
   }
-  // 拒绝
+  // 拒绝 KYC 申请（status → rejected）
   rpc RejectKyc(GetKycRequest) returns (KycForm) {
     option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/reject" };
   }
-  // 获取合规签名
+  // 获取合规人员电子签名
   rpc GetComplianceSig(EmptyRequest) returns (ComplianceSigResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/kyc/complianceSig" };
   }
 }
 
 // ─── Tenant Verification API (api/v1/tenant/verification) ────────────────────
+// 用户身份验证（文件上传审核）的完整管理：
+// 状态流转：under_review → awaiting_approve / awaiting_review → approved / rejected
+// 支持单独审批/拒绝文件，以及邮件验证码发送。
 
 service TenantVerificationService {
-  // 列表查询
+  // 分页查询验证申请列表；可按 party_id、status 过滤
   rpc ListVerifications(ListVerificationsRequest) returns (ListVerificationsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/verification" };
   }
-  // 获取单条
+  // 按 id 获取验证申请详情
   rpc GetVerification(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { get: "/api/v1/tenant/verification/{id}" };
   }
-  // 获取 item
+  // 获取验证申请中的特定 item（文件/证件条目）
   rpc GetVerificationItem(GetVerificationItemRequest) returns (VerificationItem) {
     option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/item/{item_id}" };
   }
-  // 获取 item list
+  // 获取验证申请的所有 item 列表
   rpc GetVerificationItemList(GetVerificationRequest) returns (VerificationItemListResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/item-list" };
   }
-  // 设为审核中
+  // 将验证申请设为审核中（status → under_review）
   rpc SetUnderReview(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/under-review" };
   }
-  // 设为等待批准
+  // 将验证申请设为等待批准（status → awaiting_approve）
   rpc SetAwaitingApprove(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-approve" };
   }
-  // 批准
+  // 批准验证申请（status → approved，触发账户激活流程）
   rpc ApproveVerification(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/approve" };
   }
-  // 延迟批准
+  // 延迟批准（status → delayed_approve，标记待后续处理）
   rpc DelayedApprove(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/delayed-approve" };
   }
-  // 等待审核
+  // 将验证申请重新设为等待审核
   rpc SetAwaitingReview(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-review" };
   }
-  // 拒绝
+  // 拒绝验证申请（status → rejected）
   rpc RejectVerification(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/reject" };
   }
-  // 拒绝文件并发通知
+  // 发送文件拒绝通知邮件（通知用户重新上传文件）
   rpc RejectDocumentNotice(GetVerificationRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/reject-notice" };
   }
-  // 拒绝特定文件
+  // 拒绝特定文件（medium_id 为文件 ID，spec 含拒绝原因）
   rpc RejectDocument(RejectVerificationDocumentRequest) returns (VerificationItem) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/{medium_id}/reject", body: "spec" };
   }
@@ -306,158 +315,162 @@ service TenantVerificationService {
   rpc ApproveDocument(VerificationDocumentRequest) returns (VerificationItem) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/{medium_id}/approve" };
   }
-  // 删除文件
+  // 删除特定文件（不可恢复）
   rpc DeleteDocument(VerificationDocumentRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/verification/{id}/document/{medium_id}" };
   }
-  // 等待地址验证
+  // 将验证申请设为等待地址验证
   rpc SetAwaitingAddressVerify(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-address-verify" };
   }
-  // 等待验证码验证
+  // 将验证申请设为等待验证码验证
   rpc SetAwaitingCodeVerify(GetVerificationRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/awaiting-code-verify" };
   }
-  // 获取邮件验证码
+  // 获取当前验证申请对应的邮件验证码（后台查看用）
   rpc GetMailCode(GetVerificationRequest) returns (MailCodeResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/mail-code" };
   }
-  // 发送邮件验证码
+  // 触发向用户发送邮件验证码
   rpc SendMailCode(GetVerificationRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/verification/{id}/mail-code" };
   }
 }
 
 // ─── Client Verification API (api/v1/client/verification) ────────────────────
+// 客户端用户提交 KYC 验证的完整流程：
+// 查状态 → 创建申请 → 填写各步骤信息 → 提交审核
 
 service ClientVerificationService {
-  // 获取当前验证状态
+  // 获取当前登录用户的验证状态和最后更新时间
   rpc GetVerificationStatus(EmptyRequest) returns (VerificationStatusResponse) {
     option (google.api.http) = { get: "/api/v1/client/verification" };
   }
-  // 创建新验证申请
+  // 创建新的验证申请（若已有未完成申请会报错）
   rpc CreateNewVerification(EmptyRequest) returns (Verification) {
     option (google.api.http) = { post: "/api/v1/client/verification/new" };
   }
-  // 获取已有验证
+  // 获取当前已有的验证申请（若存在）
   rpc GetExistingVerification(EmptyRequest) returns (Verification) {
     option (google.api.http) = { get: "/api/v1/client/verification/existing" };
   }
-  // 标记开始
+  // 标记已开始填写某步骤（step 为步骤标识字符串）
   rpc MarkStarted(MarkStartedRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/client/verification/started", body: "*" };
   }
-  // 提交基本信息
+  // 提交个人信息（data 为 JSON 格式的表单数据）
   rpc SubmitPersonalInfo(SubmitVerificationInfoRequest) returns (Verification) {
     option (google.api.http) = { post: "/api/v1/client/verification/info", body: "*" };
   }
-  // 提交财务信息
+  // 提交财务信息（data 为 JSON 格式的表单数据）
   rpc SubmitFinancialInfo(SubmitVerificationInfoRequest) returns (Verification) {
     option (google.api.http) = { post: "/api/v1/client/verification/financial", body: "*" };
   }
-  // 提交协议确认
+  // 提交协议确认（data 为 JSON，包含同意的条款版本等）
   rpc SubmitAgreement(SubmitVerificationInfoRequest) returns (Verification) {
     option (google.api.http) = { post: "/api/v1/client/verification/agreement", body: "*" };
   }
-  // 提交问卷
+  // 提交投资者适当性问卷答案
   rpc SubmitQuiz(SubmitQuizRequest) returns (Verification) {
     option (google.api.http) = { post: "/api/v1/client/verification/quiz", body: "*" };
   }
-  // 获取问卷
+  // 获取投资者适当性问卷题目列表
   rpc GetQuiz(EmptyRequest) returns (QuizResponse) {
     option (google.api.http) = { get: "/api/v1/client/verification/quiz" };
   }
-  // 提交审核申请
+  // 提交验证申请（所有步骤填写完毕后调用，进入后台审核队列）
   rpc SubmitVerification(EmptyRequest) returns (Verification) {
     option (google.api.http) = { put: "/api/v1/client/verification/submit" };
   }
-  // 提交验证码
+  // 提交邮件验证码（用于验证用户邮箱所有权）
   rpc SubmitVerifyCode(SubmitVerifyCodeRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v1/client/verification/verify-code", body: "*" };
   }
 }
 
 // ─── Auth V2 API (api/v2/auth) ───────────────────────────────────────────────
+// 认证相关接口：注册、登出、密码管理、验证码确认及站点配置获取。
 
 service AuthServiceV2 {
-  // 获取域名信息
+  // 按当前请求域名获取 tenant 及域名配置信息
   rpc GetDomainInfo(EmptyRequest) returns (DomainInfoResponse) {
     option (google.api.http) = { get: "/api/v2/domain" };
   }
-  // 获取欢迎信息
+  // 获取站点欢迎页信息（标题和欢迎文案）
   rpc GetWelcomeInfo(EmptyRequest) returns (WelcomeInfoResponse) {
     option (google.api.http) = { get: "/api/v2/welcome" };
   }
-  // 获取 IP 信息
+  // 获取当前请求的 IP 地址及地理位置国家
   rpc GetIpInfo(EmptyRequest) returns (IpInfoResponse) {
     option (google.api.http) = { get: "/api/v2/auth/ip-info" };
   }
-  // 获取站点配置
+  // 获取站点前端配置（open_at 为可选时间戳，返回对应时间点的配置 JSON）
   rpc GetSiteConfig(GetSiteConfigRequest) returns (SiteConfigResponse) {
     option (google.api.http) = { get: "/api/v2/auth/c" };
   }
-  // 用户注册
+  // 用户注册（含邮箱、密码、推荐码、姓名等信息）
   rpc Register(RegisterRequest) returns (RegisterResponse) {
     option (google.api.http) = { post: "/api/v2/auth/register", body: "*" };
   }
-  // 登出
+  // 登出（使当前 Token 失效）
   rpc Logout(EmptyRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/logout" };
   }
-  // 忘记密码
+  // 发送忘记密码邮件（含重置链接）
   rpc ForgotPassword(ForgotPasswordRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/password/forgot", body: "*" };
   }
-  // 修改密码
+  // 修改密码（需提供旧密码验证）
   rpc ChangePassword(ChangePasswordRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/password/change", body: "*" };
   }
-  // 重置密码（by token）
+  // 通过重置 token 重置密码（配合 ForgotPassword 邮件链接使用）
   rpc ResetPassword(ResetPasswordRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/password/reset", body: "*" };
   }
-  // 获取登录验证码
+  // 获取登录二次验证码（二次认证流程）
   rpc GetLoginAuthCode(EmptyRequest) returns (AuthCodeResponse) {
     option (google.api.http) = { post: "/api/v2/auth/token/code" };
   }
-  // 确认登录验证码
+  // 确认登录验证码（验证后完成登录）
   rpc ConfirmLoginAuthCode(ConfirmAuthCodeRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/token/code/confirm", body: "*" };
   }
-  // 获取密码重置验证码
+  // 发送密码重置验证码（发送至指定邮箱）
   rpc GetPasswordResetCode(GetPasswordResetCodeRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/password-reset/code", body: "*" };
   }
-  // 确认密码重置验证码
+  // 确认密码重置验证码（验证通过后允许重置密码）
   rpc ConfirmPasswordResetCode(ConfirmPasswordResetCodeRequest) returns (OperationResponse) {
     option (google.api.http) = { post: "/api/v2/auth/password-reset/code/confirm", body: "*" };
   }
 }
 
 // ─── User V2 API (api/v2/user) ───────────────────────────────────────────────
+// 登录用户的自助服务接口：查看自身信息、管理地址。
 
 service UserServiceV2 {
-  // 健康检查
+  // 健康检查，返回服务状态字符串
   rpc Ping(EmptyRequest) returns (PingResponse) {
     option (google.api.http) = { get: "/api/v2/user/ping" };
   }
-  // 获取当前用户
+  // 获取当前登录用户的完整信息
   rpc GetMe(EmptyRequest) returns (User) {
     option (google.api.http) = { get: "/api/v2/user/me" };
   }
-  // 获取地址列表
+  // 分页查询当前用户的地址列表
   rpc ListAddresses(ListAddressesRequest) returns (ListAddressesResponse) {
     option (google.api.http) = { get: "/api/v2/user/address" };
   }
-  // 获取地址
+  // 按 hash_id 获取地址详情
   rpc GetAddress(GetAddressByHashRequest) returns (Address) {
     option (google.api.http) = { get: "/api/v2/user/address/{hash_id}" };
   }
-  // 创建地址
+  // 创建新地址
   rpc CreateAddress(CreateAddressRequest) returns (Address) {
     option (google.api.http) = { post: "/api/v2/user/address", body: "*" };
   }
-  // 更新地址
+  // 更新地址（body 字段名为 spec）
   rpc UpdateAddress(UpdateAddressRequest) returns (Address) {
     option (google.api.http) = { put: "/api/v2/user/address/{hash_id}", body: "spec" };
   }
@@ -465,72 +478,76 @@ service UserServiceV2 {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
+// 空请求
 message EmptyRequest {}
 
+// 通用操作结果
 message OperationResponse {
   bool   success = 1;
   string message = 2;
 }
 
-// User 实体
+// 用户实体
 message User {
-  int64  id         = 1;
-  int64  party_id   = 2;
-  string email      = 3;
-  string first_name = 4;
-  string last_name  = 5;
-  int32  status     = 6;
-  string created_at = 7;
+  int64  id         = 1; // 用户主键 ID
+  int64  party_id   = 2; // 用户 party_id（跨 tenant 唯一标识）
+  string email      = 3; // 登录邮箱
+  string first_name = 4; // 名
+  string last_name  = 5; // 姓
+  int32  status     = 6; // 用户状态：0=inactive、1=active、2=locked、3=suspended
+  string created_at = 7; // 注册时间，ISO 8601 格式
 }
 
-// Role 实体
+// 角色实体
 message Role {
-  int64  id   = 1;
-  string name = 2;
+  int64  id   = 1; // 角色 ID
+  string name = 2; // 角色名称，如 "admin"、"compliance"
 }
 
-// Address 实体
+// 地址实体
 message Address {
-  int64  id          = 1;
-  string hash_id     = 2;
-  int64  party_id    = 3;
-  string country     = 4;
-  string city        = 5;
-  string address     = 6;
-  bool   is_default  = 7;
+  int64  id         = 1; // 地址 ID
+  string hash_id    = 2; // 地址哈希 ID（URL 友好，对外暴露）
+  int64  party_id   = 3; // 所属用户 party_id
+  string country    = 4; // 国家代码，如 "AU"、"CN"
+  string city       = 5; // 城市名称
+  string address    = 6; // 详细地址
+  bool   is_default = 7; // 是否为默认地址
 }
 
-// KycForm 实体
+// KYC 表单实体
 message KycForm {
-  int64  id        = 1;
-  int64  party_id  = 2;
-  int32  status    = 3;
-  string form_data = 4;  // JSON
+  int64  id        = 1; // KYC 记录 ID
+  int64  party_id  = 2; // 关联用户 party_id
+  int32  status    = 3; // KYC 状态：0=draft、1=awaiting_review、2=signed、3=finalized、4=rejected
+  string form_data = 4; // KYC 表单完整数据（JSON 字符串，含个人/财务/协议信息）
 }
 
-// Verification 实体
+// 身份验证申请实体
 message Verification {
-  int64  id        = 1;
-  int64  party_id  = 2;
-  int32  status    = 3;
-  string created_at = 4;
+  int64  id         = 1; // 验证申请 ID
+  int64  party_id   = 2; // 关联用户 party_id
+  int32  status     = 3; // 验证状态：0=draft、1=under_review、2=awaiting_approve、3=approved、4=rejected 等
+  string created_at = 4; // 申请创建时间，ISO 8601 格式
 }
 
-// VerificationItem 实体
+// 验证申请中的文件/证件条目实体
 message VerificationItem {
-  int64  id              = 1;
-  int64  verification_id = 2;
-  int32  type            = 3;
-  int32  status          = 4;
+  int64  id              = 1; // 条目 ID
+  int64  verification_id = 2; // 关联验证申请 ID
+  int32  type            = 3; // 条目类型（枚举：1=passport、2=national_id、3=utility_bill 等）
+  int32  status          = 4; // 条目状态：0=pending、1=approved、2=rejected
 }
 
-// User list
+// ─── User 相关消息 ─────────────────────────────────────────────────────────────
+
+// 用户列表查询
 message ListUsersRequest {
   PaginationRequest pagination = 1;
-  optional string   keywords   = 2;
-  optional int32    status     = 3;
-  optional string   date_from  = 4;
-  optional string   date_to    = 5;
+  optional string   keywords   = 2; // 按邮箱或姓名关键字搜索
+  optional int32    status     = 3; // 按用户状态过滤
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
 }
 
 message ListUsersResponse {
@@ -538,64 +555,77 @@ message ListUsersResponse {
   PaginationMeta meta = 2;
 }
 
+// 按 party_id 查询用户
 message GetUserRequest {
   int64 party_id = 1;
 }
 
+// 按 party_id 查询（别名）
 message GetUserByPidRequest {
   int64 party_id = 1;
 }
 
+// 按 uid 查询用户
 message GetUserByUidRequest {
-  int64 uid = 1;
+  int64 uid = 1; // 账户维度的用户唯一标识
 }
 
+// 按主键 id 查询用户
 message GetUserByIdRequest {
   int64 id = 1;
 }
 
+// 用户标签操作请求
 message UserTagRequest {
   int64  party_id = 1;
-  string tag      = 2;
+  string tag      = 2; // 自定义标签字符串
 }
 
+// 角色列表响应
 message RolesResponse {
   repeated Role roles = 1;
 }
 
+// 按 role_id 操作用户角色请求
 message UserRoleRequest {
   int64 party_id = 1;
   int64 role_id  = 2;
 }
 
+// 用户权限列表响应
 message UserPermissionsResponse {
-  repeated string permissions = 1;
+  repeated string permissions = 1; // 权限字符串列表，如 ["deposit.create", "withdrawal.approve"]
 }
 
+// 用户 Claims 响应
 message UserClaimsResponse {
-  map<string, string> claims = 1;
+  map<string, string> claims = 1; // Key-Value 形式的 Claims
 }
 
+// 按角色名称操作用户角色请求
 message UserRoleByNameRequest {
   int64  party_id = 1;
-  string role     = 2;
+  string role     = 2; // 角色名称字符串
 }
 
+// 单项权限操作请求
 message UserPermissionRequest {
   int64  party_id   = 1;
-  string permission = 2;
+  string permission = 2; // 权限字符串
 }
 
+// 账户绑定操作请求（销售/代理账户绑定/解绑）
 message UserAccountLinkRequest {
-  int64 party_id   = 1;
-  int64 account_uid = 2;
+  int64 party_id    = 1;
+  int64 account_uid = 2; // 要绑定/解绑的账户 ID
 }
 
+// 用户审计记录列表查询
 message ListUserAuditsRequest {
   int64             party_id   = 1;
   PaginationRequest pagination = 2;
-  optional string   date_from  = 3;
-  optional string   date_to    = 4;
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
 }
 
 message ListUserAuditsResponse {
@@ -603,45 +633,53 @@ message ListUserAuditsResponse {
   PaginationMeta     meta = 2;
 }
 
+// 用户审计记录实体
 message UserAudit {
   int64  id         = 1;
   int64  party_id   = 2;
-  string action     = 3;
-  string created_at = 4;
+  string action     = 3; // 操作类型，如 "login"、"profile_update"
+  string created_at = 4; // ISO 8601 格式
 }
 
+// 查询单条用户审计记录
 message GetUserAuditRequest {
   int64 party_id = 1;
   int64 id       = 2;
 }
 
+// 支付服务设置响应
 message PaymentServiceResponse {
-  string settings = 1;  // JSON
+  string settings = 1; // JSON 字符串，含支付方式限额、币种等设置
 }
 
+// 更新支付服务设置请求
 message UpdatePaymentServiceRequest {
   int64  party_id = 1;
-  string spec     = 2;  // JSON
+  string spec     = 2; // JSON 字符串
 }
 
+// 更新用户资料请求
 message UpdateUserProfileRequest {
-  int64  party_id    = 1;
-  string spec        = 2;  // JSON - User.TenantUpdateSpec
+  int64  party_id = 1;
+  string spec     = 2; // JSON 字符串，对应 User.TenantUpdateSpec（含 first_name、last_name 等）
 }
 
+// 更新用户状态请求
 message UpdateUserStatusRequest {
   int64 party_id = 1;
-  int32 status   = 2;
+  int32 status   = 2; // 目标状态枚举值
 }
 
+// 更新用户所属站点请求
 message UpdateUserSiteRequest {
   int64 party_id = 1;
-  int32 site_id  = 2;
+  int32 site_id  = 2; // 目标站点 ID
 }
 
+// 地址列表查询
 message ListAddressesRequest {
   PaginationRequest pagination = 1;
-  optional int64    party_id   = 2;
+  optional int64    party_id   = 2; // 不指定则返回当前登录用户的地址
 }
 
 message ListAddressesResponse {
@@ -649,65 +687,79 @@ message ListAddressesResponse {
   PaginationMeta   meta = 2;
 }
 
+// 按 address_id 查询地址（后台）
 message GetAddressRequest {
   int64 address_id = 1;
 }
 
+// 按 hash_id 查询地址（客户端）
 message GetAddressByHashRequest {
   string hash_id = 1;
 }
 
+// 创建地址请求
 message CreateAddressRequest {
-  string country  = 1;
-  string city     = 2;
-  string address  = 3;
-  bool   is_default = 4;
+  string country    = 1; // 国家代码，如 "AU"
+  string city       = 2;
+  string address    = 3; // 详细地址
+  bool   is_default = 4; // 是否设为默认地址
 }
 
+// 更新地址请求
 message UpdateAddressRequest {
-  string hash_id  = 1;
-  CreateAddressRequest spec = 2;
+  string               hash_id = 1;
+  CreateAddressRequest spec    = 2;
 }
 
+// 迁移用户请求
 message MigrateUserRequest {
   int64 party_id  = 1;
-  int64 tenant_id = 2;
+  int64 tenant_id = 2; // 目标 tenant ID
 }
 
+// 复制用户请求
 message DuplicateUserRequest {
   int64  party_id  = 1;
-  int64  tenant_id = 2;
-  string spec      = 3;  // JSON - User
+  int64  tenant_id = 2; // 目标 tenant ID
+  string spec      = 3; // JSON 字符串，覆盖复制后的用户字段
 }
 
+// 旧版数据响应（兼容历史）
 message LegacyInfoResponse {
-  string data = 1;  // JSON
+  string data = 1; // JSON 字符串，历史格式数据
 }
 
+// 社交媒体信息响应
 message SocialMediaInfoResponse {
-  string platform = 1;
-  string handle   = 2;
+  string platform = 1; // 平台名称，如 "WeChat"、"Telegram"
+  string handle   = 2; // 账号/用户名
 }
 
+// 更新社交媒体信息请求
 message UpdateSocialMediaRequest {
   int64  party_id  = 1;
   string platform  = 2;
   string handle    = 3;
 }
 
-// Role/Permission messages
+// ─── Role/Permission 相关消息 ──────────────────────────────────────────────────
+
+// 按 id 查询角色
 message GetRoleRequest {
   int64 id = 1;
 }
 
+// 权限列表响应
 message PermissionsResponse {
-  repeated string permissions = 1;
+  repeated string permissions = 1; // 权限字符串列表
 }
 
-// KYC messages
+// ─── KYC 相关消息 ─────────────────────────────────────────────────────────────
+
+// KYC 列表查询
 message ListKycsRequest {
   PaginationRequest pagination = 1;
-  optional int32    status     = 2;
+  optional int32    status     = 2; // 按 KYC 状态过滤
 }
 
 message ListKycsResponse {
@@ -715,38 +767,46 @@ message ListKycsResponse {
   PaginationMeta   meta = 2;
 }
 
+// 按 party_id 查询 KYC
 message GetKycRequest {
   int64 party_id = 1;
 }
 
+// 创建 KYC 请求
 message CreateKycRequest {
   int64  party_id = 1;
-  string spec     = 2;  // JSON - KycFormViewModel
+  string spec     = 2; // JSON 格式的 KycFormViewModel
 }
 
+// 更新 KYC 请求
 message UpdateKycRequest {
   int64  party_id = 1;
-  string spec     = 2;  // JSON - KycFormViewModel
+  string spec     = 2; // JSON 格式的 KycFormViewModel
 }
 
+// KYC 历史状态变更响应
 message KycHistoryResponse {
   repeated KycHistoryItem items = 1;
 }
 
+// KYC 历史条目
 message KycHistoryItem {
-  int32  status     = 1;
-  string updated_at = 2;
+  int32  status     = 1; // 历史状态枚举值
+  string updated_at = 2; // 状态变更时间，ISO 8601 格式
 }
 
+// 合规签名响应
 message ComplianceSigResponse {
-  string signature = 1;
+  string signature = 1; // 合规人员电子签名（Base64 或图片 URL）
 }
 
-// Verification messages
+// ─── Verification 相关消息 ────────────────────────────────────────────────────
+
+// 验证申请列表查询
 message ListVerificationsRequest {
   PaginationRequest pagination = 1;
-  optional int64    party_id   = 2;
-  optional int32    status     = 3;
+  optional int64    party_id   = 2; // 按用户 party_id 过滤
+  optional int32    status     = 3; // 按验证状态过滤
 }
 
 message ListVerificationsResponse {
@@ -754,142 +814,174 @@ message ListVerificationsResponse {
   PaginationMeta        meta = 2;
 }
 
+// 按 id 查询验证申请
 message GetVerificationRequest {
   int64 id = 1;
 }
 
+// 查询验证申请中特定 item
 message GetVerificationItemRequest {
-  int64 id      = 1;
-  int64 item_id = 2;
+  int64 id      = 1; // 验证申请 ID
+  int64 item_id = 2; // item ID
 }
 
+// 验证申请 item 列表响应
 message VerificationItemListResponse {
   repeated VerificationItem items = 1;
 }
 
+// 拒绝特定文件请求（含拒绝原因）
 message RejectVerificationDocumentRequest {
-  int64  id        = 1;
-  int64  medium_id = 2;
-  string spec      = 3;  // reason
+  int64  id        = 1; // 验证申请 ID
+  int64  medium_id = 2; // 文件 medium ID
+  string spec      = 3; // 拒绝原因字符串
 }
 
+// 文件操作请求（批准/删除）
 message VerificationDocumentRequest {
-  int64 id        = 1;
-  int64 medium_id = 2;
+  int64 id        = 1; // 验证申请 ID
+  int64 medium_id = 2; // 文件 medium ID
 }
 
+// 邮件验证码响应
 message MailCodeResponse {
-  string code       = 1;
-  string expires_at = 2;
+  string code       = 1; // 验证码
+  string expires_at = 2; // 过期时间，ISO 8601 格式
 }
 
-// Client Verification messages
+// ─── Client Verification 相关消息 ────────────────────────────────────────────
+
+// 验证状态响应（客户端）
 message VerificationStatusResponse {
-  int32  status     = 1;
-  string updated_at = 2;
+  int32  status     = 1; // 当前验证状态枚举值
+  string updated_at = 2; // 最后更新时间，ISO 8601 格式
 }
 
+// 标记开始填写请求
 message MarkStartedRequest {
-  string step = 1;
+  string step = 1; // 步骤标识，如 "personal_info"、"financial_info"
 }
 
+// 提交验证信息请求（各步骤共用）
 message SubmitVerificationInfoRequest {
-  string data = 1;  // JSON - form data
+  string data = 1; // JSON 格式的表单数据
 }
 
+// 提交问卷答案请求
 message SubmitQuizRequest {
   repeated QuizAnswer answers = 1;
 }
 
+// 单题答案
 message QuizAnswer {
-  int32  question_id = 1;
-  string answer      = 2;
+  int32  question_id = 1; // 题目 ID
+  string answer      = 2; // 答案字符串（选项 key 或文本）
 }
 
+// 问卷题目列表响应
 message QuizResponse {
   repeated QuizQuestion questions = 1;
 }
 
+// 单道问卷题目
 message QuizQuestion {
-  int32           id       = 1;
-  string          question = 2;
-  repeated string options  = 3;
+  int32           id       = 1; // 题目 ID
+  string          question = 2; // 题目文本
+  repeated string options  = 3; // 选项列表
 }
 
+// 提交邮件验证码请求
 message SubmitVerifyCodeRequest {
-  string code = 1;
+  string code = 1; // 用户收到的验证码
 }
 
-// Auth V2 messages
+// ─── Auth V2 相关消息 ─────────────────────────────────────────────────────────
+
+// 域名信息响应
 message DomainInfoResponse {
-  string domain     = 1;
-  string tenant_id  = 2;
+  string domain    = 1; // 当前请求域名
+  string tenant_id = 2; // 对应 tenant ID（字符串形式）
 }
 
+// 欢迎页信息响应
 message WelcomeInfoResponse {
-  string title    = 1;
-  string message  = 2;
+  string title   = 1; // 欢迎标题
+  string message = 2; // 欢迎文案
 }
 
+// IP 信息响应
 message IpInfoResponse {
-  string ip      = 1;
-  string country = 2;
+  string ip      = 1; // 客户端 IP 地址
+  string country = 2; // IP 对应国家代码，如 "AU"
 }
 
+// 站点配置查询请求
 message GetSiteConfigRequest {
-  optional string open_at = 1;
+  optional string open_at = 1; // 可选时间戳（ISO 8601），获取该时刻的配置快照
 }
 
+// 站点前端配置响应
 message SiteConfigResponse {
-  string config = 1;  // JSON
+  string config = 1; // JSON 字符串，包含前端所需的全量配置
 }
 
+// 注册请求
 message RegisterRequest {
-  string email     = 1;
-  string password  = 2;
-  string ref_code  = 3;
-  string first_name = 4;
-  string last_name  = 5;
+  string email      = 1; // 注册邮箱
+  string password   = 2; // 密码（明文，传输层 HTTPS 加密）
+  string ref_code   = 3; // 推荐码（可选）
+  string first_name = 4; // 名
+  string last_name  = 5; // 姓
 }
 
+// 注册响应
 message RegisterResponse {
-  int64  party_id = 1;
-  string email    = 2;
+  int64  party_id = 1; // 新用户 party_id
+  string email    = 2; // 注册邮箱
 }
 
+// 忘记密码请求
 message ForgotPasswordRequest {
   string email = 1;
 }
 
+// 修改密码请求（需旧密码验证）
 message ChangePasswordRequest {
   string old_password = 1;
   string new_password = 2;
 }
 
+// 重置密码请求（通过邮件链接）
 message ResetPasswordRequest {
-  string token       = 1;
+  string token        = 1; // 邮件中的重置 token
   string new_password = 2;
 }
 
+// 二次验证码响应
 message AuthCodeResponse {
-  string code       = 1;
-  string expires_at = 2;
+  string code       = 1; // 验证码
+  string expires_at = 2; // 过期时间，ISO 8601 格式
 }
 
+// 确认登录验证码请求
 message ConfirmAuthCodeRequest {
   string code = 1;
 }
 
+// 发送密码重置验证码请求
 message GetPasswordResetCodeRequest {
-  string email = 1;
+  string email = 1; // 发送验证码的目标邮箱
 }
 
+// 确认密码重置验证码请求
 message ConfirmPasswordResetCodeRequest {
   string email = 1;
-  string code  = 2;
+  string code  = 2; // 用户收到的验证码
 }
 
-// User V2 messages
+// ─── User V2 相关消息 ─────────────────────────────────────────────────────────
+
+// 健康检查响应
 message PingResponse {
-  string status = 1;
+  string status = 1; // 服务状态，如 "ok"
 }
