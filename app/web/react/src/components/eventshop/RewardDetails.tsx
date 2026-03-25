@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { useTheme } from '@/hooks/useTheme';
 import { getRewardRebateList } from '@/actions';
 import { RewardRebateStatus } from '@/types/eventshop';
 import type { RewardRebate } from '@/types/eventshop';
-import { DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs } from '@/components/ui';
-import type { TagVariant } from '@/components/ui';
+import { DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
+import type { TagVariant, DataTableColumn } from '@/components/ui';
 
 const STATUS_TABS = [
   { key: 'all', value: undefined },
@@ -20,7 +18,6 @@ const STATUS_TABS = [
 
 export function RewardDetails() {
   const t = useTranslations('eventshop');
-  const { theme } = useTheme();
   const [items, setItems] = useState<RewardRebate[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -99,7 +96,64 @@ export function RewardDetails() {
     return (amount / 100).toFixed(1);
   };
 
-  const totalPages = Math.ceil(total / pageSize);
+  const columns = useMemo<DataTableColumn<RewardRebate>[]>(() => [
+    {
+      key: 'ticket',
+      title: t('columns.ticket'),
+      skeletonWidth: 'w-12',
+      render: (item) => <span className="text-sm text-text-primary">{item.ticket}</span>,
+    },
+    {
+      key: 'symbol',
+      title: t('columns.symbol'),
+      skeletonWidth: 'w-16',
+      render: (item) => <span className="text-sm text-text-secondary">{item.symbol}</span>,
+    },
+    {
+      key: 'lot',
+      title: t('columns.lot'),
+      skeletonWidth: 'w-10',
+      render: (item) => <span className="text-sm text-text-secondary">{getLot(item.amount)}</span>,
+    },
+    {
+      key: 'openTime',
+      title: t('columns.openTime'),
+      skeletonWidth: 'w-28',
+      render: (item) => <DateDisplay value={item.openAt} className="text-sm text-text-secondary" />,
+    },
+    {
+      key: 'closeTime',
+      title: t('columns.closeTime'),
+      skeletonWidth: 'w-28',
+      render: (item) => <DateDisplay value={item.closeAt} className="text-sm text-text-secondary" />,
+    },
+    {
+      key: 'status',
+      title: t('columns.status'),
+      skeletonWidth: 'w-16',
+      render: (item) => (
+        <Tag variant={getStatusVariant(item.status)} soft>
+          {getStatusLabel(item.status)}
+        </Tag>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('columns.amount'),
+      skeletonWidth: 'w-16',
+      render: (item) => (
+        <span className="text-sm font-semibold text-text-primary">
+          US${typeof item.amount === 'number' ? item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : item.amount}
+        </span>
+      ),
+    },
+    {
+      key: 'createdOn',
+      title: t('columns.createdOn'),
+      skeletonWidth: 'w-28',
+      render: (item) => <DateDisplay value={item.createdOn} className="text-sm text-text-secondary" />,
+    },
+  ], [t]);
 
   return (
     <div className="flex-1 bg-surface rounded flex flex-col gap-5 overflow-hidden p-5 min-w-0">
@@ -131,108 +185,15 @@ export function RewardDetails() {
         </div>
       </div>
 
-      {/* Scrollable Table */}
-      <div className="overflow-x-auto flex-1 min-w-0">
-        <div className="min-w-[900px]">
-          {/* Column Headers */}
-          <div className="grid grid-cols-[0.8fr_1fr_0.6fr_1.2fr_1.2fr_0.8fr_1fr_1.2fr] gap-3 text-sm text-text-tertiary px-3">
-            <span>{t('columns.ticket')}</span>
-            <span>{t('columns.symbol')}</span>
-            <span>{t('columns.lot')}</span>
-            <span>{t('columns.openTime')}</span>
-            <span>{t('columns.closeTime')}</span>
-            <span>{t('columns.status')}</span>
-            <span>{t('columns.amount')}</span>
-            <span>{t('columns.createdOn')}</span>
-          </div>
-          <div className="h-px bg-border mt-3" />
+      <DataTable<RewardRebate>
+        columns={columns}
+        data={items}
+        rowKey={(item, idx) => item.hashId || idx}
+        loading={isLoading}
+        skeletonRows={5}
+      />
 
-          {/* Data Rows */}
-          {isLoading ? (
-            <div className="flex flex-col">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[0.8fr_1fr_0.6fr_1.2fr_1.2fr_0.8fr_1fr_1.2fr] gap-3 items-center px-3 py-4 border-b border-border last:border-b-0 animate-pulse">
-                  <div className="h-4 w-12 rounded bg-surface-secondary" />
-                  <div className="h-4 w-16 rounded bg-surface-secondary" />
-                  <div className="h-4 w-10 rounded bg-surface-secondary" />
-                  <div className="h-4 w-28 rounded bg-surface-secondary" />
-                  <div className="h-4 w-28 rounded bg-surface-secondary" />
-                  <div className="h-5 w-16 rounded-sm bg-surface-secondary" />
-                  <div className="h-4 w-16 rounded bg-surface-secondary" />
-                  <div className="h-4 w-28 rounded bg-surface-secondary" />
-                </div>
-              ))}
-            </div>
-          ) : items.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2.5 py-24">
-              <Image
-                src={theme === 'dark' ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
-                alt="" width={150} height={150}
-              />
-              <p className="text-base text-text-tertiary">{t('noData')}</p>
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {items.map((item, idx) => (
-                <div key={item.hashId || idx} className="grid grid-cols-[0.8fr_1fr_0.6fr_1.2fr_1.2fr_0.8fr_1fr_1.2fr] gap-3 items-center px-3 py-4 border-b border-border last:border-b-0">
-                  <span className="text-sm text-text-primary">{item.ticket}</span>
-                  <span className="text-sm text-text-secondary">{item.symbol}</span>
-                  <span className="text-sm text-text-secondary">{getLot(item.amount)}</span>
-                  <DateDisplay value={item.openAt} className="text-sm text-text-secondary" />
-                  <DateDisplay value={item.closeAt} className="text-sm text-text-secondary" />
-                  <Tag variant={getStatusVariant(item.status)} soft>
-                    {getStatusLabel(item.status)}
-                  </Tag>
-                  <span className="text-sm font-semibold text-text-primary">
-                    US${typeof item.amount === 'number' ? item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : item.amount}
-                  </span>
-                  <DateDisplay value={item.createdOn} className="text-sm text-text-secondary" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-end items-center gap-1 pt-3">
-          <button
-            disabled={page <= 1}
-            onClick={() => handlePageChange(page - 1)}
-            className="size-8 flex items-center justify-center rounded border border-border text-sm disabled:opacity-40 cursor-pointer"
-          >
-            &lt;
-          </button>
-          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => handlePageChange(p)}
-              className={`size-8 flex items-center justify-center rounded text-sm cursor-pointer ${
-                p === page ? 'bg-primary text-white' : 'border border-border text-text-secondary'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-          {totalPages > 5 && <span className="px-1 text-text-tertiary">...</span>}
-          {totalPages > 5 && (
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              className={`size-8 flex items-center justify-center rounded text-sm cursor-pointer border border-border text-text-secondary`}
-            >
-              {totalPages}
-            </button>
-          )}
-          <button
-            disabled={page >= totalPages}
-            onClick={() => handlePageChange(page + 1)}
-            className="size-8 flex items-center justify-center rounded border border-border text-sm disabled:opacity-40 cursor-pointer"
-          >
-            &gt;
-          </button>
-        </div>
-      )}
+      <Pagination page={page} total={total} size={pageSize} onPageChange={handlePageChange} />
     </div>
   );
 }

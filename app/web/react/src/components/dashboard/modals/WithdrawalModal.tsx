@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/radix/Dialog';
-import { Button, Checkbox, BalanceShow, Input } from '@/components/ui';
+import { Button, Checkbox, BalanceShow, Input, formatBalance } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Stepper } from '@/components/ui/Stepper';
 import {
@@ -23,6 +23,7 @@ import {
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { useUserStore } from '@/stores/userStore';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
 import {
   getWalletWithdrawGroups,
   getWalletWithdrawGroupInfo,
@@ -38,6 +39,8 @@ import type {
   PaymentMethodGroup,
   PaymentMethodGroupInfo,
 } from '@/types/wallet';
+import { CurrencyTypes } from '@/types/accounts';
+import type { TradeAccount as AccountTradeAccount } from '@/types/accounts';
 
 interface BankFormData {
   name: string;
@@ -76,7 +79,7 @@ const INITIAL_USDT_FORM: USDTFormData = {
 interface WithdrawalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallet: Wallet;
+  wallet: Wallet | AccountTradeAccount;
   type?: 'wallet' | 'account';
   accountNumber?: string | number;
   onSuccess?: () => void;
@@ -123,6 +126,7 @@ export function WithdrawalModal({
 }: WithdrawalModalProps) {
   const t = useTranslations('wallet');
   const tCommon = useTranslations('common');
+  const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess, showError } = useToast();
   const isPasswordChangedWithin24h = useUserStore(
@@ -142,7 +146,7 @@ export function WithdrawalModal({
 
   // Step 3
   const [amount, setAmount] = useState('');
-  const [amountError, setAmountError] = useState('');
+  const [amountError, setAmountError] = useState<'' | 'required' | 'insufficient' | 'range'>('');
   const [paymentInfos, setPaymentInfos] = useState<PaymentInfo[]>([]);
   const [selectedPaymentIndex, setSelectedPaymentIndex] = useState('');
   const [confirmed, setConfirmed] = useState(false);
@@ -160,7 +164,19 @@ export function WithdrawalModal({
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const withdrawalTargetId = type === 'account' ? accountNumber : wallet?.hashId;
+  const withdrawalTargetId =
+    type === 'account' ? accountNumber : 'hashId' in wallet ? wallet.hashId : undefined;
+  const availableBalanceInCents = useMemo(() => {
+    if (type === 'account') {
+      if (!('equityInCents' in wallet) || !('creditInCents' in wallet)) {
+        return 0;
+      }
+      const availableAmount = wallet.equityInCents - wallet.creditInCents;
+      return availableAmount <= 0 ? 0 : availableAmount;
+    }
+    return 'balance' in wallet ? wallet.balance : wallet.balanceInCents;
+  }, [type, wallet]);
+  const isWalletMode = type === 'wallet';
 
   // Step 1: load groups
   useEffect(() => {
@@ -326,29 +342,39 @@ export function WithdrawalModal({
     }
   }, [selectedGroup, bankFormData, usdtFormData, execute, fetchPaymentInfos, showSuccess, t, tBank]);
 
-  // Amount validation
+  // 金额校验：输入金额统一转为分后与余额/区间比较
   const validateAmount = useCallback(
     (val: string): boolean => {
       const num = Number(val);
       if (!num || num <= 0) {
-        setAmountError(t('withdraw.enterAmount'));
+        setAmountError('required');
         return false;
       }
-      if (num > wallet.balance / 100) {
-        setAmountError(t('withdraw.insufficientBalance'));
+      if (num * 100 > availableBalanceInCents) {
+        setAmountError('insufficient');
         return false;
       }
+      console.log('num', num);
+      console.log('groupInfo', groupInfo);
+      console.log('wallet.currencyId', wallet.currencyId);
       if (groupInfo?.range) {
-        const [min, max] = groupInfo.range;
-        if (num < min || num > max) {
-          setAmountError(t('withdraw.amountOutOfRange'));
+        const [rawMin, rawMax] = groupInfo.range;
+        const minInUsd = rawMin * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1);
+        const maxInUsd = rawMax * (wallet.currencyId === CurrencyTypes.USC ? 100 : 1);
+        const inputInUsd =  num;
+        if (minInUsd > 0 && inputInUsd < minInUsd) {
+          setAmountError('range');
+          return false;
+        }
+        if (maxInUsd > 0 && inputInUsd > maxInUsd) {
+          setAmountError('range');
           return false;
         }
       }
       setAmountError('');
       return true;
     },
-    [t, wallet.balance, groupInfo]
+    [availableBalanceInCents, groupInfo, wallet.currencyId]
   );
 
   // Step 3 validation
@@ -429,12 +455,16 @@ export function WithdrawalModal({
           returnUrl: typeof window !== 'undefined' ? window.location.href : '',
         };
 
-    const result = await execute(submitWalletWithdrawal, wallet.hashId, {
+    if (!withdrawalTargetId) {
+      return;
+    }
+
+    const result = await execute(submitWalletWithdrawal, withdrawalTargetId, {
       hashId: selectedGroup.hashId,
       amount: parseFloat(amount),
       verificationCode,
       request: requestData,
-    });
+    }, type);
 
     if (result.success) {
       setStep(5);
@@ -446,8 +476,9 @@ export function WithdrawalModal({
     selectedPaymentIndex,
     selectedGroup,
     execute,
-    wallet.hashId,
+    withdrawalTargetId,
     amount,
+    type,
     onSuccess,
     showError,
     t,
@@ -505,7 +536,7 @@ export function WithdrawalModal({
       }}
     >
       <DialogContent
-        className="h-[800px]! flex flex-col justify-between"
+        className="flex flex-col justify-between"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex flex-1 flex-col gap-6 overflow-hidden">
@@ -514,7 +545,7 @@ export function WithdrawalModal({
           </DialogHeader>
 
           {isPasswordChangedWithin24h && (
-            <div className="text-primary rounded-lg bg-error/10 p-3 text-sm text-error">
+            <div className="text-primary rounded-lg bg-error/10 p-3 text-sm error-text">
               {t('withdraw.passwordChangeRestrictionNotice')}
             </div>
           )}
@@ -548,6 +579,7 @@ export function WithdrawalModal({
                       const isDisabled = group.isActive === false || isPasswordChangedWithin24h;
                       const isSelected = !isDisabled && selectedGroup?.hashId === group.hashId;
                       const logoSrc = resolvePaymentLogoSrc(group.logo, group.name);
+                      
                       return (
                         <button
                           key={group.hashId}
@@ -583,6 +615,16 @@ export function WithdrawalModal({
                             <span className="text-xs text-text-secondary">
                               {t('withdraw.processing')}：{'< 1'}{t('withdraw.hour')}
                             </span>
+                            {group.range && (
+                              <>
+                                <span className="text-xs text-text-secondary">
+                                  Min: <BalanceShow balance={group.range[0] * 100 } currencyId={CurrencyTypes.USD} />
+                                </span>
+                                <span className="text-xs text-text-secondary">
+                                  Max: <BalanceShow balance={group.range[1] * 100 } currencyId={CurrencyTypes.USD} />
+                                </span>
+                              </>
+                            )}
                           </div>
                           {isSelected && !isDisabled && (
                             <svg
@@ -667,7 +709,7 @@ export function WithdrawalModal({
                   <span className="text-sm text-text-primary">
                     {t('withdraw.availableBalance')}{' '}
                     <BalanceShow
-                      balance={wallet.balance}
+                      balance={availableBalanceInCents}
                       currencyId={wallet.currencyId}
                       className="font-semibold"
                     />
@@ -706,17 +748,33 @@ export function WithdrawalModal({
                         className="h-12 w-full rounded bg-input-bg px-3 text-sm font-medium text-text-primary outline-none"
                         placeholder={
                           groupInfo?.range
-                            ? `${groupInfo.range[0]} - ${groupInfo.range[1]}`
-                            : '0.00'
+                            ? (() => {
+                                const rangeMultiplier = wallet.currencyId === CurrencyTypes.USC ? 10000 : 100;
+                                const min = groupInfo.range[0] * rangeMultiplier;
+                                const max = groupInfo.range[1] * rangeMultiplier;
+                                return `${formatBalance(min, wallet.currencyId)} - ${formatBalance(max, wallet.currencyId)}`;
+                              })()
+                            : formatBalance(0, wallet.currencyId)
                         }
                       />
-                      {amountError && (
-                        <span className="text-xs text-error">{amountError}</span>
+                      {amountError === 'required' && (
+                        <span className="text-xs ">{t('withdraw.enterAmount')}</span>
                       )}
-                      {groupInfo?.range && (
-                        <span className="text-xs text-text-secondary">
-                          {t('withdraw.range')}: ${groupInfo.range[0]} - $
-                          {groupInfo.range[1]}
+                      {amountError === 'insufficient' && (
+                        <span className="text-xs error-text">{t('withdraw.insufficientBalance')}</span>
+                      )}
+                      {amountError === 'range' && groupInfo?.range && (
+                        <span className="text-xs error-text">
+                          {t('withdraw.amountOutOfRange')}{' '}
+                          <BalanceShow
+                            balance={groupInfo.range[0] * (wallet.currencyId === CurrencyTypes.USC ? 10000 : 100)}
+                            currencyId={wallet.currencyId}
+                          />
+                          {' ~ '}
+                          <BalanceShow
+                            balance={groupInfo.range[1] * (wallet.currencyId === CurrencyTypes.USC ? 10000 : 100)}
+                            currencyId={wallet.currencyId}
+                          />
                         </span>
                       )}
                     </div>
@@ -973,7 +1031,7 @@ export function WithdrawalModal({
                   <span className="text-sm text-text-primary">
                     {t('withdraw.availableBalance')}{' '}
                     <BalanceShow
-                      balance={wallet.balance}
+                      balance={availableBalanceInCents}
                       currencyId={wallet.currencyId}
                       className="font-semibold"
                     />
@@ -990,14 +1048,18 @@ export function WithdrawalModal({
                       {t('withdraw.operation')}
                     </span>
                     <span className="text-sm text-text-primary">
-                      {t('withdraw.withdrawFromWallet')}
+                      {isWalletMode
+                        ? t('withdraw.withdrawFromWallet')
+                        : t('withdraw.withdrawFromCurrentWallet')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-text-secondary">
-                      {t('withdraw.amount')}
+                    <span className="text-sm text-text-primary">
+                      {t('withdraw.amount')}({getCurrencyName(wallet.currencyId)})
                     </span>
-                    <span className="text-sm font-semibold text-primary">{amount}</span>
+                    <span className="text-sm font-semibold text-text-primary">
+                    <BalanceShow balance={parseFloat(amount || '0') * 100} currencyId={wallet.currencyId} />
+                      </span>
                   </div>
                   {selectedPaymentInfo && (
                     <>
@@ -1066,7 +1128,7 @@ export function WithdrawalModal({
                 </div>
 
                 {/* Warning note */}
-                <div className="flex gap-3 text-sm text-error">
+                <div className="flex gap-3 text-sm error-text">
                   <span className="shrink-0">*</span>
                   <div>
                     <strong>{t('withdraw.pleaseNote')}: </strong>
@@ -1144,7 +1206,7 @@ export function WithdrawalModal({
               <div />
               <div className="flex gap-2 md:gap-5">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleClose}
                   className="w-auto min-w-20 md:w-[120px]"
                 >
@@ -1165,7 +1227,7 @@ export function WithdrawalModal({
             <>
               <div />
               <Button
-                variant="secondary"
+                variant="outline"
                 onClick={handleClose}
                 className="w-auto min-w-20 md:w-[120px]"
               >
@@ -1184,7 +1246,7 @@ export function WithdrawalModal({
               </Button>
               <div className="flex gap-2 md:gap-5">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={handleClose}
                   disabled={isLoading}
                   className="w-auto min-w-20 md:w-[120px]"

@@ -20,7 +20,7 @@ import type {
 import {
   showWebTrader,
   getWebTraderLink,
-  CurrencyTypes,
+  getCurrencyFlag,
   AccountTypes,
 } from '@/types/accounts';
 import { useTheme } from '@/hooks/useTheme';
@@ -60,16 +60,6 @@ const SettingsIcon = () => {
   </Button>
 )};
 
-// 获取货币图标
-const getCurrencyFlag = (currencyId: number): string => {
-  const flagMap: Record<number, string> = {
-    [CurrencyTypes.AUD]: '/images/flags/au.svg',
-    [CurrencyTypes.CNY]: '/images/flags/cn.svg',
-    [CurrencyTypes.USD]: '/images/flags/us.svg',
-    [CurrencyTypes.USC]: '/images/flags/us.svg',
-  };
-  return flagMap[currencyId] || '/images/flags/us.svg';
-};
 
 export function TradeAccountCard({
   item,

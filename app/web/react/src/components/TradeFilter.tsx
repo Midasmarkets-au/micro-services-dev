@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { useServerAction } from '@/hooks/useServerAction';
+import { getAllSymbols } from '@/actions';
 import { useUserStore } from '@/stores';
 import { ServiceTypes } from '@/types/accounts';
 import {
@@ -22,6 +24,9 @@ const SERVICE_OPTIONS = [
   { label: 'MT5', value: String(ServiceTypes.MetaTrader5) },
   { label: 'MT4', value: String(ServiceTypes.MetaTrader4) },
 ];
+
+let symbolCodesCache: string[] | null = null;
+let symbolCodesRequest: Promise<string[]> | null = null;
 
 // ====================================================================
 // 状态映射 — 完全对应 Vue StateInfos.ts 中的 simpleXxxToArray
@@ -224,21 +229,75 @@ export function TradeFilter({
     [serviceOptions],
   );
 
-  const [status, setStatus] = useState<string>(defaultStatusValue);
+  const [status, setStatus] = useState<string | undefined>(undefined);
   const [isClosed, setIsClosed] = useState(false);
   const [serviceId, setServiceId] = useState<string>(defaultServiceValue);
   const [symbol, setSymbol] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultDateRange);
 
-  const isInitialMount = useRef(true);
+  const { execute } = useServerAction({ showErrorToast: false });
+  const executeRef = useRef(execute);
+  executeRef.current = execute;
+  const [symbolCodes, setSymbolCodes] = useState<string[]>([]);
+  const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
+  const symbolDropdownRef = useRef<HTMLDivElement>(null);
+  const hasProductField = filterOptions.includes('product');
+
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    setStatus(defaultStatusValue);
-  }, [defaultStatusValue]);
+    if (!hasProductField) return;
+    let cancelled = false;
+    (async () => {
+      if (symbolCodesCache) {
+        if (!cancelled) setSymbolCodes(symbolCodesCache);
+        return;
+      }
+
+      if (!symbolCodesRequest) {
+        symbolCodesRequest = (async () => {
+          const result = await executeRef.current(getAllSymbols);
+          if (!result.success || !Array.isArray(result.data)) return [];
+          const codes = result.data
+            .map((s) => s.code)
+            .filter((code) => code && code !== 'UNKNOWN');
+          symbolCodesCache = codes;
+          return codes;
+        })().finally(() => {
+          symbolCodesRequest = null;
+        });
+      }
+
+      const codes = await symbolCodesRequest;
+      if (!cancelled) {
+        setSymbolCodes(codes);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [hasProductField]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (symbolDropdownRef.current && !symbolDropdownRef.current.contains(e.target as Node)) {
+        setShowSymbolDropdown(false);
+      }
+    };
+    if (showSymbolDropdown) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSymbolDropdown]);
+
+  const filteredSymbols = useMemo(() => {
+    if (!symbol.trim()) return symbolCodes;
+    const q = symbol.trim().toLowerCase();
+    return symbolCodes.filter((code) => code.toLowerCase().startsWith(q));
+  }, [symbol, symbolCodes]);
+
+  const resolvedStatus = useMemo(() => {
+    if (!status) return defaultStatusValue;
+    if (!statusOptions?.length) return status;
+    return statusOptions.some((opt) => opt.value === status)
+      ? status
+      : defaultStatusValue;
+  }, [status, statusOptions, defaultStatusValue]);
 
   const resolveStateIds = useCallback(
     (statusValue: string): number[] | undefined => {
@@ -256,7 +315,7 @@ export function TradeFilter({
       const params: Record<string, unknown> = {};
 
       if (!overrides?.clearStatus) {
-        const stateIds = resolveStateIds(status);
+        const stateIds = resolveStateIds(resolvedStatus);
         if (stateIds) params.StateIds = stateIds;
       }
 
@@ -290,7 +349,7 @@ export function TradeFilter({
 
       return clearSumUpFields(params);
     },
-    [status, isClosed, serviceId, symbol, accountNumber, dateRange, resolveStateIds, visibleFields],
+    [resolvedStatus, isClosed, serviceId, symbol, accountNumber, dateRange, resolveStateIds, visibleFields],
   );
 
   // ---- Actions ----
@@ -306,7 +365,7 @@ export function TradeFilter({
   };
 
   const handleReset = () => {
-    setStatus(defaultStatusValue);
+    setStatus(undefined);
     setIsClosed(false);
     setServiceId(defaultServiceValue);
     setSymbol('');
@@ -334,7 +393,7 @@ export function TradeFilter({
 
     const params: Record<string, unknown> = {};
 
-    const stateIds = resolveStateIds(status);
+    const stateIds = resolveStateIds(resolvedStatus);
     if (stateIds) params.StateIds = stateIds;
 
     if (visibleFields.has('isClosed')) params.isClosed = true;
@@ -359,7 +418,7 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {statusLabel || t('fields.status')}
           </span>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={resolvedStatus} onValueChange={setStatus}>
             <SelectTrigger triggerSize="sm" className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
@@ -408,13 +467,41 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {t('trade.product')}
           </span>
-          <Input
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            inputSize="sm"
-            className="w-[160px]"
-          />
+          <div className="relative" ref={symbolDropdownRef}>
+            <Input
+              value={symbol}
+              onChange={(e) => {
+                setSymbol(e.target.value);
+                setShowSymbolDropdown(true);
+              }}
+              onFocus={() => setShowSymbolDropdown(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setShowSymbolDropdown(false);
+                  handleSearch();
+                }
+              }}
+              inputSize="sm"
+              className="w-[160px]"
+            />
+            {showSymbolDropdown && filteredSymbols.length > 0 && (
+              <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-[200px] overflow-y-auto rounded border border-border bg-surface shadow-lg">
+                {filteredSymbols.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => {
+                      setSymbol(code);
+                      setShowSymbolDropdown(false);
+                    }}
+                    className="w-full cursor-pointer px-3 py-1.5 text-left text-sm text-text-primary hover:bg-surface-secondary"
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -484,8 +571,8 @@ export function TradeFilter({
   return (
     <div>
       {/* Desktop */}
-      <div className="hidden md:flex md:flex-wrap md:items-center md:justify-between md:gap-x-8 md:gap-y-3">
-        <div className="flex shrink-0 flex-wrap items-center gap-5 lg:gap-8">
+      <div className="hidden md:flex md:items-center">
+        <div className="flex w-full flex-wrap items-center gap-2 lg:gap-3">
           {filterControls}
         </div>
       </div>

@@ -165,11 +165,11 @@ export default function IBWithdrawalPage() {
               if (!src) return item.accountNumber ? `No.${item.accountNumber}` : '-';
               return (
                 <div className="flex flex-col items-center">
-                  <span className="text-xs">
+                  <span className=" text-text-primary font-semibold">
                     No.{src.displayNumber} ({CurrencyCodeMap[src.currencyId ?? 0] || '-'})
                   </span>
-                  <span className="text-xs text-text-primary font-semibold">
-                    Group: {src.agentGroupName || '***'}
+                  <span className="text-xs">
+                    {t('customerDetail.columns.group')}: {src.agentGroupName || '***'}
                   </span>
                 </div>
               );
@@ -260,7 +260,6 @@ export default function IBWithdrawalPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       {/* Pagination */}

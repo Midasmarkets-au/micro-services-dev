@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
@@ -98,6 +99,13 @@ export function RebateRuleEditModal({
   >({});
 
   const mountedRef = useRef(false);
+  const productCategoryNameMap = useMemo(() => {
+    try {
+      return t.raw('type.productCategory') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }, [t]);
 
   // =============================================
   // Sales 模式初始化 (对应 SalesEditTopAgentForm.vue)
@@ -112,7 +120,10 @@ export function RebateRuleEditModal({
         execute(getSalesIBRebateRuleDetail, salesAccount.uid, context.editUid),
         execute(getSalesDefaultLevelSetting, salesAccount.uid),
       ]);
-
+    console.log('catResult', catResult);
+    console.log('availableResult', availableResult);
+    console.log('editRuleResult', editRuleResult);
+    console.log('defaultResult', defaultResult);
     const categories =
       catResult.success && catResult.data
         ? (catResult.data as any[]).map((c: any) => ({
@@ -207,7 +218,7 @@ export function RebateRuleEditModal({
 
       schema[accountType] = acct;
     }
-
+    console.log('schema', schema);
     setFilledAccountSchema(schema);
   }, [salesAccount, context, execute]);
 
@@ -698,9 +709,15 @@ export function RebateRuleEditModal({
                 <hr className="my-3 border-border" />
                 <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
                   {(acct.items || []).map((item: any) => {
-                    const catName =
+                    const rawCatName =
                       productCategories.find((c) => c.key === item.cid)
                         ?.value ?? String(item.cid);
+                    const catName =
+                      productCategoryNameMap[rawCatName] ??
+                      productCategoryNameMap[
+                        rawCatName.replace(/\./g, '_')
+                      ] ??
+                      rawCatName;
                     return (
                       <div key={item.cid} className="mb-1">
                         <div className="text-xs text-text-secondary">
@@ -1210,16 +1227,18 @@ export function RebateRuleEditModal({
             </div>
           </div>
         )}
-        <div className="flex justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-auto min-w-20 md:w-[120px]"
-            onClick={() => onOpenChange(false)}
-          >
-            {t('action.close')}
-          </Button>
-        </div>
+        <DialogFooter>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-auto min-w-20 md:w-[120px]"
+              onClick={() => onOpenChange(false)}
+            >
+              {t('action.close')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

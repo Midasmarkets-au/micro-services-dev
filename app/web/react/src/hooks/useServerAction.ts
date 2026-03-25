@@ -48,22 +48,41 @@ export function useServerAction(options: UseServerActionOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const unauthorizedRedirectingRef = useRef(false);
 
+  const normalizeErrorPayload = useCallback(
+    (payload?: { errorCode?: string; error?: string; statusCode?: number } | null) => {
+      if (!payload) return payload;
+      if (payload.statusCode) return payload;
+
+      const code = payload.errorCode?.toLowerCase();
+      if (code === 'unauthorized' || code === '__unauthorized__') {
+        return { ...payload, statusCode: 401 };
+      }
+      if (code === 'forbidden' || code === '__forbidden__') {
+        return { ...payload, statusCode: 403 };
+      }
+      return payload;
+    },
+    []
+  );
+
   /**
    * 统一判断是否为 401 / Unauthorized
    */
   const isUnauthorizedError = useCallback(
     (payload?: { errorCode?: string; error?: string; statusCode?: number } | null): boolean => {
       if (!payload) return false;
-      if (payload.statusCode === 401) return true;
+      if (payload.statusCode === 401 || payload.statusCode === 403) return true;
 
       const errorCode = payload.errorCode?.toLowerCase();
-      if (errorCode === 'unauthorized' || errorCode === '__unauthorized__') {
+      if (
+        errorCode === 'unauthorized' ||
+        errorCode === '__unauthorized__' ||
+        errorCode === 'forbidden' ||
+        errorCode === '__forbidden__'
+      ) {
         return true;
       }
-
-      const errorText = payload.error?.toLowerCase();
-      if (!errorText) return false;
-      return errorText.includes('unauthorized') || errorText.includes('401');
+      return false;
     },
     []
   );
@@ -110,19 +129,24 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           if (unauthorizedRedirectingRef.current) {
             return result;
           }
-
-          const errorCode = result.errorCode;
-          const rawError = result.error || result.message || 'Request failed';
-          
-          // 401 / Unauthorized：静默跳转登录，不弹错误 Toast
-          if (isUnauthorizedError({ errorCode, error: rawError, statusCode: result.statusCode })) {
+          const errorPayload = normalizeErrorPayload({
+            errorCode: result.errorCode,
+            error: result.error || result.message || 'Request failed',
+            statusCode: result.statusCode,
+          });
+          const errorCode = errorPayload?.errorCode;
+          const rawError = errorPayload?.error || 'Request failed';
+          // 401/403：静默跳转登录，不弹错误 Toast
+          if (isUnauthorizedError(errorPayload)) {
             unauthorizedRedirectingRef.current = true;
-            router.replace('/sign-in');
+            router.replace('/sign-in?expired=true');
+            const unauthorizedStatus = errorPayload?.statusCode === 403 ? 403 : 401;
+            const unauthorizedCode = unauthorizedStatus === 403 ? 'Forbidden' : 'Unauthorized';
             return {
               success: false,
-              error: 'Unauthorized',
-              errorCode: 'Unauthorized',
-              statusCode: 401,
+              error: unauthorizedCode,
+              errorCode: unauthorizedCode,
+              statusCode: unauthorizedStatus,
             };
           }
           
@@ -150,6 +174,8 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         onSuccess?.(result.data as T);
         return result;
       } catch (error) {
+
+        console.log('error---catch', error);
         if (unauthorizedRedirectingRef.current) {
           return {
             success: false,
@@ -161,19 +187,24 @@ export function useServerAction(options: UseServerActionOptions = {}) {
 
         const errorMessage = error instanceof Error ? error.message : 'Network error';
         const unknownError = error as { statusCode?: number; errorCode?: string; message?: string } | null;
-        const statusCode = unknownError?.statusCode;
-        const errorCode = unknownError?.errorCode;
-
-        // 异常场景下也拦截 401：不弹框，直接跳转登录
-        if (isUnauthorizedError({ errorCode, error: errorMessage, statusCode })) {
+        const errorPayload = normalizeErrorPayload({
+          errorCode: unknownError?.errorCode,
+          error: errorMessage,
+          statusCode: unknownError?.statusCode,
+        });
+        const statusCode = errorPayload?.statusCode;
+        const errorCode = errorPayload?.errorCode;
+        // 异常场景下也拦截 401/403：不弹框，直接跳转登录
+        if (isUnauthorizedError(errorPayload)) {
           unauthorizedRedirectingRef.current = true;
-          //router.replace('/sign-in');
-          router.push('/sign-in');
+          router.push('/sign-in?expired=true');
+          const unauthorizedStatus = statusCode === 403 ? 403 : 401;
+          const unauthorizedCode = unauthorizedStatus === 403 ? 'Forbidden' : 'Unauthorized';
           return {
             success: false,
-            error: 'Unauthorized',
-            errorCode: 'Unauthorized',
-            statusCode: 401,
+            error: unauthorizedCode,
+            errorCode: unauthorizedCode,
+            statusCode: unauthorizedStatus,
           };
         }
 
@@ -193,7 +224,7 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         setIsLoading(false);
       }
     },
-    [showErrorToast, showError, translateError, onSuccess, onError, router, isUnauthorizedError]
+    [showErrorToast, showError, translateError, onSuccess, onError, router, isUnauthorizedError, normalizeErrorPayload]
   );
 
   /**

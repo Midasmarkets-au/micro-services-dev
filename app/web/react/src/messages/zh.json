@@ -204,7 +204,7 @@
       "997": "USN",
       "999": "PTS",
       "undefined": "Undefined"
-    }
+    } 
   },
   "errors": {
     "noPermission": {
@@ -290,7 +290,13 @@
     "pleaseLoginWith2FA": "请使用双因素认证登录",
     "pleaseSelectTenant": "请选择租户以继续",
     "twoFactorAuthentication": "双因素认证",
+    "twoFactorAuthenticationSetupReminder": "双因素认证(2FA) 设置提醒",
     "pleaseEnterTwoFactorCode": "请检查您的邮箱以获取双因素验证码来验证您的身份。",
+    "twoFaDesc": "为了提高您的账户安全性，我们强烈建议设置双重身份验证（2FA）。2FA 通过在密码之外要求第二种形式的验证增加了一层额外的保护。",
+    "enableTwoFa": "启用双重认证：通过激活双重认证来保护您的账户，确保即使密码被泄露，只有您可以访问您的账户。",
+    "disableTwoFa": "如果您不想使用两步验证，您可以禁用此功能，但请记住，您的帐户可能会更容易受到未经授权的访问。",
+    "enable": "启用",
+    "disable": "禁用",
     "resetPasswordTitle": "重置密码",
     "backToLogin": "返回登录",
     "send": "发送",
@@ -416,11 +422,13 @@
     },
     "accountApplication": "账户申请",
     "accountInfo": "账户信息",
-    "personalInfo": "",
+    "personalInfo": "个人信息",
     "financialInfo": "财务信息",
     "agreement": "协议",
     "documents": "文件",
     "mainSteps": {
+      "accountInfo": "账户信息",
+      "gettingStarted": "开始",
       "personalInfo": "个人信息",
       "financialInfo": "财务信息",
       "agreement": "协议",
@@ -431,6 +439,21 @@
       "personalInfo": "个人信息",
       "identityDocument": "身份证件",
       "socialMedia": "社交媒体"
+    },
+    "started": {
+      "quizTitle": "适当性问答",
+      "quizDescription": "请根据实际情况完成以下问题，如不满足条件可能无法继续开户流程。",
+      "cantProcess": "很抱歉，您的条件暂时不符合开户要求，请联系客服。",
+      "answers": {
+        "yes": "是",
+        "no": "否"
+      },
+      "questions": {
+        "q1": "您是否具备完整民事行为能力？",
+        "q2": "您是否了解差价合约等杠杆产品的风险？",
+        "q3": "您是否有稳定资金来源并可承担潜在损失？",
+        "q4": "您是否确认提供的信息真实、完整且有效？"
+      }
     },
     "fields": {
       "currency": "货币",
@@ -503,7 +526,8 @@
         "HedgingPolicy": "MDM 对冲政策",
         "PrivacyPolicy": "MDM 隐私政策",
         "RiskWarningNotice": "MDM 风险警告通知",
-        "TermsAndConditions": "MDM 条款和条件"
+        "TermsAndConditions": "MDM 条款和条件",
+        "referralPartyAgreement": "MDM 推荐方协议"
       },
       "electronicIdTitle": "电子身份证件",
       "electronicIdDescription": "验证身份文案验证身份文案验证身份文案验证身份文案验证身份文案验证身份文案，验证身份文案验证身份文案验证身份文案。",
@@ -607,6 +631,7 @@
   "errorCodes": {
     "Unauthorized": "未授权，请先登录",
     "__USER_IS_LOCKED_OUT__": "用户已被锁定",
+    "invalid_username_or_password": "用户名或密码无效",
     "invalid_grant": "用户名或密码无效",
     "Invalid code": "验证码无效",
     "__EMAIL_UNCONFIRMED__": "邮箱未确认",
@@ -645,7 +670,8 @@
     "__ALREADY_PARTICIPATED__": "您已参与该活动",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能转账给自己",
     "CODE_NOT_FOUND": "验证码不存在或已失效",
-    "CODE_ALREADY_SENT": "验证码已发送，请检查您的邮箱"
+    "CODE_ALREADY_SENT": "验证码已发送，请检查您的邮箱",
+    "electronicIdentityVerificationRequired": "电子身份验证为必选项，请选择同意后继续。"
   },
   "platforms": {
     "title": "交易平台",
@@ -945,7 +971,9 @@
       "next": "下一页",
       "prev": "上一步",
       "details": "详情",
-      "uploadReceipt": "上传收据"
+      "uploadReceipt": "上传收据",
+      "reset": "重置",
+      "search": "搜索"
     },
     "fields": {
       "equity": "净值",
@@ -1024,7 +1052,8 @@
       "110": "代表",
       "200": "Top IB",
       "300": "IB",
-      "400": "Client"
+      "400": "Client",
+      "1000": "Guest"
     },
     "noData": "暂无账户数据",
     "detail": {
@@ -1053,7 +1082,24 @@
         "search": "搜索",
         "allHistory": "全部历史",
         "noRecords": "暂无交易记录",
-        "showingResults": "显示{count}条结果"
+        "showingResults": "显示{count}条结果",
+        "accountNumber": "账号",
+        "ticket": "订单号",
+        "symbol": "品种",
+        "volume": "交易量",
+        "openTime": "开盘时间",
+        "openPrice": "开仓价",
+        "sl": "止损/止盈",
+        "tp": "止盈",
+        "closeTime": "收盘时间",
+        "closePrice": "平仓价",
+        "commission": "佣金",
+        "swap": "隔夜利息",
+        "pl": "盈亏",
+        "buy": "买入",
+        "sell": "卖出",
+        "subTotal": "小计",
+        "total": "总计"
       }
     },
     "tip": {
@@ -1095,6 +1141,14 @@
       "all": "全部",
       "pending": "待处理",
       "completed": "已完成"
+    },
+    "trade": {
+      "openOrder": "未关闭订单",
+      "closedOrder": "已关闭订单",
+      "service": "服务",
+      "product": "产品",
+      "account": "账号",
+      "allHistory": "全部历史"
     }
   },
   "deposit": {
@@ -1149,7 +1203,7 @@
     },
     "error": {
       "amountRequired": "请输入金额",
-      "amountRange": "请输入入金额${min}~${max}",
+      "amountRange": "请输入入金额",
       "selectChannel": "请选择支付方式"
     },
     "requestKeys": {
@@ -1255,7 +1309,7 @@
       "noMethods": "暂无可用的出金方式",
       "enterAmount": "请输入出金金额",
       "insufficientBalance": "余额不足",
-      "amountOutOfRange": "金额超出允许范围",
+      "amountOutOfRange": "金额不在允许范围内，请输入",
       "selectPaymentInfo": "请选择收款账户",
       "confirmRequired": "请确认后继续",
       "noPaymentInfo": "暂无收款账户",
@@ -1355,7 +1409,7 @@
       "successTitle": "转账成功",
       "successDesc": "您的转账已完成。",
       "betweenAccounts": {
-        "title": "账户间转账",
+        "title": "转账",
         "maxTransferOut": "最大可转出金额",
         "targetAccount": "目标账户",
         "selectTargetAccount": "选择目标账户",
@@ -1598,7 +1652,7 @@
       "viewDetails": "查看详情",
       "viewAccounts": "查看账户",
       "viewRebateStatistics": "查看返佣统计",
-      "editSchema": "编辑方案",
+      "editSchema": "编辑架构",
       "clear": "清除",
       "copy": "复制",
       "create": "创建",
@@ -1608,6 +1662,7 @@
       "createClientLink": "创建客户链接",
       "generateReport": "生成报告",
       "download": "下载",
+      "close": "关闭",
       "sortNewest": "最新的优先",
       "sortOldest": "最早的优先"
     },
@@ -1651,13 +1706,13 @@
       "title": "新客户",
       "all": "全部",
       "hasDeposit": "已完成入金",
-      "noDeposit": "未完成入金",
+      "noDeposit": "已创建入金",
       "customer": "客户",
       "email": "电子邮件",
       "createdTime": "创建时间",
       "status": "状态",
       "statusDeposited": "已完成入金",
-      "statusNotDeposited": "未完成入金"
+      "statusNotDeposited": "已创建入金"
     },
     "customers": {
       "title": "客户",
@@ -1691,7 +1746,7 @@
         "currency": "货币",
         "amount": "金额",
         "time": "时间",
-        "account": "入金",
+        "account": "账户",
         "group": "群组",
         "ticket": "单号",
         "symbol": "品种",
@@ -1747,7 +1802,7 @@
       "status": "状态",
       "createdOn": "创建时间",
       "completedDeposit": "已完成入金",
-      "incompleteDeposit": "未完成入金",
+      "incompleteDeposit": "已创建入金",
       "client": "客户",
       "ib": "代理"
     },
@@ -1806,6 +1861,7 @@
       "rebateSettings": "返佣设置",
       "clickCopy": "点击复制",
       "view": "查看",
+      "viewRebate": "查看返佣",
       "copyLink": "复制链接",
       "copied": "已复制",
       "editName": "编辑名称",
@@ -1858,7 +1914,7 @@
       "personalRebate": "个人返佣",
       "remainRebate": "剩余返佣",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "addRatePercentage": "附加比例 %",
       "choosePipCommission": "选择点差/佣金",
       "choosePipCommissionValue": "选择数值",
@@ -1872,6 +1928,33 @@
       "searchKeyWords": "搜索关键词...",
       "copied": "已复制到剪贴板"
     },
+    "type": {
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "比特币",
+        "Commodities": "现货指数",
+        "Crypto": "加密货币",
+        "D Forex": "直盘",
+        "ETH": "以太坊",
+        "Energy": "能源期货",
+        "Forex": "交叉盘",
+        "Fu_Energy": "能源期货",
+        "GAUCNH": "黄金人民币",
+        "Gold": "黄金",
+        "HKG50": "恒生指数",
+        "Index": "现货指数",
+        "JPN225": "日经JPN225",
+        "Natural Gas": "天然气",
+        "OIL": "原油/布伦特原油",
+        "Precious Metal": "贵金属",
+        "Shares": "股票",
+        "Silver 1000OZ": "白银1000OZ",
+        "Silver 5000OZ": "白银5000OZ",
+        "US100": "纳斯达克US100",
+        "US30": "道琼斯US30",
+        "US500": "标普US500"
+      }
+    },
     "rebateEdit": {
       "title": "IB 链接详情",
       "category": "产品类别",
@@ -1879,7 +1962,7 @@
       "personalRebate": "个人返佣",
       "remainRebate": "剩余返佣",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "addRatePercentage": "附加比例 %",
       "updateRebateRule": "更新返佣规则",
       "existRule": "已有规则",
@@ -1900,7 +1983,7 @@
       "deposit": "入金",
       "withdrawal": "出金",
       "lead": "线索",
-      "link": "链接",
+      "link": "销售链接",
       "statistics": "统计",
       "rebate": "返佣"
     },
@@ -1936,7 +2019,7 @@
       "openPrice": "开仓价",
       "closePrice": "平仓价",
       "profit": "利润",
-      "commission": "手续费",
+      "commission": "佣金",
       "swap": "过夜费",
       "paymentMethod": "支付方式",
       "email": "邮箱",
@@ -1961,7 +2044,7 @@
       "viewDetails": "查看详情",
       "viewAccounts": "查看账户",
       "viewRebateStatistics": "查看交易统计",
-      "editSchema": "编辑方案",
+      "editSchema": "编辑架构",
       "clear": "清除",
       "copy": "复制",
       "create": "创建",
@@ -2029,21 +2112,68 @@
       "title": "新客户",
       "all": "全部",
       "hasDeposit": "已完成入金",
-      "noDeposit": "未完成入金",
+      "noDeposit": "已创建入金",
       "customer": "客户",
       "email": "电子邮件",
       "createdTime": "创建时间",
       "status": "状态",
       "statusDeposited": "已完成入金",
-      "statusNotDeposited": "未完成入金"
+      "statusNotDeposited": "已创建入金"
     },
     "customers": {
       "title": "客户",
-      "ibType": "IB",
+      "all": "全部",
+      "ibType": "代理",
       "clientType": "客户",
-      "salesType": "Sales",
+      "salesType": "销售",
       "noTradeAccount": "无交易账户",
       "searchPlaceholder": "搜索姓名、邮箱、账号..."
+    },
+    "customerDetail": {
+      "backToList": "返回客户列表",
+      "balance": "余额",
+      "equity": "净值",
+      "credit": "信用",
+      "role": "角色",
+      "account": "账户",
+      "roleClient": "客户",
+      "roleIB": "IB",
+      "roleSales": "销售",
+      "showResults": "显示<num>{count}</num>条结果",
+      "noData": "暂无数据",
+      "tabs": {
+        "transaction": "转账",
+        "deposit": "入金",
+        "withdrawal": "出金",
+        "tradeReport": "交易报告"
+      },
+      "columns": {
+        "transaction": "转账",
+        "deposit": "入金",
+        "withdrawal": "出金",
+        "status": "状态",
+        "currency": "币种",
+        "amount": "金额",
+        "time": "时间",
+        "account": "账户",
+        "group": "群组",
+        "exchangeRate": "汇率",
+        "ticket": "单号",
+        "symbol": "品种",
+        "type": "类型",
+        "volume": "手数",
+        "openTime": "开仓时间",
+        "openPrice": "开仓价",
+        "sl": "止损",
+        "tp": "止盈",
+        "closeTime": "平仓时间",
+        "closePrice": "平仓价",
+        "commission": "佣金",
+        "swap": "隔夜费",
+        "profit": "盈亏",
+        "subTotal": "小计",
+        "total": "合计"
+      }
     },
     "rebateEdit": {
       "title": "返佣方案编辑",
@@ -2052,13 +2182,13 @@
       "personalRebate": "个人返佣",
       "remainRebate": "剩余返佣",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "addRate": "附加费率",
       "percentage": "百分比",
       "addRatePercentage": "附加比例 %",
       "options": "选项",
       "none": "无",
-      "availablePips": "可用加点",
+      "availablePips": "点数",
       "availableCommission": "可用加佣 ($)",
       "setPercentageTooltip": "设置百分比自动填充返佣值",
       "updateRebateRule": "更新返佣规则",
@@ -2092,7 +2222,7 @@
       "name": "名称",
       "accountType": "账户类型",
       "pips": "点差",
-      "commission": "手续费",
+      "commission": "佣金",
       "percentage": "分成比例",
       "noData": "暂无数据",
       "loading": "加载中...",
@@ -2134,31 +2264,6 @@
         "310": "Wholesale",
         "400": "Client",
         "1000": "Guest"
-      },
-      "shortAccount": {
-        "0": "Unknown",
-        "1": "Idv",
-        "2": "Jont",
-        "3": "Corp",
-        "4": "Std",
-        "5": "Pro",
-        "6": "Raw",
-        "7": "Swap Free Standard",
-        "8": "Swap Free Pro",
-        "9": "Swap Free Raw",
-        "10": "Wholesale",
-        "11": "Adv",
-        "12": "Aff",
-        "13": "SEA",
-        "14": "Raw Plus",
-        "15": "JpSTDCFD",
-        "16": "JpSTDIND",
-        "17": "JpSTDFX",
-        "18": "JpALPCFD",
-        "19": "JpALPIND",
-        "20": "JpALPFX",
-        "21": "SEA Pro",
-        "22": "精英"
       },
       "accountRole": {
         "0": "未知",
@@ -2206,6 +2311,31 @@
         "30": "30",
         "40": "40",
         "50": "50"
+      },
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "比特币",
+        "Commodities": "现货指数",
+        "Crypto": "加密货币",
+        "D Forex": "直盘",
+        "ETH": "以太坊",
+        "Energy": "能源期货",
+        "Forex": "交叉盘",
+        "Fu_Energy": "能源期货",
+        "GAUCNH": "黄金人民币",
+        "Gold": "黄金",
+        "HKG50": "恒生指数",
+        "Index": "现货指数",
+        "JPN225": "日经JPN225",
+        "Natural Gas": "天然气",
+        "OIL": "原油/布伦特原油",
+        "Precious Metal": "贵金属",
+        "Shares": "股票",
+        "Silver 1000OZ": "白银1000OZ",
+        "Silver 5000OZ": "白银5000OZ",
+        "US100": "纳斯达克US100",
+        "US30": "道琼斯US30",
+        "US500": "标普US500"
       }
     },
     "ibLinks": {
@@ -2232,6 +2362,7 @@
       "client": "客户",
       "autoCreateAccount": "自动开户",
       "default": "默认",
+      "notDefault": "非默认",
       "yes": "是",
       "no": "否",
       "actions": "操作"
@@ -2306,6 +2437,7 @@
       "copyLink": "复制链接",
       "copied": "已复制",
       "view": "查看",
+      "viewRebate": "查看返佣",
       "close": "关闭",
       "update": "更新",
       "editLink": "编辑链接",
@@ -2404,7 +2536,7 @@
       "status": "状态",
       "createdOn": "创建时间",
       "completedDeposit": "已完成入金",
-      "incompleteDeposit": "未完成入金",
+      "incompleteDeposit": "已创建入金",
       "client": "客户",
       "ib": "代理"
     },
@@ -2425,6 +2557,19 @@
       "incompleteWithdrawal": "未完成出金",
       "client": "客户",
       "ib": "代理"
+    }
+  },
+  "type": {
+    "cmd": {
+      "0": "买入",
+      "1": "卖出",
+      "2": "限价买入",
+      "3": "限价卖出",
+      "4": "止损买入",
+      "5": "止损卖出",
+      "6": "余额",
+      "7": "信用",
+      "undefined": "未定义"
     }
   },
   "unlockEmail": {

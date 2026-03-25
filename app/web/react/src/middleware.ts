@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.next();
       response.cookies.delete('auth-token');
       response.cookies.delete('refresh-token');
+      response.cookies.delete('auth-mode');
       return response;
     }
     

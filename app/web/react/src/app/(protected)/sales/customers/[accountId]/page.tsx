@@ -1,218 +1,705 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect, useCallback, use, useMemo } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { Pagination, Tabs } from '@/components/ui';
-import type { TabItem } from '@/components/ui';
 import {
+  Avatar,
+  BalanceShow,
+  Skeleton,
+  Tabs,
+  Button,
+  Pagination,
+  Tag,
+  DataTable,
+  Icon,
+  DatePicker,
+} from '@/components/ui';
+import type { TabItem, DataTableColumn, DataTableGroupConfig, DateRange } from '@/components/ui';
+import type { TagVariant } from '@/components/ui';
+import {
+  getSalesClients,
   getSalesClientTrades,
   getSalesClientTransactions,
-  getSalesAccountDetail,
+  getSalesDeposits,
+  getSalesWithdrawals,
 } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { formatBalance } from '@/types/accounts';
-import { TradeFilter } from '@/components/TradeFilter';
+import {
+  AccountRoleTypes,
+  DepositState,
+  WithdrawalState,
+  TransferState,
+  CurrencyTypes,
+  getCurrencyCode,
+} from '@/types/accounts';
+import { useCurrencyName } from '@/i18n/useCurrencyName';
+import { TradeReportTable } from '@/components/TradeReportTable';
+import type {
+  SalesClientAccount,
+  SalesDepositRecord,
+  SalesWithdrawalRecord,
+  SalesTransactionRecord,
+} from '@/types/sales';
 
-type TabId = 'deposit' | 'withdrawal' | 'transaction' | 'trade';
+type DetailTab = 'transaction' | 'deposit' | 'withdrawal' | 'tradeReport';
 
-export default function SalesCustomerDetailPage() {
+// ====================================================================
+// 状态 → Tag variant 映射
+// ====================================================================
+
+const PENDING_STATES = new Set([
+  DepositState.DepositCreated, DepositState.DepositPaymentCompleted, DepositState.DepositTenantApproved,
+  WithdrawalState.WithdrawalCreated, WithdrawalState.WithdrawalTenantApproved,
+  TransferState.TransferCreated, TransferState.TransferAwaitingApproval, TransferState.TransferApproved,
+]);
+
+const COMPLETED_STATES = new Set([
+  DepositState.DepositCompleted, DepositState.DepositCallbackComplete,
+  WithdrawalState.WithdrawalCompleted, WithdrawalState.WithdrawalPaymentCompleted,
+  TransferState.TransferCompleted,
+]);
+
+const REJECTED_STATES = new Set([
+  DepositState.DepositTenantRejected, DepositState.DepositCanceled, DepositState.DepositFailed,
+  WithdrawalState.WithdrawalTenantRejected, WithdrawalState.WithdrawalCanceled, WithdrawalState.WithdrawalFailed,
+  TransferState.TransferRejected, TransferState.TransferCanceled, TransferState.TransferFailed,
+]);
+
+function getStateTagVariant(stateId: number): TagVariant {
+  if (COMPLETED_STATES.has(stateId)) return 'success';
+  if (REJECTED_STATES.has(stateId)) return 'danger';
+  if (PENDING_STATES.has(stateId)) return 'warning';
+  return 'info';
+}
+
+function formatDateTime(dateStr: string) {
+  if (!dateStr) return '--';
+  return new Date(dateStr).toLocaleString('sv-SE').replace('T', ' ');
+}
+
+function formatGroupKey(dateStr: string) {
+  const d = new Date(dateStr);
+  const monthYear = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+  return `${monthYear}||${weekday}`;
+}
+
+const DEFAULT_DEPOSIT_STATE_IDS = [
+  DepositState.DepositCompleted,
+  DepositState.DepositCallbackComplete,
+];
+
+const DEFAULT_WITHDRAWAL_STATE_IDS = [
+  WithdrawalState.WithdrawalCompleted,
+];
+
+const TRADE_ACCOUNT_TYPE = 2;
+const DEFAULT_TRANSACTION_STATE_IDS = [
+  TransferState.TransferCompleted,
+];
+
+function isDateInDST_US(): boolean {
+  const now = new Date();
+  const jan = new Date(now.getFullYear(), 0, 1);
+  const jul = new Date(now.getFullYear(), 6, 1);
+  const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+  return now.getTimezoneOffset() < stdOffset;
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function formatDateStr(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function convertTradeTime(from: string | null, to: string | null): [string | null, string | null] {
+  const isDST = isDateInDST_US();
+  const startHour = isDST ? 21 : 22;
+  const endHour = isDST ? 20 : 21;
+
+  let createdFrom: string | null = null;
+  if (from) {
+    const d = new Date(from);
+    d.setDate(d.getDate() - 1);
+    createdFrom = `${formatDateStr(d)}T${pad2(startHour)}:00:00.000Z`;
+  }
+
+  let createdTo: string | null = null;
+  if (to) {
+    const d = new Date(to);
+    createdTo = `${formatDateStr(d)}T${pad2(endHour)}:59:59.000Z`;
+  }
+
+  return [createdFrom, createdTo];
+}
+
+function getRoleLabel(
+  role: number,
+  td: (key: string) => string,
+): string {
+  if (role === AccountRoleTypes.IB) return td('roleIB');
+  if (role === AccountRoleTypes.Sales) return td('roleSales');
+  return td('roleClient');
+}
+
+export default function SalesCustomerDetailPage({
+  params,
+}: {
+  params: Promise<{ accountId: string }>;
+}) {
+  const { accountId } = use(params);
+  const accountUid = parseInt(accountId, 10);
+  const router = useRouter();
   const t = useTranslations('sales');
-  const { accountId } = useParams<{ accountId: string }>();
+  const td = useTranslations('sales.customerDetail');
+  const tState = useTranslations('accounts.transactionState');
+  const getCurrencyName = useCurrencyName();
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
 
-  const [activeTab, setActiveTab] = useState<TabId>('trade');
-  const [accountDetail, setAccountDetail] = useState<Record<string, unknown> | null>(null);
-  const [trades, setTrades] = useState<unknown[]>([]);
-  const [transactions, setTransactions] = useState<unknown[]>([]);
+  const [accountDetail, setAccountDetail] = useState<SalesClientAccount | null>(null);
+  const [tab, setTab] = useState<DetailTab>('transaction');
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const size = 15;
+  const pageSize = 15;
 
-  const uid = Number(accountId);
+  const [deposits, setDeposits] = useState<SalesDepositRecord[]>([]);
+  const [withdrawals, setWithdrawals] = useState<SalesWithdrawalRecord[]>([]);
+  const [transactions, setTransactions] = useState<SalesTransactionRecord[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
+  // ---- 加载账户详情（使用 queryAccounts 查询参数 uid=xxx） ----
   useEffect(() => {
-    if (!salesAccount) return;
-    execute(getSalesAccountDetail, salesAccount.uid, uid).then((res) => {
-      if (res.success) setAccountDetail(res.data as Record<string, unknown>);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [salesAccount, uid]);
-
-  const fetchTabData = useCallback(
-    async (tab: TabId, p: number, params?: Record<string, unknown>) => {
-      if (!salesAccount) return;
-      setIsLoading(true);
-      const queryParams = { page: p, size, ...params };
-
-      if (tab === 'trade') {
-        const result = await execute(getSalesClientTrades, salesAccount.uid, uid, queryParams);
-        if (result.success && result.data) {
-          setTrades(Array.isArray(result.data.data) ? result.data.data : []);
-          setTotal(result.data.criteria?.total || 0);
+    if (!salesAccount || !accountUid) return;
+    (async () => {
+      try {
+        const result = await execute(getSalesClients, salesAccount.uid, { uid: accountUid });
+        if (result.success && result.data?.data?.length) {
+          setAccountDetail(result.data.data[0]);
+        } else {
+          router.push('/sales/customers');
         }
-      } else if (tab === 'transaction') {
-        const result = await execute(getSalesClientTransactions, salesAccount.uid, uid, queryParams);
+      } catch {
+        router.push('/sales/customers');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salesAccount, accountUid]);
+
+  // ---- Tabs 动态生成 ----
+  const tabs: TabItem<DetailTab>[] = useMemo(() => {
+    const list: TabItem<DetailTab>[] = [
+      { key: 'deposit', label: td('tabs.deposit') },
+      { key: 'withdrawal', label: td('tabs.withdrawal') },
+      { key: 'transaction', label: td('tabs.transaction') }, 
+    ];
+    if (accountDetail?.tradeAccount?.accountNumber && accountDetail.tradeAccount.accountNumber !== 0) {
+      list.push({ key: 'tradeReport', label: td('tabs.tradeReport') });
+    }
+    return list;
+  }, [td, accountDetail]);
+
+  const buildDepositFilterParams = useCallback(() => {
+    const p: Record<string, unknown> = {
+      StateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    };
+
+    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
+    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
+
+    if (fromDateStr) {
+      const [from] = convertTradeTime(fromDateStr, null);
+      if (from) p.from = from;
+    }
+
+    if (toDateStr) {
+      const [, to] = convertTradeTime(fromDateStr, toDateStr);
+      if (to) p.to = to;
+    }
+
+    return p;
+  }, [dateRange]);
+
+  const buildTransactionFilterParams = useCallback(() => {
+    const p: Record<string, unknown> = {
+      sourceAccountType: TRADE_ACCOUNT_TYPE,
+      targetAccountType: TRADE_ACCOUNT_TYPE,
+      StateIds: DEFAULT_TRANSACTION_STATE_IDS,
+    };
+
+    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
+    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
+
+    if (fromDateStr) {
+      const [from] = convertTradeTime(fromDateStr, null);
+      if (from) p.from = from;
+    }
+
+    if (toDateStr) {
+      const [, to] = convertTradeTime(fromDateStr, toDateStr);
+      if (to) p.to = to;
+    }
+
+    return p;
+  }, [dateRange]);
+
+  const buildWithdrawalFilterParams = useCallback(() => {
+    const p: Record<string, unknown> = {
+      StateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+      isClosed: false,
+    };
+
+    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
+    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
+
+    if (fromDateStr) {
+      const [from] = convertTradeTime(fromDateStr, null);
+      if (from) p.from = from;
+    }
+
+    if (toDateStr) {
+      const [, to] = convertTradeTime(fromDateStr, toDateStr);
+      if (to) p.to = to;
+    }
+
+    return p;
+  }, [dateRange]);
+
+  // ---- 数据加载 ----
+  const loadData = useCallback(async (p: number) => {
+    if (!salesAccount || !accountUid || tab === 'tradeReport') return;
+    setIsLoading(true);
+    try {
+      if (tab === 'transaction') {
+        const transactionFilterParams = buildTransactionFilterParams();
+        const result = await execute(getSalesClientTransactions, salesAccount.uid, accountUid, {
+          page: p, size: pageSize, ...transactionFilterParams,
+        });
         if (result.success && result.data) {
-          const d = result.data as { data?: unknown[]; criteria?: { total?: number } };
+          const d = result.data as { data?: SalesTransactionRecord[]; criteria?: { total?: number } };
           setTransactions(Array.isArray(d.data) ? d.data : []);
           setTotal(d.criteria?.total || 0);
         }
+      } else if (tab === 'deposit') {
+        const depositFilterParams = buildDepositFilterParams();
+        const result = await execute(getSalesDeposits, salesAccount.uid, {
+          page: p, size: pageSize, accountUid, ...depositFilterParams,
+        });
+        if (result.success && result.data) {
+          setDeposits(Array.isArray(result.data.data) ? result.data.data : []);
+          setTotal(result.data.criteria?.total || 0);
+        }
+      } else if (tab === 'withdrawal') {
+        const withdrawalFilterParams = buildWithdrawalFilterParams();
+        const result = await execute(getSalesWithdrawals, salesAccount.uid, {
+          page: p, size: pageSize, accountUid, ...withdrawalFilterParams,
+        });
+        if (result.success && result.data) {
+          setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
+          setTotal(result.data.criteria?.total || 0);
+        }
       }
+    } finally {
       setIsLoading(false);
-    },
-    [salesAccount, uid, execute]
-  );
+    }
+  }, [salesAccount, accountUid, tab, execute, buildDepositFilterParams, buildTransactionFilterParams, buildWithdrawalFilterParams]);
 
   useEffect(() => {
-    fetchTabData(activeTab, 1);
-  }, [activeTab, fetchTabData]);
+    if (salesAccount) loadData(page);
+  }, [tab, page, loadData, salesAccount]);
 
-  const tabs: TabItem<TabId>[] = [
-    { key: 'trade', label: t('menu.trade') },
-    { key: 'transaction', label: t('menu.transaction') },
-  ];
+  const handleTabChange = (key: DetailTab) => { setTab(key); setPage(1); setTotal(0); };
+  const handleSearch = () => { setPage(1); loadData(1); };
+  const handleReset = () => { setDateRange(undefined); setPage(1); };
+  const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
+    if (!salesAccount || !accountUid) return null;
+    const result = await execute(getSalesClientTrades, salesAccount.uid, accountUid, params);
+    if (result.success && result.data) {
+      return { data: result.data.data, criteria: result.data.criteria };
+    }
+    return null;
+  }, [salesAccount, accountUid, execute]);
 
-  const user = accountDetail?.user as { displayName?: string; nativeName?: string; email?: string } | undefined;
-  const tradeAccount = accountDetail?.tradeAccount as { balanceInCents?: number; currencyId?: number; accountNumber?: number } | undefined;
+  // ---- 用户信息 ----
+  const user = accountDetail?.user;
+  const tradeAccount = accountDetail?.tradeAccount;
+  const userName = user?.nativeName || user?.displayName || '--';
+  const isIBOrSales = accountDetail?.role === AccountRoleTypes.IB || accountDetail?.role === AccountRoleTypes.Sales;
+  const isClient = accountDetail?.role === AccountRoleTypes.Client;
+  const currencyId = tradeAccount?.currencyId || CurrencyTypes.USD;
+
+  // ---- Grouped DataTable 配置 ----
+  const groupHeaderRender = useCallback((groupKey: string) => {
+    const [monthYear, weekday] = groupKey.split('||');
+    return (
+      <div className="flex flex-col">
+        <span className="text-lg font-bold text-text-primary">{monthYear}</span>
+        <span className="text-sm text-text-secondary">{weekday}</span>
+      </div>
+    );
+  }, []);
+
+  const dateGroupConfig = useMemo<DataTableGroupConfig<{ createdOn: string }>>(() => ({
+    groupBy: (item) => formatGroupKey(item.createdOn),
+    renderGroupHeader: groupHeaderRender,
+    headerWidth: 'w-[120px]',
+  }), [groupHeaderRender]);
+
+  // ---- Transaction 列定义 ----
+  const transactionColumns = useMemo<DataTableColumn<SalesTransactionRecord>[]>(() => [
+    {
+      key: 'account',
+      title: td('columns.transaction'),
+      skeletonWidth: 'w-48',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <div>
+              <span className="text-sm">No.{item.sourceAccount?.accountNumber || '--'}</span>
+              <span className="ml-1 text-xs text-text-secondary">{getCurrencyCode(item.sourceAccount?.currencyId ?? item.currencyId)}</span>
+            </div>
+            <span className="text-xs text-text-secondary">{td('columns.group')}: {item.sourceAccount?.group || '--'}</span>
+          </div>
+          <span className="text-xs font-bold text-[#004eff]">→</span>
+          <div className="flex flex-col">
+            <div>
+              <span className="text-sm">No.{item.targetAccount?.accountNumber || '--'}</span>
+              <span className="ml-1 text-xs text-text-secondary">{getCurrencyCode(item.targetAccount?.currencyId ?? item.currencyId)}</span>
+            </div>
+            <span className="text-xs text-text-secondary">{td('columns.group')}: {item.targetAccount?.group || '--'}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: td('columns.status'),
+      align: 'center',
+      skeletonWidth: 'w-16',
+      render: (item) => <Tag variant={getStateTagVariant(item.stateId)} soft>{tState(String(item.stateId))}</Tag>,
+    },
+    {
+      key: 'currency',
+      title: td('columns.currency'),
+      align: 'center',
+      skeletonWidth: 'w-12',
+      render: (item) => <span className="text-sm">{getCurrencyName(item.currencyId)}</span>,
+    },
+    {
+      key: 'amount',
+      title: td('columns.amount'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <BalanceShow balance={item.amount} currencyId={item.currencyId} className="text-sm" />,
+    },
+    {
+      key: 'time',
+      title: td('columns.time'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+    },
+  ], [td, tState, getCurrencyName]);
+
+  // ---- Deposit 列定义 ----
+  const depositColumns = useMemo<DataTableColumn<SalesDepositRecord>[]>(() => [
+    {
+      key: 'deposit',
+      title: td('columns.deposit'),
+      skeletonWidth: 'w-28',
+      render: (item) => (
+        <div className="flex flex-col">
+          <span className="flex items-center gap-1 text-sm">
+            <span className="text-xs font-bold text-[#004eff]">↓</span>
+            No.{item.targetTradeAccount?.accountNumber}
+            <span className="text-xs text-text-secondary">{getCurrencyCode(item.targetTradeAccount?.currencyId ?? item.currencyId)}</span>
+          </span>
+          <span className="text-xs text-text-secondary">{td('columns.group')}: {item.targetTradeAccount?.group || '--'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: td('columns.status'),
+      align: 'center',
+      skeletonWidth: 'w-16',
+      render: (item) => <Tag variant={getStateTagVariant(item.stateId)} soft>{tState(String(item.stateId))}</Tag>,
+    },
+    {
+      key: 'currency',
+      title: td('columns.currency'),
+      align: 'center',
+      skeletonWidth: 'w-12',
+      render: (item) => <span className="text-sm">{getCurrencyName(item.currencyId)}</span>,
+    },
+    {
+      key: 'amount',
+      title: td('columns.amount'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <BalanceShow balance={item.amount} currencyId={item.currencyId} className="text-sm" />,
+    },
+    {
+      key: 'time',
+      title: td('columns.time'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+    },
+  ], [td, tState, getCurrencyName]);
+
+  // ---- Withdrawal 列定义 ----
+  const withdrawalColumns = useMemo<DataTableColumn<SalesWithdrawalRecord>[]>(() => [
+    {
+      key: 'withdrawal',
+      title: td('columns.withdrawal'),
+      skeletonWidth: 'w-28',
+      render: (item) => (
+        <div className="flex flex-col">
+          <span className="flex items-center gap-1 text-sm">
+            <span className="text-xs font-bold text-[#e02b1d]">↑</span>
+            No.{item.accountNumber || item.targetTradeAccount?.accountNumber}
+            <span className="text-xs text-text-secondary">{getCurrencyCode(item.targetTradeAccount?.currencyId ?? item.currencyId)}</span>
+          </span>
+          <span className="text-xs text-text-secondary">{td('columns.group')}: {item.targetTradeAccount?.group || '--'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: td('columns.status'),
+      align: 'center',
+      skeletonWidth: 'w-16',
+      render: (item) => <Tag variant={getStateTagVariant(item.stateId)} soft>{tState(String(item.stateId))}</Tag>,
+    },
+    {
+      key: 'currency',
+      title: td('columns.currency'),
+      align: 'center',
+      skeletonWidth: 'w-12',
+      render: (item) => <span className="text-sm">{getCurrencyName(item.currencyId)}</span>,
+    },
+    {
+      key: 'exchangeRate',
+      title: td('columns.exchangeRate'),
+      align: 'center',
+      skeletonWidth: 'w-12',
+      render: (item) => <span className="text-sm">{(item as unknown as Record<string, unknown>).exchangeRate as string ?? '--'}</span>,
+    },
+    {
+      key: 'amount',
+      title: td('columns.amount'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <BalanceShow balance={item.amount} currencyId={item.currencyId} className="text-sm" />,
+    },
+    {
+      key: 'time',
+      title: td('columns.time'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+    },
+  ], [td, tState, getCurrencyName]);
+
+  // ---- 表格渲染 ----
+  const renderTable = () => {
+    switch (tab) {
+      case 'transaction':
+        return (
+          <DataTable<SalesTransactionRecord>
+            columns={transactionColumns}
+            data={transactions}
+            rowKey={(item, idx) => item.id ?? idx}
+            loading={isLoading}
+            skeletonRows={5}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<SalesTransactionRecord>}
+          />
+        );
+      case 'deposit':
+        return (
+          <DataTable<SalesDepositRecord>
+            columns={depositColumns}
+            data={deposits}
+            rowKey={(item, idx) => item.id ?? idx}
+            loading={isLoading}
+            skeletonRows={5}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<SalesDepositRecord>}
+          />
+        );
+      case 'withdrawal':
+        return (
+          <DataTable<SalesWithdrawalRecord>
+            columns={withdrawalColumns}
+            data={withdrawals}
+            rowKey={(item, idx) => item.id ?? idx}
+            loading={isLoading}
+            skeletonRows={5}
+            groupConfig={dateGroupConfig as DataTableGroupConfig<SalesWithdrawalRecord>}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="flex w-full flex-col gap-5">
-      {salesAccount && (
-        <>
-          {accountDetail && (
-            <div className="rounded-xl border border-border bg-surface p-5">
-              <h3 className="text-lg font-semibold text-text-primary">
-                {user?.nativeName || user?.displayName || '--'}
-              </h3>
-              <p className="text-sm text-text-secondary">{user?.email || '--'}</p>
-              {tradeAccount && (
-                <div className="mt-3 flex gap-6">
-                  <div>
-                    <span className="text-xs text-text-secondary">{t('fields.accountNo')}</span>
-                    <p className="text-sm font-medium text-text-primary">{tradeAccount.accountNumber ?? '--'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-text-secondary">{t('fields.balance')}</span>
-                    <p className="text-sm font-medium text-text-primary">
-                      {formatBalance(tradeAccount.balanceInCents ?? 0, tradeAccount.currencyId ?? 840)}
-                    </p>
-                  </div>
+    <div className="@container flex w-full flex-col gap-3">
+      {/* 返回链接 */}
+      <Link href="/sales/customers" className="flex items-center gap-3">
+        <Icon name="arrow-left" size={24} className="text-text-secondary" />
+        <span className="text-xl text-text-secondary">{td('backToList')}</span>
+      </Link>
+
+      <div className="h-px w-full bg-border" />
+
+      {/* 用户信息 + 资金卡片 */}
+      <div className="flex flex-col gap-3 @[1100px]:flex-row @[1100px]:gap-5">
+        {/* 左侧：用户基本信息 */}
+        <div className="flex flex-1 flex-col items-center gap-4 rounded bg-surface px-5 py-4 @[1100px]:gap-5 @[1100px]:px-10 @[1100px]:py-5">
+          {accountDetail ? (
+            <>
+              <div className="flex items-center gap-4 @[1100px]:gap-5">
+                <Avatar src={user?.avatar} alt={userName} size="md" />
+                <div className="flex flex-col justify-between">
+                  <span className="text-lg font-semibold text-text-primary @[1100px]:text-xl">{userName}</span>
+                  <span className="text-xs text-text-secondary @[1100px]:text-sm">{user?.email}</span>
                 </div>
-              )}
+              </div>
+              <div className="h-px w-full bg-border" />
+              <div className="grid w-full grid-cols-4 gap-3 @[1100px]:grid-cols-2 @[1100px]:gap-4">
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-text-secondary @[1100px]:text-sm">
+                    {isIBOrSales ? t('fields.accountUid') : t('fields.accountNo')}
+                  </span>
+                  <span className="text-sm font-semibold text-text-primary @[1100px]:text-base">
+                    {isIBOrSales ? accountDetail.uid : (tradeAccount?.accountNumber || '--')}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-text-secondary @[1100px]:text-sm">{td('role')}</span>
+                  <span className="text-sm font-semibold text-text-primary @[1100px]:text-base">
+                    {getRoleLabel(accountDetail.role, td)}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-text-secondary @[1100px]:text-sm">{t('fields.group')}</span>
+                  <span className="text-sm font-semibold text-text-primary @[1100px]:text-base">
+                    {accountDetail.group || '--'}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-xs text-text-secondary @[1100px]:text-sm">{t('fields.code')}</span>
+                  <span className="text-sm font-semibold text-text-primary @[1100px]:text-base">
+                    {accountDetail.code || '--'}
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <Skeleton className="h-[60px] w-[60px] rounded-full" />
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
             </div>
           )}
+        </div>
 
-          <div className="rounded-xl border border-border bg-surface">
-            <div className="px-5 pt-3">
-              <Tabs
-                tabs={tabs}
-                activeKey={activeTab}
-                onChange={(key) => { setActiveTab(key); setPage(1); }}
-                size="sm"
-              />
-            </div>
-
-            <div className="border-b border-border p-4">
-              <TradeFilter
-                type="trade"
-                translationNamespace="sales"
-                filterOptions={['datePicker']}
-                onSearch={(params) => { setPage(1); fetchTabData(activeTab, 1, params); }}
-                onReset={() => { setPage(1); fetchTabData(activeTab, 1); }}
-                isLoading={isLoading}
-              />
-            </div>
-
-            <div className="overflow-x-auto">
-              {activeTab === 'trade' && (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-xs text-text-secondary">
-                      <th className="px-4 py-3">{t('fields.ticket')}</th>
-                      <th className="px-4 py-3">{t('fields.symbol')}</th>
-                      <th className="px-4 py-3">{t('fields.volume')}</th>
-                      <th className="px-4 py-3">{t('fields.openPrice')}</th>
-                      <th className="px-4 py-3">{t('fields.closePrice')}</th>
-                      <th className="px-4 py-3">{t('fields.profit')}</th>
-                      <th className="px-4 py-3">{t('fields.openTime')}</th>
-                      <th className="px-4 py-3">{t('fields.closeTime')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr><td colSpan={8} className="py-12 text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      </td></tr>
-                    ) : trades.length === 0 ? (
-                      <tr><td colSpan={8} className="py-12 text-center text-text-secondary">{t('dashboard.noData')}</td></tr>
-                    ) : (
-                      trades.map((rawItem, idx) => {
-                        const item = rawItem as Record<string, unknown>;
-                        return (
-                          <tr key={(item.id as number) ?? idx} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
-                            <td className="px-4 py-3 text-text-primary">{String(item.ticket ?? '-')}</td>
-                            <td className="px-4 py-3 text-text-primary">{String(item.symbol ?? '-')}</td>
-                            <td className="px-4 py-3">{Number(item.volume ?? 0).toFixed(2)}</td>
-                            <td className="px-4 py-3">{Number(item.openPrice ?? 0).toFixed(2)}</td>
-                            <td className="px-4 py-3">{Number(item.closePrice ?? 0).toFixed(2)}</td>
-                            <td className="px-4 py-3">{Number(item.profit ?? 0).toFixed(2)}</td>
-                            <td className="px-4 py-3 text-xs text-text-secondary">{item.openTime ? new Date(String(item.openTime)).toLocaleString() : '-'}</td>
-                            <td className="px-4 py-3 text-xs text-text-secondary">{item.closeTime ? new Date(String(item.closeTime)).toLocaleString() : '-'}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              )}
-
-              {activeTab === 'transaction' && (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-xs text-text-secondary">
-                      <th className="px-4 py-3">{t('fields.type')}</th>
-                      <th className="px-4 py-3">{t('fields.amount')}</th>
-                      <th className="px-4 py-3">{t('fields.currency')}</th>
-                      <th className="px-4 py-3">{t('fields.status')}</th>
-                      <th className="px-4 py-3">{t('fields.createdOn')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr><td colSpan={5} className="py-12 text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      </td></tr>
-                    ) : transactions.length === 0 ? (
-                      <tr><td colSpan={5} className="py-12 text-center text-text-secondary">{t('dashboard.noData')}</td></tr>
-                    ) : (
-                      transactions.map((rawTx, idx) => {
-                        const tx = rawTx as Record<string, unknown>;
-                        return (
-                          <tr key={(tx.id as number) ?? idx} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
-                            <td className="px-4 py-3 text-text-primary">{String(tx.type ?? '-')}</td>
-                            <td className="px-4 py-3 text-text-primary">{formatBalance(Number(tx.amount ?? 0), Number(tx.currencyId ?? 840))}</td>
-                            <td className="px-4 py-3 text-text-secondary">{String(tx.currencyId ?? '-')}</td>
-                            <td className="px-4 py-3 text-text-secondary">{String(tx.stateId ?? '-')}</td>
-                            <td className="px-4 py-3 text-xs text-text-secondary">{tx.createdOn ? new Date(String(tx.createdOn)).toLocaleDateString() : '-'}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+        {/* 右侧：资金卡片（仅 Client 角色显示） */}
+        {isClient && (
+          <div className="grid flex-3 grid-cols-3 gap-3 @[1100px]:contents">
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 rounded bg-surface px-3 py-4 max-sm:gap-3 sm:gap-10 sm:px-5 @[1100px]:px-10 @[1100px]:py-5">
+              <span className="text-xl font-semibold text-text-primary max-sm:text-sm">{td('balance')}</span>
+              {accountDetail ? (
+                <BalanceShow balance={tradeAccount?.balanceInCents || 0} currencyId={currencyId} sign="+" className="text-responsive-3xl font-bold text-primary max-sm:text-base!" />
+              ) : (
+                <Skeleton className="h-8 w-40 max-sm:w-full" />
               )}
             </div>
 
-            <div className="px-4 pb-4">
-              <Pagination page={page} total={total} size={size} onPageChange={(p) => { setPage(p); fetchTabData(activeTab, p); }} />
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 rounded bg-surface px-3 py-4 max-sm:gap-3 sm:gap-10 sm:px-5 @[1100px]:px-10 @[1100px]:py-5">
+              <span className="text-xl font-semibold text-text-primary max-sm:text-sm">{td('equity')}</span>
+              {accountDetail ? (
+                <BalanceShow balance={tradeAccount?.equityInCents || 0} currencyId={currencyId} sign="+" className="text-responsive-3xl font-bold text-primary max-sm:text-base!" />
+              ) : (
+                <Skeleton className="h-8 w-40 max-sm:w-full" />
+              )}
+            </div>
+
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 rounded bg-surface px-3 py-4 max-sm:gap-3 sm:gap-10 sm:px-5 @[1100px]:px-10 @[1100px]:py-5">
+              <span className="text-xl font-semibold text-text-primary max-sm:text-sm">{td('credit')}</span>
+              {accountDetail ? (
+                <BalanceShow balance={tradeAccount?.creditInCents || 0} currencyId={currencyId} sign="+" className="text-responsive-3xl font-bold text-primary max-sm:text-base!" />
+              ) : (
+                <Skeleton className="h-8 w-40 max-sm:w-full" />
+              )}
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      {/* 主内容卡片 */}
+      <div className="flex flex-1 flex-col gap-5 rounded bg-surface p-5">
+        {/* Tabs + 筛选栏 */}
+        <div className="flex flex-col gap-3 border-b border-border pb-0 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between lg:gap-4">
+          <div className="overflow-x-auto">
+            <Tabs
+              tabs={tabs}
+              activeKey={tab}
+              onChange={handleTabChange}
+              size="lg"
+              showDivider={false}
+            />
+          </div>
+          {tab !== 'tradeReport' && (
+            <div className="mb-3 flex shrink-0 items-center gap-3">
+              <DatePicker mode="range" size="sm" value={dateRange} onChange={setDateRange} />
+              <Button variant="outline" size="sm" className="shrink-0 whitespace-nowrap" onClick={handleReset}>
+                <Icon name="reset-line" />
+                {t('action.reset')}
+              </Button>
+              <Button variant="primary" size="sm" className="shrink-0 whitespace-nowrap" onClick={handleSearch}>
+                <Icon name="search-line" />
+                {t('action.search')}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {tab === 'tradeReport' ? (
+          <TradeReportTable
+            fetchData={fetchTradeData}
+            filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
+            filterTranslationNamespace="sales"
+            pageSize={pageSize}
+            autoFetchKey={`${salesAccount?.uid}-${accountUid}`}
+          />
+        ) : (
+          <>
+            {/* 结果数量 */}
+            <p className="text-xl font-semibold text-text-secondary">
+              {td.rich('showResults', {
+                count: String(total),
+                num: (chunks) => <span className="text-text-primary">{chunks}</span>,
+              })}
+            </p>
+
+            {/* 表格内容 */}
+            <div className="flex-1 overflow-x-auto">
+              {renderTable()}
+            </div>
+
+            {/* 分页 */}
+            <Pagination page={page} total={total} size={pageSize} onPageChange={setPage} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

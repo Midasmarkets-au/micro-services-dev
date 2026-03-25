@@ -1315,7 +1315,7 @@
       "status": "狀態",
       "createdOn": "創建時間",
       "completedDeposit": "已完成入金",
-      "incompleteDeposit": "未完成入金",
+      "incompleteDeposit": "已创建入金",
       "client": "客戶",
       "ib": "代理"
     },

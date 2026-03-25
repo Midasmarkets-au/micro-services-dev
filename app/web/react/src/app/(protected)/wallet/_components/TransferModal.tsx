@@ -17,6 +17,7 @@ import {
   SelectItem,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogTitle,
   DialogDescription,
   Tabs,
@@ -274,9 +275,11 @@ export function TransferModal({
             <p className="text-lg font-medium text-text-primary">{t('transfer.successTitle')}</p>
             <p className="text-sm text-text-secondary text-center">{t('transfer.successDesc')}</p>
           </div>
-          <Button variant="primary" className="w-full mt-4" onClick={() => onOpenChange(false)}>
-            {t('action.close')}
-          </Button>
+          <DialogFooter>
+            <Button variant="primary" className="w-full mt-4" onClick={() => onOpenChange(false)}>
+              {t('action.close')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     );
@@ -474,7 +477,7 @@ export function TransferModal({
           {/* 确认勾选 */}
           <div className="mb-8">
             <Checkbox
-              variant="circle"
+              variant="radio"
               checked={confirmed}
               onCheckedChange={(checked) => setConfirmed(checked === true)}
               label={t('transfer.confirmCheckbox')}
@@ -482,24 +485,26 @@ export function TransferModal({
           </div>
 
           {/* 底部按钮 */}
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="min-w-[100px]"
-            >
-              {t('action.cancel')}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSubmit}
-              loading={isSubmitting}
-              disabled={!confirmed}
-              className="min-w-[100px]"
-            >
-              {t('action.submit')}
-            </Button>
-          </div>
+          <DialogFooter>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                className="min-w-[100px]"
+              >
+                {t('action.cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSubmit}
+                loading={isSubmitting}
+                disabled={!confirmed}
+                className="min-w-[100px]"
+              >
+                {t('action.submit')}
+              </Button>
+            </div>
+          </DialogFooter>
       </DialogContent>
     </Dialog>
   );

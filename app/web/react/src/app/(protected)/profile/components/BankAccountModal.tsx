@@ -344,7 +344,7 @@ export function BankAccountModal({
 
         <DialogFooter className="flex flex-row gap-3 sm:gap-5 mt-6 sm:mt-8 justify-end">
           <Button
-            variant="secondary"
+            variant="outline"
             onClick={handleClose}
             disabled={loading}
             className="w-[100px] sm:w-[120px]"

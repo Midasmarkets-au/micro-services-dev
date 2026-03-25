@@ -393,6 +393,11 @@ export interface IBWithdrawalRecord {
   updatedOn?: string;
   user?: IBClientUser;
   targetTradeAccount?: IBTargetTradeAccount;
+  source?: {
+    displayNumber?: number;
+    currencyId?: number;
+    agentGroupName?: string;
+  };
 }
 
 export interface IBWithdrawalListResponse {

@@ -197,6 +197,17 @@ export const getVerificationDocuments = (
       });
     }
   });
+
+  if (showIbDocs) {
+    const ibDocUrl = getBviDocs('referralPartyAgreement', locale, true);
+    if (ibDocUrl !== false && ibDocUrl !== '') {
+      docs.push({
+        key: 'referralPartyAgreement',
+        title: 'referralPartyAgreement',
+        url: ibDocUrl,
+      });
+    }
+  }
   
   return docs;
 };

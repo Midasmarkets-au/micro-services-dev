@@ -75,8 +75,9 @@ export function AgreementForm({ initialData, onSubmit, onBack, isLoading, showIb
   } = useForm<AgreementFormData>({
     resolver: zodResolver(agreementSchema),
     defaultValues: {
-      documentConfirmation: initialData?.consent_1 || false,
-      electronicIdConsent: initialData?.consent_2 ? 'agree' : 'disagree',
+      documentConfirmation: initialData?.consent_1 || true,
+      // 当前 UI 仅保留“同意”选项，默认与旧逻辑一致为同意
+      electronicIdConsent: 'agree',
     },
   });
 
@@ -153,7 +154,7 @@ export function AgreementForm({ initialData, onSubmit, onBack, isLoading, showIb
 
               {/* 错误提示 */}
               {errors.documentConfirmation && (
-                <p className="text-sm text-error">
+                <p className="text-sm error-text">
                   {t('errors.agreementRequired')}
                 </p>
               )}
@@ -201,7 +202,7 @@ export function AgreementForm({ initialData, onSubmit, onBack, isLoading, showIb
               />
 
               {/* 不同意选项 */}
-              <Controller
+              {/* <Controller
                 name="electronicIdConsent"
                 control={control}
                 render={({ field }) => (
@@ -226,7 +227,7 @@ export function AgreementForm({ initialData, onSubmit, onBack, isLoading, showIb
                     </div>
                   </div>
                 )}
-              />
+              /> */}
             </div>
           </div>
         </div>

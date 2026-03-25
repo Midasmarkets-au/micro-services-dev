@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBLinks, getReferralCodeSupplement } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
-import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { IBLink, IBReferralSupplement } from '@/types/ib';
 import { useUserStore } from '@/stores/userStore';
@@ -120,7 +120,16 @@ export default function IBLinkPage() {
     setCopyConfirmOpen(true);
   }, [siteConfig]);
 
-  const columns = useMemo<DataTableColumn<IBLink>[]>(() => [
+  const columns = useMemo<DataTableColumn<IBLink>[]>(() => {
+    const viewRebateLabel = (() => {
+      try {
+        return t('link.viewRebate');
+      } catch {
+        return t('link.view');
+      }
+    })();
+
+    return [
     {
       key: 'name',
       title: t('link.linkName'),
@@ -201,7 +210,7 @@ export default function IBLinkPage() {
           className="cursor-pointer text-sm font-medium hover:underline"
           onClick={() => handleViewRebateSettings(item)}
         >
-          {t('link.view')}
+          {viewRebateLabel}
         </span>
       ),
     },
@@ -213,7 +222,8 @@ export default function IBLinkPage() {
         <CopyLinkCell item={item} onCopy={handleCopyLink} />
       ),
     },
-  ], [t, tAccount, handleCopyLink, handleViewRebateSettings, handleEditLink]);
+  ];
+  }, [t, tAccount, handleCopyLink, handleViewRebateSettings, handleEditLink]);
 
   return (
     <div className="flex min-h-full w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
@@ -234,7 +244,6 @@ export default function IBLinkPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       <RebateSettingsDialog
@@ -316,11 +325,13 @@ export default function IBLinkPage() {
               </div>
             </div>
           )}
-          <div className="mt-6 flex justify-end gap-3 md:gap-5">
-            <Button variant="secondary" onClick={() => setCopyConfirmOpen(false)} className="w-auto min-w-20 md:w-[120px]">
-              OK
-            </Button>
-          </div>
+          <DialogFooter>
+            <div className="mt-6 flex justify-end gap-3 md:gap-5">
+              <Button variant="outline" onClick={() => setCopyConfirmOpen(false)} className="w-auto min-w-20 md:w-[120px]">
+                OK
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

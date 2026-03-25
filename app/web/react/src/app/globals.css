@@ -586,43 +586,30 @@ input:-webkit-autofill:active {
 
 /* ===== 响应式布局辅助类 ===== */
 
-/* 容器 - 使用 % */
+/* 容器 - 使用 % */  /* 240px / 1920px */
 .container-responsive {
   width: 100%;
   max-width: 1920px;
   margin: 0 auto;
-  padding-left: 8.33%;  /* 240px / 1920px */
-  padding-right: 8.33%;
+  /* padding-left: 8.33%; 
+  padding-right: 8.33%; */
+  padding-inline: clamp(20px, calc(-140px + 15.625vw), 160px);
 }
 
-@media (max-width: 1536px) {
-  .container-responsive {
-    padding-left: 7.8125%;  /* 120px / 1536px */
-    padding-right: 7.8125%;
-  }
+.container-auth-responsive {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  /* 1920 下左右 240px，并向小屏平滑收缩到 20px */
+  padding-inline: clamp(20px, calc(-33.4px + 14.24vw), 240px);
 }
-
-@media (max-width: 1280px) {
-  .container-responsive {
-    padding-left: 6.25%;  /* 80px / 1280px */
-    padding-right: 6.25%;
-  }
+.menu-responsive {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  /* 1920 下回到 8.33%(160px)，并在更小视口时平滑收缩到 20px */
+  padding-inline: clamp(20px, calc(-140px + 15.625vw), 160px);
 }
-
-@media (max-width: 1024px) {
-  .container-responsive {
-    padding-left: 3.90625%;  /* 40px / 1024px */
-    padding-right: 3.90625%;
-  }
-}
-
-@media (max-width: 768px) {
-  .container-responsive {
-    padding-left: 2.604167%;  /* 20px / 768px */
-    padding-right: 2.604167%;
-  }
-}
-
 /* 侧边栏响应式宽度 - 配合 container-responsive */
 /* 设计稿: 侧边栏 320px / 内容区域 1440px ≈ 22.22% */
 .sidebar-responsive {
@@ -670,26 +657,8 @@ input:-webkit-autofill:active {
 .auth-card {
   display: flex;
   width: 100%;
-  max-width: 90rem;  /* 1440px */
+  max-width: 100%;
   overflow: hidden;
-}
-
-@media (max-width: 1280px) {
-  .auth-card {
-    max-width: 75rem;  /* 1200px */
-  }
-}
-
-@media (max-width: 1024px) {
-  .auth-card {
-    max-width: 56.25rem;  /* 900px */
-  }
-}
-
-@media (max-width: 768px) {
-  .auth-card {
-    max-width: 37.5rem;  /* 600px */
-  }
 }
 
 .auth-card-form {

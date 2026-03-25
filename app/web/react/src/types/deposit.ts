@@ -7,6 +7,8 @@ export interface DepositGroup {
   group: string;
   logo: string;
   paymentMethodName: string;
+  isActive?: boolean;
+  range?: [number, number];
 }
 
 // Step 2: 支付渠道详情

@@ -317,6 +317,18 @@ export async function getSalesLinks(
     return handleApiError(error, 'Failed to fetch sales links');
   }
 }
+export async function getReferralLinkDetail(
+  code: string
+): Promise<ActionResponse<SalesLinkDetail>> {
+  try {
+    const response = await apiClient.v1.get<SalesLinkDetail>(
+      `/referralcode/${code}`
+    );
+    return { success: true, data: unwrapData<SalesLinkDetail>(response) };
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch link detail');
+  }
+}
 
 export async function getSalesLinkDetail(
   salesUid: number,

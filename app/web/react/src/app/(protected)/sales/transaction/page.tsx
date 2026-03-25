@@ -150,7 +150,7 @@ export default function SalesTransactionPage() {
         return (
           <div className="flex flex-col items-center">
             <span className="text-sm">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
-            <span className="text-xs">Group: {acc.group || '***'}</span>
+            <span className="text-xs">{t('withdrawal.group')}: {acc.group || '***'}</span>
           </div>
         );
       },
@@ -165,8 +165,8 @@ export default function SalesTransactionPage() {
         if (!acc) return item.toAccountNumber ?? '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
-            <span className="text-xs">Group: {acc.group || '***'}</span>
+            <span className="text-sm text-text-primary font-semibold">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
+            <span className="text-xs">{t('withdrawal.group')}: {acc.group || '***'}</span>
           </div>
         );
       },
@@ -175,6 +175,7 @@ export default function SalesTransactionPage() {
       key: 'amount',
       title: t('transaction.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),
@@ -214,26 +215,30 @@ export default function SalesTransactionPage() {
         isLoading={isLoading}
       />
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold text-text-secondary">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="break-keep text-base font-semibold text-text-secondary sm:text-lg">
             {t.rich('transaction.showResults', {
               count: String(total),
               num: (chunks) => <span className="text-text-primary">{chunks}</span>,
             })}
           </span>
-          <span className="text-lg font-semibold text-text-secondary">{t('transaction.total')}：</span>
-          <BalanceShow balance={totalAmount} currencyId={firstCurrencyId} className="text-lg font-bold text-text-primary" />
+          <span className="break-keep text-base font-semibold text-text-secondary sm:text-lg">{t('transaction.total')}：</span>
+          <BalanceShow
+            balance={totalAmount}
+            currencyId={firstCurrencyId}
+            className="text-base font-bold text-text-primary sm:text-lg"
+          />
         </div>
 
         <Button
           variant="outline"
           size="sm"
           onClick={handleToggleRole}
-          className="flex shrink-0 items-center gap-1"
+          className="flex w-fit shrink-0 items-center gap-1 self-start sm:self-auto"
         >
           {isClient ? t('transaction.client') : t('transaction.ib')}
-          <Icon name="reset-line" size={14} />
+          <Icon name="switch" size={14} />
         </Button>
       </div>
 

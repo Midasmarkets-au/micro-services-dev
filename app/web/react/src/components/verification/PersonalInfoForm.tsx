@@ -21,7 +21,7 @@ import { getRegionCodes } from '@/core/data/phonesData';
 import { SubStepNav, type SubStep } from './SubStepNav';
 import { VerificationFormLayout } from './VerificationFormLayout';
 import { genderOptions, idTypeOptions, type InfoData } from '@/types/verification';
-
+import { useUserStore } from '@/stores/userStore';
 const infoSchema = z.object({
   // 个人信息
   firstName: z.string().min(1, 'required'),
@@ -75,6 +75,7 @@ function FieldLabel({ required, children }: { required?: boolean; children: Reac
 
 export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: PersonalInfoFormProps) {
   const t = useTranslations('verification');
+  const storeUser = useUserStore((state) => state.user);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Record<SubStep, HTMLDivElement | null>>({
     personal: null,
@@ -104,11 +105,11 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
   } = useForm<InfoFormData>({
     resolver: zodResolver(infoSchema),
     defaultValues: {
-      firstName: initialData?.firstName || '',
-      lastName: initialData?.lastName || '',
+      firstName: initialData?.firstName || storeUser?.firstName || '',
+      lastName: initialData?.lastName || storeUser?.lastName || '',
       gender: initialData?.gender || '',
       birthday: initialData?.birthday ? new Date(initialData.birthday) : undefined,
-      citizen: initialData?.citizen || '',
+      citizen: initialData?.citizen || storeUser?.countryCode || '',
       address: initialData?.address || '',
       idType: initialData?.idType || 1,
       idNumber: initialData?.idNumber || '',
@@ -254,7 +255,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     )}
                   />
                   {errors.gender && (
-                    <p className="text-sm text-error">{t('errors.required')}</p>
+                    <p className="text-sm error-text">{t('errors.required')}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -272,7 +273,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     )}
                   />
                   {errors.birthday && (
-                    <p className="text-sm text-error">{t('errors.required')}</p>
+                    <p className="text-sm error-text">{t('errors.required')}</p>
                   )}
                 </div>
               </div>
@@ -350,7 +351,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     )}
                   />
                   {errors.idType && (
-                    <p className="text-sm text-error">{t('errors.required')}</p>
+                    <p className="text-sm error-text">{t('errors.required')}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">

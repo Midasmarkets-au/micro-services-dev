@@ -37,6 +37,11 @@ export {
 // Verification actions
 export {
   getVerificationStatus,
+  saveStartedInfo,
+  checkClientAnswer,
+  checkClientProfessionalAnswer,
+  getMyReferralCode,
+  getReferralInfoByReferralCode,
   savePersonalInfo,
   saveFinancialInfo,
   saveAgreement,
@@ -157,6 +162,7 @@ export {
   updateIBReferralCode,
   getRebateSymbolCategory,
   getSymbolCategory,
+  getAllSymbols,
   getIBAgentRules,
   getBrokerRebateRules,
   getIBReportRequests,
@@ -189,6 +195,7 @@ export {
   getSalesDeposits,
   getSalesWithdrawals,
   getSalesLinks,
+  getReferralLinkDetail,
   getSalesLinkDetail,
   createSalesLinkForIB,
   createSalesLinkForClient,

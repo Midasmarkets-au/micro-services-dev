@@ -290,7 +290,13 @@
     "pleaseLoginWith2FA": "Please login with 2FA verification",
     "pleaseSelectTenant": "Please select a tenant to continue",
     "twoFactorAuthentication": "Two Factor Authentication",
+    "twoFactorAuthenticationSetupReminder": "Two-Factor Authentication (2FA) Setup Reminder",
     "pleaseEnterTwoFactorCode": "Please check your email to verify your identity with the two-factor authentication code.",
+    "twoFaDesc": "To enhance your account security, we strongly recommend setting up two-factor authentication (2FA). 2FA adds an extra layer of protection by requiring a second form of verification in addition to your password.",
+    "enableTwoFa": "Enable 2FA: Protect your account by activating two-factor authentication, so even if your password is exposed, only you can access your account.",
+    "disableTwoFa": "If you do not want to use two-step verification, you can disable this feature. However, please remember that your account may become more vulnerable to unauthorized access.",
+    "enable": "Enable",
+    "disable": "Disable",
     "resetPasswordTitle": "Reset Password",
     "backToLogin": "Back to Login",
     "send": "Send",
@@ -362,13 +368,13 @@
     "support": "Support",
     "store": "Store",
     "menu": {
-      "dashboard": "User Management",
+      "dashboard": "Dashboard",
       "verification": "Verification",
       "account": "Account",
       "wallet": "Wallet",
-      "platforms": "Trading Platform",
+      "platforms": "Platform",
       "supports": "Support",
-      "eventshop": "Store",
+      "eventshop": "Eventshop",
       "ib": "IB Center",
       "sales": "Sales Center"
     },
@@ -421,16 +427,33 @@
     "agreement": "Agreement",
     "documents": "Documents",
     "mainSteps": {
+      "accountInfo": "Account Info",
+      "gettingStarted": "Getting Started",
       "personalInfo": "Personal Info",
       "financialInfo": "Financial Info",
       "agreement": "Agreement",
-      "documents": "Documents",
+      "documents": "Document",
       "complete": "Complete"
     },
     "subSteps": {
       "personalInfo": "Personal Info",
       "identityDocument": "Identity Document",
       "socialMedia": "Social Media"
+    },
+    "started": {
+      "quizTitle": "Suitability Questionnaire",
+      "quizDescription": "Please answer the following questions based on your actual situation. You may not proceed if requirements are not met.",
+      "cantProcess": "Sorry, you currently do not meet the account opening requirements. Please contact support.",
+      "answers": {
+        "yes": "Yes",
+        "no": "No"
+      },
+      "questions": {
+        "q1": "Do you have full legal capacity?",
+        "q2": "Do you understand the risks of leveraged products such as CFDs?",
+        "q3": "Do you have a stable source of funds and can bear potential losses?",
+        "q4": "Do you confirm that the information provided is true, complete, and valid?"
+      }
     },
     "fields": {
       "currency": "Currency",
@@ -503,7 +526,8 @@
         "HedgingPolicy": "MDM Hedging Policy",
         "PrivacyPolicy": "MDM Privacy Policy",
         "RiskWarningNotice": "MDM Risk Warning Notice",
-        "TermsAndConditions": "MDM Terms and Conditions"
+        "TermsAndConditions": "MDM Terms and Conditions",
+        "referralPartyAgreement": "MDM Referral Party Agreement"
       },
       "electronicIdTitle": "Electronic Identity Verification",
       "electronicIdDescription": "Identity verification description. Please read the following options carefully and select your preference.",
@@ -644,7 +668,8 @@
     "__ALREADY_PARTICIPATED__": "You have already participated in this event",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "You cannot transfer to your own account",
     "CODE_NOT_FOUND": "Verification code not found or has expired",
-    "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email"
+    "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email",
+    "electronicIdentityVerificationRequired": "Electronic identity verification consent is required to continue."
   },
   "platforms": {
     "title": "Trading Platforms",
@@ -944,7 +969,9 @@
       "next": "Next",
       "prev": "Previous",
       "details": "Details",
-      "uploadReceipt": "Upload Receipt"
+      "uploadReceipt": "Upload Receipt",
+      "reset": "Reset",
+      "search": "Search"
     },
     "fields": {
       "equity": "Equity",
@@ -1052,7 +1079,24 @@
         "search": "Search",
         "allHistory": "All History",
         "noRecords": "No transaction records",
-        "showingResults": "Showing {count} results"
+        "showingResults": "Showing {count} results",
+        "accountNumber": "Account",
+        "ticket": "Ticket",
+        "symbol": "Symbol",
+        "volume": "Volume",
+        "openTime": "Open Time",
+        "openPrice": "Open Price",
+        "sl": "S/L",
+        "tp": "T/P",
+        "closeTime": "Close Time",
+        "closePrice": "Close Price",
+        "commission": "Commission",
+        "swap": "Swap",
+        "pl": "P/L",
+        "buy": "Buy",
+        "sell": "Sell",
+        "subTotal": "Sub Total",
+        "total": "Total"
       }
     },
     "tip": {
@@ -1094,6 +1138,14 @@
       "all": "All",
       "pending": "Pending",
       "completed": "Completed"
+    },
+    "trade": {
+      "openOrder": "Open Orders",
+      "closedOrder": "Closed Orders",
+      "service": "Service",
+      "product": "Product",
+      "account": "Account",
+      "allHistory": "All History"
     }
   },
   "deposit": {
@@ -1148,7 +1200,7 @@
     },
     "error": {
       "amountRequired": "Please enter an amount",
-      "amountRange": "Please enter amount between ${min}~${max}",
+      "amountRange": "Please enter amount between ",
       "selectChannel": "Please select a payment method"
     },
     "requestKeys": {
@@ -1805,6 +1857,7 @@
       "rebateSettings": "Rebate Settings",
       "clickCopy": "Click to Copy",
       "view": "View",
+      "viewRebate": "View Rebate",
       "copyLink": "Copy Link",
       "copied": "Copied",
       "editName": "Edit Name",
@@ -1870,6 +1923,33 @@
     "tip": {
       "searchKeyWords": "Search keywords...",
       "copied": "Copied to clipboard"
+    },
+    "type": {
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "Bitcoin",
+        "Commodities": "Spot Index",
+        "Crypto": "Cryptocurrency",
+        "D Forex": "Direct Forex",
+        "ETH": "Ethereum",
+        "Energy": "Energy Futures",
+        "Forex": "Cross Forex",
+        "Fu_Energy": "Energy Futures",
+        "GAUCNH": "Gold RMB",
+        "Gold": "Gold",
+        "HKG50": "Hang Seng Index",
+        "Index": "Spot Index",
+        "JPN225": "Nikkei JPN225",
+        "Natural Gas": "Natural Gas",
+        "OIL": "WTI/Brent Crude",
+        "Precious Metal": "Precious Metal",
+        "Shares": "Shares",
+        "Silver 1000OZ": "Silver 1000OZ",
+        "Silver 5000OZ": "Silver 5000OZ",
+        "US100": "Nasdaq US100",
+        "US30": "Dow Jones US30",
+        "US500": "S&P US500"
+      }
     },
     "rebateEdit": {
       "title": "IB Link Detail",
@@ -2023,6 +2103,18 @@
       "copy": "Copy",
       "bkmc": "BKMC"
     },
+    "newCustomers": {
+      "title": "New Customers",
+      "all": "All",
+      "hasDeposit": "Deposited",
+      "noDeposit": "Not Deposited",
+      "customer": "Customer",
+      "email": "Email",
+      "createdTime": "Created Time",
+      "status": "Status",
+      "statusDeposited": "Deposited",
+      "statusNotDeposited": "Not Deposited"
+    },
     "customers": {
       "title": "Customers",
       "ibType": "IB",
@@ -2030,6 +2122,52 @@
       "salesType": "Sales",
       "noTradeAccount": "No trade account",
       "searchPlaceholder": "Search by name, email, account number..."
+    },
+    "customerDetail": {
+      "backToList": "Back to customer list",
+      "balance": "Balance",
+      "equity": "Equity",
+      "credit": "Credit",
+      "role": "Role",
+      "account": "Account",
+      "roleClient": "Client",
+      "roleIB": "IB",
+      "roleSales": "Sales",
+      "showResults": "Showing <num>{count}</num> results",
+      "noData": "No data",
+      "tabs": {
+        "transaction": "Transaction",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "tradeReport": "Trade Report"
+      },
+      "columns": {
+        "transaction": "Transaction",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "status": "Status",
+        "currency": "Currency",
+        "amount": "Amount",
+        "time": "Time",
+        "account": "Account",
+        "group": "Group",
+        "exchangeRate": "Exchange Rate",
+        "ticket": "Ticket",
+        "symbol": "Symbol",
+        "type": "Type",
+        "volume": "Volume",
+        "openTime": "Open Time",
+        "openPrice": "Open Price",
+        "sl": "S/L",
+        "tp": "T/P",
+        "closeTime": "Close Time",
+        "closePrice": "Close Price",
+        "commission": "Commission",
+        "swap": "Swap",
+        "profit": "P/L",
+        "subTotal": "Sub Total",
+        "total": "Total"
+      }
     },
     "rebateEdit": {
       "title": "Rebate Rule Edit",
@@ -2121,31 +2259,6 @@
         "400": "Client",
         "1000": "Guest"
       },
-      "shortAccount": {
-        "0": "Unknown",
-        "1": "Idv",
-        "2": "Jont",
-        "3": "Corp",
-        "4": "Std",
-        "5": "Pro",
-        "6": "Raw",
-        "7": "Swap Free Standard",
-        "8": "Swap Free Pro",
-        "9": "Swap Free Raw",
-        "10": "Wholesale",
-        "11": "Adv",
-        "12": "Aff",
-        "13": "SEA",
-        "14": "Raw Plus",
-        "15": "JP STD CFD",
-        "16": "JP STD IND",
-        "17": "JP STD FX",
-        "18": "JP ALP CFD",
-        "19": "JP ALP IND",
-        "20": "JP ALP FX",
-        "21": "SEA Pro",
-        "22": "Elite"
-      },
       "accountRole": {
         "0": "Unknown",
         "100": "Sales",
@@ -2192,6 +2305,31 @@
         "30": "30",
         "40": "40",
         "50": "50"
+      },
+      "productCategory": {
+        "A50": "A50",
+        "BTC": "Bitcoin",
+        "Commodities": "Spot Index",
+        "Crypto": "Cryptocurrency",
+        "D Forex": "Direct Forex",
+        "ETH": "Ethereum",
+        "Energy": "Energy Futures",
+        "Forex": "Cross Forex",
+        "Fu_Energy": "Energy Futures",
+        "GAUCNH": "Gold RMB",
+        "Gold": "Gold",
+        "HKG50": "Hang Seng Index",
+        "Index": "Spot Index",
+        "JPN225": "Nikkei JPN225",
+        "Natural Gas": "Natural Gas",
+        "OIL": "WTI/Brent Crude",
+        "Precious Metal": "Precious Metal",
+        "Shares": "Shares",
+        "Silver 1000OZ": "Silver 1000OZ",
+        "Silver 5000OZ": "Silver 5000OZ",
+        "US100": "Nasdaq US100",
+        "US30": "Dow Jones US30",
+        "US500": "S&P US500"
       }
     },
     "ibLinks": {
@@ -2218,6 +2356,7 @@
       "client": "Client",
       "autoCreateAccount": "Auto Create Account",
       "default": "Default",
+      "notDefault": "Not Default",
       "yes": "Yes",
       "no": "No",
       "actions": "Actions"
@@ -2292,6 +2431,7 @@
       "copyLink": "Copy Link",
       "copied": "Copied",
       "view": "View",
+      "viewRebate": "View Rebate",
       "close": "Close",
       "update": "Update",
       "editLink": "Edit Link",
@@ -2411,6 +2551,19 @@
       "incompleteWithdrawal": "Incomplete",
       "client": "Client",
       "ib": "IB"
+    }
+  },
+  "type": {
+    "cmd": {
+      "0": "Long",
+      "1": "Short",
+      "2": "Buy Limit",
+      "3": "Sell Limit",
+      "4": "Buy Stop",
+      "5": "Sell Stop",
+      "6": "Balance",
+      "7": "Credit",
+      "undefined": "Undefined"
     }
   },
   "unlockEmail": {

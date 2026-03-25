@@ -320,7 +320,6 @@ async function request<T>(
         // 2. { errors: ['__ERROR_CODE__'] } - 验证错误数组
         // 3. { message: '__ERROR_CODE__' } - 后端返回的错误码在 message 字段中
         errorCode = errorData.error || (Array.isArray(errorData.errors) ? errorData.errors[0] : undefined);
-
         // 如果 message 是错误码格式（以 __ 开头和结尾），也作为 errorCode
         if (!errorCode && errorData.message && /^__[A-Z_]+__$/.test(errorData.message)) {
           errorCode = errorData.message;
@@ -334,15 +333,28 @@ async function request<T>(
       });
     }
 
-    // 统一兜底：HTTP 401 一律标准化为 Unauthorized，
-    // 便于上层 useServerAction 静默处理并跳转登录页（不弹全局错误 Toast）。
+    // HTTP 状态兜底：仅当后端未返回 errorCode 时，补充标准错误码。
+    // 避免覆盖后端业务错误码，保证 errorCode 语义一致。
     if (response.status === 401) {
-      errorCode = 'Unauthorized';
+      if (!errorCode) {
+        errorCode = 'Unauthorized';
+      }
       if (!errorMessage || errorMessage === 'Request failed') {
         errorMessage = 'Unauthorized';
       }
     }
-
+    if (response.status === 403) {
+      if (!errorCode) {
+        errorCode = 'Forbidden';
+      }
+      if (!errorMessage || errorMessage === 'Request failed') {
+        errorMessage = 'Forbidden';
+      }
+    }
+    console.log('errorCode==抛出议程', errorCode);
+    console.log('errorMessage抛出议程', errorMessage);
+    console.log('errors抛出议程', errors);
+    console.log('response.status抛出议程', response.status);
     throw new ApiError(errorMessage, response.status, errors, errorCode);
   }
 

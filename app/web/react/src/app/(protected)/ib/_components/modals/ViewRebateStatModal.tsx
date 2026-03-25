@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
-import { Button, BalanceShow, DatePicker, DataTable } from '@/components/ui';
+import { Button, BalanceShow, DatePicker, DataTable, Icon } from '@/components/ui';
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useIBStore } from '@/stores/ibStore';
@@ -214,19 +214,34 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-[900px]">
-        <DialogHeader>
-          <div className="flex flex-wrap items-center gap-4">
+        <DialogHeader className="flex-col items-stretch gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col items-stretch gap-3 mb-4 sm:flex-row sm:items-center sm:gap-5">
             <DialogTitle className="shrink-0">{title}</DialogTitle>
             <DatePicker
               mode="range"
+              size="sm"
               value={dateRange}
+              className="w-full sm:w-auto"
               onChange={(val) => setDateRange(val as DateRange | undefined)}
             />
-            <Button variant="outline" size="sm" onClick={handleSearch}>
-              {t('action.search')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleClear}>
+          </div>
+          <div className="flex w-full items-center gap-3 sm:w-auto sm:gap-5">
+            <Button
+              size="sm"
+              className="flex-1 whitespace-nowrap bg-(--color-btn-dark) text-white hover:bg-(--color-btn-dark)/80 sm:flex-none"
+              onClick={handleClear}
+            >
+              <Icon name="reset-line" />
               {t('action.clear')}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="flex-1 whitespace-nowrap sm:flex-none"
+              onClick={handleSearch}
+            >
+              <Icon name="search-line" />
+              {t('action.search')}
             </Button>
           </div>
         </DialogHeader>

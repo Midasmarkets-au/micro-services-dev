@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
@@ -174,6 +175,7 @@ export function AccountRebateRelationModal({
           getCategoryResult.success && Array.isArray(getCategoryResult.data)
             ? getCategoryResult.data
             : [];
+        console.log('cats', cats);
         setProductCategory(cats);
 
         // rebateInfo: adjustRebateInfo converts arrays to objects keyed by accountType
@@ -291,12 +293,12 @@ export function AccountRebateRelationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[750px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{userName}</DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[80vh] overflow-auto">
+        <div className="max-h-[70vh] overflow-auto">
           {isLoading ? (
             <div className="space-y-4 py-4">
               <Skeleton className="h-6 w-48" />
@@ -320,7 +322,7 @@ export function AccountRebateRelationModal({
                         className={`mr-4 w-[100px] cursor-pointer rounded-[5px] border px-[15px] py-[10px] text-center text-sm transition-colors ${
                           selectedAccountType === accountType
                             ? 'border-[#000f32] bg-[#000f32] text-white'
-                            : 'border-[#ecedf4] hover:border-[#000f32] hover:bg-[#000f32] hover:text-white'
+                            : 'border-[#eeeeee] hover:border-[#000f32] hover:bg-[#000f32] hover:text-white'
                         }`}
                       >
                         {t(`type.account.${accountType}` as any)}
@@ -334,7 +336,7 @@ export function AccountRebateRelationModal({
               <table className="w-full table-auto border-collapse align-middle">
                 <tbody className="text-sm font-semibold text-gray-600">
                   {/* 第一行：账户所有者信息 */}
-                  <tr className="border-b border-[#ecedf4] text-center">
+                  <tr className="border-b border-[#eeeeee] text-center">
                     <td />
                     {relationList.map(({ uid }) => (
                       <td key={uid} className="relative px-3 py-3">
@@ -369,7 +371,7 @@ export function AccountRebateRelationModal({
                                 }`}
                               >
                                 {t(
-                                  `type.shortAccount.${acc.accountType}` as any
+                                  `type.account.${acc.accountType}` as any
                                 )}
                               </span>
                             ))}
@@ -380,7 +382,7 @@ export function AccountRebateRelationModal({
                   </tr>
 
                   {/* 第二行：Pips 和 Commission */}
-                  <tr className="border-b border-[#ecedf4] text-center">
+                  <tr className="border-b border-[#eeeeee] text-center">
                     <td />
                     {relationList.map(({ uid }) => (
                       <td key={uid} className="px-3 py-3">
@@ -456,7 +458,7 @@ export function AccountRebateRelationModal({
                   </tr>
 
                   {/* 第三行："我拿多少" 百分比 */}
-                  <tr className="border-b border-[#ecedf4] text-center">
+                  <tr className="border-b border-[#eeeeee] text-center">
                     <td />
                     {relationList.map(({ uid, belowAcc }) => (
                       <td key={uid} className="px-3 py-3">
@@ -485,7 +487,7 @@ export function AccountRebateRelationModal({
                   {productCategory.map((category) => (
                     <tr
                       key={category.key ?? category.id}
-                      className="border-b border-[#ecedf4] text-center"
+                      className="border-b border-[#eeeeee] text-center"
                     >
                       <td className="px-3 py-3 text-left">
                         {category.value ?? category.name}
@@ -573,7 +575,8 @@ export function AccountRebateRelationModal({
             </>
           )}
         </div>
-        <div className="flex justify-end gap-3 pt-4">
+        <DialogFooter>
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="outline"
               size="sm"
@@ -583,6 +586,7 @@ export function AccountRebateRelationModal({
               {t('action.close')}
             </Button>
           </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

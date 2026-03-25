@@ -18,6 +18,7 @@ import type {
   AccountDeposit,
   AccountWithdrawal,
   AccountTrade,
+  AccountTradeListResponse,
   TransactionQueryParams,
   DepositQueryParams,
   WithdrawalQueryParams,
@@ -473,12 +474,14 @@ export async function getAccountWithdrawals(
 export async function getAccountTrades(
   tradeAccountUid: number,
   params?: TradeQueryParams
-): Promise<ActionResponse<PaginatedResponse<AccountTrade>>> {
+): Promise<ActionResponse<AccountTradeListResponse>> {
   try {
     const queryParams = new URLSearchParams();
     if (params?.page !== undefined) queryParams.append('page', String(params.page));
     if (params?.size !== undefined) queryParams.append('size', String(params.size));
     if (params?.period) queryParams.append('period', params.period);
+    if (params?.from) queryParams.append('from', params.from);
+    if (params?.to) queryParams.append('to', params.to);
     if (params?.symbol) queryParams.append('symbol', params.symbol);
     if (params?.isClosed !== undefined) queryParams.append('isClosed', String(params.isClosed));
 
@@ -487,18 +490,49 @@ export async function getAccountTrades(
 
     const response = await apiClient.v1.get<{
       data: AccountTrade[];
-      total: number;
-      page: number;
-      size: number;
+      criteria?: {
+        page?: number;
+        size?: number;
+        total?: number;
+        isClosed?: boolean;
+        pageTotalVolume?: number;
+        pageTotalCommission?: number;
+        pageTotalSwap?: number;
+        pageTotalProfit?: number;
+        totalVolume?: number;
+        totalCommission?: number;
+        totalSwap?: number;
+        totalProfit?: number;
+      };
+      total?: number;
+      page?: number;
+      size?: number;
     }>(url);
+
+    const criteria = response.criteria || {
+      page: response.page || 1,
+      size: response.size || 20,
+      total: response.total || 0,
+    };
 
     return {
       success: true,
       data: {
         data: response.data || [],
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        criteria: {
+          page: criteria.page || 1,
+          size: criteria.size || 20,
+          total: criteria.total ?? 0,
+          isClosed: criteria.isClosed,
+          pageTotalVolume: criteria.pageTotalVolume,
+          pageTotalCommission: criteria.pageTotalCommission,
+          pageTotalSwap: criteria.pageTotalSwap,
+          pageTotalProfit: criteria.pageTotalProfit,
+          totalVolume: criteria.totalVolume,
+          totalCommission: criteria.totalCommission,
+          totalSwap: criteria.totalSwap,
+          totalProfit: criteria.totalProfit,
+        },
       },
     };
   } catch (error) {

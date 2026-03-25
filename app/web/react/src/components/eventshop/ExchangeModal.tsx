@@ -20,6 +20,7 @@ import Decimal from 'decimal.js';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogTitle,
   Button,
   Checkbox,
@@ -385,14 +386,16 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
               />
             </div>
 
-            <div className="flex justify-end gap-3 px-5 pb-5">
-              <Button variant="outline" onClick={() => setShowAddressForm(false)} disabled={isSavingAddress}>
-                {t('exchange.cancel')}
-              </Button>
-              <Button variant="primary" onClick={handleSaveAddress} disabled={isSavingAddress}>
-                {isSavingAddress ? t('exchange.addressSaving') : t('exchange.addressSave')}
-              </Button>
-            </div>
+            <DialogFooter>
+              <div className="flex justify-end gap-3 px-5 pb-5">
+                <Button variant="outline" onClick={() => setShowAddressForm(false)} disabled={isSavingAddress}>
+                  {t('exchange.cancel')}
+                </Button>
+                <Button variant="primary" onClick={handleSaveAddress} disabled={isSavingAddress}>
+                  {isSavingAddress ? t('exchange.addressSaving') : t('exchange.addressSave')}
+                </Button>
+              </div>
+            </DialogFooter>
           </div>
         ) : (
           /* ===== Main Exchange View ===== */
@@ -549,28 +552,30 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
             </div>
 
             {/* Footer */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 pb-5">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={agreed}
-                  onCheckedChange={(checked) => setAgreed(checked === true)}
-                  disabled={isSubmitting}
-                />
-                <span className="text-sm text-text-secondary">{t('exchange.agreeRules')}</span>
+            <DialogFooter>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 pb-5">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={agreed}
+                    onCheckedChange={(checked) => setAgreed(checked === true)}
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm text-text-secondary">{t('exchange.agreeRules')}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+                    {t('exchange.cancel')}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmit}
+                    disabled={!canSubmit}
+                  >
+                    {isSubmitting ? '...' : `${t('exchange.redeem')} ${totalPoints.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('exchange.points')}`}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-                  {t('exchange.cancel')}
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
-                >
-                  {isSubmitting ? '...' : `${t('exchange.redeem')} ${totalPoints.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('exchange.points')}`}
-                </Button>
-              </div>
-            </div>
+            </DialogFooter>
           </>
         )}
       </DialogContent>
