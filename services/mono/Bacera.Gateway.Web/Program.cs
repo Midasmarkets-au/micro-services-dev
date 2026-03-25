@@ -160,6 +160,10 @@ app.MapControllerRoute(
 // Discovery: public endpoints, no authentication required
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Discovery.DiscoveryGrpcService>().AllowAnonymous();
 
+// Config: tenant-scoped, requires authentication
+// ConfigurationController is kept for site-specific toggle endpoints not yet in proto.
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Config.TenantConfigurationGrpcService>();
+
 // Admin: tenant-scoped, requires authentication
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantAuditGrpcService>();
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantIpBlacklistGrpcService>();
