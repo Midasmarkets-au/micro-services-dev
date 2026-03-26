@@ -11,7 +11,7 @@ import type {
   RewardRebate,
   CriteriaParams,
 } from '@/types/eventshop';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList, buildQuery } from '@/lib/utils';
 import Decimal from 'decimal.js';
 
 function normalizeUserPoint(user: EventUserDetail): EventUserDetail {
@@ -95,15 +95,7 @@ export async function getShopItems(
   criteria?: CriteriaParams
 ): Promise<ActionResponse<{ items: ShopItem[]; total: number; page: number; size: number }>> {
   try {
-    const params = new URLSearchParams();
-    if (criteria) {
-      Object.entries(criteria).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          params.append(key, String(value));
-        }
-      });
-    }
-    const query = params.toString() ? `?${params.toString()}` : '';
+    const query = buildQuery(criteria);
     const response = await apiClient.v1.get<{
       status: number;
       data: ShopItem[];
@@ -221,17 +213,6 @@ interface ListApiResponse<T> {
   message: string;
 }
 
-function buildQuery(criteria?: CriteriaParams): string {
-  if (!criteria) return '';
-  const params = new URLSearchParams();
-  Object.entries(criteria).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
-      params.append(key, String(value));
-    }
-  });
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
-}
 
 export async function getShopOrderList(
   criteria?: CriteriaParams

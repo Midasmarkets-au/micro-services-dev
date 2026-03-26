@@ -20,6 +20,8 @@ import { CurrencyCodeMap } from '@/components/ui';
 import type { SalesTransactionRecord, SalesTransactionListResponse } from '@/types/sales';
 import { TradeFilter } from '@/components/TradeFilter';
 
+const DEFAULT_TRANSACTION_STATE_IDS = [250];
+
 function getUserName(item: SalesTransactionRecord): string {
   const u = item.user;
   if (u?.nativeName?.trim()) return u.nativeName;
@@ -57,15 +59,18 @@ export default function SalesTransactionPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
-  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({});
-  const pageSize = 25;
+  const [pageSize, setPageSize] = useState(25);
+  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
+    stateIds: DEFAULT_TRANSACTION_STATE_IDS,
+    size: 25,
+  });
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams };
         const result = await executeRef.current(getSalesTransactionReports, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -81,7 +86,7 @@ export default function SalesTransactionPage() {
         setIsLoading(false);
       }
     },
-    [salesAccount, filterParams, isClient],
+    [salesAccount, filterParams, isClient, pageSize],
   );
 
   const salesUid = salesAccount?.uid;
@@ -91,6 +96,7 @@ export default function SalesTransactionPage() {
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
+    if (typeof params.size === 'number') setPageSize(params.size);
     setFilterParams(params);
     setPage(1);
     fetchData(1, params);
@@ -208,10 +214,10 @@ export default function SalesTransactionPage() {
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">
       <TradeFilter
-        type="trade"
-        translationNamespace="sales"
-        filterOptions={['account', 'datePicker']}
+        type="transaction"
+        filterOptions={['stateIds', 'account', 'datePicker', 'pageSize']}
         onSearch={handleSearch}
+        defaultPageSize={25}
         isLoading={isLoading}
       />
 

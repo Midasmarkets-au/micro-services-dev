@@ -60,8 +60,6 @@ export interface TradeReportTableProps {
   } | null>;
   /** TradeFilter 显示的筛选字段 */
   filterOptions?: FilterField[];
-  /** TradeFilter 的 i18n namespace */
-  filterTranslationNamespace?: string;
   /** 默认 isClosed 状态 */
   defaultIsClosed?: boolean;
   /** 每页条数，默认 25 */
@@ -96,7 +94,6 @@ function getProfitColorClass(value: number): string {
 export function TradeReportTable({
   fetchData,
   filterOptions = ['isClosed', 'product', 'datePicker', 'allHistory'],
-  filterTranslationNamespace = 'accounts',
   defaultIsClosed = false,
   pageSize = 25,
   showAccountNumber = false,
@@ -392,7 +389,7 @@ export function TradeReportTable({
     <>
       <TradeFilter
         type="trade"
-        translationNamespace={filterTranslationNamespace}
+        
         filterOptions={filterOptions}
         defaultDateRange={defaultDateRange}
         onSearch={handleSearch}

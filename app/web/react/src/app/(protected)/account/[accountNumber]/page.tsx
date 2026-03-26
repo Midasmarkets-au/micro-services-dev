@@ -8,10 +8,9 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
 import { TimeShow } from '@/components/TimeShow';
-import { BalanceShow, Button, Skeleton, DatePicker, Tabs, DataTable, Icon } from '@/components/ui';
+import { BalanceShow, Button, Skeleton, Tabs, DataTable } from '@/components/ui';
 import { TradeReportTable } from '@/components/TradeReportTable';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
-import type { DateRange } from '@/components/ui';
 import {
   Select,
   SelectContent,
@@ -19,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/radix/Select';
-import { format, parse } from 'date-fns';
+import { TradeFilter } from '@/components/TradeFilter';
+import type { TradeFilterType } from '@/components/TradeFilter';
 import { DepositModal } from '@/components/dashboard/modals/DepositModal';
 import { WithdrawalModal } from '@/components/dashboard/modals/WithdrawalModal';
 import { TransferToAccountModal } from '@/components/dashboard/modals/TransferToAccountModal';
@@ -48,6 +48,7 @@ import {
   WithdrawalState,
   TransferState,
   getCurrencyFlag,
+  TransactionAccountType,
 } from '@/types/accounts';
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport';
 
@@ -89,19 +90,26 @@ function getStateBadgeCls(stateId: number): string {
   return 'bg-gray-500/20 text-gray-500';
 }
 
-const DEPOSIT_STATUS_OPTIONS = [
-  { value: 'all', labelKey: 'statusFilter.all' },
-  { value: String(DepositState.DepositCreated), labelKey: 'statusFilter.pending' },
-  { value: String(DepositState.DepositCompleted), labelKey: 'statusFilter.completed' },
-];
-
-const WITHDRAWAL_STATUS_OPTIONS = [
-  { value: 'all', labelKey: 'statusFilter.all' },
-  { value: String(WithdrawalState.WithdrawalCreated), labelKey: 'statusFilter.pending' },
-  { value: String(WithdrawalState.WithdrawalCompleted), labelKey: 'statusFilter.completed' },
-];
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
+const DEFAULT_TRANSACTION_STATE_IDS = [250];
+const TAB_FIXED_FILTER_PARAMS: Partial<Record<DetailTab, Record<string, unknown>>> = {
+  deposit: {
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    isClosed:false,
+  },
+  withdrawal: {
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    isClosed:false,
+  },
+  transfer: {
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    isClosed:false,
+  },
+};
 
 export default function AccountDetailPage() {
   const params = useParams();
@@ -133,12 +141,12 @@ export default function AccountDetailPage() {
   });
 
   // Filters
-  const [pageSize, setPageSize] = useState(20);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [startDate, setStartDate] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState<string | null>(null);
+  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
+    stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    size: 20,
+    page:1
+  });
   const isLoadedRef = useRef(false);
-
   const decorationImage = isDark
     ? '/images/verification/verify-night.svg'
     : '/images/verification/verify-day.svg';
@@ -183,17 +191,31 @@ export default function AccountDetailPage() {
     }
   }, [loadAccountData]);
 
-  const loadTabData = useCallback(async () => {
+  const getDefaultFilterParams = useCallback((tab: DetailTab): Record<string, unknown> => {
+    const fixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
+    if (tab === 'deposit') return { stateIds: DEFAULT_DEPOSIT_STATE_IDS, size: 20, ...fixedParams };
+    if (tab === 'withdrawal') return { stateIds: DEFAULT_WITHDRAWAL_STATE_IDS, size: 20, ...fixedParams };
+    if (tab === 'transfer') return { stateIds: DEFAULT_TRANSACTION_STATE_IDS, size: 20, ...fixedParams };
+    return fixedParams;
+  }, []);
+
+  const getFilterType = useCallback((tab: DetailTab): TradeFilterType => {
+    if (tab === 'deposit') return 'deposit';
+    if (tab === 'withdrawal') return 'withdrawal';
+    return 'transaction';
+  }, []);
+
+  const loadTabData = useCallback(async (extraParams?: Record<string, unknown>) => {
     if (!currentAccount || activeTab === 'tradeReport') return;
     setTabLoading(true);
     try {
       const uid = currentAccount.uid;
-      const stateParam = statusFilter !== 'all' ? Number(statusFilter) : undefined;
-      const period = startDate && endDate ? `${startDate},${endDate}` : undefined;
-
+      const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
+      const params = { ...filterParams, ...extraParams, ...tabFixedParams };
+      const stateIds = Array.isArray(params.stateIds) ? params.stateIds as number[] : undefined;
       switch (activeTab) {
         case 'deposit': {
-          const result = await execute(getAccountDeposits, uid, { size: pageSize, state: stateParam, period });
+          const result = await execute(getAccountDeposits, uid, params);
           if (result.success) {
             setDeposits(result.data?.data || []);
             setTotalCount(result.data?.total || 0);
@@ -201,7 +223,7 @@ export default function AccountDetailPage() {
           break;
         }
         case 'withdrawal': {
-          const result = await execute(getAccountWithdrawals, uid, { size: pageSize, state: stateParam, period });
+          const result = await execute(getAccountWithdrawals, uid, params);
           if (result.success) {
             setWithdrawals(result.data?.data || []);
             setTotalCount(result.data?.total || 0);
@@ -209,10 +231,17 @@ export default function AccountDetailPage() {
           break;
         }
         case 'transfer': {
-          const result = await execute(getAccountTransactions, uid, { size: pageSize, period });
+          const result = await execute(getAccountTransactions, uid, params);
           if (result.success) {
-            setTransactions(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            const raw = result.data?.data || [];
+            if (stateIds?.length) {
+              const filtered = raw.filter((item) => stateIds.includes(item.stateId));
+              setTransactions(filtered);
+              setTotalCount(filtered.length);
+            } else {
+              setTransactions(raw);
+              setTotalCount(result.data?.total || 0);
+            }
           }
           break;
         }
@@ -220,7 +249,7 @@ export default function AccountDetailPage() {
     } finally {
       setTabLoading(false);
     }
-  }, [currentAccount, activeTab, pageSize, statusFilter, startDate, endDate, execute]);
+  }, [currentAccount, activeTab, execute, filterParams]);
 
   useEffect(() => {
     if (currentAccount) {
@@ -258,29 +287,18 @@ export default function AccountDetailPage() {
     }
   };
 
-  const handleReset = () => {
-    setStatusFilter('all');
-    setPageSize(20);
-    setStartDate(null);
-    setEndDate(null);
-  };
-
-  const dateRange: DateRange | undefined = (() => {
-    const from = startDate ? parse(startDate, 'yyyy-MM-dd', new Date()) : undefined;
-    if (!from || isNaN(from.getTime())) return undefined;
-    const to = endDate ? parse(endDate, 'yyyy-MM-dd', new Date()) : undefined;
-    return { from, to: to && !isNaN(to.getTime()) ? to : undefined };
-  })();
-
-  const handleDateChange = (range: DateRange | undefined) => {
-    setStartDate(range?.from ? format(range.from, 'yyyy-MM-dd') : null);
-    setEndDate(range?.to ? format(range.to, 'yyyy-MM-dd') : null);
-  };
-
   const handleTabChange = (tab: DetailTab) => {
     setActiveTab(tab);
-    setStatusFilter('all');
+    const defaults = getDefaultFilterParams(tab);
+    setFilterParams(defaults);
     setTotalCount(0);
+  };
+
+  const handleSearch = (params: Record<string, unknown>) => {
+    const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
+    const mergedParams = { ...params, ...tabFixedParams };
+    setFilterParams(mergedParams);
+    loadTabData(mergedParams);
   };
 
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
@@ -558,20 +576,6 @@ export default function AccountDetailPage() {
     );
   }
 
-  // 获取当前 Tab 的状态筛选选项
-  const getStatusOptions = () => {
-    switch (activeTab) {
-      case 'deposit':
-        return DEPOSIT_STATUS_OPTIONS;
-      case 'withdrawal':
-        return WITHDRAWAL_STATUS_OPTIONS;
-      default:
-        return [];
-    }
-  };
-  const statusOptions = getStatusOptions();
-  const showStatusFilter = statusOptions.length > 0;
-
   return (
     <div className="flex w-full flex-col gap-6">
       {/* 返回链接 */}
@@ -719,7 +723,6 @@ export default function AccountDetailPage() {
         <TradeReportTable
             fetchData={fetchTradeData}
             filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
-            filterTranslationNamespace="accounts"
             autoFetchKey={currentAccount?.uid}
           />
         </div>
@@ -727,65 +730,14 @@ export default function AccountDetailPage() {
         <>
           {/* 筛选栏 */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* 页面大小 */}
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.pageSize')}</span>
-                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                  <SelectTrigger triggerSize="sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAGE_SIZE_OPTIONS.map((size) => (
-                      <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* 状态筛选 */}
-              {showStatusFilter && (
-                <div className="flex items-center gap-1">
-                  <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.status')}</span>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger triggerSize="sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* 时间选择 */}
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.period')}</span>
-                <DatePicker
-                  mode="range"
-                  size="sm"
-                  value={dateRange}
-                  onChange={handleDateChange}
-                  placeholder={t('detail.table.selectDate')}
-                  className="w-auto"
-                />
-              </div>
-
-              {/* 重置 / 搜索 / 全部历史 */}
-              <Button variant="secondary" size="sm" onClick={handleReset} className="gap-1 bg-[#000f32] text-white hover:bg-[#000f32]/90">
-                <Image src="/images/icons/refresh.svg" alt="" width={14} height={14} />
-                {t('detail.table.reset')}
-              </Button>
-              <Button variant="primary" size="sm" onClick={loadTabData} className="gap-1">
-                <Image src="/images/icons/search.svg" alt="" width={14} height={14} />
-                {t('detail.table.search')}
-              </Button>
-              <Button variant="secondary" size="sm" className="bg-[#000f32] text-white hover:bg-[#000f32]/90">
-                {t('detail.table.allHistory')}
-              </Button>
-            </div>
+            <TradeFilter
+              type={getFilterType(activeTab)}
+              filterOptions={['stateIds', 'datePicker', 'pageSize']}
+              defaultPageSize={20}
+              fixedParams={TAB_FIXED_FILTER_PARAMS[activeTab] ?? {}}
+              onSearch={handleSearch}
+              isLoading={tabLoading}
+            />
 
             {/* 右侧快捷按钮 */}
             {activeTab === 'deposit' && (

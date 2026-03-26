@@ -7,16 +7,14 @@ import { useServerAction } from '@/hooks/useServerAction';
 import {
   Avatar,
   BalanceShow,
-  DatePicker,
   Skeleton,
   Tabs,
-  Button,
   Pagination,
   Tag,
   DataTable,
   Icon,
 } from '@/components/ui';
-import type { TabItem, DateRange, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
+import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import {
   getIBClients,
@@ -41,6 +39,8 @@ import {
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 import { TradeReportTable } from '@/components/TradeReportTable';
+import { TradeFilter } from '@/components/TradeFilter';
+import type { TradeFilterType } from '@/components/TradeFilter';
 
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport' | 'commissionReport';
 
@@ -102,6 +102,10 @@ interface TransferItem {
   };
 }
 
+const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
+const DEFAULT_TRANSACTION_STATE_IDS = [250];
+
 export default function IBCustomerDetailPage({
   params,
 }: {
@@ -109,7 +113,6 @@ export default function IBCustomerDetailPage({
 }) {
   const { accountId } = use(params);
   const accountUid = parseInt(accountId, 10);
-  const t = useTranslations('ib');
   const td = useTranslations('ib.customerDetail');
   const tState = useTranslations('accounts.transactionState');
   const getCurrencyName = useCurrencyName();
@@ -121,13 +124,17 @@ export default function IBCustomerDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const pageSize = 15;
+  const [pageSize, setPageSize] = useState(15);
 
   const [deposits, setDeposits] = useState<IBDepositRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<IBWithdrawalRecord[]>([]);
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
   const [rebates] = useState<IBRebateRecord[]>([]);
+  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
+    stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    size: 15,
+    searchText: String(accountUid),
+  });
 
   const loadCustomer = useCallback(async () => {
     if (!agentAccount || !accountUid) return;
@@ -142,35 +149,64 @@ export default function IBCustomerDetailPage({
     }
   }, [agentAccount, accountUid, execute]);
 
-  const buildDateParams = useCallback(() => {
-    const p: Record<string, unknown> = {};
-    if (dateRange?.from) p.from = dateRange.from.toISOString();
-    if (dateRange?.to) p.to = dateRange.to.toISOString();
-    return p;
-  }, [dateRange]);
+  const getDefaultFilterParams = useCallback((tabKey: DetailTab): Record<string, unknown> => {
+    if (tabKey === 'deposit') {
+      return {
+        stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+        size: 15,
+        searchText: String(accountUid),
+      };
+    }
+    if (tabKey === 'withdrawal') {
+      return {
+        stateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+        size: 15,
+        searchText: String(accountUid),
+      };
+    }
+    return {
+      stateIds: DEFAULT_TRANSACTION_STATE_IDS,
+      size: 15,
+    };
+  }, [accountUid]);
 
-  const loadData = useCallback(async (p: number) => {
+  const getFilterType = useCallback((tabKey: DetailTab): TradeFilterType => {
+    if (tabKey === 'deposit') return 'deposit';
+    if (tabKey === 'withdrawal') return 'withdrawal';
+    return 'transaction';
+  }, []);
+
+  const loadData = useCallback(async (p: number, extraParams?: Record<string, unknown>) => {
     if (!agentAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
-      const dateParams = buildDateParams();
-      const params = { page: p, size: pageSize, searchText: String(accountUid), ...dateParams };
+      const params = { ...filterParams, ...extraParams };
 
       if (tab === 'deposit') {
-        const result = await execute(getIBDeposits, agentAccount.uid, params);
+        const result = await execute(getIBDeposits, agentAccount.uid, {
+          page: p,
+          size: pageSize,
+          ...params,
+        });
         if (result.success && result.data) {
           setDeposits(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'withdrawal') {
-        const result = await execute(getIBWithdrawals, agentAccount.uid, params);
+        const result = await execute(getIBWithdrawals, agentAccount.uid, {
+          page: p,
+          size: pageSize,
+          ...params,
+        });
         if (result.success && result.data) {
           setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'transfer') {
         const result = await execute(getIBAccountTransactions, agentAccount.uid, accountUid, {
-          page: p, size: pageSize, ...dateParams,
+          page: p,
+          size: pageSize,
+          ...params,
         });
         if (result.success && result.data) {
           const raw = Array.isArray(result.data.data) ? result.data.data : [];
@@ -193,7 +229,7 @@ export default function IBCustomerDetailPage({
     } finally {
       setIsLoading(false);
     }
-  }, [agentAccount, accountUid, tab, execute, buildDateParams]);
+  }, [agentAccount, accountUid, tab, execute, pageSize, filterParams]);
 
   useEffect(() => {
     loadCustomer();
@@ -203,9 +239,20 @@ export default function IBCustomerDetailPage({
     loadData(page);
   }, [tab, page, loadData]);
 
-  const handleSearch = () => { setPage(1); loadData(1); };
-  const handleReset = () => { setDateRange(undefined); setPage(1); };
-  const handleTabChange = (key: DetailTab) => { setTab(key); setPage(1); setTotal(0); };
+  const handleSearch = (params: Record<string, unknown>) => {
+    if (typeof params.size === 'number') setPageSize(params.size);
+    setFilterParams(params);
+    setPage(1);
+    loadData(1, params);
+  };
+  const handleTabChange = (key: DetailTab) => {
+    setTab(key);
+    setPage(1);
+    setTotal(0);
+    const defaults = getDefaultFilterParams(key);
+    setFilterParams(defaults);
+    if (typeof defaults.size === 'number') setPageSize(defaults.size);
+  };
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!agentAccount || !accountUid) return null;
     const result = await execute(getIBAccountTrades, agentAccount.uid, accountUid, params);
@@ -543,17 +590,16 @@ export default function IBCustomerDetailPage({
               showDivider={false}
             />
           </div>
-          {tab !== 'tradeReport' && (
-            <div className="mb-3 flex shrink-0 items-center gap-3">
-              <DatePicker mode="range" size="sm" value={dateRange} onChange={setDateRange} />
-              <Button variant="outline" size="sm" className="shrink-0 whitespace-nowrap" onClick={handleReset}>
-                <Icon name="reset-line" />
-                {t('action.reset')}
-              </Button>
-              <Button variant="primary" size="sm" className="shrink-0 whitespace-nowrap" onClick={handleSearch}>
-                <Icon name="search-line" />
-                {t('action.search')}
-              </Button>
+          {(tab === 'deposit' || tab === 'withdrawal' || tab === 'transfer') && (
+            <div className="mb-3 w-full lg:w-auto">
+              <TradeFilter
+                type={getFilterType(tab)}
+                filterOptions={['stateIds', 'datePicker', 'pageSize']}
+                defaultPageSize={15}
+                fixedParams={tab === 'transfer' ? undefined : { searchText: String(accountUid) }}
+                onSearch={handleSearch}
+                isLoading={isLoading}
+              />
             </div>
           )}
         </div>

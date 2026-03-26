@@ -1,7 +1,7 @@
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList,buildQuery } from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   SalesClientListResponse,
@@ -43,20 +43,7 @@ function unwrapData<T>(response: unknown): T {
   return response as T;
 }
 
-function buildQuery(params?: Record<string, unknown>): string {
-  if (!params) return '';
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    if (Array.isArray(value)) {
-      value.forEach((v) => qs.append(key, String(v)));
-    } else {
-      qs.append(key, String(value));
-    }
-  });
-  const str = qs.toString();
-  return str ? `?${str}` : '';
-}
+ 
 
 // ============================================
 // Sales Account API

@@ -980,7 +980,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "已創建出金"
+    },
+    "transaction": {
+      "incompleteTransaction": "已創建轉賬",
+      "completedTransaction": "已完成轉賬"
     },
     "rebate": {
       "title": "Rebate",

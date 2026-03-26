@@ -1,7 +1,7 @@
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList ,buildQuery} from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   Account,
@@ -45,22 +45,9 @@ export async function getLiveAccounts(
   params?: GetAccountsParams
 ): Promise<ActionResponse<Account[]>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.hasTradeAccount !== undefined) {
-      queryParams.append('hasTradeAccount', String(params.hasTradeAccount));
-    }
-    if (params?.status !== undefined) {
-      queryParams.append('status', String(params.status));
-    }
-    if (params?.roles?.length) {
-      params.roles.forEach((role) => queryParams.append('roles', String(role)));
-    }
-    if (params?.uids?.length) {
-      params.uids.forEach((uid) => queryParams.append('uids', String(uid)));
-    }
 
-    const queryString = queryParams.toString();
-    const url = `/client/account${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params as Record<string, unknown>);
+    const url = `/client/account${queryString}`;
 
     const response = await apiClient.v1.get<{ data: Account[] | Record<string, unknown> }>(url);
     const rawData = response.data;
@@ -85,19 +72,8 @@ export async function getPendingApplications(
   params?: GetApplicationsParams
 ): Promise<ActionResponse<Application[]>> {
   try {
-    // 构建查询参数
-    const queryParams = new URLSearchParams();
-    if (params?.statuses?.length) {
-      params.statuses.forEach((status) =>
-        queryParams.append('statuses', String(status))
-      );
-    }
-    if (params?.type !== undefined) {
-      queryParams.append('type', String(params.type));
-    }
-
-    const queryString = queryParams.toString();
-    const url = `/client/application${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params)
+    const url = `/client/application${queryString}`;
 
     const response = await apiClient.v1.get<{ data: Application[] }>(url);
     return { success: true, data: response.data || [] };
@@ -335,14 +311,9 @@ export async function getAccountTransactions(
   params?: TransactionQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountTransaction>>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.type !== undefined) queryParams.append('type', String(params.type));
-
-    const queryString = queryParams.toString();
-    const url = `/client/trade-account/${tradeAccountUid}/transaction${queryString ? `?${queryString}` : ''}`;
+    console.log('params===', params);
+    const queryString = buildQuery(params)
+    const url = `/client/trade-account/${tradeAccountUid}/transaction${queryString}`;
 
     const response = await apiClient.v1.get<{
       data: AccountTransaction[];
@@ -382,14 +353,8 @@ export async function getAccountDeposits(
   params?: DepositQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountDeposit>>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.state !== undefined) queryParams.append('depositState', String(params.state));
-
-    const queryString = queryParams.toString();
-    const url = `/client/account/${accountUid}/deposit${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params)
+    const url = `/client/account/${accountUid}/deposit${queryString}`;
 
     const response = await apiClient.v2.get<{
       data: AccountDeposit[];
@@ -429,14 +394,8 @@ export async function getAccountWithdrawals(
   params?: WithdrawalQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountWithdrawal>>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.state !== undefined) queryParams.append('withdrawalState', String(params.state));
-
-    const queryString = queryParams.toString();
-    const url = `/client/account/${accountUid}/withdrawal${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params)
+    const url = `/client/account/${accountUid}/withdrawal${queryString}`;
 
     const response = await apiClient.v2.get<{
       data: AccountWithdrawal[];
@@ -476,17 +435,8 @@ export async function getAccountTrades(
   params?: TradeQueryParams
 ): Promise<ActionResponse<AccountTradeListResponse>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.from) queryParams.append('from', params.from);
-    if (params?.to) queryParams.append('to', params.to);
-    if (params?.symbol) queryParams.append('symbol', params.symbol);
-    if (params?.isClosed !== undefined) queryParams.append('isClosed', String(params.isClosed));
-
-    const queryString = queryParams.toString();
-    const url = `/client/trade-account/${tradeAccountUid}/trade${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params)
+    const url = `/client/trade-account/${tradeAccountUid}/trade${queryString}`;
 
     const response = await apiClient.v1.get<{
       data: AccountTrade[];

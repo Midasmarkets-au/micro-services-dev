@@ -56,7 +56,7 @@ export default function IBRebatePage() {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams };
         const result = await executeRef.current(getIBRebates, agentAccount.uid, {
           page: p,
           size: pageSize,

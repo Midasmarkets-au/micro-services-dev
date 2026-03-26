@@ -419,6 +419,10 @@ export enum TransferState {
   TransferCompleted = 250,
 }
 
+export enum TransactionAccountType {
+  Wallet = 1,
+  TradeAccount = 2,
+}
 // 入金记录
 export interface AccountDeposit {
   id: number;
@@ -507,18 +511,19 @@ export interface PaginationParams {
 export interface TransactionQueryParams extends PaginationParams {
   period?: string;
   type?: number;
+  stateIds?: number[];
 }
 
 // 入金查询参数
 export interface DepositQueryParams extends PaginationParams {
   period?: string;
-  state?: number;
+  stateIds?: number[];
 }
 
 // 出金查询参数
 export interface WithdrawalQueryParams extends PaginationParams {
   period?: string;
-  state?: number;
+  stateIds?: number[];
 }
 
 // 交易报告查询参数

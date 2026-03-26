@@ -980,7 +980,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",
@@ -1333,9 +1337,13 @@
       "status": "Status",
       "createdOn": "Dicipta",
       "completedWithdrawal": "Selesai",
-      "incompleteWithdrawal": "Tidak Lengkap",
+      "incompleteWithdrawal": "Dicipta",
       "client": "Pelanggan",
       "ib": "IB"
+    },
+    "transaction": {
+      "incompleteTransaction": "Dicipta",
+      "completedTransaction": "Selesai"
     }
   },
   "unlockEmail": {

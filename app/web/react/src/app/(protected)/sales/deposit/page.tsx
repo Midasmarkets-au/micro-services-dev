@@ -12,15 +12,12 @@ import {
   Pagination,
   DataTable,
   Tag,
-  Icon,
-  Button,
 } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { SalesDepositRecord, SalesDepositListResponse } from '@/types/sales';
 import { CurrencyCodeMap } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
-import type { StatusOption } from '@/components/TradeFilter';
 
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
 
@@ -61,17 +58,18 @@ export default function SalesDepositPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
-    StateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    size: 25,
   });
-  const pageSize = 25;
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams };
         const result = await executeRef.current(getSalesDeposits, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -87,7 +85,7 @@ export default function SalesDepositPage() {
         setIsLoading(false);
       }
     },
-    [salesAccount, filterParams, isClient],
+    [salesAccount, filterParams, isClient, pageSize],
   );
 
   const salesUid = salesAccount?.uid;
@@ -97,6 +95,7 @@ export default function SalesDepositPage() {
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
+    if (typeof params.size === 'number') setPageSize(params.size);
     setFilterParams(params);
     setPage(1);
     fetchData(1, params);
@@ -106,16 +105,6 @@ export default function SalesDepositPage() {
     setPage(p);
     fetchData(p);
   };
-
-  const handleToggleRole = () => {
-    setIsClient((prev) => !prev);
-    setPage(1);
-  };
-
-  const statusOptions = useMemo<StatusOption[]>(() => [
-    { value: '300', label: t('deposit.incompleteDeposit') },
-    { value: '350', label: t('deposit.completedDeposit') },
-  ], [t]);
 
   const columns = useMemo<DataTableColumn<SalesDepositRecord>[]>(() => [
     {
@@ -201,10 +190,8 @@ export default function SalesDepositPage() {
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">
       <TradeFilter
         type="deposit"
-        translationNamespace="sales"
-        statusOptions={statusOptions}
-        statusLabel={t('deposit.status')}
-        filterOptions={['status', 'account', 'datePicker', 'allHistory']}
+        filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
+        defaultPageSize={25}
         onSearch={handleSearch}
         isLoading={isLoading}
       />

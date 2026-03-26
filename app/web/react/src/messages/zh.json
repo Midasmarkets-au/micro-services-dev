@@ -1820,9 +1820,13 @@
       "status": "状态",
       "createdOn": "创建时间",
       "completedWithdrawal": "已完成出金",
-      "incompleteWithdrawal": "未完成出金",
+      "incompleteWithdrawal": "已创建出金",
       "client": "客户",
       "ib": "代理"
+    },
+    "transaction": {
+      "incompleteTransaction": "已创建转账",
+      "completedTransaction": "已完成转账"
     },
     "rebate": {
       "title": "返佣",

@@ -49,7 +49,17 @@ const DEPOSIT_STATE_MAP: Record<number, number[]> = {
  */
 const WITHDRAWAL_STATE_MAP: Record<number, number[]> = {
   400: [400, 405, 406, 420, 425],
-  450: [450, 430],
+  450: [450],
+};
+
+/**
+ * 转账: simpleTransferSelections → simpleTransferToArray
+ *   TransferCreated(200) → "未完成" → 包含 [200,205,206,210,215,220]
+ *   TransferCompleted(250) → "已完成" → 包含 [250]
+ */
+const TRANSACTION_STATE_MAP: Record<number, number[]> = {
+  200: [200, 205, 206, 210, 215, 220],
+  250: [250],
 };
 
 // ====================================================================
@@ -144,10 +154,18 @@ function clearSumUpFields(params: Record<string, unknown>): Record<string, unkno
 // Component Types
 // ====================================================================
 
-export type TradeFilterType = 'deposit' | 'withdrawal' | 'trade';
+export type TradeFilterType = 'deposit' | 'withdrawal' | 'trade' | 'transaction';
 
 /** 可在 filterOptions 中声明的字段 */
-export type FilterField = 'status' | 'isClosed' | 'service' | 'product' | 'account' | 'datePicker' | 'allHistory';
+export type FilterField =
+  | 'stateIds'
+  | 'isClosed'
+  | 'service'
+  | 'product'
+  | 'account'
+  | 'datePicker'
+  | 'allHistory'
+  | 'pageSize';
 
 /** 默认显示的筛选字段 */
 const DEFAULT_FILTER_OPTIONS: FilterField[] = ['account', 'datePicker', 'allHistory'];
@@ -159,24 +177,24 @@ export interface StatusOption {
 }
 
 export interface TradeFilterProps {
-  /** 筛选类型，决定状态映射和时间转换逻辑 */
+  /** 筛选类型，决定状态映射、状态下拉选项和时间转换逻辑 */
   type: TradeFilterType;
-  /** i18n namespace，默认 'ib'，sales 页面传 'sales' */
-  translationNamespace?: string;
-  /** 状态下拉选项（对应 simpleDepositSelections / simpleWithdrawalSelections） */
-  statusOptions?: StatusOption[];
-  /** 状态字段标签 */
-  statusLabel?: string;
   /** 日期选择器默认值，不传则为空 */
   defaultDateRange?: DateRange;
   /**
    * 要显示的筛选字段列表，默认 ['account', 'datePicker', 'allHistory']
-   * 可选值: 'status' | 'isClosed' | 'service' | 'product' | 'account' | 'datePicker' | 'allHistory'
+   * 可选值: 'stateIds' | 'isClosed' | 'service' | 'product' | 'account' | 'datePicker' | 'allHistory' | 'pageSize'
    */
   filterOptions?: FilterField[];
+  /** 固定透传参数（如详情页自动携带账户） */
+  fixedParams?: Record<string, unknown>;
+  /** 页面大小可选项 */
+  pageSizeOptions?: number[];
+  /** 默认页面大小 */
+  defaultPageSize?: number;
   /**
    * 搜索回调 — 参数为完整的查询条件
-   * StateIds 已映射为数组，时间已转换为 GMT
+   * stateIds 已映射为数组，时间已转换为 GMT
    */
   onSearch: (params: Record<string, unknown>) => void;
   /** 重置回调（会同时触发 onSearch） */
@@ -195,20 +213,41 @@ export interface TradeFilterProps {
 
 export function TradeFilter({
   type,
-  translationNamespace = 'ib',
-  statusOptions,
-  statusLabel,
   defaultDateRange,
   filterOptions = DEFAULT_FILTER_OPTIONS,
+  fixedParams,
+  pageSizeOptions = [10, 15, 20, 25, 30, 50, 100],
+  defaultPageSize = 25,
   onSearch,
   onReset,
   onAllHistory,
   onIsClosedChange,
   isLoading = false,
 }: TradeFilterProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const t = useTranslations(translationNamespace as any);
+  const t = useTranslations('ib');
   const siteConfig = useUserStore((s) => s.siteConfig);
+
+  const statusOptions = useMemo<StatusOption[]>(() => {
+    if (type === 'deposit') {
+      return [
+        { value: '300', label: t('deposit.incompleteDeposit') },
+        { value: '350', label: t('deposit.completedDeposit') },
+      ];
+    }
+    if (type === 'withdrawal') {
+      return [
+        { value: '400', label: t('withdrawal.incompleteWithdrawal') },
+        { value: '450', label: t('withdrawal.completedWithdrawal') },
+      ];
+    }
+    if (type === 'transaction') {
+      return [
+        { value: '200', label: t('transaction.incompleteTransaction') },
+        { value: '250', label: t('transaction.completedTransaction') },
+      ];
+    }
+    return [];
+  }, [type, t]);
 
   const visibleFields = useMemo(() => new Set(filterOptions), [filterOptions]);
 
@@ -235,10 +274,13 @@ export function TradeFilter({
   const [symbol, setSymbol] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultDateRange);
+  const [pageSize, setPageSize] = useState<number>(defaultPageSize);
 
   const { execute } = useServerAction({ showErrorToast: false });
   const executeRef = useRef(execute);
-  executeRef.current = execute;
+  useEffect(() => {
+    executeRef.current = execute;
+  }, [execute]);
   const [symbolCodes, setSymbolCodes] = useState<string[]>([]);
   const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
   const symbolDropdownRef = useRef<HTMLDivElement>(null);
@@ -305,6 +347,7 @@ export function TradeFilter({
       const id = Number(statusValue);
       if (type === 'deposit') return DEPOSIT_STATE_MAP[id];
       if (type === 'withdrawal') return WITHDRAWAL_STATE_MAP[id];
+      if (type === 'transaction') return TRANSACTION_STATE_MAP[id];
       return undefined;
     },
     [type],
@@ -316,7 +359,9 @@ export function TradeFilter({
 
       if (!overrides?.clearStatus) {
         const stateIds = resolveStateIds(resolvedStatus);
-        if (stateIds) params.StateIds = stateIds;
+        if (stateIds) {
+          params.stateIds = stateIds;
+        }
       }
 
       if (visibleFields.has('isClosed')) {
@@ -329,6 +374,7 @@ export function TradeFilter({
 
       if (symbol.trim()) params.symbol = symbol.trim();
       if (accountNumber.trim()) params.searchText = accountNumber.trim();
+      if (visibleFields.has('pageSize')) params.size = pageSize;
 
       let fromStr: string | null = null;
       let toStr: string | null = null;
@@ -346,10 +392,11 @@ export function TradeFilter({
       const timeCriteria = buildTimeCriteria(fromStr, toStr);
       if (timeCriteria.from) params.from = timeCriteria.from;
       if (timeCriteria.to) params.to = timeCriteria.to;
+      if (fromStr && toStr) params.period = `${fromStr},${toStr}`;
 
-      return clearSumUpFields(params);
+      return clearSumUpFields({ ...params, ...(fixedParams || {}) });
     },
-    [resolvedStatus, isClosed, serviceId, symbol, accountNumber, dateRange, resolveStateIds, visibleFields],
+    [resolvedStatus, isClosed, serviceId, symbol, accountNumber, pageSize, dateRange, resolveStateIds, visibleFields, fixedParams],
   );
 
   // ---- Actions ----
@@ -371,18 +418,22 @@ export function TradeFilter({
     setSymbol('');
     setAccountNumber('');
     setDateRange(undefined);
+    setPageSize(defaultPageSize);
 
     const resetParams: Record<string, unknown> = {};
     const defaultStateIds = resolveStateIds(defaultStatusValue);
-    if (defaultStateIds) resetParams.StateIds = defaultStateIds;
+    if (defaultStateIds) resetParams.stateIds = defaultStateIds;
     if (visibleFields.has('isClosed')) resetParams.isClosed = false;
     if (visibleFields.has('service') && defaultServiceValue) {
       resetParams.serviceId = Number(defaultServiceValue);
     }
+    if (visibleFields.has('pageSize')) {
+      resetParams.size = defaultPageSize;
+    }
 
     onIsClosedChange?.(false);
     onReset?.();
-    onSearch(clearSumUpFields(resetParams));
+    onSearch(clearSumUpFields({ ...resetParams, ...(fixedParams || {}) }));
   };
 
   const handleAllHistory = () => {
@@ -394,7 +445,9 @@ export function TradeFilter({
     const params: Record<string, unknown> = {};
 
     const stateIds = resolveStateIds(resolvedStatus);
-    if (stateIds) params.StateIds = stateIds;
+    if (stateIds) {
+      params.stateIds = stateIds;
+    }
 
     if (visibleFields.has('isClosed')) params.isClosed = true;
     if (visibleFields.has('service') && serviceId) {
@@ -403,20 +456,21 @@ export function TradeFilter({
 
     const timeCriteria = buildTimeCriteria('2025-10-01', null);
     if (timeCriteria.from) params.from = timeCriteria.from;
+    if (visibleFields.has('pageSize')) params.size = pageSize;
 
     onIsClosedChange?.(true);
     onAllHistory?.();
-    onSearch(clearSumUpFields(params));
+    onSearch(clearSumUpFields({ ...params, ...(fixedParams || {}) }));
   };
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const filterControls = (
     <>
-      {visibleFields.has('status') && statusOptions && (
+      {visibleFields.has('stateIds') && statusOptions.length > 0 && (
         <div className="flex shrink-0 items-center gap-2">
           <span className="whitespace-nowrap text-sm text-text-secondary">
-            {statusLabel || t('fields.status')}
+            {t('fields.status')}
           </span>
           <Select value={resolvedStatus} onValueChange={setStatus}>
             <SelectTrigger triggerSize="sm" className="w-[140px]">
@@ -529,6 +583,26 @@ export function TradeFilter({
             onChange={setDateRange}
             className="w-auto"
           />
+        </div>
+      )}
+
+      {visibleFields.has('pageSize') && (
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="whitespace-nowrap text-sm text-text-secondary">
+            {t('fields.pageSize')}
+          </span>
+          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+            <SelectTrigger triggerSize="sm" className="w-[90px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizeOptions.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 

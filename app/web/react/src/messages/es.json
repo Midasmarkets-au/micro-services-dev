@@ -946,7 +946,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",
@@ -1299,9 +1303,13 @@
       "status": "Estado",
       "createdOn": "Creado",
       "completedWithdrawal": "Completado",
-      "incompleteWithdrawal": "Incompleto",
+      "incompleteWithdrawal": "Creado",
       "client": "Cliente",
       "ib": "IB"
+    },
+    "transaction": {
+      "incompleteTransaction": "Creado",
+      "completedTransaction": "Completado"
     }
   },
   "unlockEmail": {

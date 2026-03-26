@@ -42,3 +42,18 @@ export function normalizeAmountList<T extends Record<string, any>>(
 
   return normalizeObject(data);
 }
+
+export function buildQuery<T extends object>(params?: T): string {
+  if (!params) return '';
+  const qs = new URLSearchParams();
+  Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach((v) => qs.append(key, String(v)));
+    } else {
+      qs.append(key, String(value));
+    }
+  });
+  const str = qs.toString();
+  return str ? `?${str}` : '';
+}

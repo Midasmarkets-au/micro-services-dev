@@ -10,14 +10,12 @@ import {
   BalanceShow,
   Skeleton,
   Tabs,
-  Button,
   Pagination,
   Tag,
   DataTable,
   Icon,
-  DatePicker,
 } from '@/components/ui';
-import type { TabItem, DataTableColumn, DataTableGroupConfig, DateRange } from '@/components/ui';
+import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import {
   getSalesClients,
@@ -37,6 +35,8 @@ import {
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 import { TradeReportTable } from '@/components/TradeReportTable';
+import { TradeFilter } from '@/components/TradeFilter';
+import type { TradeFilterType } from '@/components/TradeFilter';
 import type {
   SalesClientAccount,
   SalesDepositRecord,
@@ -101,43 +101,6 @@ const DEFAULT_TRANSACTION_STATE_IDS = [
   TransferState.TransferCompleted,
 ];
 
-function isDateInDST_US(): boolean {
-  const now = new Date();
-  const jan = new Date(now.getFullYear(), 0, 1);
-  const jul = new Date(now.getFullYear(), 6, 1);
-  const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
-  return now.getTimezoneOffset() < stdOffset;
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function formatDateStr(d: Date): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function convertTradeTime(from: string | null, to: string | null): [string | null, string | null] {
-  const isDST = isDateInDST_US();
-  const startHour = isDST ? 21 : 22;
-  const endHour = isDST ? 20 : 21;
-
-  let createdFrom: string | null = null;
-  if (from) {
-    const d = new Date(from);
-    d.setDate(d.getDate() - 1);
-    createdFrom = `${formatDateStr(d)}T${pad2(startHour)}:00:00.000Z`;
-  }
-
-  let createdTo: string | null = null;
-  if (to) {
-    const d = new Date(to);
-    createdTo = `${formatDateStr(d)}T${pad2(endHour)}:59:59.000Z`;
-  }
-
-  return [createdFrom, createdTo];
-}
-
 function getRoleLabel(
   role: number,
   td: (key: string) => string,
@@ -167,12 +130,17 @@ export default function SalesCustomerDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const pageSize = 15;
+  const [pageSize, setPageSize] = useState(15);
 
   const [deposits, setDeposits] = useState<SalesDepositRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<SalesWithdrawalRecord[]>([]);
   const [transactions, setTransactions] = useState<SalesTransactionRecord[]>([]);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
+    sourceAccountType: TRADE_ACCOUNT_TYPE,
+    targetAccountType: TRADE_ACCOUNT_TYPE,
+    stateIds: DEFAULT_TRANSACTION_STATE_IDS,
+    size: 15,
+  });
 
   // ---- 加载账户详情（使用 queryAccounts 查询参数 uid=xxx） ----
   useEffect(() => {
@@ -205,81 +173,38 @@ export default function SalesCustomerDetailPage({
     return list;
   }, [td, accountDetail]);
 
-  const buildDepositFilterParams = useCallback(() => {
-    const p: Record<string, unknown> = {
-      StateIds: DEFAULT_DEPOSIT_STATE_IDS,
-    };
-
-    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
-    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
-
-    if (fromDateStr) {
-      const [from] = convertTradeTime(fromDateStr, null);
-      if (from) p.from = from;
+  const getDefaultFilterParams = useCallback((tabKey: DetailTab): Record<string, unknown> => {
+    if (tabKey === 'deposit') {
+      return { stateIds: DEFAULT_DEPOSIT_STATE_IDS, size: 15 };
     }
-
-    if (toDateStr) {
-      const [, to] = convertTradeTime(fromDateStr, toDateStr);
-      if (to) p.to = to;
+    if (tabKey === 'withdrawal') {
+      return { stateIds: DEFAULT_WITHDRAWAL_STATE_IDS, size: 15 };
     }
-
-    return p;
-  }, [dateRange]);
-
-  const buildTransactionFilterParams = useCallback(() => {
-    const p: Record<string, unknown> = {
+    return {
       sourceAccountType: TRADE_ACCOUNT_TYPE,
       targetAccountType: TRADE_ACCOUNT_TYPE,
-      StateIds: DEFAULT_TRANSACTION_STATE_IDS,
+      stateIds: DEFAULT_TRANSACTION_STATE_IDS,
+      size: 15,
     };
+  }, []);
 
-    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
-    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
-
-    if (fromDateStr) {
-      const [from] = convertTradeTime(fromDateStr, null);
-      if (from) p.from = from;
-    }
-
-    if (toDateStr) {
-      const [, to] = convertTradeTime(fromDateStr, toDateStr);
-      if (to) p.to = to;
-    }
-
-    return p;
-  }, [dateRange]);
-
-  const buildWithdrawalFilterParams = useCallback(() => {
-    const p: Record<string, unknown> = {
-      StateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
-      isClosed: false,
-    };
-
-    const fromDateStr = dateRange?.from ? formatDateStr(dateRange.from) : null;
-    const toDateStr = dateRange?.to ? formatDateStr(dateRange.to) : null;
-
-    if (fromDateStr) {
-      const [from] = convertTradeTime(fromDateStr, null);
-      if (from) p.from = from;
-    }
-
-    if (toDateStr) {
-      const [, to] = convertTradeTime(fromDateStr, toDateStr);
-      if (to) p.to = to;
-    }
-
-    return p;
-  }, [dateRange]);
+  const getFilterType = useCallback((tabKey: DetailTab): TradeFilterType => {
+    if (tabKey === 'deposit') return 'deposit';
+    if (tabKey === 'withdrawal') return 'withdrawal';
+    return 'transaction';
+  }, []);
 
   // ---- 数据加载 ----
-  const loadData = useCallback(async (p: number) => {
+  const loadData = useCallback(async (p: number, extraParams?: Record<string, unknown>) => {
     if (!salesAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
+      const params = { ...filterParams, ...extraParams };
       if (tab === 'transaction') {
-        const transactionFilterParams = buildTransactionFilterParams();
         const result = await execute(getSalesClientTransactions, salesAccount.uid, accountUid, {
-          page: p, size: pageSize, ...transactionFilterParams,
+          page: p,
+          size: pageSize,
+          ...params,
         });
         if (result.success && result.data) {
           const d = result.data as { data?: SalesTransactionRecord[]; criteria?: { total?: number } };
@@ -287,18 +212,22 @@ export default function SalesCustomerDetailPage({
           setTotal(d.criteria?.total || 0);
         }
       } else if (tab === 'deposit') {
-        const depositFilterParams = buildDepositFilterParams();
         const result = await execute(getSalesDeposits, salesAccount.uid, {
-          page: p, size: pageSize, accountUid, ...depositFilterParams,
+          page: p,
+          size: pageSize,
+          accountUid,
+          ...params,
         });
         if (result.success && result.data) {
           setDeposits(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'withdrawal') {
-        const withdrawalFilterParams = buildWithdrawalFilterParams();
         const result = await execute(getSalesWithdrawals, salesAccount.uid, {
-          page: p, size: pageSize, accountUid, ...withdrawalFilterParams,
+          page: p,
+          size: pageSize,
+          accountUid,
+          ...params,
         });
         if (result.success && result.data) {
           setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
@@ -308,15 +237,26 @@ export default function SalesCustomerDetailPage({
     } finally {
       setIsLoading(false);
     }
-  }, [salesAccount, accountUid, tab, execute, buildDepositFilterParams, buildTransactionFilterParams, buildWithdrawalFilterParams]);
+  }, [salesAccount, accountUid, tab, execute, pageSize, filterParams]);
 
   useEffect(() => {
     if (salesAccount) loadData(page);
   }, [tab, page, loadData, salesAccount]);
 
-  const handleTabChange = (key: DetailTab) => { setTab(key); setPage(1); setTotal(0); };
-  const handleSearch = () => { setPage(1); loadData(1); };
-  const handleReset = () => { setDateRange(undefined); setPage(1); };
+  const handleTabChange = (key: DetailTab) => {
+    setTab(key);
+    setPage(1);
+    setTotal(0);
+    const defaults = getDefaultFilterParams(key);
+    setFilterParams(defaults);
+    if (typeof defaults.size === 'number') setPageSize(defaults.size);
+  };
+  const handleSearch = (params: Record<string, unknown>) => {
+    if (typeof params.size === 'number') setPageSize(params.size);
+    setFilterParams(params);
+    setPage(1);
+    loadData(1, params);
+  };
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!salesAccount || !accountUid) return null;
     const result = await execute(getSalesClientTrades, salesAccount.uid, accountUid, params);
@@ -658,16 +598,15 @@ export default function SalesCustomerDetailPage({
             />
           </div>
           {tab !== 'tradeReport' && (
-            <div className="mb-3 flex shrink-0 items-center gap-3">
-              <DatePicker mode="range" size="sm" value={dateRange} onChange={setDateRange} />
-              <Button variant="outline" size="sm" className="shrink-0 whitespace-nowrap" onClick={handleReset}>
-                <Icon name="reset-line" />
-                {t('action.reset')}
-              </Button>
-              <Button variant="primary" size="sm" className="shrink-0 whitespace-nowrap" onClick={handleSearch}>
-                <Icon name="search-line" />
-                {t('action.search')}
-              </Button>
+            <div className="mb-3 w-full lg:w-auto">
+              <TradeFilter
+                type={getFilterType(tab)}
+                filterOptions={['stateIds', 'datePicker', 'pageSize']}
+                defaultPageSize={15}
+                fixedParams={tab === 'transaction' ? undefined : { accountUid }}
+                onSearch={handleSearch}
+                isLoading={isLoading}
+              />
             </div>
           )}
         </div>
@@ -676,7 +615,6 @@ export default function SalesCustomerDetailPage({
           <TradeReportTable
             fetchData={fetchTradeData}
             filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
-            filterTranslationNamespace="sales"
             pageSize={pageSize}
             autoFetchKey={`${salesAccount?.uid}-${accountUid}`}
           />

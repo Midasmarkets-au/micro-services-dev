@@ -1,7 +1,7 @@
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList } from '@/lib/utils';
+import { buildQuery, normalizeAmountList } from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   Wallet,
@@ -29,12 +29,8 @@ import type {
 const AMOUNT_SUBMIT_MULTIPLIER = 100;
 
 function buildQueryString(params?: GetTransactionsParams): string {
-  const q = new URLSearchParams();
-  if (params?.page !== undefined) q.append('page', String(params.page));
-  if (params?.size !== undefined) q.append('size', String(params.size));
-  if (params?.from) q.append('from', params.from);
-  if (params?.to) q.append('to', params.to);
-  return q.toString();
+  const query = buildQuery(params);
+  return query.startsWith('?') ? query.slice(1) : query;
 }
 
 function handleApiError(error: unknown, fallbackMessage: string): ActionResponse<never> {
@@ -113,8 +109,7 @@ export async function getWithdrawalTransactions(
   params?: GetTransactionsParams
 ): Promise<ActionResponse<PaginatedResponse<WithdrawalTransaction>>> {
   try {
-    const qs = buildQueryString(params);
-    const url = `/client/wallet/${walletHashId}/withdrawal${qs ? `?${qs}` : ''}`;
+    const url = `/client/wallet/${walletHashId}/withdrawal${buildQuery(params)}`;
     const response = await apiClient.v2.get(url);
     return { success: true, data: parseTransactionResponse<WithdrawalTransaction>(response) };
   } catch (error) {
@@ -127,8 +122,7 @@ export async function getTransferTransactions(
   params?: GetTransactionsParams
 ): Promise<ActionResponse<PaginatedResponse<TransferTransaction>>> {
   try {
-    const qs = buildQueryString(params);
-    const url = `/client/wallet/${walletHashId}/transfer${qs ? `?${qs}` : ''}`;
+    const url = `/client/wallet/${walletHashId}/transfer${buildQuery(params)}`;
     const response = await apiClient.v2.get(url);
     return { success: true, data: parseTransactionResponse<TransferTransaction>(response) };
   } catch (error) {
@@ -141,8 +135,7 @@ export async function getAdjustTransactions(
   params?: GetTransactionsParams
 ): Promise<ActionResponse<PaginatedResponse<AdjustTransaction>>> {
   try {
-    const qs = buildQueryString(params);
-    const url = `/client/wallet/${walletHashId}/adjust${qs ? `?${qs}` : ''}`;
+    const url = `/client/wallet/${walletHashId}/adjust${buildQuery(params)}`;
     const response = await apiClient.v2.get(url);
     return { success: true, data: parseTransactionResponse<AdjustTransaction>(response) };
   } catch (error) {
@@ -155,8 +148,7 @@ export async function getRefundTransactions(
   params?: GetTransactionsParams
 ): Promise<ActionResponse<PaginatedResponse<RefundTransaction>>> {
   try {
-    const qs = buildQueryString(params);
-    const url = `/client/wallet/${walletHashId}/refund${qs ? `?${qs}` : ''}`;
+    const url = `/client/wallet/${walletHashId}/refund${buildQuery(params)}`;
     const response = await apiClient.v2.get(url);
     return { success: true, data: parseTransactionResponse<RefundTransaction>(response) };
   } catch (error) {
@@ -169,8 +161,7 @@ export async function getRebateTransactions(
   params?: GetTransactionsParams
 ): Promise<ActionResponse<PaginatedResponse<RebateTransaction>>> {
   try {
-    const qs = buildQueryString(params);
-    const url = `/client/wallet/${walletHashId}/rebate${qs ? `?${qs}` : ''}`;
+    const url = `/client/wallet/${walletHashId}/rebate${buildQuery(params)}`;
     const response = await apiClient.v2.get(url);
     return { success: true, data: parseTransactionResponse<RebateTransaction>(response) };
   } catch (error) {
@@ -183,8 +174,7 @@ export async function getDownlineRewardTransactions(
   params?: GetTransactionsParams
 ): Promise<ActionResponse<PaginatedResponse<DownlineRewardTransaction>>> {
   try {
-    const qs = buildQueryString(params);
-    const url = `/client/wallet/${walletHashId}/downline-reward-transfer${qs ? `?${qs}` : ''}`;
+    const url = `/client/wallet/${walletHashId}/downline-reward-transfer${buildQuery(params)}`;
     const response = await apiClient.v2.get(url);
     return { success: true, data: parseTransactionResponse<DownlineRewardTransaction>(response) };
   } catch (error) {
@@ -298,13 +288,12 @@ export async function getTradeAccounts(
   fundType?: number
 ): Promise<ActionResponse<TradeAccount[]>> {
   try {
-    const params = new URLSearchParams();
-    if (currencyId !== undefined) params.append('CurrencyId', String(currencyId));
-    if (fundType !== undefined) params.append('FundType', String(fundType));
-    params.append('includeClosed', 'false');
-    const qs = params.toString();
     const response = await apiClient.v1.get<{ data: TradeAccount[] }>(
-      `/client/trade-account${qs ? `?${qs}` : ''}`
+      `/client/trade-account${buildQuery({
+        CurrencyId: currencyId,
+        FundType: fundType,
+        includeClosed: false,
+      })}`
     );
     return { success: true, data: response.data || [] };
   } catch (error) {
