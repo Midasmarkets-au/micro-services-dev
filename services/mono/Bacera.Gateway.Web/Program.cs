@@ -172,6 +172,25 @@ app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantExchangeRateGrpc
 // ConfigurationController is kept for site-specific toggle endpoints not yet in proto.
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Config.TenantConfigurationGrpcService>();
 
+// User / Role / Permission: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantUserGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantRoleGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantPermissionGrpcService>();
+
+// KYC: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantKycGrpcService>();
+
+// Verification: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantVerificationGrpcService>();
+
+// Account: tenant/client/sales/agent/rep-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.TenantAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.TenantAccountV2GrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.ClientAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.SalesAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.AgentAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.RepAccountGrpcService>();
+
 // Notification: tenant-scoped, requires authentication
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantMessageGrpcService>();
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantEmailGrpcService>();
