@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -56,15 +57,6 @@ service TenantConfigurationService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1; // 操作是否成功
-  string message = 2; // 附加说明或错误信息
-}
-
 // 站点列表响应
 message SitesResponse {
   repeated SiteItem sites = 1;
@@ -79,9 +71,11 @@ message SiteItem {
 
 // 配置列表请求；可按 category 或关键字搜索
 message ListConfigurationsRequest {
-  PaginationRequest pagination = 1;
-  optional string   category   = 2; // 配置分类过滤，如 "email"、"payment"
-  optional string   keywords   = 3; // key/value 关键字搜索
+  PaginationRequest  pagination = 1;
+  optional string    category   = 2; // 配置分类过滤，如 "public"、"account"、"party"
+  optional string    keywords   = 3; // key/value 关键字搜索
+  repeated int64     row_ids    = 4; // 按 row_id 过滤（多值），对应 ?rowIds=0&rowIds=1
+  repeated string    keys       = 5; // 按 key 过滤（多值），对应 ?keys=AutoCreateTradeAccountEnabled
 }
 
 message ListConfigurationsResponse {
@@ -147,12 +141,3 @@ message UpdateSiteIntValueRequest {
   IntValue spec    = 2;
 }
 
-// 字符串值封装
-message StringValue {
-  string value = 1;
-}
-
-// 整型值封装
-message IntValue {
-  int32 value = 1;
-}

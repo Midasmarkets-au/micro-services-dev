@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -87,12 +88,6 @@ service TenantExchangeRateService {
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1; // 操作是否成功
-  string message = 2; // 附加说明或错误信息
-}
 
 // 品种实体
 message Symbol {

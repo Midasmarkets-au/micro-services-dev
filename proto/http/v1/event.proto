@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -285,15 +286,6 @@ service ClientEventService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 活动实体（后台视图）
 message Event {
   int32  id         = 1; // 活动 ID
@@ -559,11 +551,6 @@ message UpdateShopCategoryRequest {
 message UpdateShopCategoryStatusRequest {
   string   key  = 1; // 分类 key
   IntValue spec = 2; // 新 status 值（0=inactive、1=active）
-}
-
-// 整型值封装（与 config.proto 中同名，各文件独立定义）
-message IntValue {
-  int32 value = 1;
 }
 
 // ─── ShopReward 相关消息 ───────────────────────────────────────────────────────

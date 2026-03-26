@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -114,15 +115,15 @@ service TenantUserService {
   }
   // 更新用户的支付服务设置（spec 为 JSON 字符串）
   rpc UpdateUserPaymentService(UpdatePaymentServiceRequest) returns (PaymentServiceResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/payment-service", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/payment-service", body: "*" };
   }
   // 更新用户基本资料（spec 为 JSON 字符串，对应 User.TenantUpdateSpec）
   rpc UpdateUserProfile(UpdateUserProfileRequest) returns (User) {
-    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/profile", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/profile", body: "*" };
   }
   // 更新用户状态（status 枚举值）
   rpc UpdateUserStatus(UpdateUserStatusRequest) returns (User) {
-    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/status", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/status", body: "*" };
   }
   // 将用户迁移至指定站点（site_id 为路径参数）
   rpc UpdateUserSite(UpdateUserSiteRequest) returns (User) {
@@ -158,7 +159,7 @@ service TenantUserService {
   }
   // 将用户复制到另一 tenant（spec 为 JSON 格式的用户覆盖数据）
   rpc DuplicateUser(DuplicateUserRequest) returns (User) {
-    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/duplicate-to/{tenant_id}", body: "spec" };
+    option (google.api.http) = { post: "/api/v1/tenant/user/{party_id}/duplicate-to/{tenant_id}", body: "*" };
   }
   // 获取旧版个人信息（兼容历史数据，返回 JSON）
   rpc GetLegacyPersonalInfo(GetUserRequest) returns (LegacyInfoResponse) {
@@ -182,7 +183,7 @@ service TenantUserService {
   }
   // 更新用户社交媒体信息（body 字段名为 spec）
   rpc UpdateSocialMediaInfo(UpdateSocialMediaRequest) returns (SocialMediaInfoResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/social-media-info", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/social-media-info", body: "*" };
   }
 }
 
@@ -225,11 +226,11 @@ service TenantKycService {
   }
   // 为用户创建新 KYC 表单（spec 为 JSON 格式的 KycFormViewModel）
   rpc CreateKyc(CreateKycRequest) returns (KycForm) {
-    option (google.api.http) = { post: "/api/v1/tenant/kyc/{party_id}", body: "spec" };
+    option (google.api.http) = { post: "/api/v1/tenant/kyc/{party_id}", body: "*" };
   }
   // 更新 KYC 表单内容（spec 为 JSON 格式的 KycFormViewModel）
   rpc UpdateKyc(UpdateKycRequest) returns (KycForm) {
-    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}", body: "*" };
   }
   // 将 KYC 状态设置为等待审核
   rpc AwaitingReview(GetKycRequest) returns (KycForm) {
@@ -237,11 +238,11 @@ service TenantKycService {
   }
   // 对 KYC 表单进行合规签名
   rpc SignKyc(UpdateKycRequest) returns (KycForm) {
-    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/sign", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/sign", body: "*" };
   }
   // 最终确认 KYC（status → finalized，账户开户完成）
   rpc FinalizeKyc(UpdateKycRequest) returns (KycForm) {
-    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/finalize", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/kyc/{party_id}/finalize", body: "*" };
   }
   // 获取 KYC 历史状态变更记录
   rpc GetKycHistory(GetKycRequest) returns (KycHistoryResponse) {
@@ -309,7 +310,7 @@ service TenantVerificationService {
   }
   // 拒绝特定文件（medium_id 为文件 ID，spec 含拒绝原因）
   rpc RejectDocument(RejectVerificationDocumentRequest) returns (VerificationItem) {
-    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/{medium_id}/reject", body: "spec" };
+    option (google.api.http) = { put: "/api/v1/tenant/verification/{id}/document/{medium_id}/reject", body: "*" };
   }
   // 批准特定文件
   rpc ApproveDocument(VerificationDocumentRequest) returns (VerificationItem) {
@@ -478,15 +479,6 @@ service UserServiceV2 {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
-
 // 用户实体
 message User {
   int64  id         = 1; // 用户主键 ID
@@ -505,14 +497,13 @@ message Role {
 }
 
 // 地址实体
+// city / is_default 字段已移除：Address 实体无此列，数据存储于 Name/Content 字段
 message Address {
-  int64  id         = 1; // 地址 ID
-  string hash_id    = 2; // 地址哈希 ID（URL 友好，对外暴露）
-  int64  party_id   = 3; // 所属用户 party_id
-  string country    = 4; // 国家代码，如 "AU"、"CN"
-  string city       = 5; // 城市名称
-  string address    = 6; // 详细地址
-  bool   is_default = 7; // 是否为默认地址
+  int64  id       = 1; // 地址 ID
+  string hash_id  = 2; // 地址哈希 ID（URL 友好，对外暴露）
+  int64  party_id = 3; // 所属用户 party_id
+  string country  = 4; // 国家代码，如 "AU"、"CN"
+  string address  = 5; // 详细地址（对应 Name 字段）
 }
 
 // KYC 表单实体
@@ -535,8 +526,8 @@ message Verification {
 message VerificationItem {
   int64  id              = 1; // 条目 ID
   int64  verification_id = 2; // 关联验证申请 ID
-  int32  type            = 3; // 条目类型（枚举：1=passport、2=national_id、3=utility_bill 等）
-  int32  status          = 4; // 条目状态：0=pending、1=approved、2=rejected
+  string category        = 3; // 条目分类，对应 VerificationCategoryTypes（如 "document"、"info"、"financial"）
+  string content         = 4; // 条目内容 JSON（文件路径、表单数据等）
 }
 
 // ─── User 相关消息 ─────────────────────────────────────────────────────────────
@@ -699,10 +690,8 @@ message GetAddressByHashRequest {
 
 // 创建地址请求
 message CreateAddressRequest {
-  string country    = 1; // 国家代码，如 "AU"
-  string city       = 2;
-  string address    = 3; // 详细地址
-  bool   is_default = 4; // 是否设为默认地址
+  string country = 1; // 国家代码，如 "AU"
+  string address = 2; // 详细地址（对应 Name 字段）
 }
 
 // 更新地址请求
@@ -784,15 +773,14 @@ message UpdateKycRequest {
   string spec     = 2; // JSON 格式的 KycFormViewModel
 }
 
-// KYC 历史状态变更响应
+// KYC 历史表单快照响应
 message KycHistoryResponse {
   repeated KycHistoryItem items = 1;
 }
 
-// KYC 历史条目
+// KYC 历史条目：存储每次提交时的表单数据快照
 message KycHistoryItem {
-  int32  status     = 1; // 历史状态枚举值
-  string updated_at = 2; // 状态变更时间，ISO 8601 格式
+  string json = 1; // 序列化的 KycFormViewModel JSON 快照
 }
 
 // 合规签名响应

@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -77,6 +78,10 @@ service TenantUserBlacklistService {
   rpc DeleteUserBlacklist(GetUserBlacklistRequest) returns (OperationResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/user-black-list/{id}" };
   }
+  // 重新加载用户黑名单缓存（将数据库数据同步到 Redis）
+  rpc ReloadUserBlacklistCache(EmptyRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/user-black-list/reload-cache" };
+  }
 }
 
 // ─── Tenant API Log API (api/v1/tenant/api-log) ──────────────────────────────
@@ -89,17 +94,17 @@ service TenantApiLogService {
   }
 }
 
-// ─── Tenant Statistics API (api/v1/tenant/statistic) ────────────────────────
+// ─── Tenant Statistics API (api/v2/tenant/statistic) ────────────────────────
 // 实时在线用户统计，包括管理员和客户端在线人数。
 
 service TenantStatisticsService {
   // 获取当前在线管理员列表及数量（通过 SignalR 连接状态统计）
-  rpc GetOnlineAdmins(EmptyRequest) returns (OnlineUsersResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/statistic/online-admins" };
+  rpc GetOnlineAdmins(EmptyRequest) returns (OnlineAdminsResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/statistic/online-admins" };
   }
-  // 获取当前在线客户端用户列表及数量
+  // 获取当前在线客户端用户列表及数量，按 tenant 分组含浏览器/设备统计
   rpc GetOnlineUsers(EmptyRequest) returns (OnlineUsersResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/statistic/online-users" };
+    option (google.api.http) = { get: "/api/v2/tenant/statistic/online-users" };
   }
 }
 
@@ -119,14 +124,6 @@ service TenantStatisticsServiceV2 {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求
-message EmptyRequest {}
-
-// 通用操作结果
-message OperationResponse {
-  bool   success = 1;
-  string message = 2;
-}
 
 // 审计记录实体
 message Audit {
@@ -267,17 +264,30 @@ message ListApiLogsResponse {
 
 // ─── Statistics 相关消息 ──────────────────────────────────────────────────────
 
-// 在线用户响应（含数量和列表）
+// 在线用户响应：按 tenant 分组，每组含浏览器和设备统计
 message OnlineUsersResponse {
-  int32            count = 1; // 当前在线用户数量
-  repeated OnlineUser users = 2; // 在线用户详情列表
+  repeated OnlineTenantStat items = 1;
 }
 
-// 在线用户条目
+// 单个 tenant 的在线用户统计
+message OnlineTenantStat {
+  int64             tenant_id   = 1; // Tenant ID
+  int32             total       = 2; // 该 tenant 在线用户总数
+  map<string, int64> device_stat = 3; // 设备统计，如 {"Windows": 3, "Mac": 1}
+  map<string, int64> client_stat = 4; // 浏览器统计，如 {"Chrome": 3, "Safari": 1}
+}
+
+// 在线管理员条目（GetOnlineAdmins 专用）
 message OnlineUser {
   int64  party_id = 1; // 用户 party_id
   string email    = 2; // 用户邮箱
   string since    = 3; // 上线时间，ISO 8601 格式
+}
+
+// 在线管理员响应
+message OnlineAdminsResponse {
+  int32            count = 1;
+  repeated OnlineUser users = 2;
 }
 
 // MT 服务器列表响应

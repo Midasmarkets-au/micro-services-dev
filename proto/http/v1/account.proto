@@ -3,9 +3,11 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
+import "http/v1/payment.proto";
 
 // ─── Tenant Account API (api/v1/tenant/account) ─────────────────────────────
 // 管理平台所有账户（IB/Client/Sales/Rep），支持状态变更、标签、资金类型、
@@ -188,7 +190,7 @@ service ClientAccountServiceV2 {
     option (google.api.http) = { post: "/api/v2/client/account/{id}/change-leverage", body: "spec" };
   }
   // 修改 MT 账户交易密码（需同时提供旧密码验证）
-  rpc ChangePassword(ChangePasswordRequest) returns (Account) {
+  rpc ChangePassword(AccountChangePasswordRequest) returns (Account) {
     option (google.api.http) = { post: "/api/v2/client/account/{id}/change-password", body: "spec" };
   }
   // 查询关联账户上某笔支付（payment_number）的当前处理状态
@@ -352,9 +354,6 @@ service RepAccountService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 空请求（无参数接口占位）
-message EmptyRequest {}
-
 // 账户实体（含关键标识字段）
 message Account {
   int64  id          = 1;  // 平台账户主键 ID
@@ -363,7 +362,7 @@ message Account {
   int32  status      = 4;  // 账户状态：0=inactive（停用）、1=active（正常）、2=locked（锁定）、3=suspended（暂停）
   int32  role        = 5;  // 账户角色类型：对应 AccountRoleTypes 枚举（如 Client/IB/Sales/Rep）
   int32  fund_type   = 6;  // 资金类型枚举，影响可用出入金渠道
-  int64  tenant_id   = 7;  // 所属租户 ID
+  // tenant_id 字段已移除：多租户隔离通过 DB 连接实现，Account 实体不存储 tenant_id
   int64  party_id    = 8;  // 跨租户唯一用户标识（同一自然人在不同租户下 party_id 相同）
   string created_at  = 9;  // 创建时间，ISO 8601 格式
   string updated_at  = 10; // 最后更新时间，ISO 8601 格式
@@ -478,16 +477,10 @@ message UpdateFundTypeRequest {
   int32 fund_type = 2; // 新资金类型枚举值
 }
 
-// 等级返佣设置响应（多级结构）
+// 等级返佣设置响应
+// json 字段为完整的 RebateLevelSetting 序列化 JSON（原 REST 接口直接返回该对象）
 message LevelSettingResponse {
-  repeated LevelSetting items = 1;
-}
-
-// 单个等级设置条目
-message LevelSetting {
-  int32  level      = 1; // 层级编号（从 1 开始）
-  string name       = 2; // 等级名称，如 "Bronze"、"Silver"、"Gold"
-  double amount     = 3; // 触发该等级所需的交易量或入金阈值
+  string json = 1; // 完整的 RebateLevelSetting JSON 字符串，供前端直接解析
 }
 
 // 推荐码列表响应
@@ -668,7 +661,7 @@ message ChangeLeverageSpec {
 }
 
 // 修改密码请求
-message ChangePasswordRequest {
+message AccountChangePasswordRequest {
   int64              id   = 1; // 账户 ID
   ChangePasswordSpec spec = 2;
 }
@@ -689,31 +682,6 @@ message GetPaymentStatusRequest {
 message PaymentStatusResponse {
   int32  status  = 1; // 支付状态枚举值
   string message = 2; // 状态描述或失败原因
-}
-
-// 充值记录列表查询请求
-message ListDepositsRequest {
-  int64             account_uid = 1; // 账户 UID
-  PaginationRequest pagination  = 2;
-  optional string   date_from   = 3; // ISO 8601 格式
-  optional string   date_to     = 4; // ISO 8601 格式
-  optional int32    status      = 5; // 充值状态过滤
-}
-
-message ListDepositsResponse {
-  repeated Deposit data = 1;
-  PaginationMeta   meta = 2;
-}
-
-// 充值记录实体
-message Deposit {
-  int64  id          = 1; // 充值记录 ID
-  string hash_id     = 2; // URL 友好的哈希标识（用于对外接口）
-  int64  account_uid = 3; // 关联账户 UID
-  double amount      = 4; // 充值金额
-  string currency    = 5; // 货币代码，如 "USD"
-  int32  status      = 6; // 充值状态（pending→processing→completed/failed）
-  string created_at  = 7; // 创建时间，ISO 8601 格式
 }
 
 // 创建充值请求
@@ -744,36 +712,6 @@ message DepositGuideResponse {
 message GetDepositReceiptRequest {
   int64  account_uid     = 1; // 账户 UID
   string deposit_hash_id = 2; // 充值单 hash_id
-}
-
-// 充值回执响应
-message DepositReceiptResponse {
-  string url = 1; // 回执凭证文件 URL（图片或 PDF）
-}
-
-// 提款记录列表查询请求
-message ListWithdrawalsRequest {
-  int64             account_uid = 1; // 账户 UID
-  PaginationRequest pagination  = 2;
-  optional string   date_from   = 3; // ISO 8601 格式
-  optional string   date_to     = 4; // ISO 8601 格式
-  optional int32    status      = 5; // 提款状态过滤
-}
-
-message ListWithdrawalsResponse {
-  repeated Withdrawal data = 1;
-  PaginationMeta      meta = 2;
-}
-
-// 提款记录实体
-message Withdrawal {
-  int64  id          = 1; // 提款记录 ID
-  string hash_id     = 2; // URL 友好的哈希标识（用于对外接口）
-  int64  account_uid = 3; // 关联账户 UID
-  double amount      = 4; // 提款金额
-  string currency    = 5; // 货币代码，如 "USD"
-  int32  status      = 6; // 提款状态（pending→processing→completed/rejected）
-  string created_at  = 7; // 创建时间，ISO 8601 格式
 }
 
 // 创建提款请求

@@ -499,16 +499,11 @@ public static partial class Startup
     public static void AddSwaggerGenOptions(this IServiceCollection me)
     {
         if (IsProduction()) return;
+        // gRPC Swagger: generates OpenAPI spec from proto service definitions + google.api.http annotations
+        me.AddGrpcSwagger();
         me.AddSwaggerGen(options =>
         {
             options.SwaggerDoc("v1", new OpenApiInfo { Title = "Bacera Gateway API", Version = "v1" });
-            options.TagActionsBy(apiDesc =>
-            {
-                var areaName = apiDesc.GetAreaName();
-                return areaName == null ? new[] { "Default" } : areaName;
-            });
-            options.EnableAnnotations();
-            options.CustomSchemaIds(x => x.FullName?.Replace("+", "."));
             // Include 'SecurityScheme' to use JWT Authentication
             var jwtSecurityScheme = new OpenApiSecurityScheme
             {
@@ -532,11 +527,6 @@ public static partial class Startup
             {
                 { jwtSecurityScheme, Array.Empty<string>() }
             });
-            // Added Details for Enum Type
-            //options.SchemaFilter<Startup.EnumSchemaFilter>();
-            // using System.Reflection;
-            var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-            options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
         });
     }
 
