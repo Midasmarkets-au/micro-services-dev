@@ -25,6 +25,24 @@ const handleRequestRejected = (error) => {
 };
 
 const handleResponseFulfilled = (response) => {
+  const body = response.data;
+  // Normalize gRPC JSON Transcoding list responses to legacy Result<T,C> envelope.
+  // New format: { data: [...], meta: { page, size, total, pageCount, hasMore } }
+  // Old format: { status: 1, data: [...], criteria: { page, size, total, ... } }
+  if (
+    body &&
+    typeof body === "object" &&
+    "meta" in body &&
+    !("criteria" in body) &&
+    !("status" in body)
+  ) {
+    response.data = {
+      status: 1,
+      data: body.data ?? [],
+      criteria: body.meta,
+      message: null,
+    };
+  }
   return response;
 };
 

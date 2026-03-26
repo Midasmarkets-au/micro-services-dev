@@ -43,19 +43,32 @@ export default {
   queryPromotionList: async (id?: number) =>
     (await axiosV2.get(phpPrefix + "promotions/" + id)).data,
 
-  queryOnlineAdmin: async (criteria?: any) =>
-    (
-      await axios.get(prefixV2 + "statistic/online-admins", {
-        params: criteria,
-      })
-    ).data,
+  queryOnlineAdmin: async (criteria?: any) => {
+    const res = (
+      await axios.get(prefixV2 + "statistic/online-admins", { params: criteria })
+    ).data;
+    // Proto returns { count, users: [{ partyId, email, since, tenantId }] }
+    // Component expects array of [{ tenantId, users: [...] }] grouped by tenant
+    const grouped: Record<number, any[]> = {};
+    for (const user of res.users ?? []) {
+      const tid = user.tenantId ?? 0;
+      if (!grouped[tid]) grouped[tid] = [];
+      grouped[tid].push(user);
+    }
+    return Object.entries(grouped).map(([tenantId, users]) => ({
+      tenantId: Number(tenantId),
+      users,
+    }));
+  },
 
-  queryOnlineUsers: async (criteria?: any) =>
-    (
-      await axios.get(prefixV2 + "statistic/online-users", {
-        params: criteria,
-      })
-    ).data,
+  queryOnlineUsers: async (criteria?: any) => {
+    const res = (
+      await axios.get(prefixV2 + "statistic/online-users", { params: criteria })
+    ).data;
+    // Proto returns { items: [{ tenantId, total, deviceStat, clientStat }] }
+    // Component expects a flat array directly
+    return res.items ?? [];
+  },
 
   getExcludeEquityBelowCredit: async () =>
     (
