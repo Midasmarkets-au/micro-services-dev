@@ -44,15 +44,38 @@ function handleApiError(error: unknown, fallbackMessage: string): ActionResponse
 function parseTransactionResponse<T>(responseData: any): PaginatedResponse<T> {
   const raw = responseData?.data || responseData || [];
   const items: T[] = Array.isArray(raw) ? raw : (raw.data || []);
+  const parsedTotal =
+    responseData?.total ??
+    responseData?.criteria?.total ??
+    raw?.total ??
+    raw?.criteria?.total ??
+    raw?.pagination?.total ??
+    items.length;
+  const parsedPage =
+    responseData?.page ??
+    responseData?.criteria?.page ??
+    raw?.page ??
+    raw?.criteria?.page ??
+    raw?.pagination?.page ??
+    1;
+  const parsedPageSize =
+    responseData?.size ??
+    responseData?.pageSize ??
+    responseData?.criteria?.size ??
+    raw?.size ??
+    raw?.pageSize ??
+    raw?.criteria?.size ??
+    raw?.pagination?.size ??
+    10;
   const normalized = normalizeAmountList(
     items as Record<string, unknown>[],
     ['amount', 'balance', 'prevBalance']
   ) as T[];
   return {
     data: normalized,
-    total: responseData?.total ?? items.length,
-    page: responseData?.page ?? 1,
-    pageSize: responseData?.size ?? responseData?.pageSize ?? 10,
+    total: parsedTotal,
+    page: parsedPage,
+    pageSize: parsedPageSize,
   };
 }
 

@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
 import { TimeShow } from '@/components/TimeShow';
-import { BalanceShow, Button, Skeleton, Tabs, DataTable } from '@/components/ui';
+import { BalanceShow, Button, Skeleton, Tabs, DataTable, Pagination } from '@/components/ui';
 import { TradeReportTable } from '@/components/TradeReportTable';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import {
@@ -111,6 +111,19 @@ const TAB_FIXED_FILTER_PARAMS: Partial<Record<DetailTab, Record<string, unknown>
   },
 };
 
+function getPaginationTotal(payload: unknown, fallbackLength = 0): number {
+  const p = payload as {
+    criteria?: { total?: number };
+    data?: unknown[] | { criteria?: { total?: number } };
+  } | null;
+  const nested = p?.data && !Array.isArray(p.data) ? p.data : undefined;
+  return (
+    p?.criteria?.total ??
+    nested?.criteria?.total ??
+    fallbackLength
+  );
+}
+
 export default function AccountDetailPage() {
   const params = useParams();
   const accountNumber = Number(params.accountNumber);
@@ -212,36 +225,31 @@ export default function AccountDetailPage() {
       const uid = currentAccount.uid;
       const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
       const params = { ...filterParams, ...extraParams, ...tabFixedParams };
-      const stateIds = Array.isArray(params.stateIds) ? params.stateIds as number[] : undefined;
       switch (activeTab) {
         case 'deposit': {
           const result = await execute(getAccountDeposits, uid, params);
           if (result.success) {
-            setDeposits(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            const rows = result.data?.data || [];
+            setDeposits(rows);
+            setTotalCount(getPaginationTotal(result.data, rows.length));
           }
           break;
         }
         case 'withdrawal': {
           const result = await execute(getAccountWithdrawals, uid, params);
           if (result.success) {
-            setWithdrawals(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            const rows = result.data?.data || [];
+            setWithdrawals(rows);
+            setTotalCount(getPaginationTotal(result.data, rows.length));
           }
           break;
         }
         case 'transfer': {
           const result = await execute(getAccountTransactions, uid, params);
           if (result.success) {
-            const raw = result.data?.data || [];
-            if (stateIds?.length) {
-              const filtered = raw.filter((item) => stateIds.includes(item.stateId));
-              setTransactions(filtered);
-              setTotalCount(filtered.length);
-            } else {
-              setTransactions(raw);
-              setTotalCount(result.data?.total || 0);
-            }
+            const rows = result.data?.data || [];
+            setTransactions(rows);
+            setTotalCount(getPaginationTotal(result.data, rows.length));
           }
           break;
         }
@@ -296,10 +304,17 @@ export default function AccountDetailPage() {
 
   const handleSearch = (params: Record<string, unknown>) => {
     const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
-    const mergedParams = { ...params, ...tabFixedParams };
+    const mergedParams = { ...params, page: 1, ...tabFixedParams };
     setFilterParams(mergedParams);
     loadTabData(mergedParams);
   };
+
+  const handlePageChange = useCallback((nextPage: number) => {
+    const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
+    const mergedParams = { ...filterParams, page: nextPage, ...tabFixedParams };
+    setFilterParams(mergedParams);
+    loadTabData(mergedParams);
+  }, [activeTab, filterParams, loadTabData]);
 
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!currentAccount) return null;
@@ -798,6 +813,12 @@ export default function AccountDetailPage() {
               />
             )}
           </div>
+          <Pagination
+            page={Number(filterParams.page) || 1}
+            total={totalCount}
+            size={Number(filterParams.size) || 20}
+            onPageChange={handlePageChange}
+          />
         </>
       )}
 

@@ -541,6 +541,11 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   size: number;
+  criteria?: {
+    total?: number;
+    page?: number;
+    size?: number;
+  };
 }
 
 export interface AccountTradeCriteria {

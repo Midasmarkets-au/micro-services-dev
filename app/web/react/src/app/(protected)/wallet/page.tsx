@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
+import { useTheme } from '@/hooks/useTheme';
 import {
   getPrimaryWallet,
   getWithdrawalTransactions,
@@ -19,20 +21,34 @@ import {
   Transaction,
   Wallet,
   GetTransactionsParams,
+  getStatusStyle,
+  getStatusText,
+  canCancelWithdrawal,
 } from '@/types/wallet';
 import {
   WalletBanner,
   TransactionTabs,
-  TransactionTable,
   DateFilter,
   TransferModal,
 } from './_components';
 import { WithdrawalModal } from '@/components/dashboard/modals/WithdrawalModal';
+import {
+  DataTable,
+  BalanceShow,
+  CurrencyCodeMap,
+  DateDisplay,
+  TransactionInfo,
+  Button,
+  Pagination,
+  getAmountSign,
+} from '@/components/ui';
+import type { DataTableColumn } from '@/components/ui';
 
 export default function WalletPage() {
   const t = useTranslations('wallet');
   const { showSuccess } = useToast();
   const { execute } = useServerAction({ showErrorToast: true });
+  const { theme } = useTheme();
 
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
@@ -40,6 +56,9 @@ export default function WalletPage() {
     TransactionType.Withdrawal
   );
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
@@ -75,6 +94,8 @@ export default function WalletPage() {
           : undefined;
         const queryParams: GetTransactionsParams = {
           ...params,
+          page: params?.page ?? page,
+          size: params?.size ?? pageSize,
           from,
           to,
         };
@@ -102,12 +123,13 @@ export default function WalletPage() {
         }
         if (result?.success && result.data) {
           setTransactions(result.data.data || []);
+          setTotal(result.data.total || 0);
         }
       } finally {
         setIsLoadingTransactions(false);
       }
     },
-    [wallet?.hashId, execute, startDate, endDate]
+    [wallet?.hashId, execute, startDate, endDate, page, pageSize]
   );
 
   const handleCancelWithdrawal = useCallback(
@@ -125,9 +147,11 @@ export default function WalletPage() {
     (tab: TransactionType) => {
       setCurrentTab(tab);
       setTransactions([]);
-      loadTransactions(tab);
+      setTotal(0);
+      setPage(1);
+      loadTransactions(tab, { page: 1, size: pageSize });
     },
-    [loadTransactions]
+    [loadTransactions, pageSize]
   );
 
   const handleDateChange = useCallback(
@@ -141,12 +165,27 @@ export default function WalletPage() {
   const handleReset = useCallback(() => {
     setStartDate(null);
     setEndDate(null);
-    loadTransactions(currentTab);
-  }, [currentTab, loadTransactions]);
+    setPage(1);
+    loadTransactions(currentTab, {
+      page: 1,
+      size: pageSize,
+      from: undefined,
+      to: undefined,
+    });
+  }, [currentTab, loadTransactions, pageSize]);
 
   const handleSearch = useCallback(() => {
-    loadTransactions(currentTab);
-  }, [currentTab, loadTransactions]);
+    setPage(1);
+    loadTransactions(currentTab, { page: 1, size: pageSize });
+  }, [currentTab, loadTransactions, pageSize]);
+
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      setPage(nextPage);
+      loadTransactions(currentTab, { page: nextPage, size: pageSize });
+    },
+    [currentTab, loadTransactions, pageSize]
+  );
 
   const refreshAfterAction = useCallback(async () => {
     await loadWallet();
@@ -160,6 +199,114 @@ export default function WalletPage() {
   const handleTransfer = useCallback(() => {
     setShowTransferModal(true);
   }, []);
+
+  const tableColumns = useMemo<DataTableColumn<Transaction>[]>(() => {
+    const hideCurrency =
+      currentTab === TransactionType.Adjust ||
+      currentTab === TransactionType.DownlineReward;
+
+    const baseColumns: DataTableColumn<Transaction>[] = [
+      {
+        key: 'transaction',
+        title: t(
+          `tabs.${currentTab === TransactionType.DownlineReward ? 'downlineReward' : currentTab}`
+        ),
+        render: (item) => <TransactionInfo transaction={item} type={currentTab} />,
+      },
+      {
+        key: 'status',
+        title: t('table.status'),
+        align: 'center',
+        render: (item) => {
+          const statusStyle = getStatusStyle(currentTab, item.stateId);
+          const statusText = getStatusText(currentTab, item.stateId);
+          return (
+            <span
+              className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${statusStyle.bgColor} ${statusStyle.textColor}`}
+            >
+              {t(`status.${statusText}`)}
+            </span>
+          );
+        },
+      },
+    ];
+
+    if (!hideCurrency) {
+      baseColumns.push({
+        key: 'currency',
+        title: t('table.currency'),
+        align: 'center',
+        render: (item) => {
+          const effectiveCurrencyId = item.currencyId ?? wallet?.currencyId ?? 840;
+          return (
+            <span className="text-base font-semibold text-text-primary">
+              {CurrencyCodeMap[effectiveCurrencyId] || 'USD'}
+            </span>
+          );
+        },
+      });
+    }
+
+    baseColumns.push(
+      {
+        key: 'amount',
+        title: t('table.amount'),
+        align: 'right',
+        render: (item) => {
+          const effectiveCurrencyId = item.currencyId ?? wallet?.currencyId ?? 840;
+          return (
+            <BalanceShow
+              balance={Math.abs(item.amount)}
+              currencyId={effectiveCurrencyId}
+              sign={getAmountSign(currentTab)}
+              className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
+            />
+          );
+        },
+      },
+      {
+        key: 'time',
+        title: t('table.time'),
+        align: 'right',
+        render: (item) => {
+          const showCancelButton =
+            currentTab === TransactionType.Withdrawal &&
+            !!item.hashId &&
+            canCancelWithdrawal(item.stateId);
+
+          return (
+            <div className="flex items-center justify-end gap-3">
+              <DateDisplay
+                value={item.createdOn}
+                format="datetime"
+                className="text-sm text-text-secondary"
+              />
+              {showCancelButton && item.hashId && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCancelWithdrawal(item.hashId!);
+                  }}
+                  className="text-xs"
+                >
+                  {t('action.cancel')}
+                </Button>
+              )}
+            </div>
+          );
+        },
+      }
+    );
+
+    return baseColumns;
+  }, [currentTab, handleCancelWithdrawal, t, wallet?.currencyId]);
+
+  const noDataImage =
+    theme === 'dark'
+      ? '/images/data/no-data-night.svg'
+      : '/images/data/no-data-day.svg';
 
   useEffect(() => {
     if (isLoadedRef.current) return;
@@ -209,18 +356,67 @@ export default function WalletPage() {
           </div>
           <div className="w-full h-px bg-border" />
         </div>
+        <div className="text-lg font-semibold mb-5">
+          <span className="text-text-secondary">{t('table.showing')}</span>
+          <span className="text-text-primary">{total || transactions.length}</span>
+          <span className="text-text-secondary">{t('table.results')}</span>
+        </div>
+        <DataTable<Transaction>
+          columns={tableColumns}
+          data={transactions}
+          rowKey={(item, idx) => item.hashId || `${item.createdOn}-${idx}`}
+          loading={isLoadingTransactions}
+          groupConfig={{
+            groupBy: (item) => new Date(item.createdOn).toDateString(),
+            headerWidth: 'w-[120px]',
+            renderGroupHeader: (_groupKey, items) => {
+              const firstDate = items[0]?.createdOn
+                ? new Date(items[0].createdOn)
+                : new Date();
+              const weekday = firstDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+              });
+              const dayMonthYear = firstDate.toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              });
 
-        <TransactionTable
-          transactions={transactions}
-          type={currentTab}
-          currencyId={wallet?.currencyId || 840}
-          isLoading={isLoadingTransactions}
-          onCancelWithdrawal={
-            currentTab === TransactionType.Withdrawal
-              ? handleCancelWithdrawal
-              : undefined
-          }
+              return (
+                <div className="flex flex-col gap-2.5">
+                  <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">
+                    {weekday}
+                  </span>
+                  <span className="text-sm text-text-secondary font-['DIN',sans-serif]">
+                    {dayMonthYear}
+                  </span>
+                </div>
+              );
+            },
+          }}
+          emptyContent={(
+            <div className="flex flex-col items-center justify-center py-16">
+              <Image
+                src={noDataImage}
+                alt="No data"
+                width={120}
+                height={120}
+                className="mb-4"
+              />
+              <p className="text-base text-text-secondary">
+                {t('noTransactions')}
+              </p>
+            </div>
+          )}
         />
+        <div className="mt-5">
+          <Pagination
+            page={page}
+            total={total}
+            size={pageSize}
+            onPageChange={handlePageChange}
+          />
+        </div>
       </div>
 
       {wallet && (

@@ -38,6 +38,65 @@ const getPlatformNameFromId = (platform: number): string => {
   return names[platform] || 'Unknown';
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parsePaginatedPayload<T>(response: any): {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+  criteria: { total: number; page: number; size: number };
+} {
+  const raw = response?.data;
+  const items: T[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.data)
+      ? raw.data
+      : [];
+
+  const total =
+    response?.total ??
+    response?.criteria?.total ??
+    raw?.total ??
+    raw?.criteria?.total ??
+    raw?.pagination?.total ??
+    items.length;
+
+  const page =
+    response?.page ??
+    response?.criteria?.page ??
+    raw?.page ??
+    raw?.criteria?.page ??
+    raw?.pagination?.page ??
+    1;
+
+  const size =
+    response?.size ??
+    response?.pageSize ??
+    response?.criteria?.size ??
+    raw?.size ??
+    raw?.pageSize ??
+    raw?.criteria?.size ??
+    raw?.pagination?.size ??
+    20;
+
+  const criteria = {
+    total:
+      response?.criteria?.total ??
+      raw?.criteria?.total ??
+      total,
+    page:
+      response?.criteria?.page ??
+      raw?.criteria?.page ??
+      page,
+    size:
+      response?.criteria?.size ??
+      raw?.criteria?.size ??
+      size,
+  };
+
+  return { items, total, page, size, criteria };
+}
+
 /**
  * 获取真实账户列表
  */
@@ -315,25 +374,21 @@ export async function getAccountTransactions(
     const queryString = buildQuery(params)
     const url = `/client/trade-account/${tradeAccountUid}/transaction${queryString}`;
 
-    const response = await apiClient.v1.get<{
-      data: AccountTransaction[];
-      total: number;
-      page: number;
-      size: number;
-    }>(url);
-
+    const response = await apiClient.v1.get(url);
+    const parsed = parsePaginatedPayload<AccountTransaction>(response);
     const normalized = normalizeAmountList(
-      response.data || [],
+      parsed.items as unknown as Record<string, unknown>[],
       ['amountInCents', 'amount']
-    ) as AccountTransaction[];
+    ) as unknown as AccountTransaction[];
 
     return {
       success: true,
       data: {
         data: normalized,
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        total: parsed.total,
+        page: parsed.page,
+        size: parsed.size,
+        criteria: parsed.criteria,
       },
     };
   } catch (error) {
@@ -356,25 +411,21 @@ export async function getAccountDeposits(
     const queryString = buildQuery(params)
     const url = `/client/account/${accountUid}/deposit${queryString}`;
 
-    const response = await apiClient.v2.get<{
-      data: AccountDeposit[];
-      total: number;
-      page: number;
-      size: number;
-    }>(url);
-
+    const response = await apiClient.v2.get(url);
+    const parsed = parsePaginatedPayload<AccountDeposit>(response);
     const normalized = normalizeAmountList(
-      response.data || [],
+      parsed.items as unknown as Record<string, unknown>[],
       ['amountInCents', 'amount']
-    ) as AccountDeposit[];
+    ) as unknown as AccountDeposit[];
 
     return {
       success: true,
       data: {
         data: normalized,
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        total: parsed.total,
+        page: parsed.page,
+        size: parsed.size,
+        criteria: parsed.criteria,
       },
     };
   } catch (error) {
@@ -397,25 +448,21 @@ export async function getAccountWithdrawals(
     const queryString = buildQuery(params)
     const url = `/client/account/${accountUid}/withdrawal${queryString}`;
 
-    const response = await apiClient.v2.get<{
-      data: AccountWithdrawal[];
-      total: number;
-      page: number;
-      size: number;
-    }>(url);
-
+    const response = await apiClient.v2.get(url);
+    const parsed = parsePaginatedPayload<AccountWithdrawal>(response);
     const normalized = normalizeAmountList(
-      response.data || [],
+      parsed.items as unknown as Record<string, unknown>[],
       ['amountInCents', 'amount']
-    ) as AccountWithdrawal[];
+    ) as unknown as AccountWithdrawal[];
 
     return {
       success: true,
       data: {
         data: normalized,
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        total: parsed.total,
+        page: parsed.page,
+        size: parsed.size,
+        criteria: parsed.criteria,
       },
     };
   } catch (error) {

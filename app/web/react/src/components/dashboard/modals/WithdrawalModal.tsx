@@ -1068,7 +1068,7 @@ export function WithdrawalModal({
                           <span className="text-sm text-text-secondary">
                             {t('withdraw.walletAddress')}
                           </span>
-                          <span className="text-sm text-text-primary max-w-[200px] truncate">
+                          <span className="text-sm text-text-primary">
                             {selectedPaymentInfo.info.walletAddress}
                           </span>
                         </div>
