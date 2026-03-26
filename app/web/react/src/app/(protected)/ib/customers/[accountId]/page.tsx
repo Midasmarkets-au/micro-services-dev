@@ -106,6 +106,7 @@ interface TransferItem {
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
 const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
 const DEFAULT_TRANSACTION_STATE_IDS = [250];
+const DEFAULT_PAGE_SIZE = 10;
 const TAB_FIXED_FILTER_PARAMS: Partial<Record<DetailTab, Record<string, unknown>>> = {
   deposit: {
     isClosed: false,
@@ -138,7 +139,7 @@ export default function IBCustomerDetailPage({
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [deposits, setDeposits] = useState<IBDepositRecord[]>([]);
   const [withdrawals, setWithdrawals] = useState<IBWithdrawalRecord[]>([]);
@@ -146,7 +147,7 @@ export default function IBCustomerDetailPage({
   const [rebates] = useState<IBRebateRecord[]>([]);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
     stateIds: DEFAULT_DEPOSIT_STATE_IDS,
-    size: 15,
+    size: DEFAULT_PAGE_SIZE,
     accountUid: String(accountUid),
     ...(TAB_FIXED_FILTER_PARAMS.deposit ?? {}),
   });
@@ -169,7 +170,7 @@ export default function IBCustomerDetailPage({
     if (tabKey === 'deposit') {
       return {
         stateIds: DEFAULT_DEPOSIT_STATE_IDS,
-        size: 15,
+        size: DEFAULT_PAGE_SIZE,
         accountUid: String(accountUid),
         ...fixedParams,
       };
@@ -177,14 +178,14 @@ export default function IBCustomerDetailPage({
     if (tabKey === 'withdrawal') {
       return {
         stateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
-        size: 15,
+        size: DEFAULT_PAGE_SIZE,
         accountUid: String(accountUid),
         ...fixedParams,
       };
     }
     return {
       stateIds: DEFAULT_TRANSACTION_STATE_IDS,
-      size: 15,
+      size: DEFAULT_PAGE_SIZE,
       ...fixedParams,
     };
   }, [accountUid]);
@@ -617,7 +618,7 @@ export default function IBCustomerDetailPage({
               <TradeFilter
                 type={getFilterType(tab)}
                 filterOptions={['stateIds', 'datePicker', 'pageSize']}
-                defaultPageSize={15}
+                defaultPageSize={DEFAULT_PAGE_SIZE}
                 fixedParams={{
                   ...(TAB_FIXED_FILTER_PARAMS[tab] ?? {}),
                   ...(tab === 'transfer' ? {} : { accountUid: String(accountUid) }),
