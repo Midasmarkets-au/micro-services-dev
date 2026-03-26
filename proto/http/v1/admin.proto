@@ -279,9 +279,10 @@ message OnlineTenantStat {
 
 // 在线管理员条目（GetOnlineAdmins 专用）
 message OnlineUser {
-  int64  party_id = 1; // 用户 party_id
-  string email    = 2; // 用户邮箱
-  string since    = 3; // 上线时间，ISO 8601 格式
+  int64  party_id  = 1; // 用户 party_id
+  string email     = 2; // 用户邮箱
+  string since     = 3; // 上线时间，ISO 8601 格式
+  int64  tenant_id = 4; // 所属 Tenant ID（用于前端按 tenant 分组）
 }
 
 // 在线管理员响应
