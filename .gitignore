@@ -131,6 +131,9 @@ target/
 # Misc
 # =============================================================================
 node_modules/
+
+# Generated OpenAPI spec (regenerate with: npm run gen:openapi)
+docs/openapi/openapi.yaml
 __pycache__/
 *.pyc
 ~$*

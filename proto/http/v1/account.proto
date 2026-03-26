@@ -1,0 +1,957 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+import "http/v1/payment.proto";
+
+// ─── Tenant Account API (api/v1/tenant/account) ─────────────────────────────
+// 管理平台所有账户（IB/Client/Sales/Rep），支持状态变更、标签、资金类型、
+// 等级规则、推荐码等操作，并提供 MT 组合品种查询和账户号码校验/变更工具。
+
+service TenantAccountService {
+  // 分页查询账户列表；可按 keywords（姓名/邮箱）、status、role、party_id、fund_type 及日期范围过滤
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account" };
+  }
+  // 按 id 获取单条账户详情
+  rpc GetAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}" };
+  }
+  // 从 MT4/MT5 服务器拉取最新账户数据并刷新本地缓存
+  rpc RefreshAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/refresh" };
+  }
+  // 分页查询账户操作日志；可按 account_id、action 关键字及日期范围过滤
+  rpc ListAccountLogs(ListAccountLogsRequest) returns (ListAccountLogsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/log" };
+  }
+  // 获取所有可用的日志 action 枚举值列表，供前端过滤下拉框使用
+  rpc GetLogActions(EmptyRequest) returns (LogActionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/log-actions" };
+  }
+  // 修改账户类型（对应 MT 账户组或产品分类）
+  rpc UpdateAccountType(UpdateAccountTypeRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/type", body: "spec" };
+  }
+  // 修改账户所属站点（site_id 对应 WebsiteDbContext 中的站点记录）
+  rpc UpdateAccountSite(UpdateAccountSiteRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/site", body: "spec" };
+  }
+  // 修改账户状态（status：0=inactive/1=active/2=locked/3=suspended），body 可附带操作备注
+  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/status/{status}", body: "spec" };
+  }
+  // 批量替换账户标签列表（tags 为字符串数组，全量覆盖）
+  rpc UpdateAccountTags(UpdateAccountTagsRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/tags", body: "spec" };
+  }
+  // 切换账户是否启用等级返佣规则（has_level_rule=true 时按 LevelSetting 计算返佣）
+  rpc UpdateHasLevelRule(UpdateHasLevelRuleRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/has-level-rule" };
+  }
+  // 修改账户资金类型（fund_type 枚举值，影响出入金渠道可用性）
+  rpc UpdateFundType(UpdateFundTypeRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/fund-type" };
+  }
+  // 获取账户的等级返佣设置（level→name→触发金额阈值列表）
+  rpc GetLevelSetting(GetAccountRequest) returns (LevelSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/level-setting" };
+  }
+  // 获取账户名下所有推荐码，含类型和是否默认
+  rpc GetReferralCodes(GetAccountRequest) returns (ReferralCodesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/referral-codes" };
+  }
+  // 获取账户开户向导当前步骤和完成状态
+  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/wizard" };
+  }
+  // 查询 MT4/MT5 指定 service、group、symbol 的品种组合配置
+  rpc GetMtGroupSymbol(GetMtGroupSymbolRequest) returns (MtGroupSymbolResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/mt-group-symbol" };
+  }
+  // 校验 MT 账户号码是否合法且未被占用
+  rpc CheckAccountNumber(CheckAccountNumberRequest) returns (CheckAccountNumberResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/check-account-number/{account_number}" };
+  }
+  // 将账户关联的 MT 登录号变更为指定 account_number
+  rpc ChangeAccountNumber(ChangeAccountNumberRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/change-account-number/{account_number}" };
+  }
+  // 将 IB（Agent）账户转换为 Sales 账户（uid=账户ID，code=新推荐码，real_code=实际绑定码）
+  rpc IbToSales(IbToSalesRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/ib-to-sales/{uid}/{code}/{real_code}" };
+  }
+}
+
+// ─── Tenant Account V2 API (api/v2/tenant/account) ──────────────────────────
+// 账户管理增强接口，包括自动创建确认、钱包分配、交易统计、日报和顶部排行。
+
+service TenantAccountServiceV2 {
+  // 确认系统自动创建的账户（将待确认状态改为正常激活）
+  rpc ConfirmAutoCreate(ConfirmAutoCreateRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/tenant/account/{id}/confirm-auto-create" };
+  }
+  // 将指定钱包（wallet_id）分配给账户，用于出入金资金归集
+  rpc AssignWallet(AssignWalletRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/tenant/account/{id}/assign-wallet/{wallet_id}" };
+  }
+  // 获取单账户在指定日期范围内的交易统计（总手数、总盈亏、交易笔数）
+  rpc GetAccountTradeStat(GetAccountTradeStatRequest) returns (TradeStatResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/{id}/trade/stat" };
+  }
+  // 批量获取多账户（按 MT 账户号列表）在指定日期范围内的聚合交易统计
+  rpc GetMultiAccountTradeStat(GetMultiAccountTradeStatRequest) returns (TradeStatResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/trade/stat" };
+  }
+  // 获取指定 MT 账户号在某日期（格式 YYYY-MM-DD）的日报（日末余额、净值）
+  rpc GetDailyReport(GetDailyReportRequest) returns (DailyReportResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/daily-report/{account_number}" };
+  }
+  // 为账户开启账户间资金转账权限
+  rpc EnableTransfer(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/tenant/account/{id}/enable-transfer" };
+  }
+  // 禁用账户间资金转账权限
+  rpc DisableTransfer(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/tenant/account/{id}/disable-transfer" };
+  }
+  // 获取指定日期范围内交易量/盈亏排行榜 Top N（count 指定条数）
+  rpc GetStatTop(GetStatTopRequest) returns (StatTopResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/account/stat-top" };
+  }
+}
+
+// ─── Client Account API (api/v1/client/account) ─────────────────────────────
+// 客户端账户查询接口，仅当前登录用户自己的账户可见；支持刷新和开户向导。
+
+service ClientAccountService {
+  // 分页查询当前客户名下的实盘账户列表；可按 keywords、status 及日期范围过滤
+  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/account" };
+  }
+  // 按 id 获取当前客户名下的单条账户详情
+  rpc GetAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/client/account/{id}" };
+  }
+  // 获取账户开户向导当前步骤和完成状态
+  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {
+    option (google.api.http) = { get: "/api/v1/client/account/{id}/wizard" };
+  }
+  // 从 MT4/MT5 服务器拉取最新账户数据并刷新本地缓存
+  rpc RefreshAccount(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/client/account/{id}/refresh" };
+  }
+}
+
+// ─── Client Account V2 API (api/v2/client/account) ──────────────────────────
+// 客户端账户增强接口，包括模拟账户管理、开户配置、推荐码查询、杠杆/密码修改、
+// 支付状态查询，以及账户级别的出入金和转账记录查询。
+
+service ClientAccountServiceV2 {
+  // 分页查询当前客户名下所有实盘账户
+  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account" };
+  }
+  // 分页查询当前客户名下所有模拟账户
+  rpc ListDemoAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/demo" };
+  }
+  // 创建模拟账户（指定账户类型字符串、初始保证金和杠杆倍数）
+  rpc CreateDemoAccount(CreateDemoAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/client/account/demo", body: "*" };
+  }
+  // 获取实盘开户配置（平台支持的账户类型列表）
+  rpc GetApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/application-config" };
+  }
+  // 获取模拟账户开户配置（平台支持的模拟账户类型列表）
+  rpc GetDemoApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/demo/application-config" };
+  }
+  // 根据推荐码查询对应可用账户类型列表（用于推荐注册流程中的账户类型筛选）
+  rpc GetAccountTypeByReferral(GetAccountTypeByReferralRequest) returns (AccountTypesResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/type/referral" };
+  }
+  // 获取指定账户的运行时配置（当前杠杆、是否开启转账等）
+  rpc GetAccountConfig(GetAccountRequest) returns (AccountConfigResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{id}/config" };
+  }
+  // 将指定账户设为默认父账户（用于资金归集和推荐层级计算）
+  rpc SetDefaultParent(GetAccountRequest) returns (Account) {
+    option (google.api.http) = { put: "/api/v2/client/account/{id}/default-parent" };
+  }
+  // 修改 MT 账户杠杆倍数（实时推送到 MT4/MT5 服务器）
+  rpc ChangeLeverage(ChangeLeverageRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/client/account/{id}/change-leverage", body: "spec" };
+  }
+  // 修改 MT 账户交易密码（需同时提供旧密码验证）
+  rpc ChangePassword(AccountChangePasswordRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v2/client/account/{id}/change-password", body: "spec" };
+  }
+  // 查询关联账户上某笔支付（payment_number）的当前处理状态
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (PaymentStatusResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{id}/payment/{payment_number}/status" };
+  }
+  // 分页查询指定账户（account_uid）的充值记录；可按 status 和日期范围过滤
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit" };
+  }
+  // 在指定账户下发起充值（选择 payment_method_id、金额和货币）
+  rpc CreateDeposit(CreateDepositRequest) returns (Deposit) {
+    option (google.api.http) = { post: "/api/v2/client/account/{account_uid}/deposit", body: "spec" };
+  }
+  // 获取指定充值单（deposit_hash_id）的支付引导信息（如收款账户、二维码等）
+  rpc GetDepositGuide(GetDepositGuideRequest) returns (DepositGuideResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit/{deposit_hash_id}/guide" };
+  }
+  // 获取指定充值单的回执凭证 URL（上传的付款截图或系统生成的收据）
+  rpc GetDepositReceipt(GetDepositReceiptRequest) returns (DepositReceiptResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit/{deposit_hash_id}/receipt" };
+  }
+  // 分页查询指定账户的提款记录；可按 status 和日期范围过滤
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/withdrawal" };
+  }
+  // 在指定账户下发起提款（选择 payment_info_id 即收款账户、金额和货币）
+  rpc CreateWithdrawal(CreateWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v2/client/account/{account_uid}/withdrawal", body: "spec" };
+  }
+  // 分页查询指定账户的账户间转账记录；可按日期范围过滤
+  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse) {
+    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/transfer" };
+  }
+}
+
+// ─── Sales Account API (api/v1/sales/{salesUid}/account) ────────────────────
+// Sales 角色账户视图：列出并查询该 Sales 下辖账户，提供子账户网络统计、
+// 返佣和交易按品种分组统计，以及查看下辖账户邮箱的验证码机制（需二次验证）。
+
+service SalesAccountService {
+  // 分页查询 Sales（sales_uid）下辖的账户列表；可按 keywords、status 及日期范围过滤
+  rpc ListAccounts(ListSalesAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account" };
+  }
+  // 获取 Sales 下辖某账户（uid）的详情
+  rpc GetAccount(GetSalesAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}" };
+  }
+  // 获取子账户（child_account_uid）在推荐层级中对应的等级账户
+  rpc GetLevelAccount(GetLevelAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{child_account_uid}/level-account" };
+  }
+  // 获取指定子账户在日期范围内的交易统计（手数、盈亏、笔数）
+  rpc GetChildAccountStat(GetChildAccountStatRequest) returns (ChildStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/stat" };
+  }
+  // 获取整个下辖网络的汇总统计（净入金、总手数）；view_client=true 时包含客户层
+  rpc GetChildNetStat(GetChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat" };
+  }
+  // 按交易品种分组汇总下辖网络返佣金额（symbol → volume + amount）
+  rpc GetChildRebateBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/rebate/symbol-grouped" };
+  }
+  // 按交易品种分组汇总下辖网络交易手数（symbol → volume + amount）
+  rpc GetChildTradeBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/trade/symbol-grouped" };
+  }
+  // 获取 Sales 为 agent（agent_uid）账户提供的账户开户配置
+  rpc GetAccountConfiguration(GetSalesAccountConfigRequest) returns (AccountConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/configuration/{agent_uid}" };
+  }
+  // 获取 Sales 为 agent（agent_uid）账户配置的默认等级返佣设置
+  rpc GetDefaultLevelSetting(GetSalesDefaultLevelRequest) returns (LevelSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{agent_uid}/default-level-setting" };
+  }
+  // 获取 Sales 可为下辖账户配置的可用账户类型列表
+  rpc GetAvailableAccountTypes(GetSalesUidRequest) returns (AccountTypesResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/configuration/account-type-available" };
+  }
+  // 获取指定账户（uid）在推荐层级中的完整路径（从顶层 Sales 到该账户）
+  rpc GetReferralPath(GetSalesReferralPathRequest) returns (ReferralPathResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/referralPath/{uid}" };
+  }
+  // 发送查看邮箱验证码到 Sales 自己的邮箱（用于二次验证后才能查看下辖用户邮箱）
+  rpc GetViewEmailCode(GetSalesAccountRequest) returns (EmailCodeResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/view-email-code" };
+  }
+  // 使用有效验证码查看下辖账户（uid）的邮箱地址
+  rpc GetViewEmail(GetViewEmailRequest) returns (EmailResponse) {
+    option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/view-email/{code}" };
+  }
+}
+
+// ─── Agent Account API (api/v1/agent/{agentUid}/account) ────────────────────
+// IB（Agent）角色账户视图：列出并查询该 IB 下辖账户，提供子网络统计、
+// 按品种的返佣统计，以及查看下辖账户邮箱的验证码机制（需二次验证）。
+
+service AgentAccountService {
+  // 分页查询 IB（agent_uid）下辖的账户列表；可按 keywords 和 status 过滤
+  rpc ListAccounts(ListAgentAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account" };
+  }
+  // 获取 IB 下辖某账户（uid）的详情
+  rpc GetAccount(GetAgentAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}" };
+  }
+  // 从 MT4/MT5 服务器刷新 IB 下辖账户数据
+  rpc RefreshAccount(GetAgentAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/refresh" };
+  }
+  // 获取整个下辖网络的汇总统计（净入金、总手数）；view_client=true 时包含客户层
+  rpc GetChildNetStat(GetAgentChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/child/stat" };
+  }
+  // 按交易品种分组汇总 IB 下辖网络返佣金额
+  rpc GetChildRebateBySymbol(GetAgentChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/child/stat/rebate/symbol-grouped" };
+  }
+  // 获取 IB 账户（uid）的默认等级返佣设置
+  rpc GetDefaultLevelSetting(GetAgentAccountRequest) returns (LevelSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/default-level-setting" };
+  }
+  // 发送查看邮箱验证码到 IB 自己的邮箱（用于二次验证后才能查看下辖用户邮箱）
+  rpc GetViewEmailCode(GetAgentAccountRequest) returns (EmailCodeResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/view-email-code" };
+  }
+  // 使用有效验证码查看下辖账户（uid）的邮箱地址
+  rpc GetViewEmail(GetAgentViewEmailRequest) returns (EmailResponse) {
+    option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/view-email/{code}" };
+  }
+}
+
+// ─── Rep Account API (api/v1/rep/{repUid}/account) ──────────────────────────
+// Rep 角色账户视图：列出并查询该 Rep 下辖账户，提供 MT 组名列表、
+// 子网络统计和按品种的返佣统计。
+
+service RepAccountService {
+  // 分页查询 Rep（rep_uid）下辖的账户列表；可按 keywords 和 status 过滤
+  rpc ListAccounts(ListRepAccountsRequest) returns (ListAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account" };
+  }
+  // 获取 Rep 下辖某账户（uid）的详情
+  rpc GetAccount(GetRepAccountRequest) returns (Account) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/{uid}" };
+  }
+  // 获取 Rep 下辖所有账户使用的 MT 组名列表，可按 type 和关键字过滤
+  rpc GetGroupNameList(GetGroupNameListRequest) returns (GroupNameListResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/group/name-list" };
+  }
+  // 获取整个下辖网络的汇总统计（净入金、总手数）；view_client=true 时包含客户层
+  rpc GetChildNetStat(GetRepChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/child/stat" };
+  }
+  // 按交易品种分组汇总 Rep 下辖网络返佣金额
+  rpc GetChildRebateBySymbol(GetRepChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/child/stat/rebate/symbol-grouped" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+// 账户实体（含关键标识字段）
+message Account {
+  int64  id          = 1;  // 平台账户主键 ID
+  string name        = 2;  // 账户显示名称
+  string email       = 3;  // 账户邮箱地址
+  int32  status      = 4;  // 账户状态：0=inactive（停用）、1=active（正常）、2=locked（锁定）、3=suspended（暂停）
+  int32  role        = 5;  // 账户角色类型：对应 AccountRoleTypes 枚举（如 Client/IB/Sales/Rep）
+  int32  fund_type   = 6;  // 资金类型枚举，影响可用出入金渠道
+  // tenant_id 字段已移除：多租户隔离通过 DB 连接实现，Account 实体不存储 tenant_id
+  int64  party_id    = 8;  // 跨租户唯一用户标识（同一自然人在不同租户下 party_id 相同）
+  string created_at  = 9;  // 创建时间，ISO 8601 格式
+  string updated_at  = 10; // 最后更新时间，ISO 8601 格式
+}
+
+// 管理端账户列表查询请求
+message ListAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2; // 按姓名或邮箱模糊搜索
+  optional int32    status      = 3; // 按账户状态过滤：0=inactive、1=active、2=locked、3=suspended
+  optional int64    uid         = 4; // 按账户 ID 精确过滤
+  repeated int64    uids        = 5; // 按账户 ID 列表批量过滤
+  optional int32    role        = 6; // 按角色类型过滤（AccountRoleTypes 枚举）
+  optional string   date_from   = 7; // 创建时间起始，ISO 8601 格式
+  optional string   date_to     = 8; // 创建时间截止，ISO 8601 格式
+  optional int64    party_id    = 9; // 按跨租户用户标识过滤
+  optional int32    fund_type   = 10; // 按资金类型过滤
+}
+
+message ListAccountsResponse {
+  repeated Account data = 1;
+  PaginationMeta   meta = 2;
+}
+
+// 按账户 id 查询
+message GetAccountRequest {
+  int64 id = 1;
+}
+
+// 账户日志列表查询请求
+message ListAccountLogsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    account_id = 2; // 按账户 ID 过滤
+  optional string   action     = 3; // 按操作类型关键字过滤（可从 GetLogActions 获取枚举）
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
+}
+
+message ListAccountLogsResponse {
+  repeated AccountLog data = 1;
+  PaginationMeta      meta = 2;
+}
+
+// 账户操作日志条目
+message AccountLog {
+  int64  id         = 1; // 日志 ID
+  int64  account_id = 2; // 关联账户 ID
+  string action     = 3; // 操作类型标识，如 "status-change"、"leverage-change"
+  string detail     = 4; // 操作详情（JSON 字符串或可读文本）
+  string created_at = 5; // 操作时间，ISO 8601 格式
+}
+
+// 日志 action 枚举列表响应
+message LogActionsResponse {
+  repeated string actions = 1; // 所有可用的 action 字符串，用于前端过滤
+}
+
+// 更新账户类型请求（路径参数 id + body spec）
+message UpdateAccountTypeRequest {
+  int64             id  = 1;
+  UpdateAccountType spec = 2;
+}
+
+// 账户类型更新体
+message UpdateAccountType {
+  int32 type = 1; // 新账户类型 ID（对应 MT 账户组或产品分类）
+}
+
+// 更新账户站点请求（路径参数 id + body spec）
+message UpdateAccountSiteRequest {
+  int64            id   = 1;
+  UpdateAccountSite spec = 2;
+}
+
+// 账户站点更新体
+message UpdateAccountSite {
+  int32 site_id = 1; // 新站点 ID（对应 WebsiteDbContext 中的站点记录）
+}
+
+// 更新账户状态请求（路径参数 id 和 status + body 备注）
+message UpdateAccountStatusRequest {
+  int64              id      = 1;
+  int32              status  = 2; // 0=inactive、1=active、2=locked、3=suspended
+  WithCommentSpec    spec    = 3; // 可选操作备注
+}
+
+// 附带操作备注的请求体
+message WithCommentSpec {
+  string comment = 1; // 操作备注说明（可为空）
+}
+
+// 更新账户标签请求（tags 全量覆盖）
+message UpdateAccountTagsRequest {
+  int64         id   = 1;
+  UpdateTagSpec spec = 2;
+}
+
+// 标签更新体（全量替换）
+message UpdateTagSpec {
+  repeated string tags = 1; // 新标签列表，替换现有所有标签
+}
+
+// 更新等级规则开关请求
+message UpdateHasLevelRuleRequest {
+  int64 id             = 1;
+  bool  has_level_rule = 2; // true=启用等级返佣规则，false=禁用
+}
+
+// 更新资金类型请求
+message UpdateFundTypeRequest {
+  int64 id        = 1;
+  int32 fund_type = 2; // 新资金类型枚举值
+}
+
+// 等级返佣设置响应
+// json 字段为完整的 RebateLevelSetting 序列化 JSON（原 REST 接口直接返回该对象）
+message LevelSettingResponse {
+  string json = 1; // 完整的 RebateLevelSetting JSON 字符串，供前端直接解析
+}
+
+// 推荐码列表响应
+message ReferralCodesResponse {
+  repeated ReferralCode items = 1;
+}
+
+// 推荐码条目
+message ReferralCode {
+  string code       = 1; // 推荐码字符串
+  int32  type       = 2; // 推荐码类型（如 1=IB 码、2=销售码）
+  bool   is_default = 3; // 是否为该账户的默认推荐码
+}
+
+// 开户向导状态响应
+message AccountWizardResponse {
+  int32 step         = 1; // 当前所在步骤编号（从 1 开始）
+  bool  completed    = 2; // 是否已完成全部向导步骤
+}
+
+// MT 组合品种查询请求
+message GetMtGroupSymbolRequest {
+  int32  service_id = 1; // MT 交易服务 ID（TradeServiceItem.id）
+  string group      = 2; // MT 账户组名称，如 "Real\\USD"
+  string symbol     = 3; // 品种名称，如 "EURUSD"
+  int32  trans_id   = 4; // 请求事务 ID（用于幂等性校验）
+}
+
+// MT 品种组合查询响应
+message MtGroupSymbolResponse {
+  repeated string items = 1; // 匹配的品种名称列表
+}
+
+// 校验账户号码请求
+message CheckAccountNumberRequest {
+  int64 account_number = 1; // 待校验的 MT4/MT5 登录号
+}
+
+// 账户号码校验结果
+message CheckAccountNumberResponse {
+  bool   valid   = 1; // true=账户号合法且未被占用
+  string message = 2; // 失败时的具体原因说明
+}
+
+// 变更账户号码请求
+message ChangeAccountNumberRequest {
+  int64 id             = 1; // 平台账户 ID
+  int64 account_number = 2; // 新的 MT4/MT5 登录号
+}
+
+// IB 转 Sales 请求
+message IbToSalesRequest {
+  int64  uid       = 1; // 待转换的 IB 账户 ID
+  string code      = 2; // 分配给 Sales 的推荐码
+  int32  real_code = 3; // 实际绑定码（内部关联用）
+}
+
+// V2 Tenant messages
+
+// 确认自动创建账户请求
+message ConfirmAutoCreateRequest {
+  int64 id = 1; // 待确认的账户 ID
+}
+
+// 分配钱包请求
+message AssignWalletRequest {
+  int64 id        = 1; // 账户 ID
+  int64 wallet_id = 2; // 待分配的钱包 ID
+}
+
+// 单账户交易统计查询请求
+message GetAccountTradeStatRequest {
+  int64           id        = 1; // 账户 ID
+  optional string date_from = 2; // 统计起始日期，ISO 8601 格式
+  optional string date_to   = 3; // 统计截止日期，ISO 8601 格式
+}
+
+// 多账户交易统计查询请求（按 MT 账户号列表）
+message GetMultiAccountTradeStatRequest {
+  repeated int64  account_numbers = 1; // MT4/MT5 账户号列表
+  optional string date_from       = 2; // 统计起始日期，ISO 8601 格式
+  optional string date_to         = 3; // 统计截止日期，ISO 8601 格式
+}
+
+// 交易统计响应
+message TradeStatResponse {
+  double volume      = 1; // 总交易手数（lots）
+  double profit      = 2; // 总盈亏金额
+  int32  trade_count = 3; // 总交易笔数
+}
+
+// 账户日报查询请求
+message GetDailyReportRequest {
+  int64  account_number = 1; // MT4/MT5 账户登录号
+  string date           = 2; // 查询日期，格式 YYYY-MM-DD
+}
+
+// 账户日报响应（日末快照）
+message DailyReportResponse {
+  string date    = 1; // 报告日期，格式 YYYY-MM-DD
+  double balance = 2; // 日末余额
+  double equity  = 3; // 日末净值（余额 + 浮动盈亏）
+}
+
+// 账户交易量/盈亏排行查询请求
+message GetStatTopRequest {
+  optional string date_from      = 1; // 统计起始日期，ISO 8601 格式
+  optional string date_to        = 2; // 统计截止日期，ISO 8601 格式
+  optional int64  account_number = 3; // 可选：按 MT 账户号过滤
+  int32           count          = 4; // 返回排行榜前 N 条
+}
+
+// 排行榜响应
+message StatTopResponse {
+  repeated StatTopItem items = 1;
+}
+
+// 排行榜单条记录
+message StatTopItem {
+  int64  account_id = 1; // 账户 ID
+  string name       = 2; // 账户名称
+  double value      = 3; // 排行指标值（手数或盈亏金额）
+}
+
+// 客户端账户列表查询请求
+message ListClientAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2; // 按姓名或账户号模糊搜索
+  optional int32    status      = 3; // 按账户状态过滤
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+}
+
+// 创建模拟账户请求
+message CreateDemoAccountRequest {
+  string account_type    = 1; // 账户类型标识字符串
+  double initial_deposit = 2; // 初始保证金金额（模拟资金）
+  int32  leverage        = 3; // 杠杆倍数，如 100、200、500
+}
+
+// 开户配置响应（账户类型列表）
+message ApplicationConfigResponse {
+  repeated AccountTypeConfig types = 1;
+}
+
+// 账户类型配置条目
+message AccountTypeConfig {
+  int32  id   = 1; // 账户类型 ID
+  string name = 2; // 账户类型名称，如 "Standard"、"Pro"
+}
+
+// 按推荐码查询可用账户类型请求
+message GetAccountTypeByReferralRequest {
+  string code = 1; // 推荐码字符串
+}
+
+// 账户类型列表响应
+message AccountTypesResponse {
+  repeated AccountTypeConfig types = 1;
+}
+
+// 账户运行时配置响应
+message AccountConfigResponse {
+  int64  account_id      = 1; // 账户 ID
+  int32  leverage        = 2; // 当前杠杆倍数
+  bool   transfer_enabled = 3; // 是否开启账户间转账功能
+}
+
+// 修改杠杆请求
+message ChangeLeverageRequest {
+  int64              id   = 1; // 账户 ID
+  ChangeLeverageSpec spec = 2;
+}
+
+// 杠杆修改体
+message ChangeLeverageSpec {
+  int32 leverage = 1; // 新杠杆倍数，如 100、200、500
+}
+
+// 修改密码请求
+message AccountChangePasswordRequest {
+  int64              id   = 1; // 账户 ID
+  ChangePasswordSpec spec = 2;
+}
+
+// 密码修改体
+message ChangePasswordSpec {
+  string password     = 1; // 新密码
+  string old_password = 2; // 原密码（用于身份验证）
+}
+
+// 支付状态查询请求
+message GetPaymentStatusRequest {
+  int64  id             = 1; // 账户 ID
+  string payment_number = 2; // 支付单号
+}
+
+// 支付状态响应
+message PaymentStatusResponse {
+  int32  status  = 1; // 支付状态枚举值
+  string message = 2; // 状态描述或失败原因
+}
+
+// 创建充值请求
+message CreateDepositRequest {
+  int64             account_uid = 1; // 账户 UID
+  CreateDepositSpec spec        = 2;
+}
+
+// 充值创建体
+message CreateDepositSpec {
+  int64  payment_method_id = 1; // 支付方式 ID（对应 PaymentMethod）
+  double amount            = 2; // 充值金额
+  string currency          = 3; // 货币代码，如 "USD"
+}
+
+// 获取充值引导请求
+message GetDepositGuideRequest {
+  int64  account_uid     = 1; // 账户 UID
+  string deposit_hash_id = 2; // 充值单 hash_id
+}
+
+// 充值支付引导响应
+message DepositGuideResponse {
+  string instructions = 1; // 支付引导说明（HTML 或富文本）
+}
+
+// 获取充值回执请求
+message GetDepositReceiptRequest {
+  int64  account_uid     = 1; // 账户 UID
+  string deposit_hash_id = 2; // 充值单 hash_id
+}
+
+// 创建提款请求
+message CreateWithdrawalRequest {
+  int64                account_uid = 1; // 账户 UID
+  CreateWithdrawalSpec spec        = 2;
+}
+
+// 提款创建体
+message CreateWithdrawalSpec {
+  int64  payment_info_id = 1; // 收款账户 ID（对应 PaymentInfo，即客户的银行卡/加密钱包等）
+  double amount          = 2; // 提款金额
+  string currency        = 3; // 货币代码，如 "USD"
+}
+
+// 转账记录列表查询请求
+message ListTransfersRequest {
+  int64             account_uid = 1; // 账户 UID（from 或 to 均包含）
+  PaginationRequest pagination  = 2;
+  optional string   date_from   = 3; // ISO 8601 格式
+  optional string   date_to     = 4; // ISO 8601 格式
+}
+
+message ListTransfersResponse {
+  repeated Transfer data = 1;
+  PaginationMeta    meta = 2;
+}
+
+// 账户间转账记录实体
+message Transfer {
+  int64  id          = 1; // 转账记录 ID
+  int64  from_uid    = 2; // 来源账户 UID
+  int64  to_uid      = 3; // 目标账户 UID
+  double amount      = 4; // 转账金额
+  int32  status      = 5; // 转账状态
+  string created_at  = 6; // 创建时间，ISO 8601 格式
+}
+
+// Sales 账户列表查询请求
+message ListSalesAccountsRequest {
+  int64             sales_uid  = 1; // Sales 账户 UID
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3; // 按姓名或邮箱模糊搜索
+  optional int32    status     = 4; // 按账户状态过滤
+  optional string   date_from  = 5; // ISO 8601 格式
+  optional string   date_to    = 6; // ISO 8601 格式
+}
+
+// Sales 单账户查询请求
+message GetSalesAccountRequest {
+  int64 sales_uid = 1; // Sales 账户 UID
+  int64 uid       = 2; // 目标账户 UID
+}
+
+// 查询子账户层级账户请求
+message GetLevelAccountRequest {
+  int64 sales_uid        = 1; // Sales 账户 UID
+  int64 child_account_uid = 2; // 子账户 UID
+}
+
+// 子账户交易统计查询请求
+message GetChildAccountStatRequest {
+  int64           sales_uid = 1; // Sales 账户 UID
+  int64           uid       = 2; // 目标账户 UID
+  optional string date_from = 3; // ISO 8601 格式
+  optional string date_to   = 4; // ISO 8601 格式
+}
+
+// 子账户交易统计响应
+message ChildStatResponse {
+  double volume      = 1; // 总交易手数
+  double profit      = 2; // 总盈亏金额
+  int32  trade_count = 3; // 总交易笔数
+}
+
+// 子账户网络统计查询请求（Sales 视角）
+message GetChildNetStatRequest {
+  int64           sales_uid  = 1; // Sales 账户 UID
+  int64           uid        = 2; // 目标账户 UID（查询其下辖网络）
+  optional string date_from  = 3; // ISO 8601 格式
+  optional string date_to    = 4; // ISO 8601 格式
+  bool            view_client = 5; // true=统计包含最底层客户账户
+}
+
+// 子账户网络汇总统计响应
+message ChildNetStatResponse {
+  double net_deposit = 1; // 净入金（充值 - 提款）
+  double volume      = 2; // 总交易手数
+}
+
+// 按品种分组的统计查询请求（Sales 视角）
+message GetChildStatByRangeRequest {
+  int64           sales_uid = 1; // Sales 账户 UID
+  int64           uid       = 2; // 目标账户 UID
+  optional string date_from = 3; // ISO 8601 格式
+  optional string date_to   = 4; // ISO 8601 格式
+}
+
+// 品种分组统计响应
+message SymbolGroupStatResponse {
+  repeated SymbolStat items = 1;
+}
+
+// 单品种统计条目
+message SymbolStat {
+  string symbol = 1; // 交易品种名称，如 "EURUSD"
+  double volume = 2; // 该品种总手数
+  double amount = 3; // 该品种总金额（返佣金额或交易盈亏）
+}
+
+// Sales 账户配置查询请求
+message GetSalesAccountConfigRequest {
+  int64 sales_uid = 1; // Sales 账户 UID
+  int64 agent_uid = 2; // 代理账户 UID
+}
+
+// Sales 默认等级设置查询请求
+message GetSalesDefaultLevelRequest {
+  int64 sales_uid = 1; // Sales 账户 UID
+  int64 agent_uid = 2; // 代理账户 UID
+}
+
+// 仅含 Sales UID 的请求
+message GetSalesUidRequest {
+  int64 sales_uid = 1;
+}
+
+// Sales 推荐路径查询请求
+message GetSalesReferralPathRequest {
+  int64 sales_uid = 1; // Sales 账户 UID
+  int64 uid       = 2; // 目标账户 UID
+}
+
+// 推荐层级路径响应
+message ReferralPathResponse {
+  repeated ReferralPathItem path = 1; // 从顶层到目标账户的路径节点列表（按层级排序）
+}
+
+// 推荐路径节点
+message ReferralPathItem {
+  int64  account_id = 1; // 该节点账户 ID
+  string name       = 2; // 该节点账户名称
+  int32  level      = 3; // 该节点在路径中的层级编号（1=顶层）
+}
+
+// 查看邮箱验证码响应
+message EmailCodeResponse {
+  string code       = 1; // 验证码（一次性使用）
+  string expires_at = 2; // 验证码过期时间，ISO 8601 格式
+}
+
+// 邮箱查询响应
+message EmailResponse {
+  string email = 1; // 目标账户的邮箱地址
+}
+
+// 使用验证码查看邮箱请求（Sales 视角）
+message GetViewEmailRequest {
+  int64  sales_uid = 1; // Sales 账户 UID
+  int64  uid       = 2; // 目标账户 UID
+  string code      = 3; // 从 GetViewEmailCode 获取的一次性验证码
+}
+
+// Agent 账户列表查询请求
+message ListAgentAccountsRequest {
+  int64             agent_uid  = 1; // IB（Agent）账户 UID
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3; // 按姓名或邮箱模糊搜索
+  optional int32    status     = 4; // 按账户状态过滤
+}
+
+// Agent 单账户查询请求
+message GetAgentAccountRequest {
+  int64 agent_uid = 1; // IB（Agent）账户 UID
+  int64 uid       = 2; // 目标账户 UID
+}
+
+// 子账户网络统计查询请求（Agent 视角）
+message GetAgentChildNetStatRequest {
+  int64           agent_uid  = 1; // IB（Agent）账户 UID
+  int64           uid        = 2; // 目标账户 UID
+  optional string date_from  = 3; // ISO 8601 格式
+  optional string date_to    = 4; // ISO 8601 格式
+  bool            view_client = 5; // true=统计包含最底层客户账户
+}
+
+// 按品种分组的统计查询请求（Agent 视角）
+message GetAgentChildStatByRangeRequest {
+  int64           agent_uid = 1; // IB（Agent）账户 UID
+  int64           uid       = 2; // 目标账户 UID
+  optional string date_from = 3; // ISO 8601 格式
+  optional string date_to   = 4; // ISO 8601 格式
+}
+
+// 使用验证码查看邮箱请求（Agent 视角）
+message GetAgentViewEmailRequest {
+  int64  agent_uid = 1; // IB（Agent）账户 UID
+  int64  uid       = 2; // 目标账户 UID
+  string code      = 3; // 从 GetViewEmailCode 获取的一次性验证码
+}
+
+// Rep 账户列表查询请求
+message ListRepAccountsRequest {
+  int64             rep_uid    = 1; // Rep 账户 UID
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3; // 按姓名或邮箱模糊搜索
+  optional int32    status     = 4; // 按账户状态过滤
+}
+
+// Rep 单账户查询请求
+message GetRepAccountRequest {
+  int64 rep_uid = 1; // Rep 账户 UID
+  int64 uid     = 2; // 目标账户 UID
+}
+
+// MT 组名列表查询请求
+message GetGroupNameListRequest {
+  int64           rep_uid   = 1; // Rep 账户 UID
+  optional int32  type      = 2; // 按 MT 服务类型过滤（1=MT4，2=MT5）
+  optional string keywords  = 3; // 按组名关键字搜索
+}
+
+// MT 组名列表响应
+message GroupNameListResponse {
+  repeated string names = 1; // MT 账户组名称列表
+}
+
+// 子账户网络统计查询请求（Rep 视角）
+message GetRepChildNetStatRequest {
+  int64           rep_uid   = 1; // Rep 账户 UID
+  int64           uid       = 2; // 目标账户 UID
+  optional string date_from = 3; // ISO 8601 格式
+  optional string date_to   = 4; // ISO 8601 格式
+  bool            view_client = 5; // true=统计包含最底层客户账户
+}
+
+// 按品种分组的统计查询请求（Rep 视角）
+message GetRepChildStatByRangeRequest {
+  int64           rep_uid   = 1; // Rep 账户 UID
+  int64           uid       = 2; // 目标账户 UID
+  optional string date_from = 3; // ISO 8601 格式
+  optional string date_to   = 4; // ISO 8601 格式
+}

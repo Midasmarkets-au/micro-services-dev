@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Symbol API (api/v1/tenant/symbol) ────────────────────────────────
+// 管理交易品种（Symbol）及其分类（Category）。
+// 品种用于返佣规则（RebateSchemaItem.symbol）和交易记录（Trade.symbol）。
+// 支持单条 CRUD、批量导入及批量删除。
+
+service TenantSymbolService {
+  // 分页查询品种列表；可按名称关键字、分类 ID 或类型过滤
+  rpc ListSymbols(ListSymbolsRequest) returns (ListSymbolsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/symbol" };
+  }
+  // 按 id 获取品种详情
+  rpc GetSymbol(GetSymbolRequest) returns (Symbol) {
+    option (google.api.http) = { get: "/api/v1/tenant/symbol/{id}" };
+  }
+  // 创建新品种
+  rpc CreateSymbol(CreateSymbolRequest) returns (Symbol) {
+    option (google.api.http) = { post: "/api/v1/tenant/symbol", body: "*" };
+  }
+  // 更新品种信息（全量替换，body 字段名为 model）
+  rpc UpdateSymbol(UpdateSymbolRequest) returns (Symbol) {
+    option (google.api.http) = { put: "/api/v1/tenant/symbol/{id}", body: "model" };
+  }
+  // 删除品种（不可恢复）
+  rpc DeleteSymbol(GetSymbolRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/symbol/{id}" };
+  }
+  // 批量导入品种；已存在的品种会被跳过（返回 skipped 计数）
+  rpc BatchImportSymbols(BatchImportSymbolsRequest) returns (BatchImportSymbolsResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/symbol/batch", body: "*" };
+  }
+  // 按 id 列表批量删除品种
+  rpc BatchDeleteSymbols(BatchDeleteSymbolsRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/symbol/batch" };
+  }
+  // 获取品种分类列表；可按 type 过滤
+  rpc GetCategories(GetSymbolCategoriesRequest) returns (SymbolCategoriesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/symbol/categories" };
+  }
+  // 创建品种分类
+  rpc CreateCategory(CreateSymbolCategoryRequest) returns (SymbolCategory) {
+    option (google.api.http) = { post: "/api/v1/tenant/symbol/category", body: "*" };
+  }
+  // 更新品种分类（body 字段名为 model）
+  rpc UpdateCategory(UpdateSymbolCategoryRequest) returns (SymbolCategory) {
+    option (google.api.http) = { put: "/api/v1/tenant/symbol/category/{category_id}", body: "model" };
+  }
+  // 按 type + category_id 删除品种分类
+  rpc DeleteCategory(DeleteSymbolCategoryRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/symbol/type/{type}/category/{category_id}" };
+  }
+}
+
+// ─── Tenant Exchange Rate API (api/v1/tenant/exchange-rate) ──────────────────
+// 管理货币对汇率，支持历史记录查询。
+// 汇率用于充提款金额换算及返佣计算。
+
+service TenantExchangeRateService {
+  // 分页查询汇率列表；可按来源/目标货币过滤
+  rpc ListExchangeRates(ListExchangeRatesRequest) returns (ListExchangeRatesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate" };
+  }
+  // 按 id 获取汇率详情
+  rpc GetExchangeRate(GetExchangeRateRequest) returns (ExchangeRate) {
+    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}" };
+  }
+  // 获取指定汇率的历史变动记录（分页）
+  rpc GetExchangeRateHistory(GetExchangeRateHistoryRequest) returns (ExchangeRateHistoryResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}/history" };
+  }
+  // 创建新货币对汇率
+  rpc CreateExchangeRate(CreateExchangeRateRequest) returns (ExchangeRate) {
+    option (google.api.http) = { post: "/api/v1/tenant/exchange-rate", body: "*" };
+  }
+  // 更新汇率（body 字段名为 spec）
+  rpc UpdateExchangeRate(UpdateExchangeRateRequest) returns (ExchangeRate) {
+    option (google.api.http) = { put: "/api/v1/tenant/exchange-rate/{id}", body: "spec" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+// 品种实体
+message Symbol {
+  int32  id          = 1; // 品种 ID
+  string name        = 2; // 品种名称，如 "EURUSD"、"XAUUSD"
+  string description = 3; // 品种描述
+  int32  category_id = 4; // 所属分类 ID，关联 SymbolCategory
+  int32  type        = 5; // 品种类型（枚举值，如 1=Forex、2=Metal、3=Index）
+}
+
+// 品种分类实体
+message SymbolCategory {
+  int32  id   = 1; // 分类 ID
+  string name = 2; // 分类名称，如 "Forex"、"Metals"
+  int32  type = 3; // 分类类型（与 Symbol.type 对应）
+}
+
+// 汇率实体
+message ExchangeRate {
+  int64  id            = 1; // 汇率记录 ID
+  string from_currency = 2; // 来源货币代码，如 "USD"
+  string to_currency   = 3; // 目标货币代码，如 "AUD"
+  double rate          = 4; // 当前汇率（1 单位 from_currency 对应多少 to_currency）
+  string updated_at    = 5; // 最后更新时间，ISO 8601 格式
+}
+
+// 品种列表请求
+message ListSymbolsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2; // 按品种名称关键字搜索
+  optional int32    category_id = 3; // 按分类 ID 过滤
+  optional int32    type        = 4; // 按品种类型过滤
+}
+
+message ListSymbolsResponse {
+  repeated Symbol data = 1;
+  PaginationMeta  meta = 2;
+}
+
+// 按 id 查询品种请求
+message GetSymbolRequest {
+  int32 id = 1;
+}
+
+// 创建品种请求
+message CreateSymbolRequest {
+  string name        = 1; // 品种名称，应与 MT4/MT5 品种名一致
+  string description = 2; // 品种描述
+  int32  category_id = 3; // 所属分类 ID
+  int32  type        = 4; // 品种类型枚举
+}
+
+// 更新品种请求
+message UpdateSymbolRequest {
+  int32             id    = 1;
+  CreateSymbolRequest model = 2; // 全量替换字段
+}
+
+// 批量导入品种请求
+message BatchImportSymbolsRequest {
+  repeated CreateSymbolRequest symbols = 1; // 待导入品种列表
+}
+
+// 批量导入结果
+message BatchImportSymbolsResponse {
+  int32 imported = 1; // 成功导入数量
+  int32 skipped  = 2; // 已存在而跳过数量
+}
+
+// 批量删除品种请求
+message BatchDeleteSymbolsRequest {
+  repeated int32 ids = 1; // 待删除品种 ID 列表
+}
+
+// 品种分类列表请求
+message GetSymbolCategoriesRequest {
+  optional int32 type = 1; // 按 type 过滤；不传则返回所有分类
+}
+
+message SymbolCategoriesResponse {
+  repeated SymbolCategory categories = 1;
+}
+
+// 创建分类请求
+message CreateSymbolCategoryRequest {
+  string name = 1;
+  int32  type = 2;
+}
+
+// 更新分类请求
+message UpdateSymbolCategoryRequest {
+  int32                       category_id = 1;
+  CreateSymbolCategoryRequest model       = 2;
+}
+
+// 删除分类请求
+message DeleteSymbolCategoryRequest {
+  int32 type        = 1; // 分类类型
+  int32 category_id = 2; // 分类 ID
+}
+
+// 汇率列表请求
+message ListExchangeRatesRequest {
+  PaginationRequest  pagination    = 1;
+  optional string    from_currency = 2; // 来源货币代码过滤，如 "USD"
+  optional string    to_currency   = 3; // 目标货币代码过滤，如 "AUD"
+}
+
+message ListExchangeRatesResponse {
+  repeated ExchangeRate data = 1;
+  PaginationMeta        meta = 2;
+}
+
+// 按 id 查询汇率请求
+message GetExchangeRateRequest {
+  int64 id = 1;
+}
+
+// 汇率历史查询请求
+message GetExchangeRateHistoryRequest {
+  int64             id         = 1; // 汇率记录 ID
+  PaginationRequest pagination = 2;
+}
+
+// 汇率历史响应
+message ExchangeRateHistoryResponse {
+  repeated ExchangeRateHistoryItem items = 1;
+}
+
+// 历史汇率条目
+message ExchangeRateHistoryItem {
+  double rate       = 1; // 历史汇率值
+  string updated_at = 2; // 该汇率生效时间，ISO 8601 格式
+}
+
+// 创建汇率请求
+message CreateExchangeRateRequest {
+  string from_currency = 1; // 如 "USD"
+  string to_currency   = 2; // 如 "AUD"
+  double rate          = 3; // 汇率值
+}
+
+// 更新汇率请求
+message UpdateExchangeRateRequest {
+  int64                     id   = 1;
+  CreateExchangeRateRequest spec = 2;
+}

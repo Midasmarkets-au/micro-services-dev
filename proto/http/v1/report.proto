@@ -1,0 +1,215 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Report API (api/v1/tenant/report) ────────────────────────────────
+// 管理后台报表请求（ReportRequest）的生命周期：创建、重新生成、下载。
+// 支持自定义查询预览（SQL-like）和权益报表（equity report）两种生成模式。
+
+service TenantReportService {
+  // 分页查询报表请求列表；可按 type、status 及日期范围过滤
+  rpc ListReportRequests(ListReportRequestsRequest) returns (ListReportRequestsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/report/request" };
+  }
+  // 按 id 获取单条报表请求详情（含 file_url 下载链接）
+  rpc GetReportRequest(GetReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { get: "/api/v1/tenant/report/request/{id}" };
+  }
+  // 获取指定报表类型（type）的查询样本（JSON 格式），用于前端填写查询参数
+  rpc GetQuerySample(GetQuerySampleRequest) returns (QuerySampleResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/report/query/{type}/sample" };
+  }
+  // 预览报表查询结果（不生成文件），body 字段为 query（JSON 字符串）
+  rpc PreviewQuery(PreviewQueryRequest) returns (QueryPreviewResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/query/{type}/preview", body: "*" };
+  }
+  // 创建报表请求，异步生成报表文件（status 会从 pending → completed）
+  rpc CreateReportRequest(CreateReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request", body: "*" };
+  }
+  // 重新生成已有报表（重置 status 并触发后台重新生成）
+  rpc RegenReport(GetReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/{id}/regen" };
+  }
+  // 创建并立即返回下载 URL（不持久化 ReportRequest 记录）
+  rpc DownloadReport(CreateReportRequestRequest) returns (DownloadReportResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/download", body: "*" };
+  }
+  // 创建权益报表；configuration 为 JSON 格式的 ReportConfiguration 对象
+  rpc CreateEquityReport(CreateEquityReportRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity", body: "*" };
+  }
+  // 同步执行报表生成任务（调试用，绕过 Hangfire 队列直接处理）
+  rpc SimulateJob(CreateReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/download/simulate-job", body: "*" };
+  }
+  // 生成权益报表 HTML 预览（不持久化，直接返回 HTML 字符串）
+  rpc GetEquityReportHtml(CreateEquityReportRequest) returns (EquityReportHtmlResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/html", body: "*" };
+  }
+  // 获取权益报表所需的登录数据（按账户组和名称分组）
+  rpc GetEquityReportLogins(CreateEquityReportRequest) returns (EquityReportLoginsResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/logins", body: "*" };
+  }
+}
+
+// ─── Tenant Account Report API (api/v1/tenant/account-report) ────────────────
+// 账户级别周期报表（如月报）的查询与发送管理。
+// 后台定时任务生成，运营人员可在此预览和手动发送。
+
+service TenantAccountReportService {
+  // 分页查询账户报表列表；可按 account_id、status、日期范围过滤
+  rpc ListAccountReports(ListAccountReportsRequest) returns (ListAccountReportsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account-report" };
+  }
+  // 预览账户报表 HTML 内容（适合在界面中内嵌预览）
+  rpc PreviewAccountReport(GetAccountReportRequest) returns (AccountReportPreviewResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account-report/{id}/preview" };
+  }
+  // 向指定邮箱发送账户报表（spec 中含 email 和 subject）
+  rpc SendAccountReport(SendAccountReportRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/account-report/{id}/send-report", body: "spec" };
+  }
+  // 获取今日账户报表发送进度（total / sent / pending）
+  rpc GetTodayStatus(EmptyRequest) returns (AccountReportTodayStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account-report/today-status" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+// 报表请求实体
+message ReportRequest {
+  int64  id         = 1; // 报表请求 ID
+  int32  type       = 2; // 报表类型（枚举值，对应不同业务报表）
+  int32  status     = 3; // 状态：0=pending（未生成）、2=completed（已生成，GeneratedOn 有值）
+  string file_url   = 4; // 生成完成后的文件名/URL（status=2 时有值）
+  string created_at = 5; // 创建时间，ISO 8601 格式
+}
+
+// 报表请求列表查询
+message ListReportRequestsRequest {
+  PaginationRequest pagination = 1;
+  optional int32    type       = 2; // 按报表类型过滤
+  optional int32    status     = 3; // 按状态过滤（0=pending、1=processing、2=completed、3=failed）
+  optional string   date_from  = 4; // 创建时间起点，ISO 8601 格式
+  optional string   date_to    = 5; // 创建时间终点，ISO 8601 格式
+}
+
+message ListReportRequestsResponse {
+  repeated ReportRequest data = 1;
+  PaginationMeta         meta = 2;
+}
+
+// 按 id 查询报表请求
+message GetReportRequestRequest {
+  int64 id = 1;
+}
+
+// 查询样本请求（按报表类型获取示例 JSON）
+message GetQuerySampleRequest {
+  int32 type = 1; // 报表类型枚举值
+}
+
+// 查询样本响应
+message QuerySampleResponse {
+  string sample = 1; // JSON 字符串，展示该报表类型的参数示例
+}
+
+// 查询预览请求
+message PreviewQueryRequest {
+  int32  type  = 1; // 报表类型
+  string query = 2; // JSON 查询参数字符串
+}
+
+// 查询预览响应
+message QueryPreviewResponse {
+  string data = 1; // JSON 字符串，预览数据（前 N 行结果）
+}
+
+// 创建报表请求
+message CreateReportRequestRequest {
+  int32  type       = 1; // 报表类型
+  string parameters = 2; // JSON 查询参数字符串（与 QuerySample 结构一致）
+}
+
+// 立即下载响应
+// 报表异步下载响应：立即返回 request_id，URL 在报表生成后通过 GetReportRequest 轮询获取
+message DownloadReportResponse {
+  int64  request_id = 1; // 已创建的 ReportRequest.id，供客户端轮询
+  string url        = 2; // 下载 URL（生成完成前为空字符串）
+}
+
+// 创建权益报表请求
+message CreateEquityReportRequest {
+  string configuration = 1; // JSON 格式的 ReportConfiguration，包含账户、日期等配置
+}
+
+// 权益报表 HTML 预览响应
+message EquityReportHtmlResponse {
+  string html = 1; // 可直接渲染的 HTML 字符串
+}
+
+// 权益报表登录数据响应（按账户组和名称分组）
+message EquityReportLoginsResponse {
+  string data = 1; // JSON 字符串，结构为 map<group, map<name, list<login_id>>>
+}
+
+// ─── Account Report Messages ──────────────────────────────────────────────────
+
+// 账户报表实体
+message AccountReport {
+  int64  id         = 1; // 账户报表记录 ID
+  int64  account_id = 2; // 关联的账户 ID
+  int32  status     = 3; // 状态：0=pending、1=sent、2=failed
+  string created_at = 4; // 生成时间，ISO 8601 格式
+}
+
+// 账户报表列表查询
+message ListAccountReportsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2; // 按账户 ID 过滤
+  optional int32    status      = 3; // 按状态过滤
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+}
+
+message ListAccountReportsResponse {
+  repeated AccountReport data = 1;
+  PaginationMeta         meta = 2;
+}
+
+// 按 id 查询账户报表
+message GetAccountReportRequest {
+  int64 id = 1;
+}
+
+// 账户报表 HTML 预览响应
+message AccountReportPreviewResponse {
+  string html_content = 1; // 可直接内嵌到 iframe 或弹窗的 HTML 字符串
+}
+
+// 发送账户报表请求
+message SendAccountReportRequest {
+  int64                       id   = 1; // 报表记录 ID
+  AccountReportSendEmailSpec  spec = 2;
+}
+
+// 发送邮件配置
+message AccountReportSendEmailSpec {
+  string email   = 1; // 收件人邮箱
+  string subject = 2; // 邮件主题
+}
+
+// 今日发送进度响应
+message AccountReportTodayStatusResponse {
+  int32 total   = 1; // 今日生成报表总数
+  int32 sent    = 2; // 已发送数量
+  int32 pending = 3; // 待发送数量
+}

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+// 通用分页请求，所有列表查询均复用此消息
+message PaginationRequest {
+  int32  page       = 1; // 页码，从 1 开始
+  int32  size       = 2; // 每页条数，默认 20
+  string sort_field = 3; // 排序字段名，例如 "created_at"
+  bool   sort_desc  = 4; // true = 降序，false = 升序
+}
+
+// 通用分页元数据（响应中携带），供客户端渲染分页控件
+message PaginationMeta {
+  int32 page       = 1; // 当前页码
+  int32 size       = 2; // 每页条数
+  int32 total      = 3; // 总条数
+  int32 page_count = 4; // 总页数 = ceil(total / size)
+  bool  has_more   = 5; // 是否还有下一页
+}
+
+// 空请求，用于无参数的 RPC（如 reload、refresh、list-all）
+message EmptyRequest {}
+
+// 通用操作响应（创建/删除/触发等无实体返回的操作）
+message OperationResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
+}
+
+// 通用整型单值包装（用于只携带一个 int32 的请求体）
+message IntValue {
+  int32 value = 1;
+}
+
+// 通用字符串单值包装（用于只携带一个 string 的请求体）
+message StringValue {
+  string value = 1;
+}
+
+// 语言列表响应（Discovery、Notification 等多语言接口复用）
+message LanguagesResponse {
+  repeated string languages = 1; // 可用语言列表，如 ["English", "Chinese"]
+}

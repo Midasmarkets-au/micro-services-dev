@@ -52,7 +52,7 @@ builder.Services.SetupCors();
 builder.Services.SetupGeoIp();
 builder.Services.SetupChatGpt();
 builder.Services.SetupHangFireServer();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc().AddJsonTranscoding();
 builder.Services.AddGrpcReflection();
 
 builder.Services.AddControllers()
@@ -155,6 +155,54 @@ app.MapControllerRoute(
 app.MapControllerRoute(
     name: "Default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// ─── gRPC JSON Transcoding services (replace RESTful controllers incrementally) ───
+// Discovery: public endpoints, no authentication required
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Discovery.DiscoveryGrpcService>().AllowAnonymous();
+
+// Report: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Report.TenantReportGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Report.TenantAccountReportGrpcService>();
+
+// Symbol + ExchangeRate: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantSymbolGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Symbol.TenantExchangeRateGrpcService>();
+
+// Config: tenant-scoped, requires authentication
+// ConfigurationController is kept for site-specific toggle endpoints not yet in proto.
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Config.TenantConfigurationGrpcService>();
+
+// User / Role / Permission: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantUserGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantRoleGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantPermissionGrpcService>();
+
+// KYC: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantKycGrpcService>();
+
+// Verification: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.User.TenantVerificationGrpcService>();
+
+// Account: tenant/client/sales/agent/rep-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.TenantAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.TenantAccountV2GrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.ClientAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.SalesAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.AgentAccountGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Account.RepAccountGrpcService>();
+
+// Notification: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantMessageGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantEmailGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Notification.TenantTopicGrpcService>();
+
+// Admin: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantAuditGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantIpBlacklistGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantUserBlacklistGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantApiLogGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantStatisticsGrpcService>();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantStatisticsV2GrpcService>();
 
 // MonoCallbackService: called by the Rust scheduler via standard gRPC (tonic, HTTP/2).
 // No UseGrpcWeb: gRPC-Web is for browsers; tonic uses standard gRPC and is incompatible with gRPC-Web encoding.

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bacera Gateway API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; }
+
+    #header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    #header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: 0.5px; }
+    #header .subtitle { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-top: 2px; }
+    #header .badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.85);
+    }
+
+    #toolbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    #toolbar label { font-size: 0.8rem; color: #64748b; font-weight: 500; }
+    #filter-input {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      outline: none;
+      width: 260px;
+      transition: border-color 0.2s;
+    }
+    #filter-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    #server-input {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      outline: none;
+      width: 240px;
+      transition: border-color 0.2s;
+    }
+    #server-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .separator { width: 1px; height: 24px; background: #e2e8f0; }
+
+    #swagger-ui-container { padding: 0 16px 40px; }
+
+    /* Swagger UI overrides */
+    .swagger-ui .topbar { display: none; }
+    .swagger-ui .info { margin: 24px 0 16px; }
+    .swagger-ui .info .title { font-size: 1.6rem; }
+    .swagger-ui .scheme-container { background: transparent; box-shadow: none; padding: 0; }
+    .swagger-ui .opblock-tag { font-size: 0.95rem; }
+    .swagger-ui .opblock { border-radius: 8px; margin-bottom: 6px; }
+    .swagger-ui .opblock .opblock-summary { border-radius: 8px; }
+    .swagger-ui select { border-radius: 6px; }
+    .swagger-ui .btn { border-radius: 6px; }
+    .swagger-ui .execute-wrapper .btn.execute { background: #3b82f6; border-color: #3b82f6; }
+    .swagger-ui .execute-wrapper .btn.execute:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>Bacera Gateway API</h1>
+    <div class="subtitle">Multi-tenant trading/finance platform · proto/http/v1</div>
+  </div>
+  <span class="badge">OpenAPI 3.0</span>
+</div>
+
+<div id="toolbar">
+  <label for="filter-input">Filter</label>
+  <input id="filter-input" type="text" placeholder="Search tags or operations…" />
+  <div class="separator"></div>
+  <label for="server-input">Server</label>
+  <input id="server-input" type="text" value="http://localhost:9005" placeholder="https://api.example.com" />
+  <button class="btn btn-primary" onclick="applyServer()">Apply</button>
+  <div class="separator"></div>
+  <button class="btn btn-secondary" onclick="expandAll()">Expand All</button>
+  <button class="btn btn-secondary" onclick="collapseAll()">Collapse All</button>
+</div>
+
+<div id="swagger-ui-container">
+  <div id="swagger-ui"></div>
+</div>
+
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+<script src="https://unpkg.com/js-yaml@4/dist/js-yaml.min.js"></script>
+<script>
+let ui;
+
+async function loadSpec() {
+  const resp = await fetch('./openapi.yaml');
+  const text = await resp.text();
+  const spec = jsyaml.load(text);
+
+  // Apply server from input
+  const serverUrl = document.getElementById('server-input').value.trim();
+  if (serverUrl) {
+    spec.servers = [{ url: serverUrl, description: 'API Server' }];
+  }
+
+  return spec;
+}
+
+async function initSwagger(filter) {
+  const spec = await loadSpec();
+
+  ui = SwaggerUIBundle({
+    spec,
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    layout: 'StandaloneLayout',
+    filter: filter || true,
+    defaultModelsExpandDepth: 1,
+    defaultModelExpandDepth: 2,
+    docExpansion: 'list',
+    tryItOutEnabled: true,
+    requestInterceptor: (req) => {
+      // Add Authorization header if token is set
+      const token = localStorage.getItem('api_token');
+      if (token) req.headers['Authorization'] = `Bearer ${token}`;
+      return req;
+    },
+  });
+}
+
+function applyServer() {
+  document.getElementById('swagger-ui').innerHTML = '';
+  initSwagger(document.getElementById('filter-input').value);
+}
+
+function expandAll() {
+  document.querySelectorAll('.opblock-tag-section .arrow').forEach(el => {
+    if (el.closest('.opblock-tag-section').querySelector('.no-margin') === null) el.click();
+  });
+}
+
+function collapseAll() {
+  document.querySelectorAll('.opblock-tag-section .arrow').forEach(el => {
+    if (el.closest('.opblock-tag-section').querySelector('.no-margin') !== null) el.click();
+  });
+}
+
+// Live filter
+document.getElementById('filter-input').addEventListener('input', (e) => {
+  if (ui) ui.getSystem().filterActions.updateFilter(e.target.value);
+});
+
+initSwagger();
+</script>
+</body>
+</html>

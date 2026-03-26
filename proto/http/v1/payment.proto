@@ -1,0 +1,1139 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Deposit API (api/v1/tenant/deposit) ──────────────────────────────
+// 管理充值（Deposit）的完整生命周期：创建、审批、拒绝、完成及外部支付查询。
+// 状态流转：created → complete_payment → approve → complete / cancel / reject / delete
+// 外部链接（exlink）接口用于查询第三方支付网关的实时收款状态。
+
+service TenantDepositService {
+  // 分页查询充值记录；可按 account_uid、status、货币及日期范围过滤
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit" };
+  }
+  // 按 id 获取充值详情
+  rpc GetDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}" };
+  }
+  // 后台手动创建充值（指定账户、支付方式、金额及货币）
+  rpc CreateDeposit(CreateTenantDepositRequest) returns (Deposit) {
+    option (google.api.http) = { post: "/api/v1/tenant/deposit", body: "*" };
+  }
+  // 取消充值（status → cancelled）
+  rpc CancelDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/cancel" };
+  }
+  // 拒绝充值（status → rejected）
+  rpc RejectDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/reject" };
+  }
+  // 标记支付已完成（用户付款后，后台确认收到资金，status → payment_complete）
+  rpc CompletePayment(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/complete-payment" };
+  }
+  // 批准充值（status → approved）
+  rpc ApproveDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/approve" };
+  }
+  // 完成充值（触发入账到 MT 账户，status → completed）
+  rpc CompleteDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/complete" };
+  }
+  // 软删除充值记录（status → deleted，不从数据库物理删除）
+  rpc DeleteDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/tenant/deposit/{id}/delete" };
+  }
+  // 获取充值回执文件 URL（上传的付款凭证）
+  rpc GetDepositReceipt(GetDepositRequest) returns (DepositReceiptResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}/receipt" };
+  }
+  // 获取充值参考信息（如银行转账参考号）
+  rpc GetDepositReference(GetDepositRequest) returns (DepositReferenceResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}/reference" };
+  }
+  // 获取充值的状态机详情（当前状态及可用操作）
+  rpc GetDepositStateDetail(GetDepositRequest) returns (StateDetailResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/{id}/state-detail" };
+  }
+  // 外部链接：通过 payment_number 查询第三方收款状态
+  rpc GetExlinkCollectionStatus(GetExlinkByPaymentNumberRequest) returns (ExlinkStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/collections/{payment_number}/status" };
+  }
+  // 外部链接：按货币获取可用支付类型列表
+  rpc GetExlinkPaymentTypes(GetByCurrencyRequest) returns (ExlinkPaymentTypesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/payment-types" };
+  }
+  // 外部链接：获取所有可用货币列表
+  rpc GetExlinkCurrencies(EmptyRequest) returns (CurrenciesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/currencies" };
+  }
+  // 外部链接：获取所有货币对汇率列表
+  rpc GetExlinkExchangeRates(EmptyRequest) returns (ExchangeRatesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/deposit/exlink/exchange-rates" };
+  }
+}
+
+// ─── Tenant Withdrawal API (api/v1/tenant/withdrawal) ────────────────────────
+// 管理提款（Withdrawal）的完整生命周期：创建、审批、拒绝、退款等。
+// 支持 OFA-DF（Out-of-fund Alternative Disbursement Framework）提款及恢复被取消/拒绝的记录。
+
+service TenantWithdrawalService {
+  // 分页查询提款记录；可按 account_uid、status、货币及日期范围过滤
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal" };
+  }
+  // 按 id 获取提款详情
+  rpc GetWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/{id}" };
+  }
+  // 后台手动创建提款（指定账户、收款信息、金额及货币）
+  rpc CreateWithdrawal(CreateTenantWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v1/tenant/withdrawal", body: "*" };
+  }
+  // 从指定账户创建提款（body 字段名为 spec）
+  rpc CreateWithdrawalFromAccount(CreateWithdrawalFromAccountRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v1/tenant/withdrawal/from-account/{account_uid}", body: "spec" };
+  }
+  // 取消提款（status → cancelled）
+  rpc CancelWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/cancel" };
+  }
+  // 批准提款（body 字段名为 spec，spec.note 为审批备注）
+  rpc ApproveWithdrawal(ApproveWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/approve", body: "spec" };
+  }
+  // 拒绝提款（spec.reason 为拒绝原因）
+  rpc RejectWithdrawal(RejectWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/reject", body: "spec" };
+  }
+  // 标记支付已完成（出款完成，status → payment_complete）
+  rpc CompletePayment(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/complete-payment" };
+  }
+  // 完成提款（status → completed）
+  rpc CompleteWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/complete" };
+  }
+  // 恢复已取消的提款（重新进入待处理状态）
+  rpc RestoreCancelledWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/cancel/{id}/restore" };
+  }
+  // 恢复已拒绝的提款（重新进入待处理状态）
+  rpc RestoreRejectedWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/reject/{id}/restore" };
+  }
+  // 获取提款的银行账户信息（bank_name、account_no、account_name）
+  rpc GetWithdrawalInfo(GetWithdrawalRequest) returns (WithdrawalInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/{id}/info" };
+  }
+  // 退款（将提款金额退回账户，status → refunded）
+  rpc RefundWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/tenant/withdrawal/{id}/refund" };
+  }
+  // 创建 OFA-DF 提款（通过已有提款 id 发起替代出款渠道）
+  rpc CreateOfaDfWithdrawal(WithdrawalIdSpecRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v1/tenant/withdrawal/ofa-df", body: "*" };
+  }
+  // 外部链接：按货币获取可用银行列表
+  rpc GetExlinkBanks(GetByCurrencyRequest) returns (BanksResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/banks" };
+  }
+  // 外部链接：通过 payment_number 查询第三方出款状态
+  rpc GetExlinkPayoutStatus(GetExlinkByPaymentNumberRequest) returns (ExlinkStatusResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/payouts/{payment_number}/status" };
+  }
+  // 外部链接：按货币获取可用支付类型列表
+  rpc GetExlinkPaymentTypes(GetByCurrencyRequest) returns (ExlinkPaymentTypesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/payment-types" };
+  }
+  // 外部链接：获取第三方支付网关当前余额
+  rpc GetExlinkBalance(EmptyRequest) returns (BalanceResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/withdrawal/exlink/balance" };
+  }
+}
+
+// ─── Tenant Payment API (api/v1/tenant/payment) ──────────────────────────────
+// 管理通用支付记录（Payment），涵盖充提款之外的其他支付类型。
+// 状态流转：pending → execute → complete / cancel
+
+service TenantPaymentService {
+  // 分页查询支付记录；可按 type、status 及日期范围过滤
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment" };
+  }
+  // 按 id 获取支付详情
+  rpc GetPayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment/{id}" };
+  }
+  // 取消支付（status → cancelled）
+  rpc CancelPayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment/{id}/cancel" };
+  }
+  // 执行支付（触发实际资金划转，status → executing）
+  rpc ExecutePayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment/{id}/execute" };
+  }
+  // 完成支付（status → completed）
+  rpc CompletePayment(GetPaymentRequest) returns (Payment) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment/{id}/complete" };
+  }
+}
+
+// ─── Tenant Transaction API (api/v1/tenant/transaction) ──────────────────────
+// 管理内部资金流转（TxTransaction）：账户间转账、钱包入金及审批流程。
+// 支持自动完成阈值配置（AutoCompleteSetting）。
+
+service TenantTransactionService {
+  // 分页查询流转记录；可按 account_uid、status 及日期范围过滤
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/transaction" };
+  }
+  // 按 id 获取流转记录详情
+  rpc GetTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { get: "/api/v1/tenant/transaction/{id}" };
+  }
+  // 获取自动完成配置（enabled=true 时，低于 threshold 金额的流转自动完成）
+  rpc GetAutoCompleteSetting(EmptyRequest) returns (AutoCompleteSettingResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/transaction/auto-complete-setting" };
+  }
+  // 更新自动完成配置
+  rpc UpdateAutoCompleteSetting(UpdateAutoCompleteSettingRequest) returns (AutoCompleteSettingResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/auto-complete-setting", body: "*" };
+  }
+  // 将资金转入 MT 交易账户（from_uid → to_uid，触发 MT 存款操作）
+  rpc TransferToTradeAccount(TransferToAccountRequest) returns (TxTransaction) {
+    option (google.api.http) = { post: "/api/v1/tenant/transaction/to-trade-account", body: "*" };
+  }
+  // 将资金转入钱包
+  rpc TransferToWallet(TransferToAccountRequest) returns (TxTransaction) {
+    option (google.api.http) = { post: "/api/v1/tenant/transaction/to-wallet", body: "*" };
+  }
+  // 取消流转（status → cancelled）
+  rpc CancelTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/{id}/cancel" };
+  }
+  // 拒绝流转（status → rejected）
+  rpc RejectTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/{id}/reject" };
+  }
+  // 批准流转（status → approved，触发实际划转）
+  rpc ApproveTransaction(GetTransactionRequest) returns (TxTransaction) {
+    option (google.api.http) = { put: "/api/v1/tenant/transaction/{id}/approve" };
+  }
+}
+
+// ─── Tenant Wallet API (api/v1/tenant/wallet) ────────────────────────────────
+// 管理用户钱包（Wallet）：查询、快照统计、资金类型更新及手动调整。
+// 每个用户可拥有多个钱包（按货币或资金类型区分）。
+
+service TenantWalletService {
+  // 分页查询钱包列表；可按 account_uid、fund_type 及货币过滤
+  rpc ListWallets(ListWalletsRequest) returns (ListWalletsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet" };
+  }
+  // 按 wallet_id 获取钱包详情
+  rpc GetWallet(GetWalletRequest) returns (Wallet) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/{wallet_id}" };
+  }
+  // 获取钱包余额快照列表（每日余额历史）
+  rpc GetWalletSnapshot(ListWalletsRequest) returns (ListWalletSnapshotsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/snapshot" };
+  }
+  // 获取钱包统计汇总（total_balance 和 wallet_count）
+  rpc GetWalletStatistic(ListWalletsRequest) returns (WalletStatisticResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/statistic" };
+  }
+  // 分页查询指定钱包的流水记录
+  rpc ListWalletTransactions(ListWalletTransactionsRequest) returns (ListWalletTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/{wallet_id}/transaction" };
+  }
+  // 更新钱包的资金类型（fund_type 枚举）
+  rpc UpdateWalletFundType(UpdateWalletFundTypeRequest) returns (Wallet) {
+    option (google.api.http) = { put: "/api/v1/tenant/wallet/{wallet_id}/fund-type" };
+  }
+  // 分页查询钱包手动调整记录；可按 wallet_id 及日期范围过滤
+  rpc ListWalletAdjustments(ListWalletAdjustmentsRequest) returns (ListWalletAdjustmentsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/wallet/adjust" };
+  }
+  // 对钱包进行手动金额调整（body 字段名为 spec，含 amount 和 reason）
+  rpc CreateWalletAdjustment(CreateWalletAdjustmentRequest) returns (WalletAdjustment) {
+    option (google.api.http) = { post: "/api/v1/tenant/wallet/{wallet_id}/adjust", body: "spec" };
+  }
+}
+
+// ─── Tenant Payment Info API (api/v1/tenant/payment-info) ────────────────────
+// 管理用户的收款信息（PaymentInfo），即提款时使用的银行账户或电子钱包信息。
+
+service TenantPaymentInfoService {
+  // 分页查询收款信息列表；可按 account_uid、type、status 过滤
+  rpc ListPaymentInfos(ListPaymentInfosRequest) returns (ListPaymentInfosResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment-info" };
+  }
+  // 按 id 获取收款信息详情（含 details JSON）
+  rpc GetPaymentInfo(GetPaymentInfoRequest) returns (PaymentInfo) {
+    option (google.api.http) = { get: "/api/v1/tenant/payment-info/{id}" };
+  }
+  // 更新收款信息（body 字段名为 spec）
+  rpc UpdatePaymentInfo(UpdatePaymentInfoRequest) returns (PaymentInfo) {
+    option (google.api.http) = { put: "/api/v1/tenant/payment-info/{id}", body: "spec" };
+  }
+  // 删除收款信息（不可恢复）
+  rpc DeletePaymentInfo(GetPaymentInfoRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/payment-info/{id}" };
+  }
+}
+
+// ─── Tenant Payment Method V2 API (api/v2/tenant/payment-method) ─────────────
+// 管理充提款支付方式（PaymentMethod）的完整配置：
+// 包括访问控制（按账户/钱包粒度）、使用说明、政策及排序管理。
+
+service TenantPaymentMethodService {
+  // 分页查询充值支付方式列表（type=deposit）；include_deleted=true 时包含已删除
+  rpc ListDepositMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/deposit" };
+  }
+  // 分页查询提款支付方式列表（type=withdrawal）
+  rpc ListWithdrawalMethods(ListPaymentMethodsRequest) returns (ListPaymentMethodsResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/withdrawal" };
+  }
+  // 按 id 获取支付方式详情
+  rpc GetPaymentMethod(GetPaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/{id}" };
+  }
+  // 创建支付方式（含 name、type、details）
+  rpc CreatePaymentMethod(CreatePaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { post: "/api/v2/tenant/payment-method", body: "*" };
+  }
+  // 更新支付方式（body 字段名为 spec）
+  rpc UpdatePaymentMethod(UpdatePaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}", body: "spec" };
+  }
+  // 软删除支付方式（status → deleted）
+  rpc DeletePaymentMethod(GetPaymentMethodRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v2/tenant/payment-method/{id}" };
+  }
+  // 恢复已删除的支付方式（status → active）
+  rpc RestorePaymentMethod(GetPaymentMethodRequest) returns (PaymentMethod) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/restore" };
+  }
+  // 批量更新支付方式排序顺序
+  rpc BatchUpdateSort(BatchUpdateSortRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/batch-update-sort", body: "*" };
+  }
+  // 重载支付方式缓存（修改后需调用以使变更立即生效）
+  rpc ReloadCache(EmptyRequest) returns (OperationResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/cache/reload" };
+  }
+  // 获取支付方式的多语言使用说明（map<language, content>）
+  rpc GetInstruction(GetPaymentMethodRequest) returns (InstructionResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/{id}/instruction" };
+  }
+  // 更新支付方式的多语言使用说明（body 字段名为 content）
+  rpc UpdateInstruction(UpdateInstructionRequest) returns (InstructionResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/instruction", body: "content" };
+  }
+  // 获取支付方式的多语言政策说明
+  rpc GetPolicy(GetPaymentMethodRequest) returns (PolicyResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/{id}/policy" };
+  }
+  // 更新支付方式的多语言政策说明
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (PolicyResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/policy", body: "content" };
+  }
+  // 获取指定账户的可用支付方式 ID 列表（已启用的方式）
+  rpc GetAccountAccess(GetAccessRequest) returns (AccessResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/account/{account_id}/access" };
+  }
+  // 获取指定钱包的可用支付方式 ID 列表
+  rpc GetWalletAccess(GetWalletAccessRequest) returns (AccessResponse) {
+    option (google.api.http) = { get: "/api/v2/tenant/payment-method/wallet/{wallet_id}/access" };
+  }
+  // 为指定账户启用某支付方式
+  rpc EnableForAccount(EnableForAccountRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/account-enable/{account_id}" };
+  }
+  // 为指定账户禁用某支付方式
+  rpc DisableForAccount(EnableForAccountRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/account-disable/{account_id}" };
+  }
+  // 批量为指定账户启用一组支付方式（body 字段名为 spec，含 method_ids 列表）
+  rpc EnableGroupForAccount(GroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/account-group-enable/{account_id}", body: "spec" };
+  }
+  // 批量为指定账户禁用一组支付方式
+  rpc DisableGroupForAccount(GroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/account-group-disable/{account_id}", body: "spec" };
+  }
+  // 为指定钱包启用某支付方式
+  rpc EnableForWallet(EnableForWalletRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/wallet-enable/{wallet_id}" };
+  }
+  // 为指定钱包禁用某支付方式
+  rpc DisableForWallet(EnableForWalletRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/{id}/wallet-disable/{wallet_id}" };
+  }
+  // 批量为指定钱包启用一组支付方式
+  rpc EnableGroupForWallet(WalletGroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/wallet-group-enable/{wallet_id}", body: "spec" };
+  }
+  // 批量为指定钱包禁用一组支付方式
+  rpc DisableGroupForWallet(WalletGroupAccessRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/wallet-group-disable/{wallet_id}", body: "spec" };
+  }
+  // 按已有账户的支付方式配置开通目标账户（复制 source_account 的配置到 target_account）
+  rpc OpenByExisting(OpenByExistingRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v2/tenant/payment-method/account/open-by-existing", body: "*" };
+  }
+}
+
+// ─── Client Deposit API (api/v1/client/deposit) ──────────────────────────────
+// 客户端充值自助接口：查询、更新和取消充值，以及货币兑换查询。
+
+service ClientDepositService {
+  // 分页查询当前用户的充值记录；可按 account_uid、status 及日期范围过滤
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit" };
+  }
+  // 按 id 获取充值详情
+  rpc GetDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{id}" };
+  }
+  // 更新充值备注（body 字段名为 spec，spec.note 为备注内容）
+  rpc UpdateDeposit(UpdateClientDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/client/deposit/{id}", body: "spec" };
+  }
+  // 取消充值（仅支持状态为 pending 的充值）
+  rpc CancelDeposit(GetDepositRequest) returns (Deposit) {
+    option (google.api.http) = { put: "/api/v1/client/deposit/{id}/cancel" };
+  }
+  // 获取充值回执文件 URL
+  rpc GetDepositReceipt(GetDepositRequest) returns (DepositReceiptResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{id}/receipt" };
+  }
+  // 获取充值参考信息（银行转账参考号等）
+  rpc GetDepositReference(GetDepositRequest) returns (DepositReferenceResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{id}/reference" };
+  }
+  // 查询货币兑换比率（from_currency_id 和 to_currency_id 为路径参数）
+  rpc GetCurrencyConversion(GetCurrencyConversionRequest) returns (CurrencyConversionResponse) {
+    option (google.api.http) = { get: "/api/v1/client/deposit/{from_currency_id}/to/{to_currency_id}" };
+  }
+}
+
+// ─── Client Withdrawal API (api/v1/client/withdrawal) ────────────────────────
+// 客户端提款自助接口：查询、更新和取消提款，以及货币兑换查询。
+
+service ClientWithdrawalService {
+  // 分页查询当前用户的提款记录
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v1/client/withdrawal" };
+  }
+  // 按 id 获取提款详情
+  rpc GetWithdrawal(GetWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { get: "/api/v1/client/withdrawal/{id}" };
+  }
+  // 通过 hash_id 取消提款（hash_id 为路径参数）
+  rpc CancelWithdrawal(CancelByHashIdRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/client/withdrawal/{hash_id}/cancel" };
+  }
+  // 更新提款（如修改收款信息 payment_info_id 或备注 note）
+  rpc UpdateWithdrawal(UpdateClientWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { put: "/api/v1/client/withdrawal/{id}", body: "spec" };
+  }
+  // 查询货币兑换比率
+  rpc GetCurrencyConversion(GetCurrencyConversionRequest) returns (CurrencyConversionResponse) {
+    option (google.api.http) = { get: "/api/v1/client/withdrawal/{from_currency_id}/to/{to_currency_id}" };
+  }
+}
+
+// ─── Client Wallet V2 API (api/v2/client/wallet) ─────────────────────────────
+// 客户端钱包接口：查询钱包列表及各类钱包流水（转账、提款、返佣、退款等）。
+
+service ClientWalletService {
+  // 分页查询当前用户的钱包列表；可按货币过滤
+  rpc ListWallets(ListClientWalletsRequest) returns (ListWalletsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet" };
+  }
+  // 查询指定钱包的转账流水
+  rpc ListWalletTransfers(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/transfer" };
+  }
+  // 查询指定钱包的提款记录
+  rpc ListWalletWithdrawals(GetClientWalletRequest) returns (ListWithdrawalsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/withdrawal" };
+  }
+  // 从钱包创建提款（body 字段名为 spec）
+  rpc CreateWalletWithdrawal(CreateWalletWithdrawalRequest) returns (Withdrawal) {
+    option (google.api.http) = { post: "/api/v2/client/wallet/{hash_id}/withdrawal", body: "spec" };
+  }
+  // 查询指定钱包的返佣流水
+  rpc ListWalletRebates(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/rebate" };
+  }
+  // 查询指定钱包的退款流水
+  rpc ListWalletRefunds(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/refund" };
+  }
+  // 查询指定钱包的手动调整记录
+  rpc ListWalletAdjustments(GetClientWalletRequest) returns (ListWalletAdjustmentsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/adjust" };
+  }
+  // 查询指定钱包的下线奖励转入流水
+  rpc ListDownlineRewardTransfers(GetClientWalletRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = { get: "/api/v2/client/wallet/{hash_id}/downline-reward-transfer" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+// 充值实体
+message Deposit {
+  int64  id          = 1; // 充值记录 ID
+  string hash_id     = 2; // 哈希 ID（URL 友好，对外暴露）
+  int64  account_uid = 3; // 关联账户 ID
+  double amount      = 4; // 充值金额
+  string currency    = 5; // 货币代码，如 "USD"、"AUD"
+  int32  status      = 6; // 充值状态：0=pending、1=payment_complete、2=approved、3=completed、4=cancelled、5=rejected
+  string created_at  = 7; // 创建时间，ISO 8601 格式
+  string updated_at  = 8; // 最后更新时间，ISO 8601 格式
+}
+
+// 提款实体
+message Withdrawal {
+  int64  id          = 1; // 提款记录 ID
+  string hash_id     = 2; // 哈希 ID（URL 友好）
+  int64  account_uid = 3; // 关联账户 ID
+  double amount      = 4; // 提款金额
+  string currency    = 5; // 货币代码
+  int32  status      = 6; // 提款状态：0=pending、1=approved、2=payment_complete、3=completed、4=cancelled、5=rejected、6=refunded
+  string created_at  = 7; // 创建时间，ISO 8601 格式
+  string updated_at  = 8; // 最后更新时间，ISO 8601 格式
+}
+
+// 通用支付记录实体
+message Payment {
+  int64  id         = 1; // 支付记录 ID
+  double amount     = 2; // 支付金额
+  string currency   = 3; // 货币代码
+  int32  status     = 4; // 状态：0=pending、1=executing、2=completed、3=cancelled
+  int32  type       = 5; // 支付类型（枚举，如 1=deposit、2=withdrawal、3=rebate 等）
+  string created_at = 6; // 创建时间，ISO 8601 格式
+}
+
+// 内部资金流转实体（TX 前缀避免与 account.proto 中 Transfer 命名冲突）
+message TxTransaction {
+  int64  id          = 1; // 流转记录 ID
+  int64  account_uid = 2; // 关联账户 ID
+  double amount      = 3; // 流转金额（正=收入，负=支出）
+  string type        = 4; // 流转类型字符串，如 "transfer"、"wallet_in"
+  int32  status      = 5; // 状态：0=pending、1=approved、2=completed、3=cancelled、4=rejected
+  string created_at  = 6; // 创建时间，ISO 8601 格式
+}
+
+// 钱包实体
+message Wallet {
+  int64  id          = 1; // 钱包 ID
+  string hash_id     = 2; // 钱包哈希 ID（URL 友好）
+  int64  account_uid = 3; // 关联账户 ID
+  double balance     = 4; // 当前余额
+  string currency    = 5; // 货币代码，如 "USD"
+  int32  fund_type   = 6; // 资金类型枚举（如 1=real、2=bonus、3=rebate 等）
+  string created_at  = 7; // 创建时间，ISO 8601 格式
+}
+
+// 钱包手动调整记录实体
+message WalletAdjustment {
+  int64  id         = 1; // 调整记录 ID
+  int64  wallet_id  = 2; // 关联钱包 ID
+  double amount     = 3; // 调整金额（正=增加，负=扣减）
+  string reason     = 4; // 调整原因说明
+  string created_at = 5; // 创建时间，ISO 8601 格式
+}
+
+// 收款信息实体（用户保存的银行账户/电子钱包等）
+message PaymentInfo {
+  int64  id          = 1; // 收款信息 ID
+  int64  account_uid = 2; // 关联账户 ID
+  int32  type        = 3; // 收款信息类型（枚举，如 1=bank_transfer、2=crypto 等）
+  string details     = 4; // 收款信息详情（JSON 字符串，含账号、银行名等）
+  int32  status      = 5; // 状态：0=inactive、1=active、2=deleted
+  string created_at  = 6; // 创建时间，ISO 8601 格式
+}
+
+// 支付方式实体
+message PaymentMethod {
+  int64  id         = 1; // 支付方式 ID
+  string name       = 2; // 支付方式名称，如 "Bank Transfer"、"USDT"
+  int32  type       = 3; // 适用类型：0=deposit、1=withdrawal、2=both
+  int32  status     = 4; // 状态：0=inactive、1=active、2=deleted
+  int32  sort_order = 5; // 前端展示排序权重（数值越小越靠前）
+  string created_at = 6; // 创建时间，ISO 8601 格式
+}
+
+// ─── Deposit 相关消息 ──────────────────────────────────────────────────────────
+
+// 充值列表查询
+message ListDepositsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2; // 按账户 ID 过滤
+  optional int32    status      = 3; // 按充值状态过滤
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+  optional string   currency    = 6; // 按货币代码过滤
+}
+
+message ListDepositsResponse {
+  repeated Deposit data = 1;
+  PaginationMeta   meta = 2;
+}
+
+// 按 id 查询充值
+message GetDepositRequest {
+  int64 id = 1;
+}
+
+// 后台创建充值请求
+message CreateTenantDepositRequest {
+  int64  account_uid       = 1; // 目标账户 ID
+  int64  payment_method_id = 2; // 使用的支付方式 ID
+  double amount            = 3; // 充值金额
+  string currency          = 4; // 货币代码
+  string note              = 5; // 备注（可选）
+}
+
+// ─── Withdrawal 相关消息 ───────────────────────────────────────────────────────
+
+// 提款列表查询
+message ListWithdrawalsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+  optional string   currency    = 6;
+}
+
+message ListWithdrawalsResponse {
+  repeated Withdrawal data = 1;
+  PaginationMeta      meta = 2;
+}
+
+// 按 id 查询提款
+message GetWithdrawalRequest {
+  int64 id = 1;
+}
+
+// 后台创建提款请求
+message CreateTenantWithdrawalRequest {
+  int64  account_uid     = 1;
+  int64  payment_info_id = 2; // 收款信息 ID（PaymentInfo）
+  double amount          = 3;
+  string currency        = 4;
+  string note            = 5;
+}
+
+// 从账户创建提款请求
+message CreateWithdrawalFromAccountRequest {
+  int64                           account_uid = 1;
+  CreateWithdrawalFromAccountSpec spec        = 2;
+}
+
+// 从账户创建提款规格
+message CreateWithdrawalFromAccountSpec {
+  int64  payment_info_id = 1;
+  double amount          = 2;
+  string currency        = 3;
+}
+
+// 批准提款请求
+message ApproveWithdrawalRequest {
+  int64                id   = 1;
+  ApproveWithdrawalSpec spec = 2;
+}
+
+// 批准提款规格
+message ApproveWithdrawalSpec {
+  string note = 1; // 审批备注
+}
+
+// 拒绝提款请求
+message RejectWithdrawalRequest {
+  int64               id   = 1;
+  RejectWithdrawalSpec spec = 2;
+}
+
+// 拒绝提款规格
+message RejectWithdrawalSpec {
+  string reason = 1; // 拒绝原因
+}
+
+// OFA-DF 提款请求（含原提款 ID）
+message WithdrawalIdSpecRequest {
+  int64 id = 1; // 原提款记录 ID
+}
+
+// ─── Payment 相关消息 ──────────────────────────────────────────────────────────
+
+// 支付记录列表查询
+message ListPaymentsRequest {
+  PaginationRequest pagination  = 1;
+  optional int32    type        = 2; // 按支付类型过滤
+  optional int32    status      = 3;
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+}
+
+message ListPaymentsResponse {
+  repeated Payment data = 1;
+  PaginationMeta   meta = 2;
+}
+
+// 按 id 查询支付记录
+message GetPaymentRequest {
+  int64 id = 1;
+}
+
+// ─── Transaction 相关消息 ──────────────────────────────────────────────────────
+
+// 流转记录列表查询
+message ListTransactionsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4; // ISO 8601 格式
+  optional string   date_to     = 5; // ISO 8601 格式
+}
+
+message ListTransactionsResponse {
+  repeated TxTransaction data = 1;
+  PaginationMeta         meta = 2;
+}
+
+// 按 id 查询流转记录
+message GetTransactionRequest {
+  int64 id = 1;
+}
+
+// 自动完成配置响应
+message AutoCompleteSettingResponse {
+  bool   enabled   = 1; // 是否启用自动完成
+  double threshold = 2; // 自动完成的金额上限（低于此值的流转自动完成）
+}
+
+// 更新自动完成配置请求
+message UpdateAutoCompleteSettingRequest {
+  bool   enabled   = 1;
+  double threshold = 2;
+}
+
+// 资金转入请求（交易账户或钱包）
+message TransferToAccountRequest {
+  int64  from_uid = 1; // 来源账户 ID（钱包或交易账户）
+  int64  to_uid   = 2; // 目标账户 ID
+  double amount   = 3;
+  string currency = 4;
+  string note     = 5; // 转账备注
+}
+
+// ─── Wallet 相关消息 ───────────────────────────────────────────────────────────
+
+// 钱包列表查询
+message ListWalletsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    fund_type   = 3; // 按资金类型过滤
+  optional string   currency    = 4;
+}
+
+message ListWalletsResponse {
+  repeated Wallet data = 1;
+  PaginationMeta  meta = 2;
+}
+
+// 钱包余额快照列表响应
+message ListWalletSnapshotsResponse {
+  repeated WalletSnapshot data = 1;
+  PaginationMeta          meta = 2;
+}
+
+// 钱包余额快照实体（每日历史余额）
+message WalletSnapshot {
+  int64  wallet_id = 1; // 钱包 ID
+  double balance   = 2; // 该日期的余额
+  string date      = 3; // 日期，格式 YYYY-MM-DD
+}
+
+// 钱包统计响应
+message WalletStatisticResponse {
+  double total_balance = 1; // 所有符合条件钱包的余额总计
+  int32  wallet_count  = 2; // 钱包数量
+}
+
+// 按 wallet_id 查询钱包
+message GetWalletRequest {
+  int64 wallet_id = 1;
+}
+
+// 钱包流水查询
+message ListWalletTransactionsRequest {
+  int64             wallet_id  = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
+}
+
+message ListWalletTransactionsResponse {
+  repeated TxTransaction data = 1;
+  PaginationMeta         meta = 2;
+}
+
+// 更新钱包资金类型请求
+message UpdateWalletFundTypeRequest {
+  int64 wallet_id = 1;
+  int32 fund_type = 2; // 新资金类型枚举值
+}
+
+// 钱包调整记录列表查询
+message ListWalletAdjustmentsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    wallet_id   = 2;
+  optional string   date_from   = 3; // ISO 8601 格式
+  optional string   date_to     = 4; // ISO 8601 格式
+}
+
+message ListWalletAdjustmentsResponse {
+  repeated WalletAdjustment data = 1;
+  PaginationMeta            meta = 2;
+}
+
+// 创建钱包调整请求
+message CreateWalletAdjustmentRequest {
+  int64                wallet_id = 1;
+  WalletAdjustmentSpec spec      = 2;
+}
+
+// 钱包调整规格
+message WalletAdjustmentSpec {
+  double amount = 1; // 调整金额（正=增加，负=扣减）
+  string reason = 2; // 调整原因说明
+}
+
+// ─── PaymentInfo 相关消息 ─────────────────────────────────────────────────────
+
+// 收款信息列表查询
+message ListPaymentInfosRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    type        = 3; // 按收款信息类型过滤
+  optional int32    status      = 4;
+}
+
+message ListPaymentInfosResponse {
+  repeated PaymentInfo data = 1;
+  PaginationMeta       meta = 2;
+}
+
+// 按 id 查询收款信息
+message GetPaymentInfoRequest {
+  int64 id = 1;
+}
+
+// 更新收款信息请求
+message UpdatePaymentInfoRequest {
+  int64                 id   = 1;
+  UpdatePaymentInfoSpec spec = 2;
+}
+
+// 收款信息更新规格
+message UpdatePaymentInfoSpec {
+  string details = 1; // 更新后的 details JSON 字符串
+  int32  status  = 2; // 新状态枚举值
+}
+
+// ─── PaymentMethod 相关消息 ───────────────────────────────────────────────────
+
+// 支付方式列表查询
+message ListPaymentMethodsRequest {
+  PaginationRequest pagination      = 1;
+  bool              include_deleted = 2; // true 时包含已软删除的支付方式
+  optional string   keywords        = 3; // 按名称关键字搜索
+}
+
+message ListPaymentMethodsResponse {
+  repeated PaymentMethod data = 1;
+  PaginationMeta         meta = 2;
+}
+
+// 按 id 查询支付方式
+message GetPaymentMethodRequest {
+  int64 id = 1;
+}
+
+// 创建支付方式请求
+message CreatePaymentMethodRequest {
+  string name    = 1; // 支付方式名称
+  int32  type    = 2; // 适用类型：0=deposit、1=withdrawal、2=both
+  string details = 3; // 配置详情（JSON 字符串）
+}
+
+// 更新支付方式请求
+message UpdatePaymentMethodRequest {
+  int64                   id   = 1;
+  UpdatePaymentMethodSpec spec = 2;
+}
+
+// 支付方式更新规格
+message UpdatePaymentMethodSpec {
+  string name    = 1;
+  int32  status  = 2;
+  string details = 3;
+}
+
+// 批量更新排序请求
+message BatchUpdateSortRequest {
+  repeated SortItem items = 1;
+}
+
+// 单条排序更新项
+message SortItem {
+  int64 id         = 1; // 支付方式 ID
+  int32 sort_order = 2; // 新排序值
+}
+
+// 多语言使用说明响应（key=语言代码，value=内容）
+message InstructionResponse {
+  map<string, string> content = 1;
+}
+
+// 更新多语言使用说明请求
+message UpdateInstructionRequest {
+  int64               id      = 1;
+  map<string, string> content = 2; // key=语言代码，value=HTML 内容
+}
+
+// 多语言政策说明响应
+message PolicyResponse {
+  map<string, string> content = 1;
+}
+
+// 更新多语言政策请求
+message UpdatePolicyRequest {
+  int64               id      = 1;
+  map<string, string> content = 2;
+}
+
+// 账户访问权限查询请求
+message GetAccessRequest {
+  int64 account_id = 1;
+}
+
+// 钱包访问权限查询请求
+message GetWalletAccessRequest {
+  int64 wallet_id = 1;
+}
+
+// 已启用支付方式 ID 列表响应
+message AccessResponse {
+  repeated int64 enabled_method_ids = 1; // 已启用的支付方式 ID 列表
+}
+
+// 单个账户支付方式启用/禁用请求
+message EnableForAccountRequest {
+  int64 id         = 1; // 支付方式 ID
+  int64 account_id = 2;
+}
+
+// 账户组批量访问控制请求
+message GroupAccessRequest {
+  int64           account_id = 1;
+  GroupAccessSpec spec       = 2;
+}
+
+// 支付方式组规格
+message GroupAccessSpec {
+  repeated int64 method_ids = 1; // 支付方式 ID 列表
+}
+
+// 单个钱包支付方式启用/禁用请求
+message EnableForWalletRequest {
+  int64 id        = 1; // 支付方式 ID
+  int64 wallet_id = 2;
+}
+
+// 钱包组批量访问控制请求
+message WalletGroupAccessRequest {
+  int64           wallet_id = 1;
+  GroupAccessSpec spec      = 2;
+}
+
+// 按已有账户开通请求
+message OpenByExistingRequest {
+  int64 source_account_id = 1; // 复制来源账户 ID
+  int64 target_account_id = 2; // 目标账户 ID
+}
+
+// ─── Deposit/Withdrawal 辅助响应 ──────────────────────────────────────────────
+
+// 充值回执响应（付款凭证文件）
+message DepositReceiptResponse {
+  string url      = 1; // 凭证文件 URL
+  string filename = 2; // 原始文件名
+}
+
+// 充值参考信息响应
+message DepositReferenceResponse {
+  string reference = 1; // 参考号（如银行转账参考号）
+  string note      = 2; // 附加说明
+}
+
+// 状态机详情响应
+message StateDetailResponse {
+  string state  = 1; // 当前状态字符串
+  string detail = 2; // 状态详情说明
+}
+
+// 提款银行信息响应
+message WithdrawalInfoResponse {
+  string bank_name    = 1; // 银行名称
+  string account_no   = 2; // 银行账号
+  string account_name = 3; // 账户持有人姓名
+}
+
+// 外部链接状态响应
+message ExlinkStatusResponse {
+  string status  = 1; // 第三方状态字符串
+  string message = 2; // 附加说明
+}
+
+// 外部链接查询请求（by payment_number）
+message GetExlinkByPaymentNumberRequest {
+  string payment_number = 1; // 第三方支付流水号
+}
+
+// 外部链接支付类型列表响应
+message ExlinkPaymentTypesResponse {
+  repeated ExlinkPaymentType types = 1;
+}
+
+// 外部支付类型实体
+message ExlinkPaymentType {
+  string id   = 1; // 支付类型 ID（字符串）
+  string name = 2; // 支付类型名称
+}
+
+// 可用货币列表响应
+message CurrenciesResponse {
+  repeated string currencies = 1; // 货币代码列表，如 ["USD", "AUD", "USDT"]
+}
+
+// 汇率列表响应（外部链接）
+message ExchangeRatesResponse {
+  repeated ExchangeRateItem rates = 1;
+}
+
+// 汇率条目
+message ExchangeRateItem {
+  string from_currency = 1;
+  string to_currency   = 2;
+  double rate          = 3;
+}
+
+// 银行列表响应
+message BanksResponse {
+  repeated BankItem banks = 1;
+}
+
+// 银行条目
+message BankItem {
+  string id   = 1; // 银行 ID（字符串）
+  string name = 2; // 银行名称
+}
+
+// 余额查询响应
+message BalanceResponse {
+  double balance  = 1; // 账户余额
+  string currency = 2; // 货币代码
+}
+
+// 按货币查询请求
+message GetByCurrencyRequest {
+  string currency = 1; // 货币代码
+}
+
+// ─── 客户端 Deposit/Withdrawal 更新消息 ───────────────────────────────────────
+
+// 客户端更新充值请求
+message UpdateClientDepositRequest {
+  int64             id   = 1;
+  UpdateDepositSpec spec = 2;
+}
+
+// 充值更新规格
+message UpdateDepositSpec {
+  string note = 1; // 备注
+}
+
+// 客户端更新提款请求
+message UpdateClientWithdrawalRequest {
+  int64                id   = 1;
+  UpdateWithdrawalSpec spec = 2;
+}
+
+// 提款更新规格
+message UpdateWithdrawalSpec {
+  int64  payment_info_id = 1; // 新收款信息 ID（修改收款账户）
+  string note            = 2; // 备注
+}
+
+// 通过 hash_id 取消提款请求
+message CancelByHashIdRequest {
+  string hash_id = 1;
+}
+
+// 货币兑换查询请求
+message GetCurrencyConversionRequest {
+  int32 from_currency_id = 1; // 来源货币 ID
+  int32 to_currency_id   = 2; // 目标货币 ID
+}
+
+// 货币兑换响应
+message CurrencyConversionResponse {
+  double rate   = 1; // 兑换汇率
+  double amount = 2; // 换算后的金额（基于输入金额计算）
+}
+
+// ─── Client Wallet 相关消息 ───────────────────────────────────────────────────
+
+// 客户端钱包列表查询
+message ListClientWalletsRequest {
+  PaginationRequest pagination = 1;
+  optional string   currency   = 2; // 按货币过滤
+}
+
+// 按 hash_id 查询钱包流水请求（支持分页和日期范围）
+message GetClientWalletRequest {
+  string            hash_id    = 1; // 钱包哈希 ID
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
+}
+
+// 从钱包创建提款请求
+message CreateWalletWithdrawalRequest {
+  string                     hash_id = 1; // 钱包哈希 ID
+  CreateWalletWithdrawalSpec spec    = 2;
+}
+
+// 从钱包提款规格
+message CreateWalletWithdrawalSpec {
+  int64  payment_info_id = 1; // 收款信息 ID
+  double amount          = 2;
+  string currency        = 3;
+}

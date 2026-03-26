@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+
+// ─── Tenant Configuration API (api/v1/tenant/configuration) ──────────────────
+// 管理 tenant 级别的键值配置项，支持按分类 (category) + 行 ID (row_id) + key 三级定位。
+// 站点 (site) 维度的快捷更新接口也在此服务中。
+
+service TenantConfigurationService {
+  // 获取 tenant 下所有站点列表（含 id、name、url）
+  rpc GetSites(EmptyRequest) returns (SitesResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/sites" };
+  }
+  // 分页查询配置项列表；可按 category 或关键字过滤
+  rpc ListConfigurations(ListConfigurationsRequest) returns (ListConfigurationsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration" };
+  }
+  // 获取特定分类（category + row_id）下的所有配置项，以 key→value map 返回
+  rpc GetCategoryConfig(GetCategoryConfigRequest) returns (CategoryConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/{category}/{row_id}" };
+  }
+  // 获取特定配置项（category + row_id + key）的值；is_inherit=true 时向上查找继承值
+  rpc GetConfigValue(GetConfigValueRequest) returns (ConfigValueResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/{category}/{row_id}/{key}" };
+  }
+  // 更新特定配置项的值
+  rpc UpdateConfigValue(UpdateConfigValueRequest) returns (ConfigValueResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/{category}/{row_id}/{key}", body: "spec" };
+  }
+  // 删除特定配置项
+  rpc DeleteConfigValue(GetConfigValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { delete: "/api/v1/tenant/configuration/{category}/{row_id}/{key}" };
+  }
+  // 更新站点默认发件邮箱地址（如 "no-reply@example.com"）
+  rpc UpdateSiteDefaultEmail(UpdateSiteStringValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-email-address", body: "spec" };
+  }
+  // 更新站点默认发件人显示名（如 "Midas Markets"）
+  rpc UpdateSiteDefaultEmailDisplayName(UpdateSiteStringValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-email-display-name", body: "spec" };
+  }
+  // 更新站点默认资金类型（整型枚举值）
+  rpc UpdateSiteDefaultFundType(UpdateSiteIntValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-fund-type", body: "spec" };
+  }
+  // 更新站点默认交易服务（整型，对应 TradeServiceItem.id）
+  rpc UpdateSiteDefaultTradeService(UpdateSiteIntValueRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-trade-service", body: "spec" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+// 站点列表响应
+message SitesResponse {
+  repeated SiteItem sites = 1;
+}
+
+// 站点实体
+message SiteItem {
+  int32  id   = 1; // 站点 ID，用于站点级别配置更新
+  string name = 2; // 站点名称，如 "Main Site"
+  string url  = 3; // 站点 URL，如 "https://app.example.com"
+}
+
+// 配置列表请求；可按 category 或关键字搜索
+message ListConfigurationsRequest {
+  PaginationRequest  pagination = 1;
+  optional string    category   = 2; // 配置分类过滤，如 "public"、"account"、"party"
+  optional string    keywords   = 3; // key/value 关键字搜索
+  repeated int64     row_ids    = 4; // 按 row_id 过滤（多值），对应 ?rowIds=0&rowIds=1
+  repeated string    keys       = 5; // 按 key 过滤（多值），对应 ?keys=AutoCreateTradeAccountEnabled
+}
+
+message ListConfigurationsResponse {
+  repeated ConfigItem data = 1;
+  PaginationMeta      meta = 2;
+}
+
+// 单条配置项（三级定位：category + row_id + key）
+message ConfigItem {
+  string category = 1; // 配置分类名称，如 "email"
+  int64  row_id   = 2; // 行 ID，通常对应某实体（如 site_id、tenant_id）
+  string key      = 3; // 配置键名
+  string value    = 4; // 配置值（均以字符串存储，类型由调用方解析）
+}
+
+// 按 category + row_id 查询请求
+message GetCategoryConfigRequest {
+  string category = 1;
+  int64  row_id   = 2;
+}
+
+// 分类下所有配置项，以 key→value map 返回
+message CategoryConfigResponse {
+  map<string, string> items = 1;
+}
+
+// 单项配置查询请求
+message GetConfigValueRequest {
+  string        category   = 1;
+  int64         row_id     = 2;
+  string        key        = 3;
+  optional bool is_inherit = 4; // true 时若当前层无值则向上继承查找
+}
+
+// 单项配置响应
+message ConfigValueResponse {
+  string key   = 1;
+  string value = 2;
+}
+
+// 更新单项配置请求
+message UpdateConfigValueRequest {
+  string           category = 1;
+  int64            row_id   = 2;
+  string           key      = 3;
+  ConfigCreateSpec spec     = 4;
+}
+
+// 配置值写入规格
+message ConfigCreateSpec {
+  string value = 1; // 新配置值（字符串形式）
+}
+
+// 站点字符串类型配置更新请求
+message UpdateSiteStringValueRequest {
+  int32       site_id = 1; // 目标站点 ID
+  StringValue spec    = 2;
+}
+
+// 站点整型配置更新请求
+message UpdateSiteIntValueRequest {
+  int32    site_id = 1; // 目标站点 ID
+  IntValue spec    = 2;
+}
+

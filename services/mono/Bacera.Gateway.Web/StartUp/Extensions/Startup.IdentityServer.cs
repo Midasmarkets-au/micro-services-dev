@@ -116,6 +116,10 @@ public partial class Startup
                 // OpenIddict puts the user ID in the "sub" claim; tell Identity to look there
                 // so that UserManager.GetUserAsync(User) can resolve the user correctly.
                 options.ClaimsIdentity.UserIdClaimType = OpenIddictConstants.Claims.Subject;
+                // OpenIddict writes role claims using the short "role" type. Without this,
+                // ClaimsPrincipal.IsInRole() uses the long WS-Federation URI as RoleClaimType
+                // and never finds the role claims → IsAdmin()/IsTenantAdmin() always false.
+                options.ClaimsIdentity.RoleClaimType = OpenIddictConstants.Claims.Role;
             })
             .AddEntityFrameworkStores<AuthDbContext>()
             .AddDefaultTokenProviders();
