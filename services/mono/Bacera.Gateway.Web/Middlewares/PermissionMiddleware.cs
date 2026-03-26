@@ -28,6 +28,14 @@ public partial class PermissionMiddleware(
             await next(context);
             return;
         }
+
+        // Public configuration — unauthenticated page-load request (same semantics as old /api/configuration/public)
+        if (action == "/api/v1/tenant/configuration" &&
+            context.Request.Query["category"] == "public")
+        {
+            await next(context);
+            return;
+        }
         
         var tenantId = context.User.GetTenantId();
         var partyId = context.User.GetPartyId();
