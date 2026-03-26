@@ -494,6 +494,7 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
         EmptyRequest request, ServerCallContext context)
     {
         var rawInfos = await monitorSvc.GetOnlineAdminAsync();
+        // Stored format: "email_partyId_tenantId_datetime"
         var users = rawInfos
             .Select(x =>
             {
@@ -502,15 +503,17 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
                 var dateStr  = raw[(lastUs + 1)..];
                 var rest     = raw[..lastUs];
                 var secondUs = rest.LastIndexOf('_');
+                var tenantId = rest[(secondUs + 1)..];   // extract tenantId
                 rest         = rest[..secondUs];
                 var thirdUs  = rest.LastIndexOf('_');
                 var partyId  = rest[(thirdUs + 1)..];
                 var email    = rest[..thirdUs];
                 return new OnlineUser
                 {
-                    PartyId = long.TryParse(partyId, out var pid) ? pid : 0,
-                    Email   = email,
-                    Since   = dateStr,
+                    PartyId  = long.TryParse(partyId,  out var pid) ? pid : 0,
+                    TenantId = long.TryParse(tenantId, out var tid) ? tid : 0,
+                    Email    = email,
+                    Since    = dateStr,
                 };
             })
             .ToList();
