@@ -29,14 +29,14 @@ public partial class PermissionMiddleware(
             return;
         }
 
-        // Public configuration — unauthenticated page-load request (same semantics as old /api/configuration/public)
+        // Public configuration — unauthenticated page-load request; tenant is resolved from Host header
         if (action == "/api/v1/tenant/configuration" &&
             context.Request.Query["category"] == "public")
         {
             await next(context);
             return;
         }
-        
+
         var tenantId = context.User.GetTenantId();
         var partyId = context.User.GetPartyId();
         if (context.User.IsSuperAdmin() || context.User.IsTenantAdmin())
@@ -60,6 +60,14 @@ public partial class PermissionMiddleware(
 
         
 
+        // Not authenticated at all → 401 so the frontend interceptor can trigger a token refresh/re-login
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+            return;
+        }
+
+        // Authenticated but does not hold any admin role → 403
         if (!context.User.IsAdmin())
         {
             context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
@@ -84,7 +92,8 @@ public partial class PermissionMiddleware(
     private static readonly string[] ExemptPaths =
     [
         "/api/v1/client", "/api/status/ping", "/hub/client", "/api/v1/tenant/message/send-popup",
-        "/api/configuration", "/api/v1/user/me", "/connect/token", "/none"
+        "/api/configuration", "/api/v1/user/me", "/connect/token", "/none",
+        "/api/v2/tenant/statistic",
     ];
 
     [GeneratedRegex(@"^/api/v\d+/tenant/.*")]

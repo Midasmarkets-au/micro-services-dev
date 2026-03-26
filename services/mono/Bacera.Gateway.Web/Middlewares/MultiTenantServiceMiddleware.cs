@@ -5,6 +5,7 @@ using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Vendor.IPInfo;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Bacera.Gateway.Web.Response;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
@@ -12,6 +13,7 @@ namespace Bacera.Gateway.Web.Middlewares;
 
 public class MultiTenantServiceMiddleware(
     ITenantSetter setter,
+    CentralDbContext centralDb,
     // ITenantService tenantService,
     // IMyCache cache,
     IHttpClientFactory clientFactory,
@@ -28,6 +30,22 @@ public class MultiTenantServiceMiddleware(
             setter.SetTenantId(tenantId);
             await next(context);
             return;
+        }
+
+        // Unauthenticated request — resolve tenant from Host header via central Domain table
+        var host = context.Request.Host.Host; // strips port
+        if (!string.IsNullOrEmpty(host))
+        {
+            var domain = await centralDb.Domains
+                .Where(d => d.DomainName == host)
+                .Select(d => new { d.TenantId })
+                .FirstOrDefaultAsync();
+            if (domain?.TenantId > 0)
+            {
+                setter.SetTenantId(domain.TenantId);
+                await next(context);
+                return;
+            }
         }
 
         // /api/v1/payment/[callback]/:tenantId/

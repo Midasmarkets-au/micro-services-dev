@@ -15,6 +15,7 @@ namespace Bacera.Gateway.Web.HttpServices.Config;
 /// </summary>
 public class TenantConfigurationGrpcService(
     TenantDbContext tenantDb,
+    ITenantGetter tenantGetter,
     ConfigService configSvc,
     ConfigurationService configurationService)
     : TenantConfigurationService.TenantConfigurationServiceBase
@@ -39,6 +40,12 @@ public class TenantConfigurationGrpcService(
     public override async Task<ListConfigurationsResponse> ListConfigurations(
         ListConfigurationsRequest request, ServerCallContext context)
     {
+        // Unauthenticated page-load requests (e.g. category=public) reach here via the Host-based tenant
+        // resolution in MultiTenantServiceMiddleware. If the host isn't registered in the Domains table yet,
+        // tenantId stays 0 and TenantDbContext has no connection string — return empty rather than 500.
+        if (tenantGetter.GetTenantId() == 0)
+            return new ListConfigurationsResponse();
+
         var criteria = new Configuration.Criteria
         {
             Page     = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
