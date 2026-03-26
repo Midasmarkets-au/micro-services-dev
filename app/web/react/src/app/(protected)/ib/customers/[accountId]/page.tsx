@@ -35,6 +35,7 @@ import {
   WithdrawalState,
   TransferState,
   CurrencyTypes,
+  TransactionAccountType,
   getCurrencyCode,
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
@@ -105,6 +106,19 @@ interface TransferItem {
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
 const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
 const DEFAULT_TRANSACTION_STATE_IDS = [250];
+const TAB_FIXED_FILTER_PARAMS: Partial<Record<DetailTab, Record<string, unknown>>> = {
+  deposit: {
+    isClosed: false,
+  },
+  withdrawal: {
+    isClosed: false,
+  },
+  transfer: {
+    isClosed: false,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    sourceAccountType: TransactionAccountType.TradeAccount,
+  },
+};
 
 export default function IBCustomerDetailPage({
   params,
@@ -133,7 +147,8 @@ export default function IBCustomerDetailPage({
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
     stateIds: DEFAULT_DEPOSIT_STATE_IDS,
     size: 15,
-    searchText: String(accountUid),
+    accountUid: String(accountUid),
+    ...(TAB_FIXED_FILTER_PARAMS.deposit ?? {}),
   });
 
   const loadCustomer = useCallback(async () => {
@@ -141,7 +156,7 @@ export default function IBCustomerDetailPage({
     const result = await execute(getIBClients, agentAccount.uid, {
       page: 1,
       size: 1,
-      searchText: String(accountUid),
+      uid: String(accountUid),
     });
     if (result.success && result.data?.data?.length) {
       const found = result.data.data.find((c) => c.uid === accountUid);
@@ -150,23 +165,27 @@ export default function IBCustomerDetailPage({
   }, [agentAccount, accountUid, execute]);
 
   const getDefaultFilterParams = useCallback((tabKey: DetailTab): Record<string, unknown> => {
+    const fixedParams = TAB_FIXED_FILTER_PARAMS[tabKey] ?? {};
     if (tabKey === 'deposit') {
       return {
         stateIds: DEFAULT_DEPOSIT_STATE_IDS,
         size: 15,
-        searchText: String(accountUid),
+        accountUid: String(accountUid),
+        ...fixedParams,
       };
     }
     if (tabKey === 'withdrawal') {
       return {
         stateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
         size: 15,
-        searchText: String(accountUid),
+        accountUid: String(accountUid),
+        ...fixedParams,
       };
     }
     return {
       stateIds: DEFAULT_TRANSACTION_STATE_IDS,
       size: 15,
+      ...fixedParams,
     };
   }, [accountUid]);
 
@@ -180,7 +199,8 @@ export default function IBCustomerDetailPage({
     if (!agentAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
-      const params = { ...filterParams, ...extraParams };
+      const tabFixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
+      const params = { ...filterParams, ...extraParams, ...tabFixedParams };
 
       if (tab === 'deposit') {
         const result = await execute(getIBDeposits, agentAccount.uid, {
@@ -240,10 +260,12 @@ export default function IBCustomerDetailPage({
   }, [tab, page, loadData]);
 
   const handleSearch = (params: Record<string, unknown>) => {
+    const tabFixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
+    const mergedParams = { ...params, ...tabFixedParams };
     if (typeof params.size === 'number') setPageSize(params.size);
-    setFilterParams(params);
+    setFilterParams(mergedParams);
     setPage(1);
-    loadData(1, params);
+    loadData(1, mergedParams);
   };
   const handleTabChange = (key: DetailTab) => {
     setTab(key);
@@ -596,7 +618,10 @@ export default function IBCustomerDetailPage({
                 type={getFilterType(tab)}
                 filterOptions={['stateIds', 'datePicker', 'pageSize']}
                 defaultPageSize={15}
-                fixedParams={tab === 'transfer' ? undefined : { searchText: String(accountUid) }}
+                fixedParams={{
+                  ...(TAB_FIXED_FILTER_PARAMS[tab] ?? {}),
+                  ...(tab === 'transfer' ? {} : { accountUid: String(accountUid) }),
+                }}
                 onSearch={handleSearch}
                 isLoading={isLoading}
               />

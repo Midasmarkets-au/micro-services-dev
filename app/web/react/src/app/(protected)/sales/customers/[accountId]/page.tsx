@@ -31,6 +31,7 @@ import {
   WithdrawalState,
   TransferState,
   CurrencyTypes,
+  TransactionAccountType,
   getCurrencyCode,
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
@@ -96,10 +97,22 @@ const DEFAULT_WITHDRAWAL_STATE_IDS = [
   WithdrawalState.WithdrawalCompleted,
 ];
 
-const TRADE_ACCOUNT_TYPE = 2;
 const DEFAULT_TRANSACTION_STATE_IDS = [
   TransferState.TransferCompleted,
 ];
+const TAB_FIXED_FILTER_PARAMS: Partial<Record<DetailTab, Record<string, unknown>>> = {
+  deposit: {
+    isClosed: false,
+  },
+  withdrawal: {
+    isClosed: false,
+  },
+  transaction: {
+    targetAccountType: TransactionAccountType.TradeAccount,
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    isClosed: false,
+  },
+};
 
 function getRoleLabel(
   role: number,
@@ -136,10 +149,9 @@ export default function SalesCustomerDetailPage({
   const [withdrawals, setWithdrawals] = useState<SalesWithdrawalRecord[]>([]);
   const [transactions, setTransactions] = useState<SalesTransactionRecord[]>([]);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
-    sourceAccountType: TRADE_ACCOUNT_TYPE,
-    targetAccountType: TRADE_ACCOUNT_TYPE,
     stateIds: DEFAULT_TRANSACTION_STATE_IDS,
     size: 15,
+    ...(TAB_FIXED_FILTER_PARAMS.transaction ?? {}),
   });
 
   // ---- 加载账户详情（使用 queryAccounts 查询参数 uid=xxx） ----
@@ -174,17 +186,17 @@ export default function SalesCustomerDetailPage({
   }, [td, accountDetail]);
 
   const getDefaultFilterParams = useCallback((tabKey: DetailTab): Record<string, unknown> => {
+    const fixedParams = TAB_FIXED_FILTER_PARAMS[tabKey] ?? {};
     if (tabKey === 'deposit') {
-      return { stateIds: DEFAULT_DEPOSIT_STATE_IDS, size: 15 };
+      return { stateIds: DEFAULT_DEPOSIT_STATE_IDS, size: 15, ...fixedParams };
     }
     if (tabKey === 'withdrawal') {
-      return { stateIds: DEFAULT_WITHDRAWAL_STATE_IDS, size: 15 };
+      return { stateIds: DEFAULT_WITHDRAWAL_STATE_IDS, size: 15, ...fixedParams };
     }
     return {
-      sourceAccountType: TRADE_ACCOUNT_TYPE,
-      targetAccountType: TRADE_ACCOUNT_TYPE,
       stateIds: DEFAULT_TRANSACTION_STATE_IDS,
       size: 15,
+      ...fixedParams,
     };
   }, []);
 
@@ -199,7 +211,8 @@ export default function SalesCustomerDetailPage({
     if (!salesAccount || !accountUid || tab === 'tradeReport') return;
     setIsLoading(true);
     try {
-      const params = { ...filterParams, ...extraParams };
+      const tabFixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
+      const params = { ...filterParams, ...extraParams, ...tabFixedParams };
       if (tab === 'transaction') {
         const result = await execute(getSalesClientTransactions, salesAccount.uid, accountUid, {
           page: p,
@@ -252,10 +265,12 @@ export default function SalesCustomerDetailPage({
     if (typeof defaults.size === 'number') setPageSize(defaults.size);
   };
   const handleSearch = (params: Record<string, unknown>) => {
+    const tabFixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
+    const mergedParams = { ...params, ...tabFixedParams };
     if (typeof params.size === 'number') setPageSize(params.size);
-    setFilterParams(params);
+    setFilterParams(mergedParams);
     setPage(1);
-    loadData(1, params);
+    loadData(1, mergedParams);
   };
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!salesAccount || !accountUid) return null;
@@ -404,10 +419,10 @@ export default function SalesCustomerDetailPage({
         <div className="flex flex-col">
           <span className="flex items-center gap-1 text-sm">
             <span className="text-xs font-bold text-[#e02b1d]">↑</span>
-            No.{item.accountNumber || item.targetTradeAccount?.accountNumber}
-            <span className="text-xs text-text-secondary">{getCurrencyCode(item.targetTradeAccount?.currencyId ?? item.currencyId)}</span>
+            No.{item.accountNumber || item.source?.accountNumber}
+            <span className="text-xs text-text-secondary">{getCurrencyCode(item.source?.currencyId ?? item.currencyId)}</span>
           </span>
-          <span className="text-xs text-text-secondary">{td('columns.group')}: {item.targetTradeAccount?.group || '--'}</span>
+          <span className="text-xs text-text-secondary">{td('columns.group')}: {item.source?.agentGroupName || '--'}</span>
         </div>
       ),
     },
@@ -603,7 +618,10 @@ export default function SalesCustomerDetailPage({
                 type={getFilterType(tab)}
                 filterOptions={['stateIds', 'datePicker', 'pageSize']}
                 defaultPageSize={15}
-                fixedParams={tab === 'transaction' ? undefined : { accountUid }}
+                fixedParams={{
+                  ...(TAB_FIXED_FILTER_PARAMS[tab] ?? {}),
+                  ...(tab === 'transaction' ? {} : { accountUid }),
+                }}
                 onSearch={handleSearch}
                 isLoading={isLoading}
               />

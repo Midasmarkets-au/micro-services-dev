@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { useServerAction } from '@/hooks/useServerAction';
 import { QRCodeSVG } from 'qrcode.react';
 import { getIBLinks } from '@/actions';
@@ -25,9 +26,11 @@ function buildInviteUrl(code: string, siteId: number, locale: string): string {
 export function IBLinksWidget() {
   const t = useTranslations('ib.dashboard');
   const locale = useLocale();
+  const pathname = usePathname();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
+  const requestIdRef = useRef(0);
 
   const [links, setLinks] = useState<IBLink[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
@@ -37,12 +40,13 @@ export function IBLinksWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    if (!agentAccount) return;
+    if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
+    const currentRequestId = ++requestIdRef.current;
 
     const load = async () => {
       const result = await execute(getIBLinks, agentAccount.uid, { page: 1, size: 20 });
-      if (cancelled) return;
+      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
       if (result.success && result.data?.data) {
         const items = Array.isArray(result.data.data) ? result.data.data : [];
         setLinks(items);
@@ -53,8 +57,10 @@ export function IBLinksWidget() {
     };
 
     load();
-    return () => { cancelled = true; };
-  }, [agentAccount, execute]);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentAccount, execute, pathname]);
 
   const activeLink = useMemo(
     () => links.find((l) => l.code === selectedCode) || links[0],

@@ -21,6 +21,9 @@ import type { SalesTransactionRecord, SalesTransactionListResponse } from '@/typ
 import { TradeFilter } from '@/components/TradeFilter';
 
 const DEFAULT_TRANSACTION_STATE_IDS = [250];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: SalesTransactionRecord): string {
   const u = item.user;
@@ -63,6 +66,7 @@ export default function SalesTransactionPage() {
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
     stateIds: DEFAULT_TRANSACTION_STATE_IDS,
     size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
 
   const fetchData = useCallback(
@@ -70,7 +74,7 @@ export default function SalesTransactionPage() {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = { ...filterParams, ...extraParams };
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getSalesTransactionReports, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -96,10 +100,11 @@ export default function SalesTransactionPage() {
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
     if (typeof params.size === 'number') setPageSize(params.size);
-    setFilterParams(params);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
@@ -216,6 +221,7 @@ export default function SalesTransactionPage() {
       <TradeFilter
         type="transaction"
         filterOptions={['stateIds', 'account', 'datePicker', 'pageSize']}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         defaultPageSize={25}
         isLoading={isLoading}

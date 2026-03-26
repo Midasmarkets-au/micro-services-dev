@@ -26,6 +26,9 @@ import { TradeFilter } from '@/components/TradeFilter';
  * simpleDepositSelections[1] = DepositCompleted(350) → [350,345]
  */
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: IBDepositRecord): string {
   const u = item.user;
@@ -68,6 +71,7 @@ export default function IBDepositPage() {
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
     stateIds: DEFAULT_DEPOSIT_STATE_IDS,
     size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
 
   const fetchData = useCallback(
@@ -75,7 +79,7 @@ export default function IBDepositPage() {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const params = { ...filterParams, ...extraParams };
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getIBDeposits, agentAccount.uid, {
           page: p,
           size: pageSize,
@@ -102,10 +106,11 @@ export default function IBDepositPage() {
 
   /** TradeFilter 回调 — params 已包含正确的 stateIds 数组和 GMT 时间 */
   const handleSearch = (params: Record<string, unknown>) => {
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
     if (typeof params.size === 'number') setPageSize(params.size);
-    setFilterParams(params);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
@@ -205,6 +210,7 @@ export default function IBDepositPage() {
         type="deposit"
         filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
         defaultPageSize={25}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />

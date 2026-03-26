@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesDeposits } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { AccountRoleTypes } from '@/types/accounts';
+import { AccountRoleTypes, TransactionAccountType } from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
@@ -20,6 +20,9 @@ import { CurrencyCodeMap } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
 
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: SalesDepositRecord): string {
   const u = item.user;
@@ -62,6 +65,7 @@ export default function SalesDepositPage() {
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
     stateIds: DEFAULT_DEPOSIT_STATE_IDS,
     size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
 
   const fetchData = useCallback(
@@ -69,7 +73,7 @@ export default function SalesDepositPage() {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = { ...filterParams, ...extraParams };
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getSalesDeposits, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -95,10 +99,11 @@ export default function SalesDepositPage() {
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
     if (typeof params.size === 'number') setPageSize(params.size);
-    setFilterParams(params);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
@@ -192,6 +197,7 @@ export default function SalesDepositPage() {
         type="deposit"
         filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
         defaultPageSize={25}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />

@@ -290,6 +290,12 @@ export interface SalesWithdrawalRecord {
   createdOn: string;
   updatedOn?: string;
   user?: SalesClientUser;
+  source: {
+    accountNumber?: number;
+    agentGroupName?: string;
+    currencyId?: number;
+    displayNumber?: number;
+  };
   targetTradeAccount?: SalesTargetTradeAccount;
 }
 
