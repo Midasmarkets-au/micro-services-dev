@@ -359,6 +359,29 @@ public class TenantUserBlacklistGrpcService(
         return new OperationResponse { Success = true };
     }
 
+    public override async Task<OperationResponse> ReloadUserBlacklistCache(
+        EmptyRequest request, ServerCallContext context)
+    {
+        await myCache.HSetDeleteByKeyAsync(_nameKey);
+        await myCache.HSetDeleteByKeyAsync(_phoneKey);
+        await myCache.HSetDeleteByKeyAsync(_emailKey);
+        await myCache.HSetDeleteByKeyAsync(_idNumKey);
+
+        var items = await centralDb.UserBlackLists
+            .Select(x => new { x.Name, x.Phone, x.Email, x.IdNumber })
+            .ToListAsync();
+
+        foreach (var item in items)
+        {
+            await myCache.HSetStringAsync(_nameKey,  item.Name,     "1");
+            await myCache.HSetStringAsync(_phoneKey, item.Phone,    "1");
+            await myCache.HSetStringAsync(_emailKey, item.Email,    "1");
+            await myCache.HSetStringAsync(_idNumKey, item.IdNumber, "1");
+        }
+
+        return new OperationResponse { Success = true, Message = items.Count.ToString() };
+    }
+
     private Task RemoveCacheAsync(UserBlackList e) => Task.WhenAll(
         myCache.HSetDeleteByKeyFieldAsync(_nameKey, e.Name),
         myCache.HSetDeleteByKeyFieldAsync(_phoneKey, e.Phone),
@@ -467,22 +490,22 @@ public class TenantApiLogGrpcService(TenantDbContext tenantDb)
 public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cache, MyDbContextPool pool)
     : TenantStatisticsService.TenantStatisticsServiceBase
 {
-    public override async Task<OnlineUsersResponse> GetOnlineAdmins(
+    public override async Task<OnlineAdminsResponse> GetOnlineAdmins(
         EmptyRequest request, ServerCallContext context)
     {
         var rawInfos = await monitorSvc.GetOnlineAdminAsync();
         var users = rawInfos
             .Select(x =>
             {
-                var raw         = x.ToString()!;
-                var lastUs      = raw.LastIndexOf('_');
-                var dateStr     = raw[(lastUs + 1)..];
-                var rest        = raw[..lastUs];
-                var secondUs    = rest.LastIndexOf('_');
-                rest            = rest[..secondUs];
-                var thirdUs     = rest.LastIndexOf('_');
-                var partyId     = rest[(thirdUs + 1)..];
-                var email       = rest[..thirdUs];
+                var raw      = x.ToString()!;
+                var lastUs   = raw.LastIndexOf('_');
+                var dateStr  = raw[(lastUs + 1)..];
+                var rest     = raw[..lastUs];
+                var secondUs = rest.LastIndexOf('_');
+                rest         = rest[..secondUs];
+                var thirdUs  = rest.LastIndexOf('_');
+                var partyId  = rest[(thirdUs + 1)..];
+                var email    = rest[..thirdUs];
                 return new OnlineUser
                 {
                     PartyId = long.TryParse(partyId, out var pid) ? pid : 0,
@@ -492,7 +515,7 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
             })
             .ToList();
 
-        var response = new OnlineUsersResponse { Count = users.Count };
+        var response = new OnlineAdminsResponse { Count = users.Count };
         response.Users.AddRange(users);
         return response;
     }
@@ -500,29 +523,44 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
     public override async Task<OnlineUsersResponse> GetOnlineUsers(
         EmptyRequest request, ServerCallContext context)
     {
-        var db = cache.GetDatabase();
+        var db        = cache.GetDatabase();
         var tenantIds = pool.GetTenantIds();
-        var users = new List<OnlineUser>();
+        var response  = new OnlineUsersResponse();
 
         foreach (var tenantId in tenantIds)
         {
-            var pattern = $"portal_online:{tenantId}:*";
-            long cursor = 0;
+            var deviceStat = new Dictionary<string, long>();
+            var clientStat = new Dictionary<string, long>();
+            var total      = 0;
+            var pattern    = $"portal_online:{tenantId}:*";
+            long cursor    = 0;
+
             do
             {
                 var scan   = await db.ExecuteAsync("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "100");
                 var result = (RedisResult[])scan!;
                 cursor = long.Parse((string)result[0]!);
+
                 foreach (var key in (string[])result[1]!)
                 {
-                    var parts = key.Split(':').TakeLast(3).ToArray();
-                    users.Add(new OnlineUser { Email = parts[1], Since = parts[2] });
+                    total++;
+                    var parts  = key.Split(':').TakeLast(3).ToArray();
+                    var client = parts[1];
+                    var device = parts[2];
+
+                    deviceStat.TryAdd(device, 0);
+                    clientStat.TryAdd(client, 0);
+                    deviceStat[device]++;
+                    clientStat[client]++;
                 }
             } while (cursor != 0);
+
+            var stat = new OnlineTenantStat { TenantId = tenantId, Total = total };
+            foreach (var kv in deviceStat) stat.DeviceStat[kv.Key] = kv.Value;
+            foreach (var kv in clientStat) stat.ClientStat[kv.Key] = kv.Value;
+            response.Items.Add(stat);
         }
 
-        var response = new OnlineUsersResponse { Count = users.Count };
-        response.Users.AddRange(users);
         return response;
     }
 }

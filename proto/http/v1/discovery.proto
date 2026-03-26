@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";

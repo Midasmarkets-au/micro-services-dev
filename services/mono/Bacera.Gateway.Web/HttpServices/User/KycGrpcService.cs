@@ -150,10 +150,9 @@ public class TenantKycGrpcService(
 
         var models = JsonConvert.DeserializeObject<List<KycFormViewModel>>(supplement.Data)
                      ?? new List<KycFormViewModel>();
-        response.Items.AddRange(models.Select(_ => new KycHistoryItem
+        response.Items.AddRange(models.Select(m => new KycHistoryItem
         {
-            Status    = 0,
-            UpdatedAt = "",
+            Json = JsonConvert.SerializeObject(m),
         }));
         return response;
     }

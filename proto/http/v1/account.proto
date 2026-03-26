@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -361,7 +362,7 @@ message Account {
   int32  status      = 4;  // 账户状态：0=inactive（停用）、1=active（正常）、2=locked（锁定）、3=suspended（暂停）
   int32  role        = 5;  // 账户角色类型：对应 AccountRoleTypes 枚举（如 Client/IB/Sales/Rep）
   int32  fund_type   = 6;  // 资金类型枚举，影响可用出入金渠道
-  int64  tenant_id   = 7;  // 所属租户 ID
+  // tenant_id 字段已移除：多租户隔离通过 DB 连接实现，Account 实体不存储 tenant_id
   int64  party_id    = 8;  // 跨租户唯一用户标识（同一自然人在不同租户下 party_id 相同）
   string created_at  = 9;  // 创建时间，ISO 8601 格式
   string updated_at  = 10; // 最后更新时间，ISO 8601 格式
@@ -476,16 +477,10 @@ message UpdateFundTypeRequest {
   int32 fund_type = 2; // 新资金类型枚举值
 }
 
-// 等级返佣设置响应（多级结构）
+// 等级返佣设置响应
+// json 字段为完整的 RebateLevelSetting 序列化 JSON（原 REST 接口直接返回该对象）
 message LevelSettingResponse {
-  repeated LevelSetting items = 1;
-}
-
-// 单个等级设置条目
-message LevelSetting {
-  int32  level      = 1; // 层级编号（从 1 开始）
-  string name       = 2; // 等级名称，如 "Bronze"、"Silver"、"Gold"
-  double amount     = 3; // 触发该等级所需的交易量或入金阈值
+  string json = 1; // 完整的 RebateLevelSetting JSON 字符串，供前端直接解析
 }
 
 // 推荐码列表响应

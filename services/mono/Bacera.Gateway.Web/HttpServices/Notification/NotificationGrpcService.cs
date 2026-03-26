@@ -193,7 +193,14 @@ public class TenantEmailGrpcService(
         {
             Id        = info.TopicId,
             Subject   = info.TopicKey,
-            Status    = 0,
+            Status    = info.Status switch
+            {
+                "pending"   => 1,
+                "sending"   => 2,
+                "completed" => 3,
+                "failed"    => 4,
+                _           => 0,
+            },
             Total     = (int)info.Total,
             CreatedAt = DateTime.UtcNow.ToString("O"),
         };
@@ -269,6 +276,68 @@ public class TenantEmailGrpcService(
     {
         var result = await awsEmailClientV2.PutEmailInSuppressedDestinationAsync(request.Email);
         return new OperationResponse { Success = result };
+    }
+
+    public override async Task<ListTopicsResponse> ListEmailTemplates(
+        ListEmailTemplatesRequest request, ServerCallContext context)
+    {
+        var page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1;
+        var size = request.Pagination?.Size > 0 ? request.Pagination.Size : 20;
+
+        var query = tenantCtx.Topics
+            .Where(x => x.Type == (int)TopicTypes.EmailTemplate);
+
+        if (request.HasKeywords)
+            query = query.Where(x => x.Title.Contains(request.Keywords));
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(x => x.Id)
+            .Skip((page - 1) * size)
+            .Take(size)
+            .ToListAsync();
+
+        var response = new ListTopicsResponse
+        {
+            Meta = new PaginationMeta
+            {
+                Page      = page,
+                Size      = size,
+                Total     = total,
+                PageCount = total > 0 ? (int)Math.Ceiling((double)total / size) : 0,
+                HasMore   = page * size < total,
+            }
+        };
+        response.Data.AddRange(items.Select(t => new ProtoTopic
+        {
+            Id        = t.Id,
+            Title     = t.Title ?? "",
+            Type      = t.Type,
+            CreatedAt = t.CreatedOn.ToString("O"),
+        }));
+        return response;
+    }
+
+    public override async Task<BatchReceiverEmailsResponse> GetBatchReceiverEmails(
+        GetBatchReceiverEmailsRequest request, ServerCallContext context)
+    {
+        var spec = Newtonsoft.Json.JsonConvert.DeserializeObject<CreateSendTopicContentSpec>(request.Spec)
+                   ?? new CreateSendTopicContentSpec();
+        var info  = spec.ToSendBatchEmailInfo();
+        var query = batchSendEmailSvc.GetSendBatchEmailQuery(info);
+
+        var emails = await query
+            .OrderBy(x => x.UserId)
+            .Skip(request.Page * 100)
+            .Take(100)
+            .Select(x => x.Email)
+            .ToListAsync();
+
+        var total = await query.CountAsync();
+
+        var response = new BatchReceiverEmailsResponse { Total = total, Page = request.Page };
+        response.Emails.AddRange(emails);
+        return response;
     }
 
     private static long GetPartyId(ServerCallContext ctx)
@@ -430,7 +499,7 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         Id        = t.Id,
         Title     = t.Title,
         Type      = t.Type,
-        Status    = 0,
+        Status    = t.EffectiveTo < DateTime.UtcNow ? 1 : 0,
         CreatedAt = t.CreatedOn.ToString("O"),
     };
 
@@ -439,7 +508,7 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         Id        = r.Id,
         Title     = r.Title,
         Type      = r.Type,
-        Status    = 0,
+        Status    = r.EffectiveTo < DateTime.UtcNow ? 1 : 0,
         CreatedAt = r.CreatedOn.ToString("O"),
     };
 

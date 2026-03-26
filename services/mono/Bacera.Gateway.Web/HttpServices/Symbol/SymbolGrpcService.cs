@@ -2,6 +2,7 @@ using Bacera.Gateway.Services;
 using Grpc.Core;
 using Http.V1;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using ProtoSymbol         = Http.V1.Symbol;
 using ProtoExchangeRate   = Http.V1.ExchangeRate;
 using ProtoSymbolCategory = Http.V1.SymbolCategory;
@@ -333,10 +334,22 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
             .ToListAsync();
 
         var response = new ExchangeRateHistoryResponse();
-        response.Items.AddRange(items.Select(a => new ExchangeRateHistoryItem
+        response.Items.AddRange(items.Select(a =>
         {
-            Rate      = 0,
-            UpdatedAt = a.CreatedOn.ToString("O"),
+            double rate = 0;
+            try
+            {
+                var changes = JsonConvert.DeserializeObject<Audit.EntityChanges>(a.Data ?? "{}");
+                if (changes?.CurrentValues.TryGetValue("BuyingRate", out var v) == true)
+                    rate = Convert.ToDouble(v);
+            }
+            catch { /* malformed audit data — skip */ }
+
+            return new ExchangeRateHistoryItem
+            {
+                Rate      = rate,
+                UpdatedAt = a.CreatedOn.ToString("O"),
+            };
         }));
         return response;
     }

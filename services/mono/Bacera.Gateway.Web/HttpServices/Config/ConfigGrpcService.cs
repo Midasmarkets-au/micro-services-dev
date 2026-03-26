@@ -44,6 +44,8 @@ public class TenantConfigurationGrpcService(
             Page     = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
             Size     = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
             Category = request.HasCategory ? request.Category : null,
+            RowIds   = request.RowIds.Count > 0 ? [.. request.RowIds] : null,
+            Keys     = request.Keys.Count  > 0 ? [.. request.Keys]   : null,
         };
 
         var items = await tenantDb.Configurations

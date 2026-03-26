@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -138,7 +139,7 @@ service TenantTradeServiceConfigurationService {
   }
   // 更新 MT5 模拟账户前缀映射（body 字段名为 prefixes）
   rpc UpdateAccountPrefixes(UpdateAccountPrefixesRequest) returns (AccountPrefixesResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/account-prefixes", body: "prefixes" };
+    option (google.api.http) = { put: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/account-prefixes", body: "*" };
   }
 }
 

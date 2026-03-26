@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -70,9 +71,11 @@ message SiteItem {
 
 // 配置列表请求；可按 category 或关键字搜索
 message ListConfigurationsRequest {
-  PaginationRequest pagination = 1;
-  optional string   category   = 2; // 配置分类过滤，如 "email"、"payment"
-  optional string   keywords   = 3; // key/value 关键字搜索
+  PaginationRequest  pagination = 1;
+  optional string    category   = 2; // 配置分类过滤，如 "public"、"account"、"party"
+  optional string    keywords   = 3; // key/value 关键字搜索
+  repeated int64     row_ids    = 4; // 按 row_id 过滤（多值），对应 ?rowIds=0&rowIds=1
+  repeated string    keys       = 5; // 按 key 过滤（多值），对应 ?keys=AutoCreateTradeAccountEnabled
 }
 
 message ListConfigurationsResponse {

@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Web.BackgroundJobs;
 using Bacera.Gateway.Web.Services;
 using Grpc.Core;
 using Http.V1;
@@ -18,6 +20,7 @@ public class TenantReportGrpcService(
     TenantDbContext tenantCtx,
     ITenantGetter tenantGetter,
     IReportServiceClient reportServiceClient,
+    IReportJob reportJob,
     ReportService reportService)
     : TenantReportService.TenantReportServiceBase
 {
@@ -139,10 +142,10 @@ public class TenantReportGrpcService(
         tenantCtx.ReportRequests.Add(item);
         await tenantCtx.SaveChangesAsync();
 
-        // Fire-and-forget enqueue; client will poll for the file URL
+        // Async enqueue: report generated in background; client polls via GetReportRequest(request_id)
         await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
 
-        return new DownloadReportResponse { Url = "" };
+        return new DownloadReportResponse { RequestId = item.Id, Url = item.FileName ?? "" };
     }
 
     public override async Task<ProtoReportRequest> CreateEquityReport(
@@ -162,6 +165,58 @@ public class TenantReportGrpcService(
         await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
 
         return MapToProto(item);
+    }
+
+    public override async Task<ProtoReportRequest> SimulateJob(
+        CreateReportRequestRequest request, ServerCallContext context)
+    {
+        var partyId = GetPartyId(context);
+        var item = Bacera.Gateway.ReportRequest.Build(
+            partyId,
+            (ReportRequestTypes)request.Type,
+            $"{(ReportRequestTypes)request.Type} Report",
+            request.Parameters);
+        item.IsFromApi = 1;
+
+        if (!ReportService.ValidateQueryString(item))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__INVALID_QUERY__"));
+
+        tenantCtx.ReportRequests.Add(item);
+        await tenantCtx.SaveChangesAsync();
+
+        await reportJob.ProcessReportRequest(tenantGetter.GetTenantId(), item.Id);
+
+        var updated = await tenantCtx.ReportRequests.SingleOrDefaultAsync(x => x.Id == item.Id);
+        return MapToProto(updated ?? item);
+    }
+
+    public override async Task<EquityReportHtmlResponse> GetEquityReportHtml(
+        CreateEquityReportRequest request, ServerCallContext context)
+    {
+        var cfg = JsonConvert.DeserializeObject<ReportConfiguration>(request.Configuration)
+                  ?? new ReportConfiguration();
+        var html = await ReportJob.GenerateEquityReportHtmlAsync(reportService, cfg);
+        return new EquityReportHtmlResponse { Html = html ?? "" };
+    }
+
+    public override async Task<EquityReportLoginsResponse> GetEquityReportLogins(
+        CreateEquityReportRequest request, ServerCallContext context)
+    {
+        var cfg = JsonConvert.DeserializeObject<ReportConfiguration>(request.Configuration)
+                  ?? new ReportConfiguration();
+
+        var dict = new ConcurrentDictionary<string, ConcurrentDictionary<string, List<long>>>();
+        await Task.WhenAll(cfg.Items.Select(async item =>
+        {
+            dict.GetOrAdd(item.Group, new ConcurrentDictionary<string, List<long>>())[item.Name] =
+                await reportService.GetLogins(item, cfg.ServiceId);
+        }));
+
+        var ordered = dict
+            .OrderBy(x => x.Key)
+            .ToDictionary(x => x.Key, x => x.Value.OrderBy(y => y.Key).ToDictionary(y => y.Key, y => y.Value));
+
+        return new EquityReportLoginsResponse { Data = JsonConvert.SerializeObject(ordered) };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

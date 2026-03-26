@@ -261,9 +261,8 @@ public class TenantAccountGrpcService(
         GetAccountRequest request, ServerCallContext context)
     {
         var levelSetting = await tradingSvc.GetCalculatedRebateLevelSettingById(request.Id);
-        var response = new LevelSettingResponse();
-        // LevelSetting is a complex object; return empty response if not mappable
-        return response;
+        if (levelSetting.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Level setting not found"));
+        return new LevelSettingResponse { Json = JsonConvert.SerializeObject(levelSetting) };
     }
 
     public override async Task<ReferralCodesResponse> GetReferralCodes(
@@ -382,7 +381,8 @@ public class TenantAccountGrpcService(
 public class TenantAccountV2GrpcService(
     TenantDbContext tenantCtx,
     AccountManageService accManSvc,
-    MyDbContextPool pool)
+    MyDbContextPool pool,
+    ITradingApiService tradingApiSvc)
     : TenantAccountServiceV2.TenantAccountServiceV2Base
 {
     public override async Task<ProtoAccount> ConfirmAutoCreate(
@@ -489,7 +489,19 @@ public class TenantAccountV2GrpcService(
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid date format"));
         date = DateTime.SpecifyKind(date, DateTimeKind.Utc).Date;
 
-        return new DailyReportResponse { Date = request.Date };
+        var from = date
+            .AddHours(Utils.IsCurrentDSTLosAngeles(date) ? 20 : 21)
+            .AddMinutes(59)
+            .AddSeconds(59);
+
+        var res = await tradingApiSvc.GetDailyReport(serviceId, request.AccountNumber, from, from.AddDays(1));
+        var first = res.FirstOrDefault();
+        return new DailyReportResponse
+        {
+            Date    = request.Date,
+            Balance = first?.Balance    ?? 0,
+            Equity  = first?.ProfitEquity ?? 0,
+        };
     }
 
     public override async Task<ProtoAccount> EnableTransfer(
@@ -730,6 +742,7 @@ public class SalesAccountGrpcService(
             Status    = (int)item.Status,
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
+            PartyId   = clientAccount.PartyId,
             CreatedAt = item.CreatedOn.ToString("O"),
         };
     }
@@ -829,7 +842,17 @@ public class SalesAccountGrpcService(
     {
         var account = await tenantCtx.Accounts.Where(x => x.Uid == request.AgentUid).FirstOrDefaultAsync();
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return new LevelSettingResponse();
+
+        var item = await tenantCtx.Configurations
+            .Where(x => x.Category == nameof(Account) && x.RowId == account.Id && x.Key == "DefaultRebateLevelSetting")
+            .ToTenantViewModel()
+            .FirstOrDefaultAsync();
+
+        if (item?.ValueString is { Length: > 0 } raw)
+            return new LevelSettingResponse { Json = raw };
+
+        var result = await configurationService.GetDefaultRebateLevelSettingAsync(account.SiteId);
+        return new LevelSettingResponse { Json = JsonConvert.SerializeObject(result) };
     }
 
     public override async Task<AccountTypesResponse> GetAvailableAccountTypes(
@@ -960,6 +983,7 @@ public class AgentAccountGrpcService(
             Status    = (int)item.Status,
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
+            PartyId   = clientAccount.PartyId,
             CreatedAt = item.CreatedOn.ToString("O"),
         };
     }
@@ -978,6 +1002,7 @@ public class AgentAccountGrpcService(
             Status    = (int)item.Status,
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
+            PartyId   = clientAccount.PartyId,
             CreatedAt = item.CreatedOn.ToString("O"),
         };
     }
@@ -1014,7 +1039,19 @@ public class AgentAccountGrpcService(
     public override async Task<LevelSettingResponse> GetDefaultLevelSetting(
         GetAgentAccountRequest request, ServerCallContext context)
     {
-        return new LevelSettingResponse();
+        var account = await tenantCtx.Accounts.Where(x => x.Uid == request.AgentUid).FirstOrDefaultAsync();
+        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+
+        var item = await tenantCtx.Configurations
+            .Where(x => x.Category == nameof(Account) && x.RowId == account.Id && x.Key == "DefaultRebateLevelSetting")
+            .ToTenantViewModel()
+            .FirstOrDefaultAsync();
+
+        if (item?.ValueString is { Length: > 0 } raw)
+            return new LevelSettingResponse { Json = raw };
+
+        var result = await configurationService.GetDefaultRebateLevelSettingAsync(account.SiteId);
+        return new LevelSettingResponse { Json = JsonConvert.SerializeObject(result) };
     }
 
     public override async Task<EmailCodeResponse> GetViewEmailCode(
@@ -1109,6 +1146,7 @@ public class RepAccountGrpcService(
             Status    = (int)item.Status,
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
+            PartyId   = clientAccount.PartyId,
             CreatedAt = item.CreatedOn.ToString("O"),
         };
     }

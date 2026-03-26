@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 // 通用分页请求，所有列表查询均复用此消息
 message PaginationRequest {

@@ -609,10 +609,11 @@ public class TenantUserGrpcService(
         };
         response.Data.AddRange(items.Select(a => new ProtoAddress
         {
-            Id      = a.Id,
-            PartyId = a.PartyId,
-            Country = a.Country ?? "",
-            Address_ = a.Name   ?? "",
+            Id       = a.Id,
+            HashId   = Bacera.Gateway.Address.HashEncode(a.Id),
+            PartyId  = a.PartyId,
+            Country  = a.Country ?? "",
+            Address_ = a.Name    ?? "",
         }));
         return response;
     }
@@ -627,6 +628,7 @@ public class TenantUserGrpcService(
         return new ProtoAddress
         {
             Id       = item.Id,
+            HashId   = Bacera.Gateway.Address.HashEncode(item.Id),
             PartyId  = item.PartyId,
             Country  = item.Country ?? "",
             Address_ = item.Name    ?? "",

@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -26,7 +27,7 @@ service TenantReportService {
   }
   // 预览报表查询结果（不生成文件），body 字段为 query（JSON 字符串）
   rpc PreviewQuery(PreviewQueryRequest) returns (QueryPreviewResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/query/{type}/preview", body: "query" };
+    option (google.api.http) = { post: "/api/v1/tenant/report/query/{type}/preview", body: "*" };
   }
   // 创建报表请求，异步生成报表文件（status 会从 pending → completed）
   rpc CreateReportRequest(CreateReportRequestRequest) returns (ReportRequest) {
@@ -43,6 +44,18 @@ service TenantReportService {
   // 创建权益报表；configuration 为 JSON 格式的 ReportConfiguration 对象
   rpc CreateEquityReport(CreateEquityReportRequest) returns (ReportRequest) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/equity", body: "*" };
+  }
+  // 同步执行报表生成任务（调试用，绕过 Hangfire 队列直接处理）
+  rpc SimulateJob(CreateReportRequestRequest) returns (ReportRequest) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/download/simulate-job", body: "*" };
+  }
+  // 生成权益报表 HTML 预览（不持久化，直接返回 HTML 字符串）
+  rpc GetEquityReportHtml(CreateEquityReportRequest) returns (EquityReportHtmlResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/html", body: "*" };
+  }
+  // 获取权益报表所需的登录数据（按账户组和名称分组）
+  rpc GetEquityReportLogins(CreateEquityReportRequest) returns (EquityReportLoginsResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/logins", body: "*" };
   }
 }
 
@@ -75,8 +88,8 @@ service TenantAccountReportService {
 message ReportRequest {
   int64  id         = 1; // 报表请求 ID
   int32  type       = 2; // 报表类型（枚举值，对应不同业务报表）
-  int32  status     = 3; // 状态：0=pending、1=processing、2=completed、3=failed
-  string file_url   = 4; // 生成完成后的文件下载 URL（status=2 时有值）
+  int32  status     = 3; // 状态：0=pending（未生成）、2=completed（已生成，GeneratedOn 有值）
+  string file_url   = 4; // 生成完成后的文件名/URL（status=2 时有值）
   string created_at = 5; // 创建时间，ISO 8601 格式
 }
 
@@ -127,13 +140,25 @@ message CreateReportRequestRequest {
 }
 
 // 立即下载响应
+// 报表异步下载响应：立即返回 request_id，URL 在报表生成后通过 GetReportRequest 轮询获取
 message DownloadReportResponse {
-  string url = 1; // 临时下载 URL
+  int64  request_id = 1; // 已创建的 ReportRequest.id，供客户端轮询
+  string url        = 2; // 下载 URL（生成完成前为空字符串）
 }
 
 // 创建权益报表请求
 message CreateEquityReportRequest {
   string configuration = 1; // JSON 格式的 ReportConfiguration，包含账户、日期等配置
+}
+
+// 权益报表 HTML 预览响应
+message EquityReportHtmlResponse {
+  string html = 1; // 可直接渲染的 HTML 字符串
+}
+
+// 权益报表登录数据响应（按账户组和名称分组）
+message EquityReportLoginsResponse {
+  string data = 1; // JSON 字符串，结构为 map<group, map<name, list<login_id>>>
 }
 
 // ─── Account Report Messages ──────────────────────────────────────────────────

@@ -396,8 +396,8 @@ public class TenantVerificationGrpcService(
         {
             Id             = i.Id,
             VerificationId = i.VerificationId,
-            Type           = 0,
-            Status         = 0,
+            Category       = i.Category ?? "",
+            Content        = i.Content  ?? "",
         };
 
     private static long GetPartyId(ServerCallContext ctx)

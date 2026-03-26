@@ -1,0 +1,30 @@
+{
+  "name": "micro-service",
+  "version": "1.0.0",
+  "description": "Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth** (.NET 8 auth), **idgen** (Rust gRPC/HTTP ID generator), **auth_rust** (Rust auth), **boardcast** (broadcast), and **app/web/vue** (Vue 3 frontend — client & tenant portals).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "gen:openapi": "node scripts/generate_openapi.js",
+    "docs": "node scripts/generate_openapi.js && npx serve docs/openapi -p 8080"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Midasmarkets-au/micro-services-dev.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Midasmarkets-au/micro-services-dev/issues"
+  },
+  "homepage": "https://github.com/Midasmarkets-au/micro-services-dev#readme"
+}

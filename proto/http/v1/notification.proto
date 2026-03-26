@@ -3,6 +3,7 @@ syntax = "proto3";
 package http.v1;
 
 option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
 
 import "google/api/annotations.proto";
 import "http/v1/common.proto";
@@ -82,6 +83,14 @@ service TenantEmailService {
   rpc AddSuppression(SuppressionEmailRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/email/suppression-add" };
   }
+  // 分页查询邮件模板列表（type 固定为 EmailTemplate）
+  rpc ListEmailTemplates(ListEmailTemplatesRequest) returns (ListTopicsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/email" };
+  }
+  // 分页获取批量邮件任务的收件人邮箱列表（用于大量数据预检）
+  rpc GetBatchReceiverEmails(GetBatchReceiverEmailsRequest) returns (BatchReceiverEmailsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/email/batch/receiver-emails" };
+  }
 }
 
 // ─── Tenant Topic API (api/v1/tenant/topic) ──────────────────────────────────
@@ -119,7 +128,7 @@ service TenantTopicService {
   }
   // 为 Topic 创建指定语言的内容
   rpc CreateTopicContent(CreateTopicContentRequest) returns (TopicContent) {
-    option (google.api.http) = { post: "/api/v1/tenant/topic/{id}/content", body: "spec" };
+    option (google.api.http) = { post: "/api/v1/tenant/topic/{id}/content", body: "*" };
   }
   // 更新 Topic 指定语言的内容
   rpc UpdateTopicContent(UpdateTopicContentRequest) returns (TopicContent) {
@@ -269,6 +278,25 @@ message SuppressionResponse {
 // 退订名单操作请求（增/删）
 message SuppressionEmailRequest {
   string email = 1;
+}
+
+// 邮件模板列表查询（EmailTemplate 类型的 Topic）
+message ListEmailTemplatesRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2; // 按标题关键字搜索
+}
+
+// 批量邮件收件人邮箱分页请求
+message GetBatchReceiverEmailsRequest {
+  string spec = 1; // JSON 格式的 CreateSendTopicContentSpec
+  int32  page = 2; // 页码（每页 100 条）
+}
+
+// 批量邮件收件人邮箱分页响应
+message BatchReceiverEmailsResponse {
+  repeated string emails = 1; // 当前页收件人邮箱列表
+  int32           total  = 2; // 符合条件的收件人总数
+  int32           page   = 3; // 当前页码
 }
 
 // ─── Topic 相关消息 ────────────────────────────────────────────────────────────
