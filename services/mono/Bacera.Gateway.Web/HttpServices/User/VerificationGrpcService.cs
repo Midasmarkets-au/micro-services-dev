@@ -33,8 +33,8 @@ public class TenantVerificationGrpcService(
     {
         var criteria = new Bacera.Gateway.Verification.Criteria
         {
-            Page    = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size    = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page    = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size    = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
             Type    = VerificationTypes.Verification,
             PartyId = request.HasPartyId ? request.PartyId : null,
             Status  = request.HasStatus  ? (VerificationStatusTypes?)request.Status : null,

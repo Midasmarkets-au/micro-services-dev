@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+import "http/v1/common.proto";
+import "http/v1/account.proto";
+
+// ─── Tenant Lead API (api/v1/tenant/lead) ─────────────────────────────────────
+// Lead（潜在客户）完整管理：创建、查询、归档、评论、分配及自动分配设置。
+// Lead 状态从 UserNotRegistered 到 TradeAccountCreated 流转，记录客户转化全过程。
+
+service TenantLeadService {
+  // 分页查询 Lead 列表；可按关键字（姓名/邮箱/手机）、状态、来源、分配情况及日期范围过滤
+  rpc ListLeads(ListLeadsRequest) returns (ListLeadsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/lead" };
+  }
+  // 按 id 获取 Lead 详情（含已分配账户列表和操作评论记录）
+  rpc GetLead(GetLeadRequest) returns (LeadDetail) {
+    option (google.api.http) = { get: "/api/v1/tenant/lead/{id}" };
+  }
+  // 创建新 Lead（手动录入潜在客户信息）
+  rpc CreateLead(CreateLeadRequest) returns (Lead) {
+    option (google.api.http) = { post: "/api/v1/tenant/lead", body: "spec" };
+  }
+  // 归档 Lead（标记为已处理，不再显示在活跃列表）
+  rpc ArchiveLead(GetLeadRequest) returns (Lead) {
+    option (google.api.http) = { put: "/api/v1/tenant/lead/{id}/archive" };
+  }
+  // 取消归档 Lead（恢复到活跃列表）
+  rpc UnarchiveLead(GetLeadRequest) returns (Lead) {
+    option (google.api.http) = { put: "/api/v1/tenant/lead/{id}/unarchive" };
+  }
+  // 为 Lead 添加操作评论（记录跟进内容）
+  rpc AddLeadComment(AddLeadCommentRequest) returns (Lead) {
+    option (google.api.http) = { post: "/api/v1/tenant/lead/{id}/comment", body: "spec" };
+  }
+  // 将 Lead 分配给指定 Sales 账户（建立跟进关系）
+  rpc AssignLead(AssignLeadRequest) returns (Lead) {
+    option (google.api.http) = { post: "/api/v1/tenant/lead/{id}/assign/{assigned_account_uid}" };
+  }
+  // 取消 Lead 与指定 Sales 账户的分配关系
+  rpc UnassignLead(AssignLeadRequest) returns (Lead) {
+    option (google.api.http) = { delete: "/api/v1/tenant/lead/{id}/assign/{assigned_account_uid}" };
+  }
+  // 批量将多个 Lead 分配给同一 Sales 账户
+  rpc BulkAssignLeads(BulkAssignLeadsRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/lead/assign", body: "*" };
+  }
+  // 获取 Lead 自动分配设置（是否启用及目标 Sales 账户）
+  rpc GetAutoAssignInfo(EmptyRequest) returns (AutoAssignInfo) {
+    option (google.api.http) = { get: "/api/v1/tenant/lead/auto-assign/info" };
+  }
+  // 启用 Lead 自动分配功能（新注册用户 Lead 自动分配给指定 Sales）
+  rpc EnableAutoAssign(EmptyRequest) returns (AutoAssignInfo) {
+    option (google.api.http) = { put: "/api/v1/tenant/lead/auto-assign/enable" };
+  }
+  // 禁用 Lead 自动分配功能
+  rpc DisableAutoAssign(EmptyRequest) returns (AutoAssignInfo) {
+    option (google.api.http) = { put: "/api/v1/tenant/lead/auto-assign/disable" };
+  }
+  // 设置自动分配目标 Sales 账户（auto_assign_account_uid）
+  rpc SetAutoAssignee(SetAutoAssigneeRequest) returns (AutoAssignInfo) {
+    option (google.api.http) = { put: "/api/v1/tenant/lead/auto-assign/set-assignee", body: "*" };
+  }
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+// Lead 列表项（与 LeadBasicViewModel 对齐）
+message Lead {
+  int64  id                     = 1;  // Lead ID
+  int64  party_id               = 2;  // 关联用户 party_id（注册后填充，未注册为 0）
+  string name                   = 3;  // Lead 姓名
+  string email                  = 4;  // 邮箱
+  string phone_number           = 5;  // 手机号
+  int32  source_type            = 6;  // 来源类型：1=ManuallyAdd 2=BecomeAgent 3=ContactUs 4=Activity 5=UserRegister 6=DemoAccount 7=TradeAccount
+  int32  status                 = 7;  // Lead 状态：0=UserNotRegistered 10=UserRegistered 20=UserVerifying 28=UserVerificationApproved 31=AccountApplicationApproved 40=TradeAccountCreated
+  int32  is_archived            = 8;  // 是否归档：0=未归档 1=已归档
+  bool   has_assigned_to_sales  = 9;  // 是否已分配给 Sales
+  string utm                    = 10; // UTM 来源标识（从 Supplement 中提取）
+  string created_at             = 11; // 创建时间，ISO 8601 格式
+  string updated_at             = 12; // 最后更新时间，ISO 8601 格式
+}
+
+// Lead 详情（含关联账户列表和评论记录，与 LeadDetailViewModel 对齐）
+message LeadDetail {
+  int64  id                     = 1;
+  int64  party_id               = 2;
+  string name                   = 3;
+  string email                  = 4;
+  string phone_number           = 5;
+  int32  source_type            = 6;
+  int32  status                 = 7;
+  int32  is_archived            = 8;
+  bool   has_assigned_to_sales  = 9;
+  string utm                    = 10;
+  string created_at             = 11;
+  string updated_at             = 12;
+  repeated AccountBasic assigned_accounts = 13; // 已分配的 Sales 账户列表
+  repeated LeadComment  comments          = 14; // 跟进评论记录列表
+}
+
+// Lead 跟进评论条目
+message LeadComment {
+  int64  id         = 1; // 评论 ID
+  string content    = 2; // 评论内容（含来源前缀，如 "Tenant-Admin-Comment: ..."）
+  string created_at = 3; // 评论时间，ISO 8601 格式
+}
+
+// Lead 列表查询请求
+message ListLeadsRequest {
+  PaginationRequest  pagination           = 1;
+  optional string    keyword              = 2;  // 按姓名/邮箱/手机号模糊搜索
+  optional int64     assigned_account_uid = 3;  // 按已分配 Sales 账户 UID 过滤
+  optional bool      is_assigned          = 4;  // true=仅已分配 false=仅未分配
+  optional bool      has_refer_code       = 5;  // 是否持有推荐码
+  optional int32     is_archived          = 6;  // 归档状态过滤：0=未归档 1=已归档
+  optional int32     status               = 7;  // Lead 状态过滤
+  optional int32     source_type          = 8;  // 来源类型过滤
+  optional string    date_from            = 9;  // 创建/更新时间起始，ISO 8601 格式
+  optional string    date_to              = 10; // 创建/更新时间截止，ISO 8601 格式
+  optional bool      has_trade_account    = 11; // 是否已开实盘账户
+  optional bool      has_deposit          = 12; // 是否已有入金记录
+  optional bool      has_utm              = 13; // 是否携带 UTM 参数
+  repeated string    utms                 = 14; // UTM 值列表过滤（多选）
+  optional int32     page                 = 15; // 兼容前端直接传 page
+  optional int32     size                 = 16; // 兼容前端直接传 size
+}
+
+message ListLeadsResponse {
+  repeated Lead  data = 1;
+  PaginationMeta meta = 2;
+}
+
+// 按 id 查询 Lead
+message GetLeadRequest {
+  int64 id = 1;
+}
+
+// 创建 Lead 请求
+message CreateLeadRequest {
+  CreateLeadSpec spec = 1;
+}
+
+// Lead 创建规格（与 Lead.CreateSpec 对齐）
+message CreateLeadSpec {
+  string name         = 1; // 必填
+  string email        = 2; // 必填，需为有效邮箱格式
+  string phone_number = 3;
+  optional int64  party_id       = 4; // 关联已有用户的 party_id
+  optional int32  status         = 5; // 初始状态，默认 0（UserNotRegistered）
+  optional int32  source_type    = 6; // 来源类型，默认 1（ManuallyAdd）
+  optional string source_comment = 7; // 来源备注
+}
+
+// 添加评论请求
+message AddLeadCommentRequest {
+  int64          id   = 1; // Lead ID
+  AddCommentSpec spec = 2;
+}
+
+// 评论规格
+message AddCommentSpec {
+  string content = 1; // 必填，评论正文
+}
+
+// Lead 分配/取消分配请求
+message AssignLeadRequest {
+  int64 id                   = 1; // Lead ID
+  int64 assigned_account_uid = 2; // 目标 Sales 账户 UID
+}
+
+// 批量分配请求
+message BulkAssignLeadsRequest {
+  repeated int64 lead_ids             = 1; // 要批量分配的 Lead ID 列表
+  int64          assigned_account_uid = 2; // 统一分配给的目标 Sales 账户 UID
+}
+
+// 自动分配设置（与 Lead.AutoAssignInfo 对齐）
+message AutoAssignInfo {
+  int64 auto_assign_account_uid = 1; // 自动分配目标 Sales 账户 UID
+  bool  enabled                 = 2; // 是否已启用自动分配
+}
+
+// 设置自动分配目标请求
+message SetAutoAssigneeRequest {
+  int64 auto_assign_account_uid = 1;
+  bool  enabled                 = 2;
+}

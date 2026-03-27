@@ -1,4 +1,4 @@
-﻿namespace Bacera.Gateway;
+namespace Bacera.Gateway;
 
 public enum ReportRequestTypes
 {
@@ -25,4 +25,5 @@ public enum ReportRequestTypes
     WalletDailySnapshot = 19,
     DemoAccount = 20,
     DailyEquity = 23,
+    DailyEquityMonthly = 24,
 }

@@ -15,6 +15,7 @@ public class TenantUserBasicModel : HasDisplayName
     public string IdNumber { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string LastLoginIp { get; set; } = string.Empty;
+    public string RegisteredIp { get; set; } = string.Empty;
     public int Status { get; set; }
     public bool HasComment { get; set; }
     public bool IsInIpBlackList { get; set; }
@@ -39,6 +40,7 @@ public static class TenantUserBasicModelExtension
         Phone = party.PhoneNumber,
         IdNumber = party.IdNumber,
         LastLoginIp = party.LastLoginIp,
+        RegisteredIp = party.RegisteredIp,
         EmailRaw = party.Email,
         HideEmail = hideEmail,
         Status = party.Status,
@@ -60,6 +62,7 @@ public static class TenantUserBasicModelExtension
             Phone = x.PhoneNumber,
             IdNumber = x.IdNumber,
             LastLoginIp = x.LastLoginIp,
+            RegisteredIp = x.RegisteredIp,
             EmailRaw = x.Email,
             Status = x.Status,
             PartyTags = x.Tags.Select(t => t.Name).ToList(),

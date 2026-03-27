@@ -47,6 +47,7 @@ public partial class AccountController(
     /// </summary>
     /// <param name="criteria"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpGet]
     [ProducesResponseType(typeof(Result<List<AccountViewModel>, M.Criteria>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Index([FromQuery] M.Criteria? criteria)
@@ -67,6 +68,7 @@ public partial class AccountController(
     /// </summary>
     /// <param name="id"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpGet("{id:long}")]
     [ProducesResponseType(typeof(M), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -82,6 +84,7 @@ public partial class AccountController(
     /// </summary>
     /// <param name="criteria"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpGet("log")]
     [ProducesResponseType(typeof(M.LogViewModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLogs([FromQuery] AccountLog.TenantCriteria? criteria)
@@ -97,6 +100,7 @@ public partial class AccountController(
 
     private static string GetLogActionKey(long tid) => $"account_log_action_tid:{tid}";
 
+    [NonAction]
     [HttpGet("log-actions")]
     public async Task<IActionResult> GetLogActions()
     {
@@ -121,6 +125,7 @@ public partial class AccountController(
     /// </summary>
     /// <param name="id"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpGet("{id:long}/refresh")]
     [ProducesResponseType(typeof(M), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -140,6 +145,7 @@ public partial class AccountController(
     /// <param name="id"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpPut("{id:long}/type")]
     [ProducesResponseType(typeof(M), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -166,6 +172,7 @@ public partial class AccountController(
     /// <param name="id"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpPut("{id:long}/site")]
     [ProducesResponseType(typeof(M), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -186,6 +193,7 @@ public partial class AccountController(
         return Ok(account);
     }
 
+    [NonAction]
     [HttpGet("{id:long}/referral-codes")]
     public async Task<IActionResult> GetReferralCodes(long id)
     {
@@ -200,6 +208,7 @@ public partial class AccountController(
     /// </summary>
     /// <param name="id"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpGet("{id:long}/wizard")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetWizard(long id)
@@ -215,6 +224,7 @@ public partial class AccountController(
     /// <param name="status"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpPut("{id:long}/status/{status:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> UpdateStatus(long id, int status, [FromBody] Comment.WithCommentSpec spec)
@@ -269,6 +279,7 @@ public partial class AccountController(
     /// <param name="id"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpPut("{id:long}/tags")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -315,6 +326,7 @@ public partial class AccountController(
     /// <param name="id"></param>
     /// <param name="hasLevelRule"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpPut("{id:long}/has-level-rule")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -335,6 +347,7 @@ public partial class AccountController(
     }
 
 
+    [NonAction]
     [HttpPut("{id:long}/fund-type")]
     public async Task<IActionResult> ChangeFundType(long id, [FromQuery] FundTypes fundType)
     {
@@ -352,6 +365,7 @@ public partial class AccountController(
     }
 
 
+    [NonAction]
     [HttpGet("{id:long}/level-setting")]
     public async Task<IActionResult> GetLevelSetting(long id)
     {
@@ -360,6 +374,7 @@ public partial class AccountController(
         return Ok(levelSetting);
     }
 
+    [NonAction]
     [HttpGet("mt-group-symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> MetaTradeGroupAndSymbol([FromQuery] int serviceId, [FromQuery] string group,
@@ -389,6 +404,7 @@ public partial class AccountController(
     //     return Ok(await tradingService.UpdateAccountSearchText(criteria));
     // }
 
+    [NonAction]
     [HttpGet("check-account-number/{accountNumber:long}")]
     public async Task<IActionResult> CheckAccountNumber(long accountNumber)
     {
@@ -396,6 +412,7 @@ public partial class AccountController(
         return result ? Ok() : BadRequest(msg);
     }
 
+    [NonAction]
     [HttpGet("{id:long}/change-account-number/{accountNumber:long}")]
     public async Task<IActionResult> ChangeAccountNumber(long id, long accountNumber)
     {
@@ -458,6 +475,7 @@ public partial class AccountController(
     /// <param name="code"></param>
     /// <param name="realCode"></param>
     /// <returns></returns>
+    [NonAction]
     [HttpGet("ib-to-sales/{uid:long}/{code}/{realCode}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

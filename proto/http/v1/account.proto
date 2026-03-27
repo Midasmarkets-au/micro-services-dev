@@ -86,6 +86,80 @@ service TenantAccountService {
   rpc IbToSales(IbToSalesRequest) returns (Account) {
     option (google.api.http) = { get: "/api/v1/tenant/account/ib-to-sales/{uid}/{code}/{real_code}" };
   }
+  // 查询账户的所有上级账户链（从直属父级到根节点）
+  rpc GetParentAccounts(GetAccountRequest) returns (ParentAccountsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/parent-accounts" };
+  }
+  // 生成账户活动报告（PDF/Excel），body 含报告类型和日期范围
+  rpc GetActivityReport(GetActivityReportRequest) returns (OperationResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/activity-report", body: "spec" };
+  }
+  // 获取所有 MT 账户组名称列表（供 Tenant 管理员使用）
+  rpc GetFullAccountGroupNames(GetAccountGroupNamesRequest) returns (GroupNameListResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/group/name-list" };
+  }
+  // 将账户分配给指定 Sales 账户管理（建立 sales 关联关系）
+  rpc AssignAccountToSales(AssignAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/assign/sales/{target_uid}" };
+  }
+  // 将账户分配给指定 Agent（IB）账户管理（建立 agent 关联关系）
+  rpc AssignAccountToAgent(AssignAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/assign/agent/{target_uid}" };
+  }
+  // 将账户从指定 Agent 的管理下移除
+  rpc RemoveAccountFromAgent(AssignAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/remove/agent/{target_uid}" };
+  }
+  // 变更账户所属的 Agent 组（移动到另一个 Agent 下）
+  rpc ChangeAgentGroup(AssignAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/change/agent/{target_uid}" };
+  }
+  // 变更账户所属的 Sales 组（移动到另一个 Sales 下）
+  rpc ChangeSalesGroup(AssignAccountRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/change/sales/{target_uid}" };
+  }
+  // 修改账户在 Agent 组内的自定义组名（MT 账户组别名）
+  rpc ChangeAgentGroupName(ChangeAgentGroupNameRequest) returns (Account) {
+    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/change/agent-group-name", body: "spec" };
+  }
+  // 重命名 Tenant 自定义分组（group/{groupId}）
+  rpc RenameGroup(RenameGroupRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/group/{group_id}", body: "spec" };
+  }
+  // 查询 Tenant 下所有推荐码（分页，可按 account_id、code 过滤）
+  // HTTP 路由由旧 MVC ReferralController 处理，gRPC 仅保留内部调用
+  rpc ListReferrals(ListReferralsRequest) returns (ListReferralsResponse) {}
+  // 根据推荐码字符串查询该推荐码所属账户详情
+  rpc GetReferralByCode(GetReferralByCodeRequest) returns (ReferralDetailResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/referral/referred-by-account/{code}" };
+  }
+  // 查询推荐码使用历史（分页，可按 code、account_id 及日期范围过滤）
+  // HTTP 路由由旧 MVC ReferralController 处理，gRPC 仅保留内部调用
+  rpc GetReferralHistory(ListReferralHistoryRequest) returns (ListReferralHistoryResponse) {}
+  // 为账户新增一条推荐码记录
+  rpc AddReferralCode(AddReferralCodeRequest) returns (ReferralCode) {
+    option (google.api.http) = { post: "/api/v1/tenant/referral", body: "*" };
+  }
+  // 更新推荐码的默认支付方式列表（全量覆盖）
+  rpc UpdateReferralDefaultPaymentMethods(UpdateReferralPaymentMethodsRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/referral/{id}/default-payment-method", body: "spec" };
+  }
+  // 分页查询账户沟通记录（communicate 模块）
+  rpc ListCommunications(ListCommunicationsRequest) returns (ListCommunicationsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/communicate" };
+  }
+  // 查询 Tenant 下账户余额变更审计记录（credit/debit 操作日志）
+  rpc ListAccountBalanceAudits(ListAccountBalanceAuditsRequest) returns (ListAccountBalanceAuditsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/audit/account-change-balance" };
+  }
+  // Tenant 视角：查询指定账户下辖子账户网络汇总统计（充值/提款/返佣/盈亏，按货币分组）
+  rpc GetChildNetStat(GetTenantChildNetStatRequest) returns (ChildNetStatResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/child/stat" };
+  }
+  // Tenant 视角：按交易品种分组汇总下辖网络返佣金额
+  rpc GetChildRebateBySymbol(GetTenantChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/account/child/stat/rebate/symbol-grouped" };
+  }
 }
 
 // ─── Tenant Account V2 API (api/v2/tenant/account) ──────────────────────────
@@ -256,8 +330,8 @@ service SalesAccountService {
   rpc GetChildRebateBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/rebate/symbol-grouped" };
   }
-  // 按交易品种分组汇总下辖网络交易手数（symbol → volume + amount）
-  rpc GetChildTradeBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+  // 按交易品种分组汇总下辖网络交易手数（symbol+currency → volume + profit）
+  rpc GetChildTradeBySymbol(GetChildStatByRangeRequest) returns (TradeSymbolGroupStatResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/trade/symbol-grouped" };
   }
   // 获取 Sales 为 agent（agent_uid）账户提供的账户开户配置
@@ -354,32 +428,133 @@ service RepAccountService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 账户实体（含关键标识字段）
+// 账户用户基本信息（嵌套在 Account / AccountBasic 中，与 UserViewModel 字段对齐）
+message AccountUser {
+  string email               = 1;
+  string first_name          = 2;
+  string last_name           = 3;
+  int64  party_id            = 4;
+  int32  status              = 5;
+  bool   has_comment         = 6;
+  int64  id                  = 7;
+  int64  uid                 = 8;
+  string avatar              = 9;
+  string language            = 10;
+  string id_number           = 11;
+  string phone               = 12;
+  string last_login_ip       = 13;
+  string registered_ip       = 14;
+  bool   is_in_ip_black_list    = 15;
+  bool   is_in_user_black_list  = 16;
+  bool   has_usc_account        = 17 [json_name = "hasUSCAccount"];
+  repeated string party_tags    = 18;
+  string native_name         = 19;
+  string display_name        = 20;
+}
+
+// 关联账户基本信息（salesAccount / agentAccount，与 AccountBasicViewModel 对齐）
+message AccountBasic {
+  int64       id                 = 1;
+  int64       uid                = 2;
+  string      code               = 3;
+  string      group              = 4;
+  bool        has_comment        = 5;
+  AccountUser user               = 6;
+  int64       party_id           = 7;
+  int32       role               = 8;
+  string      name               = 9;
+  int32       currency_id        = 10;
+  string      account_group_name = 11;
+  string      refer_path         = 12;
+  int64       account_number     = 13;
+  int32       service_id         = 14;
+}
+
+// 交易账户基本信息（与 TradeAccountBasicViewModel 对齐）
+message TradeAccountBasic {
+  string service_name    = 1;
+  int64  account_number  = 2;
+  int32  currency_id     = 3;
+  double balance         = 4;
+  int32  leverage        = 5;
+  double credit          = 6;
+  double equity          = 7;
+  int64  balance_in_cents = 8;
+  int64  equity_in_cents  = 9;
+  int64  credit_in_cents  = 10;
+}
+
+// 开户向导完成状态（对应 Supplement.AccountWizard）
+message AccountWizardInfo {
+  bool kyc_form_completed     = 1;
+  bool payment_access_granted = 2;
+  bool welcome_email_sent     = 3;
+  bool notice_email_sent      = 4;
+}
+
+// 账户实体（与 AccountViewModel 字段对齐）
 message Account {
   int64  id          = 1;  // 平台账户主键 ID
   string name        = 2;  // 账户显示名称
   string email       = 3;  // 账户邮箱地址
-  int32  status      = 4;  // 账户状态：0=inactive（停用）、1=active（正常）、2=locked（锁定）、3=suspended（暂停）
-  int32  role        = 5;  // 账户角色类型：对应 AccountRoleTypes 枚举（如 Client/IB/Sales/Rep）
-  int32  fund_type   = 6;  // 资金类型枚举，影响可用出入金渠道
-  // tenant_id 字段已移除：多租户隔离通过 DB 连接实现，Account 实体不存储 tenant_id
-  int64  party_id    = 8;  // 跨租户唯一用户标识（同一自然人在不同租户下 party_id 相同）
-  string created_at  = 9;  // 创建时间，ISO 8601 格式
-  string updated_at  = 10; // 最后更新时间，ISO 8601 格式
+  int32  status      = 4;  // 账户状态
+  int32  role        = 5;  // 账户角色类型
+  int32  fund_type   = 6;  // 资金类型枚举
+  int64  party_id    = 8;  // 跨租户唯一用户标识
+  string created_on  = 9;  // 创建时间，ISO 8601 格式
+  string updated_on  = 10; // 最后更新时间，ISO 8601 格式
+  // 扩展字段
+  int64  uid                    = 11;
+  int32  type                   = 12; // AccountTypes 枚举
+  int32  currency_id            = 13;
+  string code                   = 14;
+  string group                  = 15;
+  int64  account_number         = 16;
+  int32  site_id                = 17;
+  int64  wallet_id              = 18;
+  int32  service_id             = 19;
+  bool   has_comment            = 20;
+  bool   has_rebate_rule        = 21;
+  bool   has_trade_account      = 22;
+  bool   has_level_rule         = 23;
+  bool   is_in_user_black_list  = 24;
+  bool   is_in_ip_black_list    = 25;
+  repeated string account_tags  = 26;
+  AccountUser     user          = 27;
+  AccountBasic    sales_account = 28;
+  AccountBasic    agent_account = 29;
+  TradeAccountBasic trade_account = 30;
+  // 其余字段（与 AccountViewModel 完整对齐）
+  int32  level                          = 31;
+  bool   has_closed_account             = 32;
+  string alias                          = 33;
+  string refer_path                     = 34;
+  int32  client_rebate_distribution_type = 35; // 0 表示 null
+  string active_on                      = 36; // ISO 8601，空字符串表示 null
+  string suspended_on                   = 37; // ISO 8601，空字符串表示 null
+  AccountWizardInfo wizard              = 38;
 }
 
 // 管理端账户列表查询请求
 message ListAccountsRequest {
-  PaginationRequest pagination  = 1;
-  optional string   keywords    = 2; // 按姓名或邮箱模糊搜索
-  optional int32    status      = 3; // 按账户状态过滤：0=inactive、1=active、2=locked、3=suspended
-  optional int64    uid         = 4; // 按账户 ID 精确过滤
-  repeated int64    uids        = 5; // 按账户 ID 列表批量过滤
-  optional int32    role        = 6; // 按角色类型过滤（AccountRoleTypes 枚举）
-  optional string   date_from   = 7; // 创建时间起始，ISO 8601 格式
-  optional string   date_to     = 8; // 创建时间截止，ISO 8601 格式
-  optional int64    party_id    = 9; // 按跨租户用户标识过滤
-  optional int32    fund_type   = 10; // 按资金类型过滤
+  PaginationRequest pagination    = 1;
+  optional string   search_text   = 2;  // 按姓名/邮箱/账户号模糊搜索（对应前端 searchText 参数）
+  optional int32    status        = 3;  // 按账户状态过滤：0=inactive、1=active、2=locked、3=suspended
+  optional int64    uid           = 4;  // 按账户 UID 精确过滤
+  repeated int64    uids          = 5;  // 按账户 UID 列表批量过滤
+  optional int32    role          = 6;  // 按角色类型过滤（AccountRoleTypes 枚举）
+  optional string   date_from     = 7;  // 创建时间起始，ISO 8601 格式
+  optional string   date_to       = 8;  // 创建时间截止，ISO 8601 格式
+  optional int64    party_id      = 9;  // 按跨租户用户标识过滤
+  optional int32    fund_type     = 10; // 按资金类型过滤
+  optional int32    service_id    = 11; // 按 MT 服务 ID 过滤（前端传 ServiceId）
+  optional bool     include_closed = 12; // 是否包含已关闭账户（前端传 includeClosed）
+  optional int32    currency_id   = 13; // 按货币 ID 过滤（前端传 currencyId）
+  optional int32    site_id       = 14; // 按站点 ID 过滤（前端传 siteId）
+  optional string   group         = 15; // 按 MT 账户组名过滤
+  optional string   code_uid      = 16; // 按推荐码 UID 过滤（前端传 codeUid）
+  optional int32    page          = 17; // 兼容前端直接传 page
+  optional int32    size          = 18; // 兼容前端直接传 size
 }
 
 message ListAccountsResponse {
@@ -394,11 +569,18 @@ message GetAccountRequest {
 
 // 账户日志列表查询请求
 message ListAccountLogsRequest {
-  PaginationRequest pagination = 1;
-  optional int64    account_id = 2; // 按账户 ID 过滤
-  optional string   action     = 3; // 按操作类型关键字过滤（可从 GetLogActions 获取枚举）
-  optional string   date_from  = 4; // ISO 8601 格式
-  optional string   date_to    = 5; // ISO 8601 格式
+  PaginationRequest pagination      = 1;
+  optional int64    account_id      = 2; // 按账户 ID 过滤
+  optional string   action          = 3; // 按操作类型关键字过滤（可从 GetLogActions 获取枚举）
+  optional string   date_from       = 4; // ISO 8601 格式
+  optional string   date_to         = 5; // ISO 8601 格式
+  optional int64    account_number  = 6; // 按账户 MT 登录号过滤
+  optional string   search_text     = 7; // 按账户 SearchText 模糊搜索
+  optional string   sort_field      = 8; // 排序字段（如 "createdOn"）
+  optional bool     sort_flag       = 9; // true=降序，false=升序
+  optional int32    page            = 10; // 兼容前端直接传 page（等同 pagination.page）
+  optional int32    size            = 11; // 兼容前端直接传 size 或 pageSize（等同 pagination.size）
+  optional int32    page_size       = 12; // 兼容前端传 pageSize（等同 pagination.size）
 }
 
 message ListAccountLogsResponse {
@@ -408,11 +590,17 @@ message ListAccountLogsResponse {
 
 // 账户操作日志条目
 message AccountLog {
-  int64  id         = 1; // 日志 ID
-  int64  account_id = 2; // 关联账户 ID
-  string action     = 3; // 操作类型标识，如 "status-change"、"leverage-change"
-  string detail     = 4; // 操作详情（JSON 字符串或可读文本）
-  string created_at = 5; // 操作时间，ISO 8601 格式
+  int64  id             = 1; // 日志 ID
+  int64  account_id     = 2; // 关联账户 ID
+  string action         = 3; // 操作类型标识，如 "status-change"、"leverage-change"
+  string detail         = 4; // 操作详情（JSON 字符串或可读文本）
+  string created_at     = 5; // 操作时间，ISO 8601 格式
+  string operator_name  = 6; // 操作人名称
+  int64  account_number = 7; // 账户 MT 登录号
+  int64  account_uid    = 8; // 账户 UID
+  string before         = 9; // 操作前的值
+  string after          = 10; // 操作后的值
+  string created_on     = 11; // 操作时间（与 created_at 相同，兼容旧格式）
 }
 
 // 日志 action 枚举列表响应
@@ -495,10 +683,12 @@ message ReferralCode {
   bool   is_default = 3; // 是否为该账户的默认推荐码
 }
 
-// 开户向导状态响应
+// 开户向导状态响应（与 Supplement.AccountWizard 字段对齐）
 message AccountWizardResponse {
-  int32 step         = 1; // 当前所在步骤编号（从 1 开始）
-  bool  completed    = 2; // 是否已完成全部向导步骤
+  bool kyc_form_completed     = 1; // KYC 表单是否已完成
+  bool payment_access_granted = 2; // 支付权限是否已开通
+  bool welcome_email_sent     = 3; // 欢迎邮件是否已发送
+  bool notice_email_sent      = 4; // 通知邮件是否已发送
 }
 
 // MT 组合品种查询请求
@@ -556,6 +746,8 @@ message GetAccountTradeStatRequest {
   int64           id        = 1; // 账户 ID
   optional string date_from = 2; // 统计起始日期，ISO 8601 格式
   optional string date_to   = 3; // 统计截止日期，ISO 8601 格式
+  optional string from      = 4; // 兼容前端传 from（等同 date_from）
+  optional string to        = 5; // 兼容前端传 to（等同 date_to）
 }
 
 // 多账户交易统计查询请求（按 MT 账户号列表）
@@ -563,6 +755,8 @@ message GetMultiAccountTradeStatRequest {
   repeated int64  account_numbers = 1; // MT4/MT5 账户号列表
   optional string date_from       = 2; // 统计起始日期，ISO 8601 格式
   optional string date_to         = 3; // 统计截止日期，ISO 8601 格式
+  optional string from            = 4; // 兼容前端传 from（等同 date_from）
+  optional string to              = 5; // 兼容前端传 to（等同 date_to）
 }
 
 // 交易统计响应
@@ -796,10 +990,17 @@ message GetChildNetStatRequest {
   bool            view_client = 5; // true=统计包含最底层客户账户
 }
 
-// 子账户网络汇总统计响应
+// 子账户网络汇总统计响应（与 Account.ChildNetStatAmountResponseModel 对齐）
+// amounts 字段 key 为 currency_id（int，序列化为字符串），value 为金额（单位：分）
 message ChildNetStatResponse {
-  double net_deposit = 1; // 净入金（充值 - 提款）
-  double volume      = 2; // 总交易手数
+  int64                    uid                = 1; // 子账户 UID（0 表示汇总行）
+  string                   group              = 2; // MT 账户组名称
+  int32                    role               = 3; // 账户角色类型
+  map<string, int64>       deposit_amounts    = 4; // 各货币充值金额，key=currencyId
+  map<string, int64>       withdrawal_amounts = 5; // 各货币提款金额，key=currencyId
+  map<string, int64>       rebate_amounts     = 6; // 各货币返佣金额，key=currencyId
+  map<string, int64>       profit_amounts     = 7; // 各货币交易盈亏，key=currencyId
+  map<string, int64>       net_amounts        = 8; // 净入金 = deposit - withdrawal，key=currencyId
 }
 
 // 按品种分组的统计查询请求（Sales 视角）
@@ -810,16 +1011,30 @@ message GetChildStatByRangeRequest {
   optional string date_to   = 4; // ISO 8601 格式
 }
 
-// 品种分组统计响应
+// 品种分组统计响应（与 Dictionary<string, ChildRebateStatAmountResponseModel.SymbolDict> 对齐）
+// key 为品种名称（如 "EURUSD"），value 为该品种的统计数据
 message SymbolGroupStatResponse {
-  repeated SymbolStat items = 1;
+  map<string, SymbolStatEntry> items = 1;
 }
 
-// 单品种统计条目
+// 单品种统计条目（与 ChildRebateStatAmountResponseModel.SymbolDict 对齐）
+message SymbolStatEntry {
+  int64              volume  = 1; // 该品种总手数（原始整数，需除以精度换算）
+  double             profit  = 2; // 该品种总盈亏
+  map<string, int64> amounts = 3; // 各货币返佣金额，key=currencyId
+}
+
+// 交易品种统计条目（用于 GetChildTradeBySymbol，与 TradeStatDTO.SymbolCurrencyDTO 对齐）
 message SymbolStat {
-  string symbol = 1; // 交易品种名称，如 "EURUSD"
-  double volume = 2; // 该品种总手数
-  double amount = 3; // 该品种总金额（返佣金额或交易盈亏）
+  string symbol      = 1; // 交易品种名称，如 "EURUSD"
+  int32  currency_id = 2; // 货币 ID
+  int64  volume      = 3; // 该品种总手数
+  double profit      = 4; // 该品种总盈亏金额
+}
+
+// 交易品种分组统计响应（与 IEnumerable<TradeStatDTO.SymbolCurrencyDTO> 对齐）
+message TradeSymbolGroupStatResponse {
+  repeated SymbolStat items = 1;
 }
 
 // Sales 账户配置查询请求
@@ -954,4 +1169,197 @@ message GetRepChildStatByRangeRequest {
   int64           uid       = 2; // 目标账户 UID
   optional string date_from = 3; // ISO 8601 格式
   optional string date_to   = 4; // ISO 8601 格式
+}
+
+// 上级账户链响应（从直属父级到根节点）
+message ParentAccountsResponse {
+  repeated Account items = 1;
+}
+
+// 活动报告生成请求
+message GetActivityReportRequest {
+  int64  id   = 1; // 账户 ID
+  message Spec {
+    optional string date_from = 1; // 报告起始日期（ISO 8601）
+    optional string date_to   = 2; // 报告截止日期（ISO 8601）
+    optional string type      = 3; // 报告类型（如 "pdf"、"excel"）
+  }
+  Spec spec = 2;
+}
+
+// MT 账户组名列表查询请求（Tenant 视角）
+message GetAccountGroupNamesRequest {
+  optional int32  type     = 1; // MT 服务类型（1=MT4，2=MT5）
+  optional string keywords = 2; // 按组名关键字模糊搜索
+}
+
+// 账户分配/变更请求（assign/change/remove）
+message AssignAccountRequest {
+  int64 id         = 1; // 被操作账户 ID
+  int64 target_uid = 2; // 目标 Sales/Agent 账户 UID
+}
+
+// 变更 Agent 组名请求
+message ChangeAgentGroupNameRequest {
+  int64  id   = 1; // 账户 ID
+  message Spec {
+    string group_name = 1; // 新的 MT 账户组别名
+  }
+  Spec spec = 2;
+}
+
+// 重命名 Tenant 自定义分组请求
+message RenameGroupRequest {
+  int64  group_id = 1; // 分组 ID
+  message Spec {
+    string name = 1; // 新分组名称
+  }
+  Spec spec = 2;
+}
+
+// 推荐码列表查询请求
+message ListReferralsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    account_id = 2; // 按账户 ID 过滤
+  optional string   code       = 3; // 按推荐码字符串过滤
+  optional int32    page       = 4; // 兼容前端直接传 page
+  optional int32    size       = 5; // 兼容前端直接传 size
+}
+
+// 推荐码列表响应
+message ListReferralsResponse {
+  repeated ReferralCode items = 1;
+  PaginationMeta        meta  = 2;
+}
+
+// 按推荐码查询账户详情请求
+message GetReferralByCodeRequest {
+  string code = 1; // 推荐码字符串
+}
+
+// 推荐码账户详情响应
+message ReferralDetailResponse {
+  int64  account_id  = 1; // 关联账户 ID
+  int64  uid         = 2; // 关联账户 UID
+  string code        = 3; // 推荐码
+  int32  type        = 4; // 推荐码类型
+}
+
+// 推荐码使用历史查询请求
+message ListReferralHistoryRequest {
+  PaginationRequest pagination = 1;
+  optional string   code       = 2; // 按推荐码过滤
+  optional int64    account_id = 3; // 按账户 ID 过滤
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
+  optional int32    page       = 6; // 兼容前端直接传 page
+  optional int32    size       = 7; // 兼容前端直接传 size
+}
+
+// 推荐码使用历史响应
+message ListReferralHistoryResponse {
+  repeated ReferralHistoryItem items = 1;
+  PaginationMeta               meta  = 2;
+}
+
+// 单条推荐码使用历史记录
+message ReferralHistoryItem {
+  int64  id          = 1;
+  string code        = 2; // 推荐码
+  int64  account_id  = 3; // 使用该推荐码注册的账户 ID
+  int64  uid         = 4; // 使用该推荐码注册的账户 UID
+  string created_on  = 5; // ISO 8601 注册时间
+}
+
+// 新增推荐码请求
+message AddReferralCodeRequest {
+  int64  account_id = 1; // 所属账户 ID
+  string code       = 2; // 推荐码字符串
+  int32  type       = 3; // 推荐码类型
+  bool   is_default = 4; // 是否设为默认推荐码
+}
+
+// 更新推荐码默认支付方式请求
+message UpdateReferralPaymentMethodsRequest {
+  int64  id = 1; // 推荐码 ID
+  message Spec {
+    repeated int64 payment_method_ids = 1; // 支付方式 ID 列表（全量覆盖）
+    string         type               = 2; // 支付方式类型（如 "deposit"/"withdrawal"）
+  }
+  Spec spec = 2;
+}
+
+// 沟通记录列表查询请求
+message ListCommunicationsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    account_id = 2; // 按账户 ID 过滤
+  optional string   keywords   = 3; // 按内容关键字搜索
+  optional string   date_from  = 4; // ISO 8601 格式
+  optional string   date_to    = 5; // ISO 8601 格式
+  optional int64    row_id     = 6; // 兼容前端传 rowId（等同 account_id）
+  optional int32    type       = 7; // 沟通类型过滤（前端传 type）
+  optional int32    page       = 8; // 兼容前端直接传 page
+  optional int32    size       = 9; // 兼容前端直接传 size
+}
+
+// 沟通记录列表响应
+message ListCommunicationsResponse {
+  repeated CommunicationItem items = 1;
+  PaginationMeta             meta  = 2;
+}
+
+// 单条沟通记录
+message CommunicationItem {
+  int64  id         = 1;
+  int64  account_id = 2;
+  string content    = 3;  // 沟通内容
+  string created_on = 4;  // ISO 8601 创建时间
+  string created_by = 5;  // 操作人名称
+}
+
+// 账户余额变更审计查询请求
+message ListAccountBalanceAuditsRequest {
+  PaginationRequest pagination = 1;
+  optional int64    account_id = 2; // 按账户 ID 过滤
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
+  optional int32    page       = 5; // 兼容前端直接传 page
+  optional int32    size       = 6; // 兼容前端直接传 size
+}
+
+// 账户余额变更审计响应
+message ListAccountBalanceAuditsResponse {
+  repeated AccountBalanceAuditItem items = 1;
+  PaginationMeta                   meta  = 2;
+}
+
+// 单条余额变更审计记录
+message AccountBalanceAuditItem {
+  int64  id          = 1;
+  int64  account_id  = 2;
+  int64  uid         = 3;
+  double amount      = 4;  // 变更金额（正=入账，负=扣款）
+  int32  currency_id = 5;  // 货币 ID
+  string reason      = 6;  // 变更原因
+  string created_on  = 7;  // ISO 8601 操作时间
+  string created_by  = 8;  // 操作人
+}
+
+// 子账户网络统计查询请求（Tenant 视角）
+message GetTenantChildNetStatRequest {
+  int64           uid         = 1; // 目标账户 UID
+  optional string date_from   = 2; // ISO 8601 格式（也接受 dateFrom）
+  optional string date_to     = 3; // ISO 8601 格式（也接受 dateTo）
+  bool            view_client = 4; // true=统计包含最底层客户账户
+  optional string from        = 5; // 兼容前端传 from（等同 date_from）
+  optional string to          = 6; // 兼容前端传 to（等同 date_to）
+}
+
+// 按品种分组的统计查询请求（Tenant 视角）
+message GetTenantChildStatByRangeRequest {
+  int64           uid       = 1; // 目标账户 UID
+  optional string date_from = 2; // ISO 8601 格式
+  optional string date_to   = 3; // ISO 8601 格式
+  optional string from      = 4; // 兼容前端传 from（等同 date_from）
+  optional string to        = 5; // 兼容前端传 to（等同 date_to）
 }
