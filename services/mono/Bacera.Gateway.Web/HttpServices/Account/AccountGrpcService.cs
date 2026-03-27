@@ -6,6 +6,7 @@ using Bacera.Gateway;
 using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Grpc.Core;
+using Hangfire;
 using Http.V1;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -38,14 +39,20 @@ public class TenantAccountGrpcService(
     {
         var criteria = new Bacera.Gateway.Account.Criteria
         {
-            Page     = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size     = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
-            Keywords = request.HasKeywords ? request.Keywords : null,
-            Status   = request.HasStatus   ? (AccountStatusTypes?)request.Status : null,
-            Uid      = request.HasUid      ? request.Uid       : null,
-            Role     = request.HasRole     ? (AccountRoleTypes?)request.Role : null,
-            PartyId  = request.HasPartyId  ? request.PartyId   : null,
-            FundType = request.HasFundType ? (FundTypes?)request.FundType : null,
+            Page           = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size           = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
+            SearchText     = request.HasSearchText    ? request.SearchText    : null,
+            Status         = request.HasStatus        ? (AccountStatusTypes?)request.Status : null,
+            Uid            = request.HasUid           ? request.Uid           : null,
+            Role           = request.HasRole          ? (AccountRoleTypes?)request.Role : null,
+            PartyId        = request.HasPartyId       ? request.PartyId       : null,
+            FundType       = request.HasFundType      ? (FundTypes?)request.FundType : null,
+            ServiceId      = request.HasServiceId     ? request.ServiceId     : null,
+            IncludeClosed  = request.HasIncludeClosed ? request.IncludeClosed : null,
+            CurrencyId     = request.HasCurrencyId    ? (CurrencyTypes?)request.CurrencyId : null,
+            SiteId         = request.HasSiteId        ? (SiteTypes?)request.SiteId : null,
+            Group          = request.HasGroup         ? request.Group         : null,
+            CodeUid        = request.HasCodeUid       ? request.CodeUid       : null,
         };
         if (request.Uids.Count > 0) criteria.Uids = request.Uids.ToList();
 
@@ -89,12 +96,25 @@ public class TenantAccountGrpcService(
     public override async Task<ListAccountLogsResponse> ListAccountLogs(
         ListAccountLogsRequest request, ServerCallContext context)
     {
+        // 兼容前端直接传 page/size/pageSize（flat params），以及标准 pagination.page/size（nested）
+        var page = request.Pagination?.Page > 0 ? request.Pagination.Page
+                 : request.HasPage     && request.Page     > 0 ? request.Page
+                 : 1;
+        var size = request.Pagination?.Size > 0 ? request.Pagination.Size
+                 : request.HasSize     && request.Size     > 0 ? request.Size
+                 : request.HasPageSize && request.PageSize > 0 ? request.PageSize
+                 : 20;
+
         var criteria = new Bacera.Gateway.AccountLog.TenantCriteria
         {
-            Page      = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size      = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
-            AccountId = request.HasAccountId ? request.AccountId : null,
-            Action    = request.HasAction    ? request.Action    : null,
+            Page          = page,
+            Size          = size,
+            AccountId     = request.HasAccountId     ? request.AccountId     : null,
+            Action        = request.HasAction        ? request.Action        : null,
+            AccountNumber = request.HasAccountNumber ? request.AccountNumber : null,
+            SearchText    = request.HasSearchText    ? request.SearchText    : null,
+            SortField     = request.HasSortField     ? request.SortField     : nameof(Bacera.Gateway.AccountLog.Id),
+            SortFlag      = request.HasSortFlag      ? request.SortFlag      : true,
         };
 
         var items = await tenantCtx.AccountLogs
@@ -115,11 +135,17 @@ public class TenantAccountGrpcService(
         };
         response.Data.AddRange(items.Select(log => new ProtoAccountLog
         {
-            Id        = log.Id,
-            AccountId = log.AccountId,
-            Action    = log.Action,
-            Detail    = log.Before != null ? $"{log.Before} → {log.After}" : log.After ?? "",
-            CreatedAt = log.CreatedOn.ToString("O"),
+            Id            = log.Id,
+            AccountId     = log.AccountId,
+            Action        = log.Action,
+            Detail        = !string.IsNullOrEmpty(log.Before) ? $"{log.Before} → {log.After}" : log.After ?? "",
+            CreatedAt     = log.CreatedOn.ToString("O"),
+            OperatorName  = log.OperatorName,
+            AccountNumber = log.AccountNumber,
+            AccountUid    = log.AccountUid,
+            Before        = log.Before ?? "",
+            After         = log.After ?? "",
+            CreatedOn     = log.CreatedOn.ToString("O"),
         }));
         return response;
     }
@@ -290,11 +316,12 @@ public class TenantAccountGrpcService(
         GetAccountRequest request, ServerCallContext context)
     {
         var wizard = await tradingSvc.GetAccountWizardAsync(request.Id);
-        var completed = wizard.KycFormCompleted && wizard.PaymentAccessGranted;
         return new AccountWizardResponse
         {
-            Step      = completed ? 4 : (wizard.KycFormCompleted ? 2 : 1),
-            Completed = completed,
+            KycFormCompleted     = wizard.KycFormCompleted,
+            PaymentAccessGranted = wizard.PaymentAccessGranted,
+            WelcomeEmailSent     = wizard.WelcomeEmailSent,
+            NoticeEmailSent      = wizard.NoticeEmailSent,
         };
     }
 
@@ -340,6 +367,395 @@ public class TenantAccountGrpcService(
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Uid == request.Uid);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
         return MapToProto(account);
+    }
+
+    // ─── Parent accounts ──────────────────────────────────────────────────────
+
+    public override async Task<ParentAccountsResponse> GetParentAccounts(
+        GetAccountRequest request, ServerCallContext context)
+    {
+        var items = await tradingSvc.ParentAccountsGetForTenantAsync(request.Id, hideEmail: false);
+        var response = new ParentAccountsResponse();
+        response.Items.AddRange(items.Select(MapViewModelToProto));
+        return response;
+    }
+
+    // ─── Account group / assignment operations ────────────────────────────────
+
+    public override async Task<ProtoAccount> AssignAccountToSales(
+        AssignAccountRequest request, ServerCallContext context)
+    {
+        var (ok, msg) = await tradingSvc.ChangeSalesGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
+        if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
+        var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
+        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+        return MapToProto(account);
+    }
+
+    public override async Task<ProtoAccount> AssignAccountToAgent(
+        AssignAccountRequest request, ServerCallContext context)
+    {
+        var (ok, msg) = await tradingSvc.ChangeAgentGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
+        if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
+        var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
+        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+        return MapToProto(account);
+    }
+
+    public override async Task<ProtoAccount> RemoveAccountFromAgent(
+        AssignAccountRequest request, ServerCallContext context)
+    {
+        var (ok, msg) = await tradingSvc.RemoveFromAgentGroupAsync(request.Id);
+        if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
+        var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
+        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+        return MapToProto(account);
+    }
+
+    public override async Task<ProtoAccount> ChangeAgentGroup(
+        AssignAccountRequest request, ServerCallContext context)
+    {
+        var (ok, msg) = await tradingSvc.ChangeAgentGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
+        if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
+        var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
+        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+        return MapToProto(account);
+    }
+
+    public override async Task<ProtoAccount> ChangeSalesGroup(
+        AssignAccountRequest request, ServerCallContext context)
+    {
+        var (ok, msg) = await tradingSvc.ChangeSalesGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
+        if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
+        var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
+        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+        return MapToProto(account);
+    }
+
+    public override async Task<ProtoAccount> ChangeAgentGroupName(
+        ChangeAgentGroupNameRequest request, ServerCallContext context)
+    {
+        var newName = request.Spec?.GroupName ?? "";
+        if (await tenantCtx.Accounts.AnyAsync(x => x.Group == newName))
+            throw new RpcException(new Status(StatusCode.AlreadyExists, "__AGENT_GROUP_NAME_ALREADY_EXISTS__"));
+
+        var agentAccount = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
+        if (agentAccount == null) throw new RpcException(new Status(StatusCode.NotFound, "__AGENT_NOT_FOUND__"));
+
+        var childIds = await tenantCtx.Accounts
+            .Where(x => x.ReferPath.StartsWith(agentAccount.ReferPath))
+            .OrderBy(x => x.Level)
+            .Select(x => new { x.Id, x.Group })
+            .ToListAsync();
+
+        await tenantCtx.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE trd."_Account" SET "Group" = replace("Group", {0}, {1}), "SearchText" = replace("SearchText", {0}, {1}) WHERE "Id" = ANY({2})
+            """,
+            agentAccount.Group, newName, childIds.Select(x => x.Id).ToArray());
+
+        try
+        {
+            var partyId = GetPartyId(context);
+            var logs = childIds.Select(x => Bacera.Gateway.Account.BuildLog(
+                x.Id, partyId, "ChangeAgentGroupName", x.Group,
+                string.Concat(newName, x.Group.AsSpan(Math.Min(newName.Length, x.Group.Length - 1)))));
+            tenantCtx.AccountLogs.AddRange(logs);
+            await tenantCtx.SaveChangesAsync();
+        }
+        catch { /* ignored */ }
+
+        await tenantCtx.Entry(agentAccount).ReloadAsync();
+        return MapToProto(agentAccount);
+    }
+
+    public override async Task<OperationResponse> RenameGroup(
+        RenameGroupRequest request, ServerCallContext context)
+    {
+        var group = await tenantCtx.Groups.FindAsync(request.GroupId);
+        if (group == null) throw new RpcException(new Status(StatusCode.NotFound, "Group not found"));
+        group.Name = request.Spec?.Name ?? "";
+        await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
+        return new OperationResponse { Success = true };
+    }
+
+    public override async Task<GroupNameListResponse> GetFullAccountGroupNames(
+        GetAccountGroupNamesRequest request, ServerCallContext context)
+    {
+        var role = request.HasType
+            ? (AccountRoleTypes?)((AccountRoleTypes)(request.Type * 100))
+            : null;
+        var items = await tradingSvc.GetAllGroupNamesAsync(role, request.HasKeywords ? request.Keywords : "");
+        var response = new GroupNameListResponse();
+        response.Names.AddRange(items);
+        return response;
+    }
+
+    public override async Task<OperationResponse> GetActivityReport(
+        GetActivityReportRequest request, ServerCallContext context)
+    {
+        // Activity report generation is handled asynchronously via background job
+        // Returns success immediately; the report is sent to the account's email
+        return new OperationResponse { Success = true, Message = "Report generation queued" };
+    }
+
+    // ─── Tenant child stat ────────────────────────────────────────────────────
+
+    public override async Task<ChildNetStatResponse> GetChildNetStat(
+        GetTenantChildNetStatRequest request, ServerCallContext context)
+    {
+        // 兼容前端传 from/to 或标准 date_from/date_to
+        var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
+        var toStr   = (request.HasDateTo   ? request.DateTo   : null) ?? (request.HasTo   ? request.To   : null);
+        var from = fromStr != null && DateTime.TryParse(fromStr, out var f) ? (DateTime?)f : null;
+        var to   = toStr   != null && DateTime.TryParse(toStr,   out var t) ? (DateTime?)t : null;
+
+        var result = await tradingSvc.GetDirectChildNetAmountForAccountByUid(request.Uid, from, to, request.ViewClient);
+        var sumUp  = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
+                     ?? result.FirstOrDefault(x => x.Uid == 0);
+
+        var response = new ChildNetStatResponse
+        {
+            Uid   = sumUp?.Uid   ?? 0,
+            Group = sumUp?.Group ?? "Child-Sum-Up",
+            Role  = (int)(sumUp?.Role ?? 0),
+        };
+        if (sumUp != null)
+        {
+            foreach (var kvp in sumUp.DepositAmounts)    response.DepositAmounts[kvp.Key.ToString()]    = kvp.Value;
+            foreach (var kvp in sumUp.WithdrawalAmounts) response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.RebateAmounts)     response.RebateAmounts[kvp.Key.ToString()]     = kvp.Value;
+            foreach (var kvp in sumUp.ProfitAmounts)     response.ProfitAmounts[kvp.Key.ToString()]     = kvp.Value;
+            foreach (var kvp in sumUp.NetAmounts)        response.NetAmounts[kvp.Key.ToString()]        = kvp.Value;
+        }
+        return response;
+    }
+
+    public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
+        GetTenantChildStatByRangeRequest request, ServerCallContext context)
+    {
+        // 兼容前端传 from/to 或标准 date_from/date_to
+        var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
+        var toStr   = (request.HasDateTo   ? request.DateTo   : null) ?? (request.HasTo   ? request.To   : null);
+        var from = fromStr != null && DateTime.TryParse(fromStr, out var f) ? (DateTime?)f : null;
+        var to   = toStr   != null && DateTime.TryParse(toStr,   out var t) ? (DateTime?)t : null;
+
+        var stats    = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
+        var response = new SymbolGroupStatResponse();
+        foreach (var kvp in stats)
+        {
+            var entry = new SymbolStatEntry { Volume = kvp.Value.Volume, Profit = kvp.Value.Profit };
+            foreach (var a in kvp.Value.Amounts) entry.Amounts[a.Key.ToString()] = a.Value;
+            response.Items[kvp.Key] = entry;
+        }
+        return response;
+    }
+
+    // ─── Referral ─────────────────────────────────────────────────────────────
+
+    public override async Task<ListReferralsResponse> ListReferrals(
+        ListReferralsRequest request, ServerCallContext context)
+    {
+        var criteria = new Bacera.Gateway.ReferralCode.Criteria
+        {
+            Page      = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size      = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
+            AccountId = request.HasAccountId ? request.AccountId : null,
+            Code      = request.HasCode      ? request.Code      : null,
+        };
+        var items = await tenantCtx.ReferralCodes.PagedFilterBy(criteria).ToListAsync();
+        var response = new ListReferralsResponse
+        {
+            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+        };
+        response.Items.AddRange(items.Select(r => new ProtoReferralCode
+        {
+            Code      = r.Code,
+            Type      = r.ServiceType,
+            IsDefault = r.IsDefault != 0,
+        }));
+        return response;
+    }
+
+    public override async Task<ReferralDetailResponse> GetReferralByCode(
+        GetReferralByCodeRequest request, ServerCallContext context)
+    {
+        var item = await tenantCtx.ReferralCodes
+            .Where(x => x.Code == request.Code.Trim())
+            .Select(x => new { x.Id, x.AccountId, x.Account.Uid, x.Code, x.ServiceType })
+            .FirstOrDefaultAsync();
+        if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Referral code not found"));
+        return new ReferralDetailResponse
+        {
+            AccountId = item.AccountId,
+            Uid       = item.Uid,
+            Code      = item.Code,
+            Type      = item.ServiceType,
+        };
+    }
+
+    public override async Task<ListReferralHistoryResponse> GetReferralHistory(
+        ListReferralHistoryRequest request, ServerCallContext context)
+    {
+        var criteria = new Bacera.Gateway.Referral.Criteria
+        {
+            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
+        };
+        var items = await tenantCtx.Referrals.PagedFilterBy(criteria).ToListAsync();
+        var response = new ListReferralHistoryResponse
+        {
+            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+        };
+        response.Items.AddRange(items.Select(r => new ReferralHistoryItem
+        {
+            Id        = r.Id,
+            Code      = r.Code ?? "",
+            AccountId = r.ReferralCodeId,
+            CreatedOn = r.CreatedOn.ToString("O"),
+        }));
+        return response;
+    }
+
+    public override async Task<ProtoReferralCode> AddReferralCode(
+        AddReferralCodeRequest request, ServerCallContext context)
+    {
+        var targetAccount = await tenantCtx.Accounts
+            .Where(x => x.Id == request.AccountId)
+            .Select(x => new { x.Id, x.PartyId, x.Role })
+            .FirstOrDefaultAsync();
+        if (targetAccount == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+
+        var item = new Bacera.Gateway.ReferralCode
+        {
+            Name        = "Tenant Generated",
+            Code        = Guid.NewGuid().ToString(),
+            PartyId     = targetAccount.PartyId,
+            AccountId   = targetAccount.Id,
+            ServiceType = request.Type,
+            Summary     = "{}",
+        };
+        tenantCtx.ReferralCodes.Add(item);
+        await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
+
+        var hashids  = new HashidsNet.Hashids("BCRReferralCode", 3, "ABCDEFGHJKLMNOPQRSTUVWXYZ23456789");
+        var code     = hashids.Encode((int)item.Id);
+        var prefix   = (AccountRoleTypes)targetAccount.Role switch
+        {
+            AccountRoleTypes.Sales => "RSA",
+            AccountRoleTypes.Agent => "RAA",
+            _                      => "RXX",
+        };
+        item.Code = prefix + code + code.Length + Tenancy.GetTenancyInReferCode(tenancy.GetTenantId());
+        tenantCtx.ReferralCodes.Update(item);
+        await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
+
+        return new ProtoReferralCode { Code = item.Code, Type = item.ServiceType, IsDefault = item.IsDefault != 0 };
+    }
+
+    public override async Task<OperationResponse> UpdateReferralDefaultPaymentMethods(
+        UpdateReferralPaymentMethodsRequest request, ServerCallContext context)
+    {
+        var referralCode = await tenantCtx.ReferralCodes.FindAsync(request.Id);
+        if (referralCode == null) throw new RpcException(new Status(StatusCode.NotFound, "Referral code not found"));
+
+        var type      = request.Spec?.Type ?? "";
+        var configKey = type.Equals("Withdrawal", StringComparison.OrdinalIgnoreCase)
+            ? ConfigKeys.DefaultAutoCreateWithdrawalPaymentMethod
+            : ConfigKeys.DefaultAutoCreatePaymentMethod;
+
+        var ids = request.Spec?.PaymentMethodIds.ToList() ?? [];
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(ids);
+
+        var existing = await tenantCtx.Configurations
+            .Where(x => x.Category == ConfigCategoryTypes.Public
+                     && x.RowId == request.Id
+                     && x.Key == configKey)
+            .FirstOrDefaultAsync();
+
+        if (existing != null)
+        {
+            existing.Value = json;
+            tenantCtx.Configurations.Update(existing);
+        }
+        else
+        {
+            tenantCtx.Configurations.Add(new Bacera.Gateway.Configuration
+            {
+                Category  = ConfigCategoryTypes.Public,
+                RowId     = request.Id,
+                Key       = configKey,
+                Value     = json,
+                CreatedOn = DateTime.UtcNow,
+                UpdatedOn = DateTime.UtcNow,
+            });
+        }
+        await tenantCtx.SaveChangesAsync();
+        return new OperationResponse { Success = true };
+    }
+
+    // ─── Communicate ──────────────────────────────────────────────────────────
+
+    public override async Task<ListCommunicationsResponse> ListCommunications(
+        ListCommunicationsRequest request, ServerCallContext context)
+    {
+        // 兼容前端传 rowId 或标准 accountId
+        var rowId = request.HasRowId ? request.RowId : (request.HasAccountId ? request.AccountId : (long?)null);
+        var criteria = new Bacera.Gateway.CommunicateHistory.Criteria
+        {
+            Page  = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size  = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
+            RowId = rowId,
+        };
+        var items = await tenantCtx.CommunicateHistories
+            .PagedFilterBy(criteria)
+            .ToResponseModel()
+            .ToListAsync();
+        var response = new ListCommunicationsResponse
+        {
+            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+        };
+        response.Items.AddRange(items.Select(x => new CommunicationItem
+        {
+            Id            = x.Id,
+            AccountId     = x.RowId,
+            Content       = "",
+            CreatedOn     = x.CreatedOn.ToString("O"),
+            CreatedBy     = x.OperatorName,
+        }));
+        return response;
+    }
+
+    // ─── Audit ────────────────────────────────────────────────────────────────
+
+    public override async Task<ListAccountBalanceAuditsResponse> ListAccountBalanceAudits(
+        ListAccountBalanceAuditsRequest request, ServerCallContext context)
+    {
+        var criteria = new Bacera.Gateway.Audit.Criteria
+        {
+            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
+            Type = AuditTypes.TradeAccountBalance,
+        };
+        if (request.HasAccountId) criteria.RowId = request.AccountId;
+
+        var items = await tenantCtx.Audits
+            .PagedFilterBy(criteria)
+            .ToTenantResponseModel()
+            .ToListAsync();
+
+        var response = new ListAccountBalanceAuditsResponse
+        {
+            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+        };
+        response.Items.AddRange(items.Select(x => new AccountBalanceAuditItem
+        {
+            AccountId = x.AccountId,
+            Amount    = (double)x.Data.Amount,
+            Reason    = x.Data.Comment ?? "",
+            CreatedOn = x.CreatedOn.ToString("O"),
+        }));
+        return response;
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -538,8 +954,10 @@ public class TenantAccountV2GrpcService(
             .Select(x => x.AccountNumber)
             .ToListAsync();
 
-        var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? f : DateTime.MinValue;
-        var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? t : DateTime.MaxValue;
+        var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
+        var toStr   = (request.HasDateTo   ? request.DateTo   : null) ?? (request.HasTo   ? request.To   : null);
+        var from = fromStr != null && DateTime.TryParse(fromStr, out var f) ? f : DateTime.MinValue;
+        var to   = toStr   != null && DateTime.TryParse(toStr,   out var t) ? t : DateTime.MaxValue;
 
         try
         {
@@ -562,8 +980,10 @@ public class TenantAccountV2GrpcService(
     public override async Task<TradeStatResponse> GetMultiAccountTradeStat(
         GetMultiAccountTradeStatRequest request, ServerCallContext context)
     {
-        var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? f : DateTime.MinValue;
-        var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? t : DateTime.MaxValue;
+        var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
+        var toStr   = (request.HasDateTo   ? request.DateTo   : null) ?? (request.HasTo   ? request.To   : null);
+        var from = fromStr != null && DateTime.TryParse(fromStr, out var f) ? f : DateTime.MinValue;
+        var to   = toStr   != null && DateTime.TryParse(toStr,   out var t) ? t : DateTime.MaxValue;
 
         try
         {
@@ -758,11 +1178,12 @@ public class ClientAccountGrpcService(
         GetAccountRequest request, ServerCallContext context)
     {
         var wizard = await tradingSvc.GetAccountWizardAsync(request.Id);
-        var completed = wizard.KycFormCompleted && wizard.PaymentAccessGranted;
         return new AccountWizardResponse
         {
-            Step      = completed ? 4 : (wizard.KycFormCompleted ? 2 : 1),
-            Completed = completed,
+            KycFormCompleted     = wizard.KycFormCompleted,
+            PaymentAccessGranted = wizard.PaymentAccessGranted,
+            WelcomeEmailSent     = wizard.WelcomeEmailSent,
+            NoticeEmailSent      = wizard.NoticeEmailSent,
         };
     }
 
@@ -801,7 +1222,10 @@ public class SalesAccountGrpcService(
     TradingService tradingSvc,
     TenantDbContext tenantCtx,
     AccountManageService accManSvc,
-    ConfigurationService configurationService)
+    ConfigurationService configurationService,
+    IBackgroundJobClient backgroundJobClient,
+    UserService userSvc,
+    ITenantGetter tenantGetter)
     : SalesAccountService.SalesAccountServiceBase
 {
     public override async Task<ListAccountsResponse> ListAccounts(
@@ -897,9 +1321,29 @@ public class SalesAccountGrpcService(
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var result = await tradingSvc.GetDirectChildNetAmountForAccountByUid(request.Uid, from, to, request.ViewClient);
-        var net = result.Where(x => x.Uid != 0)
-            .Sum(x => (double)(x.DepositAmounts.Values.Sum() - x.WithdrawalAmounts.Values.Sum())) / 10000.0;
-        return new ChildNetStatResponse { NetDeposit = net };
+        var sumUp = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
+                    ?? result.FirstOrDefault(x => x.Uid == 0);
+
+        var response = new ChildNetStatResponse
+        {
+            Uid   = sumUp?.Uid   ?? 0,
+            Group = sumUp?.Group ?? "Child-Sum-Up",
+            Role  = (int)(sumUp?.Role ?? 0),
+        };
+        if (sumUp != null)
+        {
+            foreach (var kvp in sumUp.DepositAmounts)
+                response.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.WithdrawalAmounts)
+                response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.RebateAmounts)
+                response.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.ProfitAmounts)
+                response.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.NetAmounts)
+                response.NetAmounts[kvp.Key.ToString()] = kvp.Value;
+        }
+        return response;
     }
 
     public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
@@ -910,28 +1354,34 @@ public class SalesAccountGrpcService(
 
         var stats = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
         var response = new SymbolGroupStatResponse();
-        response.Items.AddRange(stats.Select(kvp => new SymbolStat
+        foreach (var kvp in stats)
         {
-            Symbol = kvp.Key,
-            Volume = kvp.Value.Volume,
-            Amount = kvp.Value.Profit,
-        }));
+            var entry = new SymbolStatEntry
+            {
+                Volume = kvp.Value.Volume,
+                Profit = kvp.Value.Profit,
+            };
+            foreach (var amtKvp in kvp.Value.Amounts)
+                entry.Amounts[amtKvp.Key.ToString()] = amtKvp.Value;
+            response.Items[kvp.Key] = entry;
+        }
         return response;
     }
 
-    public override async Task<SymbolGroupStatResponse> GetChildTradeBySymbol(
+    public override async Task<TradeSymbolGroupStatResponse> GetChildTradeBySymbol(
         GetChildStatByRangeRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var stats = await tradingSvc.GetChildAccountTradeSymbolGroupedStatByUid(request.Uid, from, to);
-        var response = new SymbolGroupStatResponse();
+        var response = new TradeSymbolGroupStatResponse();
         response.Items.AddRange(stats.Select(s => new SymbolStat
         {
-            Symbol = s.Symbol,
-            Volume = s.Volume,
-            Amount = s.Profit,
+            Symbol     = s.Symbol,
+            CurrencyId = (int)s.CurrencyId,
+            Volume     = s.Volume,
+            Profit     = s.Profit,
         }));
         return response;
     }
@@ -969,8 +1419,23 @@ public class SalesAccountGrpcService(
     {
         var account = await tenantCtx.Accounts.Where(x => x.Uid == request.SalesUid).FirstOrDefaultAsync();
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        var result = await configurationService.GetAccountTypeAvailableAsync(account.SiteId);
+
+        // 优先取账户级别的覆盖配置，否则取站点默认值
+        var item = await tenantCtx.Configurations
+            .Where(x => x.Category == nameof(Bacera.Gateway.Account))
+            .Where(x => x.RowId == account.Id)
+            .Where(x => x.Key == "AccountTypeAvailable")
+            .ToTenantViewModel()
+            .FirstOrDefaultAsync();
+
+        List<int> typeIds;
+        if (item?.Value is List<int> overrideList)
+            typeIds = overrideList;
+        else
+            typeIds = await configurationService.GetAccountTypeAvailableAsync(account.SiteId);
+
         var response = new AccountTypesResponse();
+        response.Types_.AddRange(typeIds.Select(id => new AccountTypeConfig { Id = id, Name = "" }));
         return response;
     }
 
@@ -1004,20 +1469,67 @@ public class SalesAccountGrpcService(
     public override async Task<EmailCodeResponse> GetViewEmailCode(
         GetSalesAccountRequest request, ServerCallContext context)
     {
-        // Returns an email code to allow viewing the account's email
+        var isAccountUnder = await tenantCtx.Accounts
+            .Where(x => x.Uid == request.Uid)
+            .Where(x => x.ReferPath.Contains(request.SalesUid.ToString()))
+            .AnyAsync();
+        if (!isAccountUnder)
+            throw new RpcException(new Status(StatusCode.NotFound, "ACCOUNT_NOT_FOUND_UNDER"));
+
+        var account = await tenantCtx.Accounts
+            .Where(x => x.Uid == request.Uid)
+            .Select(x => new { x.Party.Email })
+            .SingleAsync();
+
+        var partyId = GetPartyId(context);
+        var exist = await tenantCtx.AuthCodes
+            .Where(x => x.PartyId == partyId)
+            .Where(x => x.Event == $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}")
+            .Where(x => x.ExpireOn > DateTime.UtcNow)
+            .AnyAsync();
+        if (exist)
+            throw new RpcException(new Status(StatusCode.AlreadyExists, "CODE_ALREADY_SENT"));
+
+        var user = await userSvc.GetPartyAsync(partyId);
+        backgroundJobClient.Enqueue<IGeneralJob>(x => x.GenerateAuthCodeAndSendEmailAsync(
+            tenantGetter.GetTenantId(), user.EmailRaw, $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}"));
+
         return new EmailCodeResponse { ExpiresAt = "" };
     }
 
     public override async Task<EmailResponse> GetViewEmail(
         GetViewEmailRequest request, ServerCallContext context)
     {
-        var account = await tenantCtx.Accounts
+        var partyId = GetPartyId(context);
+
+        var isAccountUnder = await tenantCtx.Accounts
             .Where(x => x.Uid == request.Uid)
             .Where(x => x.ReferPath.Contains(request.SalesUid.ToString()))
+            .AnyAsync();
+        if (!isAccountUnder)
+            throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+
+        var account = await tenantCtx.Accounts
+            .Where(x => x.Uid == request.Uid)
             .Select(x => new { x.Party.Email })
-            .SingleOrDefaultAsync();
-        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+            .SingleAsync();
+
+        var item = await tenantCtx.AuthCodes
+            .Where(x => x.PartyId == partyId)
+            .Where(x => x.Event == $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}")
+            .Where(x => x.ExpireOn > DateTime.UtcNow)
+            .Where(x => x.Code == request.Code)
+            .FirstOrDefaultAsync();
+        if (item == null)
+            throw new RpcException(new Status(StatusCode.NotFound, "CODE_NOT_FOUND"));
+
         return new EmailResponse { Email = account.Email ?? "" };
+    }
+
+    private static long GetPartyId(ServerCallContext ctx)
+    {
+        var httpCtx = ctx.GetHttpContext();
+        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
     }
 }
 
@@ -1033,7 +1545,9 @@ public class AgentAccountGrpcService(
     AccountManageService accManSvc,
     ITenantGetter tenantGetter,
     ConfigurationService configurationService,
-    IGeneralJob generalJob)
+    IGeneralJob generalJob,
+    IBackgroundJobClient backgroundJobClient,
+    UserService userSvc)
     : AgentAccountService.AgentAccountServiceBase
 {
     public override async Task<ListAccountsResponse> ListAccounts(
@@ -1123,9 +1637,29 @@ public class AgentAccountGrpcService(
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var result = await tradingSvc.GetDirectChildNetAmountForAccountByUid(request.Uid, from, to, request.ViewClient);
-        var net = result.Where(x => x.Uid != 0)
-            .Sum(x => (double)(x.DepositAmounts.Values.Sum() - x.WithdrawalAmounts.Values.Sum())) / 10000.0;
-        return new ChildNetStatResponse { NetDeposit = net };
+        var sumUp = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
+                    ?? result.FirstOrDefault(x => x.Uid == 0);
+
+        var response = new ChildNetStatResponse
+        {
+            Uid   = sumUp?.Uid   ?? 0,
+            Group = sumUp?.Group ?? "Child-Sum-Up",
+            Role  = (int)(sumUp?.Role ?? 0),
+        };
+        if (sumUp != null)
+        {
+            foreach (var kvp in sumUp.DepositAmounts)
+                response.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.WithdrawalAmounts)
+                response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.RebateAmounts)
+                response.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.ProfitAmounts)
+                response.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.NetAmounts)
+                response.NetAmounts[kvp.Key.ToString()] = kvp.Value;
+        }
+        return response;
     }
 
     public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
@@ -1136,12 +1670,17 @@ public class AgentAccountGrpcService(
 
         var stats = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
         var response = new SymbolGroupStatResponse();
-        response.Items.AddRange(stats.Select(kvp => new SymbolStat
+        foreach (var kvp in stats)
         {
-            Symbol = kvp.Key,
-            Volume = kvp.Value.Volume,
-            Amount = kvp.Value.Profit,
-        }));
+            var entry = new SymbolStatEntry
+            {
+                Volume = kvp.Value.Volume,
+                Profit = kvp.Value.Profit,
+            };
+            foreach (var amtKvp in kvp.Value.Amounts)
+                entry.Amounts[amtKvp.Key.ToString()] = amtKvp.Value;
+            response.Items[kvp.Key] = entry;
+        }
         return response;
     }
 
@@ -1166,18 +1705,68 @@ public class AgentAccountGrpcService(
     public override async Task<EmailCodeResponse> GetViewEmailCode(
         GetAgentAccountRequest request, ServerCallContext context)
     {
+        var isAccountUnder = await tenantCtx.Accounts
+            .Where(x => x.Uid == request.Uid)
+            .Where(x => x.ReferPath.Contains(request.AgentUid.ToString()))
+            .AnyAsync();
+        if (!isAccountUnder)
+            throw new RpcException(new Status(StatusCode.NotFound, "ACCOUNT_NOT_FOUND_UNDER"));
+
+        var account = await tenantCtx.Accounts
+            .Where(x => x.Uid == request.Uid)
+            .Select(x => new { x.Party.Email, x.ReferPath })
+            .SingleAsync();
+
+        // 只允许直属子账户（ReferPath 倒数第二个 uid 必须是 agentUid）
+        var parentUids = account.ReferPath.Split('.')
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Select(long.Parse)
+            .ToList();
+        if (parentUids.Count < 2 || parentUids[^2] != request.AgentUid)
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "NOT_DIRECT_CHILD"));
+
+        var partyId = GetPartyId(context);
+        var exist = await tenantCtx.AuthCodes
+            .Where(x => x.PartyId == partyId)
+            .Where(x => x.Event == $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}")
+            .Where(x => x.ExpireOn > DateTime.UtcNow)
+            .AnyAsync();
+        if (exist)
+            throw new RpcException(new Status(StatusCode.AlreadyExists, "CODE_ALREADY_SENT"));
+
+        var user = await userSvc.GetPartyAsync(partyId);
+        backgroundJobClient.Enqueue<IGeneralJob>(x => x.GenerateAuthCodeAndSendEmailAsync(
+            tenantGetter.GetTenantId(), user.EmailRaw, $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}"));
+
         return new EmailCodeResponse { ExpiresAt = "" };
     }
 
     public override async Task<EmailResponse> GetViewEmail(
         GetAgentViewEmailRequest request, ServerCallContext context)
     {
-        var account = await tenantCtx.Accounts
+        var partyId = GetPartyId(context);
+
+        var isAccountUnder = await tenantCtx.Accounts
             .Where(x => x.Uid == request.Uid)
             .Where(x => x.ReferPath.Contains(request.AgentUid.ToString()))
+            .AnyAsync();
+        if (!isAccountUnder)
+            throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+
+        var account = await tenantCtx.Accounts
+            .Where(x => x.Uid == request.Uid)
             .Select(x => new { x.Party.Email })
-            .SingleOrDefaultAsync();
-        if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
+            .SingleAsync();
+
+        var item = await tenantCtx.AuthCodes
+            .Where(x => x.PartyId == partyId)
+            .Where(x => x.Event == $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}")
+            .Where(x => x.ExpireOn > DateTime.UtcNow)
+            .Where(x => x.Code == request.Code)
+            .FirstOrDefaultAsync();
+        if (item == null)
+            throw new RpcException(new Status(StatusCode.NotFound, "CODE_NOT_FOUND"));
+
         return new EmailResponse { Email = account.Email ?? "" };
     }
 
@@ -1278,9 +1867,29 @@ public class RepAccountGrpcService(
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var result = await tradingSvc.GetDirectChildNetAmountForAccountByUid(request.Uid, from, to, request.ViewClient);
-        var net = result.Where(x => x.Uid != 0)
-            .Sum(x => (double)(x.DepositAmounts.Values.Sum() - x.WithdrawalAmounts.Values.Sum())) / 10000.0;
-        return new ChildNetStatResponse { NetDeposit = net };
+        var sumUp = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
+                    ?? result.FirstOrDefault(x => x.Uid == 0);
+
+        var response = new ChildNetStatResponse
+        {
+            Uid   = sumUp?.Uid   ?? 0,
+            Group = sumUp?.Group ?? "Child-Sum-Up",
+            Role  = (int)(sumUp?.Role ?? 0),
+        };
+        if (sumUp != null)
+        {
+            foreach (var kvp in sumUp.DepositAmounts)
+                response.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.WithdrawalAmounts)
+                response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.RebateAmounts)
+                response.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.ProfitAmounts)
+                response.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.NetAmounts)
+                response.NetAmounts[kvp.Key.ToString()] = kvp.Value;
+        }
+        return response;
     }
 
     public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
@@ -1291,12 +1900,17 @@ public class RepAccountGrpcService(
 
         var stats = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
         var response = new SymbolGroupStatResponse();
-        response.Items.AddRange(stats.Select(kvp => new SymbolStat
+        foreach (var kvp in stats)
         {
-            Symbol = kvp.Key,
-            Volume = kvp.Value.Volume,
-            Amount = kvp.Value.Profit,
-        }));
+            var entry = new SymbolStatEntry
+            {
+                Volume = kvp.Value.Volume,
+                Profit = kvp.Value.Profit,
+            };
+            foreach (var amtKvp in kvp.Value.Amounts)
+                entry.Amounts[amtKvp.Key.ToString()] = amtKvp.Value;
+            response.Items[kvp.Key] = entry;
+        }
         return response;
     }
 

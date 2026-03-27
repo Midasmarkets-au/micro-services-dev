@@ -129,7 +129,18 @@ const fetchData = async (_page: number) => {
   try {
     const res = await AccountService.queryAccountLog(criteria.value);
     data.value = res.data;
-    criteria.value = res.criteria;
+    const pagination = res.meta ?? res.criteria;
+    if (pagination) {
+      criteria.value = {
+        ...criteria.value,
+        page: pagination.page ?? _page,
+        size: pagination.size ?? criteria.value.size,
+        pageSize: pagination.size ?? criteria.value.pageSize,
+        total: pagination.total ?? 0,
+        pageCount: pagination.pageCount ?? 0,
+        hasMore: pagination.hasMore ?? false,
+      };
+    }
   } catch (error) {
     console.log(error);
   } finally {

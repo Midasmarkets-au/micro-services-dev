@@ -91,6 +91,7 @@
         <Protobuf Include="..\..\..\proto\http\v1\config.proto"       ProtoRoot="..\..\..\proto" GrpcServices="Server" />
         <Protobuf Include="..\..\..\proto\http\v1\symbol.proto"       ProtoRoot="..\..\..\proto" GrpcServices="Server" />
         <Protobuf Include="..\..\..\proto\http\v1\event.proto"        ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\lead.proto"         ProtoRoot="..\..\..\proto" GrpcServices="Server" />
     </ItemGroup>
 
     <ItemGroup>

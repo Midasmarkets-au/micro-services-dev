@@ -100,6 +100,8 @@ message ListReportRequestsRequest {
   optional int32    status     = 3; // 按状态过滤（0=pending、1=processing、2=completed、3=failed）
   optional string   date_from  = 4; // 创建时间起点，ISO 8601 格式
   optional string   date_to    = 5; // 创建时间终点，ISO 8601 格式
+  optional int32    page       = 6; // 兼容前端直接传 page
+  optional int32    size       = 7; // 兼容前端直接传 size
 }
 
 message ListReportRequestsResponse {
@@ -178,6 +180,9 @@ message ListAccountReportsRequest {
   optional int32    status      = 3; // 按状态过滤
   optional string   date_from   = 4; // ISO 8601 格式
   optional string   date_to     = 5; // ISO 8601 格式
+  optional int32    page        = 6; // 兼容前端直接传 page
+  optional int32    size        = 7; // 兼容前端直接传 size
+  optional int32    page_size   = 8; // 兼容前端传 pageSize
 }
 
 message ListAccountReportsResponse {

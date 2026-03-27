@@ -238,6 +238,8 @@
               <th class="">{{ $t("fields.tradeAccount") }}</th>
               <th class="">{{ $t("fields.name") }}</th>
               <th class="">{{ $t("fields.email") }}</th>
+              <th class="">{{ $t("fields.lastLoginIp") }}</th>
+              <th class="">{{ $t("fields.registeredIp") }}</th>
               <th class="" v-if="tenant != 'jp'">{{ $t("fields.site") }}</th>
               <th class="" v-if="projectConfig.rebateEnabled && tenant != 'au'">
                 {{ $t("fields.rebate") }}
@@ -524,6 +526,8 @@
                   ></i>
                 </span>
               </td>
+              <td>{{ item.user.lastLoginIp }}</td>
+              <td>{{ item.user.registeredIp }}</td>
               <td v-if="tenant != 'jp'">
                 {{ $t(`type.siteType.${item.siteId}`) }}
               </td>

@@ -481,13 +481,15 @@ service UserServiceV2 {
 
 // 用户实体
 message User {
-  int64  id         = 1; // 用户主键 ID
-  int64  party_id   = 2; // 用户 party_id（跨 tenant 唯一标识）
-  string email      = 3; // 登录邮箱
-  string first_name = 4; // 名
-  string last_name  = 5; // 姓
-  int32  status     = 6; // 用户状态：0=inactive、1=active、2=locked、3=suspended
-  string created_at = 7; // 注册时间，ISO 8601 格式
+  int64  id           = 1; // 用户主键 ID
+  int64  party_id     = 2; // 用户 party_id（跨 tenant 唯一标识）
+  string email        = 3; // 登录邮箱
+  string first_name   = 4; // 名
+  string last_name    = 5; // 姓
+  int32  status       = 6; // 用户状态：0=inactive、1=active、2=locked、3=suspended
+  string created_at   = 7; // 注册时间，ISO 8601 格式
+  optional string lockout_end = 8; // 锁定截止时间（ISO 8601），为空表示未锁定
+  optional string token       = 9; // god mode 临时访问 token（仅 EnableGodMode 接口返回）
 }
 
 // 角色实体
@@ -539,6 +541,8 @@ message ListUsersRequest {
   optional int32    status     = 3; // 按用户状态过滤
   optional string   date_from  = 4; // ISO 8601 格式
   optional string   date_to    = 5; // ISO 8601 格式
+  optional int32    page       = 6; // 兼容前端直接传 page
+  optional int32    size       = 7; // 兼容前端直接传 size
 }
 
 message ListUsersResponse {
@@ -749,6 +753,8 @@ message PermissionsResponse {
 message ListKycsRequest {
   PaginationRequest pagination = 1;
   optional int32    status     = 2; // 按 KYC 状态过滤
+  optional int32    page       = 3; // 兼容前端直接传 page
+  optional int32    size       = 4; // 兼容前端直接传 size
 }
 
 message ListKycsResponse {
@@ -795,6 +801,8 @@ message ListVerificationsRequest {
   PaginationRequest pagination = 1;
   optional int64    party_id   = 2; // 按用户 party_id 过滤
   optional int32    status     = 3; // 按验证状态过滤
+  optional int32    page       = 4; // 兼容前端直接传 page
+  optional int32    size       = 5; // 兼容前端直接传 size
 }
 
 message ListVerificationsResponse {

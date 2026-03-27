@@ -211,6 +211,10 @@ app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantUserBlacklistGrpc
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantApiLogGrpcService>().RequireAuthorization();
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantStatisticsGrpcService>().RequireAuthorization();
 app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantStatisticsV2GrpcService>().RequireAuthorization();
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Admin.TenantAdminGrpcService>().RequireAuthorization();
+
+// Lead: tenant-scoped, requires authentication
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Lead.TenantLeadGrpcService>().RequireAuthorization();
 
 // MonoCallbackService: called by the Rust scheduler via standard gRPC (tonic, HTTP/2).
 // No UseGrpcWeb: gRPC-Web is for browsers; tonic uses standard gRPC and is incompatible with gRPC-Web encoding.

@@ -38,8 +38,8 @@ public class TenantUserGrpcService(
     {
         var criteria = new Bacera.Gateway.Party.Criteria
         {
-            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
             SearchText = request.HasKeywords ? request.Keywords : null,
         };
 
@@ -63,7 +63,11 @@ public class TenantUserGrpcService(
             .ToTenantDetailModel(false)
             .SingleOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
-        return MapDetailToProto(item);
+
+        var proto = MapDetailToProto(item);
+        if (await userSvc.IsUserLockedOutAsync(request.PartyId))
+            proto.LockoutEnd = DateTime.MaxValue.ToString("O");
+        return proto;
     }
 
     public override Task<ProtoUser> GetUserByPid(GetUserByPidRequest request, ServerCallContext context)
@@ -581,9 +585,9 @@ public class TenantUserGrpcService(
 
         var res = await bcrTokenSvc.GetUserTokenAsync(targetUser, godPartyId: GetPartyId(context));
 
-        // Return the user with the access token embedded in the email field as a workaround;
-        // callers should use the full response from the legacy endpoint until a dedicated token RPC is added.
-        return MapAuthUserToProto(targetUser);
+        var proto = MapAuthUserToProto(targetUser);
+        proto.Token = res.AccessToken;
+        return proto;
     }
 
     // ─── Addresses ────────────────────────────────────────────────────────────
