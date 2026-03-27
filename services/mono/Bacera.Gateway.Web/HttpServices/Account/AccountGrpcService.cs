@@ -374,6 +374,7 @@ public class TenantAccountGrpcService(
             IdNumber           = u.IdNumber ?? "",
             Phone              = u.Phone ?? "",
             LastLoginIp        = u.LastLoginIp ?? "",
+            RegisteredIp       = u.RegisteredIp ?? "",
             IsInIpBlackList    = u.IsInIpBlackList,
             IsInUserBlackList  = u.IsInUserBlackList,
             HasUscAccount      = u.HasUSCAccount,
@@ -440,6 +441,13 @@ public class TenantAccountGrpcService(
             ClientRebateDistributionType   = (int?)v.ClientRebateDistributionType ?? 0,
             ActiveOn                       = v.ActiveOn?.ToString("O") ?? "",
             SuspendedOn                    = v.SuspendedOn?.ToString("O") ?? "",
+            Wizard = new Http.V1.AccountWizardInfo
+            {
+                KycFormCompleted    = v.Wizard?.KycFormCompleted ?? false,
+                PaymentAccessGranted = v.Wizard?.PaymentAccessGranted ?? false,
+                WelcomeEmailSent    = v.Wizard?.WelcomeEmailSent ?? false,
+                NoticeEmailSent     = v.Wizard?.NoticeEmailSent ?? false,
+            },
             User         = MapUserToProto(v.User),
             SalesAccount = MapBasicToProto(v.SalesAccount),
             AgentAccount = MapBasicToProto(v.AgentAccount),

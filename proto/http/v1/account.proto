@@ -372,7 +372,7 @@ message AccountUser {
   string registered_ip       = 14;
   bool   is_in_ip_black_list    = 15;
   bool   is_in_user_black_list  = 16;
-  bool   has_usc_account        = 17;
+  bool   has_usc_account        = 17 [json_name = "hasUSCAccount"];
   repeated string party_tags    = 18;
   string native_name         = 19;
   string display_name        = 20;
@@ -408,6 +408,14 @@ message TradeAccountBasic {
   int64  balance_in_cents = 8;
   int64  equity_in_cents  = 9;
   int64  credit_in_cents  = 10;
+}
+
+// 开户向导完成状态（对应 Supplement.AccountWizard）
+message AccountWizardInfo {
+  bool kyc_form_completed     = 1;
+  bool payment_access_granted = 2;
+  bool welcome_email_sent     = 3;
+  bool notice_email_sent      = 4;
 }
 
 // 账户实体（与 AccountViewModel 字段对齐）
@@ -450,6 +458,7 @@ message Account {
   int32  client_rebate_distribution_type = 35; // 0 表示 null
   string active_on                      = 36; // ISO 8601，空字符串表示 null
   string suspended_on                   = 37; // ISO 8601，空字符串表示 null
+  AccountWizardInfo wizard              = 38;
 }
 
 // 管理端账户列表查询请求
