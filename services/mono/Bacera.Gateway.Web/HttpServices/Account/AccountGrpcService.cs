@@ -8,9 +8,12 @@ using Grpc.Core;
 using Http.V1;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using ProtoAccount        = Http.V1.Account;
-using ProtoAccountLog     = Http.V1.AccountLog;
-using ProtoReferralCode   = Http.V1.ReferralCode;
+using ProtoAccount           = Http.V1.Account;
+using ProtoAccountLog        = Http.V1.AccountLog;
+using ProtoReferralCode      = Http.V1.ReferralCode;
+using ProtoAccountUser       = Http.V1.AccountUser;
+using ProtoAccountBasic      = Http.V1.AccountBasic;
+using ProtoTradeAccountBasic = Http.V1.TradeAccountBasic;
 
 namespace Bacera.Gateway.Web.HttpServices.Account;
 
@@ -58,7 +61,7 @@ public class TenantAccountGrpcService(
                 HasMore   = criteria.Page * criteria.Size < criteria.Total,
             }
         };
-        response.Data.AddRange(result.Data.Select(MapViewModelToProto));
+        response.Data.AddRange(result.Data.Select(MapViewModelToProtoWithTags));
         return response;
     }
 
@@ -348,22 +351,93 @@ public class TenantAccountGrpcService(
         Role      = a.Role,
         FundType  = a.FundType,
         PartyId   = a.PartyId,
-        CreatedAt = a.CreatedOn.ToString("O"),
-        UpdatedAt = a.UpdatedOn.ToString("O"),
+        CreatedOn = a.CreatedOn.ToString("O"),
+        UpdatedOn = a.UpdatedOn.ToString("O"),
     };
 
     private static ProtoAccount MapViewModelToProto(AccountViewModel v) => new ProtoAccount
     {
-        Id        = v.Id,
-        Name      = v.Name ?? "",
-        Email     = v.User?.Email ?? "",
-        Status    = (int)v.Status,
-        Role      = (int)v.Role,
-        FundType  = (int)v.FundType,
-        PartyId   = v.PartyId,
-        CreatedAt = v.CreatedOn.ToString("O"),
-        UpdatedAt = v.UpdatedOn.ToString("O"),
+        Id                  = v.Id,
+        Name                = v.Name ?? "",
+        Email               = v.User?.Email ?? "",
+        Status              = (int)v.Status,
+        Role                = (int)v.Role,
+        FundType            = (int)v.FundType,
+        PartyId             = v.PartyId,
+        CreatedOn           = v.CreatedOn.ToString("O"),
+        UpdatedOn           = v.UpdatedOn.ToString("O"),
+        Uid                 = v.Uid,
+        Type                = (int)v.Type,
+        CurrencyId          = (int)v.CurrencyId,
+        Code                = v.Code ?? "",
+        Group               = v.Group ?? "",
+        AccountNumber       = v.AccountNumber,
+        SiteId              = (int)v.SiteId,
+        WalletId            = v.WalletId,
+        ServiceId           = v.ServiceId,
+        HasComment          = v.HasComment ?? false,
+        HasRebateRule       = v.HasRebateRule,
+        HasTradeAccount     = v.HasTradeAccount,
+        HasLevelRule        = v.HasLevelRule,
+        IsInUserBlackList   = v.IsInUserBlackList,
+        IsInIpBlackList     = v.IsInIpBlackList,
+        User = v.User == null ? null : new ProtoAccountUser
+        {
+            Email      = v.User.Email ?? "",
+            FirstName  = v.User.FirstName ?? "",
+            LastName   = v.User.LastName ?? "",
+            PartyId    = v.User.PartyId,
+            Status     = v.User.Status,
+        },
+        SalesAccount = new ProtoAccountBasic
+        {
+            Id         = v.SalesAccount.Id,
+            Uid        = v.SalesAccount.Uid,
+            Code       = v.SalesAccount.Code ?? "",
+            Group      = v.SalesAccount.Group ?? "",
+            HasComment = v.SalesAccount.HasComment ?? false,
+            User       = new ProtoAccountUser
+            {
+                Email     = v.SalesAccount.User?.Email ?? "",
+                FirstName = v.SalesAccount.User?.FirstName ?? "",
+                LastName  = v.SalesAccount.User?.LastName ?? "",
+                PartyId   = v.SalesAccount.User?.PartyId ?? 0,
+                Status    = v.SalesAccount.User?.Status ?? 0,
+            },
+        },
+        AgentAccount = new ProtoAccountBasic
+        {
+            Id         = v.AgentAccount.Id,
+            Uid        = v.AgentAccount.Uid,
+            Code       = v.AgentAccount.Code ?? "",
+            Group      = v.AgentAccount.Group ?? "",
+            HasComment = v.AgentAccount.HasComment ?? false,
+            User       = new ProtoAccountUser
+            {
+                Email     = v.AgentAccount.User?.Email ?? "",
+                FirstName = v.AgentAccount.User?.FirstName ?? "",
+                LastName  = v.AgentAccount.User?.LastName ?? "",
+                PartyId   = v.AgentAccount.User?.PartyId ?? 0,
+                Status    = v.AgentAccount.User?.Status ?? 0,
+            },
+        },
+        TradeAccount = new ProtoTradeAccountBasic
+        {
+            ServiceName   = v.TradeAccount?.ServiceName ?? "",
+            AccountNumber = v.TradeAccount?.AccountNumber ?? 0,
+            CurrencyId    = (int)(v.TradeAccount?.CurrencyId ?? 0),
+            Balance       = v.TradeAccount?.Balance ?? 0,
+            Leverage      = v.TradeAccount?.Leverage ?? 0,
+            Credit        = v.TradeAccount?.Credit ?? 0,
+        },
     };
+    // account_tags 单独添加（repeated 字段不能用对象初始化器）
+    private static ProtoAccount MapViewModelToProtoWithTags(AccountViewModel v)
+    {
+        var proto = MapViewModelToProto(v);
+        proto.AccountTags.AddRange(v.AccountTags ?? []);
+        return proto;
+    }
 
     private static long GetPartyId(ServerCallContext ctx)
     {
@@ -575,8 +649,8 @@ public class TenantAccountV2GrpcService(
         Role      = a.Role,
         FundType  = a.FundType,
         PartyId   = a.PartyId,
-        CreatedAt = a.CreatedOn.ToString("O"),
-        UpdatedAt = a.UpdatedOn.ToString("O"),
+        CreatedOn = a.CreatedOn.ToString("O"),
+        UpdatedOn = a.UpdatedOn.ToString("O"),
     };
 }
 
@@ -623,7 +697,7 @@ public class ClientAccountGrpcService(
             Status    = (int)a.Status,
             Role      = (int)a.Role,
             FundType  = (int)a.FundType,
-            CreatedAt = a.CreatedOn.ToString("O"),
+            CreatedOn = a.CreatedOn.ToString("O"),
         }));
         return response;
     }
@@ -641,7 +715,7 @@ public class ClientAccountGrpcService(
             Status    = (int)item.Status,
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
-            CreatedAt = item.CreatedOn.ToString("O"),
+            CreatedOn = item.CreatedOn.ToString("O"),
         };
     }
 
@@ -671,7 +745,7 @@ public class ClientAccountGrpcService(
             Status    = (int)item.Status,
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
-            CreatedAt = item.CreatedOn.ToString("O"),
+            CreatedOn = item.CreatedOn.ToString("O"),
         };
     }
 
@@ -723,7 +797,7 @@ public class SalesAccountGrpcService(
             Status    = (int)a.Status,
             Role      = (int)a.Role,
             FundType  = (int)a.FundType,
-            CreatedAt = a.CreatedOn.ToString("O"),
+            CreatedOn = a.CreatedOn.ToString("O"),
         }));
         return response;
     }
@@ -743,7 +817,7 @@ public class SalesAccountGrpcService(
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
             PartyId   = clientAccount.PartyId,
-            CreatedAt = item.CreatedOn.ToString("O"),
+            CreatedOn = item.CreatedOn.ToString("O"),
         };
     }
 
@@ -964,7 +1038,7 @@ public class AgentAccountGrpcService(
             Role      = (int)a.Role,
             FundType  = (int)a.FundType,
             PartyId   = a.PartyId,
-            CreatedAt = a.CreatedOn.ToString("O"),
+            CreatedOn = a.CreatedOn.ToString("O"),
         }));
         return response;
     }
@@ -984,7 +1058,7 @@ public class AgentAccountGrpcService(
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
             PartyId   = clientAccount.PartyId,
-            CreatedAt = item.CreatedOn.ToString("O"),
+            CreatedOn = item.CreatedOn.ToString("O"),
         };
     }
 
@@ -1003,7 +1077,7 @@ public class AgentAccountGrpcService(
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
             PartyId   = clientAccount.PartyId,
-            CreatedAt = item.CreatedOn.ToString("O"),
+            CreatedOn = item.CreatedOn.ToString("O"),
         };
     }
 
@@ -1127,7 +1201,7 @@ public class RepAccountGrpcService(
             Role      = (int)a.Role,
             FundType  = (int)a.FundType,
             PartyId   = a.PartyId,
-            CreatedAt = a.CreatedOn.ToString("O"),
+            CreatedOn = a.CreatedOn.ToString("O"),
         }));
         return response;
     }
@@ -1147,7 +1221,7 @@ public class RepAccountGrpcService(
             Role      = (int)item.Role,
             FundType  = (int)item.FundType,
             PartyId   = clientAccount.PartyId,
-            CreatedAt = item.CreatedOn.ToString("O"),
+            CreatedOn = item.CreatedOn.ToString("O"),
         };
     }
 

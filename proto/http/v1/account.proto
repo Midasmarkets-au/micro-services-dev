@@ -354,18 +354,68 @@ service RepAccountService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 账户实体（含关键标识字段）
+// 账户用户基本信息（嵌套在 Account 中）
+message AccountUser {
+  string email      = 1;
+  string first_name = 2;
+  string last_name  = 3;
+  int64  party_id   = 4;
+  int32  status     = 5;
+  bool   has_comment = 6;
+}
+
+// 关联账户基本信息（salesAccount / agentAccount）
+message AccountBasic {
+  int64       id          = 1;
+  int64       uid         = 2;
+  string      code        = 3;
+  string      group       = 4;
+  bool        has_comment = 5;
+  AccountUser user        = 6;
+}
+
+// 交易账户基本信息
+message TradeAccountBasic {
+  string service_name = 1;
+  int64  account_number = 2;
+  int32  currency_id    = 3;
+  double balance        = 4;
+  int32  leverage       = 5;
+  double credit         = 6;
+}
+
+// 账户实体（与 AccountViewModel 字段对齐）
 message Account {
   int64  id          = 1;  // 平台账户主键 ID
   string name        = 2;  // 账户显示名称
   string email       = 3;  // 账户邮箱地址
-  int32  status      = 4;  // 账户状态：0=inactive（停用）、1=active（正常）、2=locked（锁定）、3=suspended（暂停）
-  int32  role        = 5;  // 账户角色类型：对应 AccountRoleTypes 枚举（如 Client/IB/Sales/Rep）
-  int32  fund_type   = 6;  // 资金类型枚举，影响可用出入金渠道
-  // tenant_id 字段已移除：多租户隔离通过 DB 连接实现，Account 实体不存储 tenant_id
-  int64  party_id    = 8;  // 跨租户唯一用户标识（同一自然人在不同租户下 party_id 相同）
-  string created_at  = 9;  // 创建时间，ISO 8601 格式
-  string updated_at  = 10; // 最后更新时间，ISO 8601 格式
+  int32  status      = 4;  // 账户状态
+  int32  role        = 5;  // 账户角色类型
+  int32  fund_type   = 6;  // 资金类型枚举
+  int64  party_id    = 8;  // 跨租户唯一用户标识
+  string created_on  = 9;  // 创建时间，ISO 8601 格式
+  string updated_on  = 10; // 最后更新时间，ISO 8601 格式
+  // 扩展字段
+  int64  uid                    = 11;
+  int32  type                   = 12; // AccountTypes 枚举
+  int32  currency_id            = 13;
+  string code                   = 14;
+  string group                  = 15;
+  int64  account_number         = 16;
+  int32  site_id                = 17;
+  int64  wallet_id              = 18;
+  int32  service_id             = 19;
+  bool   has_comment            = 20;
+  bool   has_rebate_rule        = 21;
+  bool   has_trade_account      = 22;
+  bool   has_level_rule         = 23;
+  bool   is_in_user_black_list  = 24;
+  bool   is_in_ip_black_list    = 25;
+  repeated string account_tags  = 26;
+  AccountUser     user          = 27;
+  AccountBasic    sales_account = 28;
+  AccountBasic    agent_account = 29;
+  TradeAccountBasic trade_account = 30;
 }
 
 // 管理端账户列表查询请求
