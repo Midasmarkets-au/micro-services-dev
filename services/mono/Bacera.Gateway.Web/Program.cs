@@ -36,6 +36,14 @@ builder.SetupDbContext();
 builder.SetupAuthentication();
 builder.SetupIdentity();
 builder.SetupIdentityServer();
+// AddIdentity() overrides DefaultAuthenticateScheme/DefaultChallengeScheme to the Identity
+// cookie scheme. PostConfigure runs after all Configure calls so OpenIddict wins regardless
+// of registration order, ensuring API endpoints challenge with 401 not a cookie redirect.
+builder.Services.PostConfigure<Microsoft.AspNetCore.Authentication.AuthenticationOptions>(options =>
+{
+    options.DefaultAuthenticateScheme = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme    = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+});
 builder.Services.SetupDataProtection(builder.Configuration); // Add Data Protection with persistent key storage
 
 // builder.Services.SetupAuthentication();
