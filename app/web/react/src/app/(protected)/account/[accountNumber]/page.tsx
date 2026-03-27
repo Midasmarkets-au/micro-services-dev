@@ -746,6 +746,7 @@ export default function AccountDetailPage() {
           {/* 筛选栏 */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
             <TradeFilter
+              key={`trade-filter-${activeTab}`}
               type={getFilterType(activeTab)}
               filterOptions={['stateIds', 'datePicker', 'pageSize']}
               defaultPageSize={20}

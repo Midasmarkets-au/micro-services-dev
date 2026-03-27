@@ -218,7 +218,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
         <textarea
           className={cn(
-            'input-field h-auto! min-h-[120px] resize-none py-3',
+            'input-field h-auto! min-h-[120px] resize-none px-4! pt-3! pb-3!',
             error && 'error-border',
             className
           )}

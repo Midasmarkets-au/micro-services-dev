@@ -3,9 +3,9 @@
 import { CenterSidebar, type CenterMenuItem } from '@/components/layout/CenterSidebar';
 
 const salesMenuItems: CenterMenuItem[] = [
-  { id: 'dashboard', path: '/sales', labelKey: 'dashboard', icon: '/images/icons/ib/gailan.svg', group: 0 },
-  { id: 'new-customers', path: '/sales/new-customers', labelKey: 'newCustomers', icon: '/images/icons/ib/xinkehu.svg', group: 1 },
+  // { id: 'dashboard', path: '/sales', labelKey: 'dashboard', icon: '/images/icons/ib/gailan.svg', group: 0 },
   { id: 'customers', path: '/sales/customers', labelKey: 'customers', icon: '/images/icons/ib/kehu.svg', group: 1 },
+  { id: 'new-customers', path: '/sales/new-customers', labelKey: 'newCustomers', icon: '/images/icons/ib/xinkehu.svg', group: 1 },
   { id: 'trade', path: '/sales/trade', labelKey: 'trade', icon: '/images/icons/ib/jiaoyi.svg', group: 2 },
   { id: 'transaction', path: '/sales/transaction', labelKey: 'transaction', icon: '/images/icons/ib/jiaoyi.svg', group: 2 },
   { id: 'deposit', path: '/sales/deposit', labelKey: 'deposit', icon: '/images/icons/ib/rujin.svg', group: 2 },
@@ -14,5 +14,5 @@ const salesMenuItems: CenterMenuItem[] = [
 ];
 
 export function SalesSidebar() {
-  return <CenterSidebar items={salesMenuItems} basePath="/sales" translationNamespace="sales" />;
+  return <CenterSidebar items={salesMenuItems} basePath="/sales/customers" translationNamespace="sales" />;
 }

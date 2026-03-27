@@ -37,7 +37,6 @@ export default function SalesTradePage() {
       <TradeReportTable
         fetchData={fetchData}
         filterOptions={['isClosed', 'service', 'product', 'account', 'datePicker', 'allHistory']}
-        filterTranslationNamespace="sales"
         defaultIsClosed={true}
         showAccountNumber={true}
         defaultDateRange={todayRange}
