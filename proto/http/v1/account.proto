@@ -354,34 +354,60 @@ service RepAccountService {
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
-// 账户用户基本信息（嵌套在 Account 中）
+// 账户用户基本信息（嵌套在 Account / AccountBasic 中，与 UserViewModel 字段对齐）
 message AccountUser {
-  string email      = 1;
-  string first_name = 2;
-  string last_name  = 3;
-  int64  party_id   = 4;
-  int32  status     = 5;
-  bool   has_comment = 6;
+  string email               = 1;
+  string first_name          = 2;
+  string last_name           = 3;
+  int64  party_id            = 4;
+  int32  status              = 5;
+  bool   has_comment         = 6;
+  int64  id                  = 7;
+  int64  uid                 = 8;
+  string avatar              = 9;
+  string language            = 10;
+  string id_number           = 11;
+  string phone               = 12;
+  string last_login_ip       = 13;
+  string registered_ip       = 14;
+  bool   is_in_ip_black_list    = 15;
+  bool   is_in_user_black_list  = 16;
+  bool   has_usc_account        = 17;
+  repeated string party_tags    = 18;
+  string native_name         = 19;
+  string display_name        = 20;
 }
 
-// 关联账户基本信息（salesAccount / agentAccount）
+// 关联账户基本信息（salesAccount / agentAccount，与 AccountBasicViewModel 对齐）
 message AccountBasic {
-  int64       id          = 1;
-  int64       uid         = 2;
-  string      code        = 3;
-  string      group       = 4;
-  bool        has_comment = 5;
-  AccountUser user        = 6;
+  int64       id                 = 1;
+  int64       uid                = 2;
+  string      code               = 3;
+  string      group              = 4;
+  bool        has_comment        = 5;
+  AccountUser user               = 6;
+  int64       party_id           = 7;
+  int32       role               = 8;
+  string      name               = 9;
+  int32       currency_id        = 10;
+  string      account_group_name = 11;
+  string      refer_path         = 12;
+  int64       account_number     = 13;
+  int32       service_id         = 14;
 }
 
-// 交易账户基本信息
+// 交易账户基本信息（与 TradeAccountBasicViewModel 对齐）
 message TradeAccountBasic {
-  string service_name = 1;
-  int64  account_number = 2;
-  int32  currency_id    = 3;
-  double balance        = 4;
-  int32  leverage       = 5;
-  double credit         = 6;
+  string service_name    = 1;
+  int64  account_number  = 2;
+  int32  currency_id     = 3;
+  double balance         = 4;
+  int32  leverage        = 5;
+  double credit          = 6;
+  double equity          = 7;
+  int64  balance_in_cents = 8;
+  int64  equity_in_cents  = 9;
+  int64  credit_in_cents  = 10;
 }
 
 // 账户实体（与 AccountViewModel 字段对齐）
@@ -416,6 +442,14 @@ message Account {
   AccountBasic    sales_account = 28;
   AccountBasic    agent_account = 29;
   TradeAccountBasic trade_account = 30;
+  // 其余字段（与 AccountViewModel 完整对齐）
+  int32  level                          = 31;
+  bool   has_closed_account             = 32;
+  string alias                          = 33;
+  string refer_path                     = 34;
+  int32  client_rebate_distribution_type = 35; // 0 表示 null
+  string active_on                      = 36; // ISO 8601，空字符串表示 null
+  string suspended_on                   = 37; // ISO 8601，空字符串表示 null
 }
 
 // 管理端账户列表查询请求

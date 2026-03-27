@@ -2,6 +2,7 @@ using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
+using Bacera.Gateway;
 using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Grpc.Core;
@@ -355,89 +356,115 @@ public class TenantAccountGrpcService(
         UpdatedOn = a.UpdatedOn.ToString("O"),
     };
 
-    private static ProtoAccount MapViewModelToProto(AccountViewModel v) => new ProtoAccount
+    private static ProtoAccountUser MapUserToProto(TenantUserBasicModel? u)
     {
-        Id                  = v.Id,
-        Name                = v.Name ?? "",
-        Email               = v.User?.Email ?? "",
-        Status              = (int)v.Status,
-        Role                = (int)v.Role,
-        FundType            = (int)v.FundType,
-        PartyId             = v.PartyId,
-        CreatedOn           = v.CreatedOn.ToString("O"),
-        UpdatedOn           = v.UpdatedOn.ToString("O"),
-        Uid                 = v.Uid,
-        Type                = (int)v.Type,
-        CurrencyId          = (int)v.CurrencyId,
-        Code                = v.Code ?? "",
-        Group               = v.Group ?? "",
-        AccountNumber       = v.AccountNumber,
-        SiteId              = (int)v.SiteId,
-        WalletId            = v.WalletId,
-        ServiceId           = v.ServiceId,
-        HasComment          = v.HasComment ?? false,
-        HasRebateRule       = v.HasRebateRule,
-        HasTradeAccount     = v.HasTradeAccount,
-        HasLevelRule        = v.HasLevelRule,
-        IsInUserBlackList   = v.IsInUserBlackList,
-        IsInIpBlackList     = v.IsInIpBlackList,
-        User = v.User == null ? null : new ProtoAccountUser
+        if (u == null) return new ProtoAccountUser();
+        return new ProtoAccountUser
         {
-            Email      = v.User.Email ?? "",
-            FirstName  = v.User.FirstName ?? "",
-            LastName   = v.User.LastName ?? "",
-            PartyId    = v.User.PartyId,
-            Status     = v.User.Status,
-        },
-        SalesAccount = new ProtoAccountBasic
-        {
-            Id         = v.SalesAccount.Id,
-            Uid        = v.SalesAccount.Uid,
-            Code       = v.SalesAccount.Code ?? "",
-            Group      = v.SalesAccount.Group ?? "",
-            HasComment = v.SalesAccount.HasComment ?? false,
-            User       = new ProtoAccountUser
-            {
-                Email     = v.SalesAccount.User?.Email ?? "",
-                FirstName = v.SalesAccount.User?.FirstName ?? "",
-                LastName  = v.SalesAccount.User?.LastName ?? "",
-                PartyId   = v.SalesAccount.User?.PartyId ?? 0,
-                Status    = v.SalesAccount.User?.Status ?? 0,
-            },
-        },
-        AgentAccount = new ProtoAccountBasic
-        {
-            Id         = v.AgentAccount.Id,
-            Uid        = v.AgentAccount.Uid,
-            Code       = v.AgentAccount.Code ?? "",
-            Group      = v.AgentAccount.Group ?? "",
-            HasComment = v.AgentAccount.HasComment ?? false,
-            User       = new ProtoAccountUser
-            {
-                Email     = v.AgentAccount.User?.Email ?? "",
-                FirstName = v.AgentAccount.User?.FirstName ?? "",
-                LastName  = v.AgentAccount.User?.LastName ?? "",
-                PartyId   = v.AgentAccount.User?.PartyId ?? 0,
-                Status    = v.AgentAccount.User?.Status ?? 0,
-            },
-        },
-        TradeAccount = new ProtoTradeAccountBasic
-        {
-            ServiceName   = v.TradeAccount?.ServiceName ?? "",
-            AccountNumber = v.TradeAccount?.AccountNumber ?? 0,
-            CurrencyId    = (int)(v.TradeAccount?.CurrencyId ?? 0),
-            Balance       = v.TradeAccount?.Balance ?? 0,
-            Leverage      = v.TradeAccount?.Leverage ?? 0,
-            Credit        = v.TradeAccount?.Credit ?? 0,
-        },
-    };
-    // account_tags 单独添加（repeated 字段不能用对象初始化器）
-    private static ProtoAccount MapViewModelToProtoWithTags(AccountViewModel v)
+            Email              = u.Email ?? "",
+            FirstName          = u.FirstName ?? "",
+            LastName           = u.LastName ?? "",
+            PartyId            = u.PartyId,
+            Status             = u.Status,
+            HasComment         = u.HasComment,
+            Id                 = u.Id,
+            Uid                = u.Uid,
+            Avatar             = u.Avatar ?? "",
+            Language           = u.Language ?? "",
+            IdNumber           = u.IdNumber ?? "",
+            Phone              = u.Phone ?? "",
+            LastLoginIp        = u.LastLoginIp ?? "",
+            IsInIpBlackList    = u.IsInIpBlackList,
+            IsInUserBlackList  = u.IsInUserBlackList,
+            HasUscAccount      = u.HasUSCAccount,
+            NativeName         = u.NativeName ?? "",
+            DisplayName        = u.DisplayName ?? "",
+        };
+    }
+
+    private static ProtoAccountBasic MapBasicToProto(AccountBasicViewModel b)
     {
-        var proto = MapViewModelToProto(v);
-        proto.AccountTags.AddRange(v.AccountTags ?? []);
+        var proto = new ProtoAccountBasic
+        {
+            Id               = b.Id,
+            Uid              = b.Uid,
+            Code             = b.Code ?? "",
+            Group            = b.Group ?? "",
+            HasComment       = b.HasComment ?? false,
+            PartyId          = b.PartyId,
+            Role             = (int)b.Role,
+            Name             = b.Name ?? "",
+            CurrencyId       = (int)b.CurrencyId,
+            AccountGroupName = b.AccountGroupName ?? "",
+            ReferPath        = b.ReferPath ?? "",
+            AccountNumber    = b.AccountNumber,
+            ServiceId        = b.ServiceId,
+            User             = MapUserToProto(b.User),
+        };
+        proto.User.PartyTags.AddRange(b.User?.PartyTags ?? []);
         return proto;
     }
+
+    private static ProtoAccount MapViewModelToProto(AccountViewModel v)
+    {
+        var proto = new ProtoAccount
+        {
+            Id                             = v.Id,
+            Name                           = v.Name ?? "",
+            Email                          = v.User?.Email ?? "",
+            Status                         = (int)v.Status,
+            Role                           = (int)v.Role,
+            FundType                       = (int)v.FundType,
+            PartyId                        = v.PartyId,
+            CreatedOn                      = v.CreatedOn.ToString("O"),
+            UpdatedOn                      = v.UpdatedOn.ToString("O"),
+            Uid                            = v.Uid,
+            Type                           = (int)v.Type,
+            CurrencyId                     = (int)v.CurrencyId,
+            Code                           = v.Code ?? "",
+            Group                          = v.Group ?? "",
+            AccountNumber                  = v.AccountNumber,
+            SiteId                         = (int)v.SiteId,
+            WalletId                       = v.WalletId,
+            ServiceId                      = v.ServiceId,
+            HasComment                     = v.HasComment ?? false,
+            HasRebateRule                  = v.HasRebateRule,
+            HasTradeAccount                = v.HasTradeAccount,
+            HasLevelRule                   = v.HasLevelRule,
+            IsInUserBlackList              = v.IsInUserBlackList,
+            IsInIpBlackList                = v.IsInIpBlackList,
+            Level                          = v.Level,
+            HasClosedAccount               = v.HasClosedAccount,
+            Alias                          = v.Alias ?? "",
+            ReferPath                      = v.ReferPath ?? "",
+            ClientRebateDistributionType   = (int?)v.ClientRebateDistributionType ?? 0,
+            ActiveOn                       = v.ActiveOn?.ToString("O") ?? "",
+            SuspendedOn                    = v.SuspendedOn?.ToString("O") ?? "",
+            User         = MapUserToProto(v.User),
+            SalesAccount = MapBasicToProto(v.SalesAccount),
+            AgentAccount = MapBasicToProto(v.AgentAccount),
+            TradeAccount = new ProtoTradeAccountBasic
+            {
+                ServiceName    = v.TradeAccount?.ServiceName ?? "",
+                AccountNumber  = v.TradeAccount?.AccountNumber ?? 0,
+                CurrencyId     = (int)(v.TradeAccount?.CurrencyId ?? 0),
+                Balance        = v.TradeAccount?.Balance ?? 0,
+                Leverage       = v.TradeAccount?.Leverage ?? 0,
+                Credit         = v.TradeAccount?.Credit ?? 0,
+                Equity         = v.TradeAccount?.Equity ?? 0,
+                BalanceInCents = v.TradeAccount?.BalanceInCents ?? 0,
+                EquityInCents  = v.TradeAccount?.EquityInCents ?? 0,
+                CreditInCents  = v.TradeAccount?.CreditInCents ?? 0,
+            },
+        };
+        // repeated 字段不能在对象初始化器中设置，需要 AddRange
+        proto.AccountTags.AddRange(v.AccountTags ?? []);
+        proto.User.PartyTags.AddRange(v.User?.PartyTags ?? []);
+        return proto;
+    }
+
+    // 保留兼容方法名（现在 MapViewModelToProto 已包含全部字段）
+    private static ProtoAccount MapViewModelToProtoWithTags(AccountViewModel v) => MapViewModelToProto(v);
 
     private static long GetPartyId(ServerCallContext ctx)
     {
