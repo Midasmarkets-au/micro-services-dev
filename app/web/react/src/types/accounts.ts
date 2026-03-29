@@ -19,13 +19,18 @@ export enum ApplicationType {
 
 // 账户角色
 export enum AccountRoleTypes {
+
+  Unknown = 0,
+  Rep = 110,
+  Broker = 200,
+  System = 1,
   SuperAdmin = 2,
   TenantAdmin = 10,
   Sales = 100,
   IB = 300,
   Wholesale = 310,
   Client = 400,
-  Guest = 1000,
+  Guest = 1000
 }
 
 // 账户状态
@@ -690,3 +695,5 @@ export const getWebTraderLink = (
   }
   return `/webTrader/${accountNumber}/${serviceId}`;
 };
+
+

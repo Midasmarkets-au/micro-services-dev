@@ -618,7 +618,7 @@ export default function IBCustomerDetailPage({
               <TradeFilter
                 type={getFilterType(tab)}
                 filterOptions={['stateIds', 'datePicker', 'pageSize']}
-                defaultPageSize={DEFAULT_PAGE_SIZE}
+                defaultParam={{ pageSize: DEFAULT_PAGE_SIZE }}
                 fixedParams={{
                   ...(TAB_FIXED_FILTER_PARAMS[tab] ?? {}),
                   ...(tab === 'transfer' ? {} : { accountUid: String(accountUid) }),

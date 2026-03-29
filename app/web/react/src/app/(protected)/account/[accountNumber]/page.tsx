@@ -749,7 +749,7 @@ export default function AccountDetailPage() {
               key={`trade-filter-${activeTab}`}
               type={getFilterType(activeTab)}
               filterOptions={['stateIds', 'datePicker', 'pageSize']}
-              defaultPageSize={20}
+              defaultParam={{ pageSize: 20 }}
               fixedParams={TAB_FIXED_FILTER_PARAMS[activeTab] ?? {}}
               onSearch={handleSearch}
               isLoading={tabLoading}

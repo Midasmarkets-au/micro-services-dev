@@ -617,7 +617,7 @@ export default function SalesCustomerDetailPage({
               <TradeFilter
                 type={getFilterType(tab)}
                 filterOptions={['stateIds', 'datePicker', 'pageSize']}
-                defaultPageSize={15}
+                defaultParam={{ pageSize: 15 }}
                 fixedParams={{
                   ...(TAB_FIXED_FILTER_PARAMS[tab] ?? {}),
                   ...(tab === 'transaction' ? {} : { accountUid }),

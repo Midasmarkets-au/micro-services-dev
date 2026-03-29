@@ -4,18 +4,22 @@ import { useCallback, useMemo } from 'react';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesTradeReports } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import type { DateRange } from '@/components/ui';
 import { TradeReportTable } from '@/components/TradeReportTable';
 
 export default function SalesTradePage() {
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
 
-  const todayRange = useMemo<DateRange>(() => {
+  const todayRange = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return { from: d, to: d };
   }, []);
+
+  const defaultParam = useMemo(() => ({
+    isClosed: true,
+    dateRange: todayRange,
+  }), [todayRange]);
 
   const fetchData = useCallback(
     async (params: Record<string, unknown>) => {
@@ -37,9 +41,8 @@ export default function SalesTradePage() {
       <TradeReportTable
         fetchData={fetchData}
         filterOptions={['isClosed', 'service', 'product', 'account', 'datePicker', 'allHistory']}
-        defaultIsClosed={true}
+        defaultParam={defaultParam}
         showAccountNumber={true}
-        defaultDateRange={todayRange}
         autoFetchKey={salesAccount?.uid}
       />
     </div>

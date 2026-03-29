@@ -13,7 +13,7 @@ export default function SalesLayout({ children }: { children: React.ReactNode })
   const { salesAccount, salesAccountList, setSalesAccount } = useSalesStore();
   const user = useUserStore((s) => s.user);
 
-  const isHomePage = pathname === '/sales';
+  const isHomePage = pathname === '/sales/customers';
   const showTabSwitcher = !isHomePage && salesAccountList.length > 1;
 
   const handleChangeAccount = (uid: number) => {

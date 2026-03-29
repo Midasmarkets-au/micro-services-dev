@@ -39,6 +39,7 @@ export function SalesRebateSettingsDialog({
   code,
 }: SalesRebateSettingsDialogProps) {
   const t = useTranslations('sales');
+  const tType = useTranslations('type');
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
@@ -117,7 +118,7 @@ export function SalesRebateSettingsDialog({
   const productCategoryMap = useMemo(() => {
     const i18nMap = (() => {
       try {
-        return t.raw('type.productCategory') as Record<string, string>;
+        return tType.raw('productCategory') as Record<string, string>;
       } catch {
         return {};
       }
@@ -134,23 +135,23 @@ export function SalesRebateSettingsDialog({
         );
     });
     return map;
-  }, [productCategory, t]);
+  }, [productCategory, tType]);
 
   const pipOptionMap = useMemo(() => {
     try {
-      return t.raw('type.pipOptions') as Record<string, string>;
+      return tType.raw('pipOptions') as Record<string, string>;
     } catch {
       return {};
     }
-  }, [t]);
+  }, [tType]);
 
   const commissionOptionMap = useMemo(() => {
     try {
-      return t.raw('type.commissionOptions') as Record<string, string>;
+      return tType.raw('commissionOptions') as Record<string, string>;
     } catch {
       return {};
     }
-  }, [t]);
+  }, [tType]);
 
   const isAgent = detail?.serviceType === SERVICE_TYPE_BROKER;
   const isClient = detail?.serviceType === SERVICE_TYPE_CLIENT;

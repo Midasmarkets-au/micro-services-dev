@@ -171,38 +171,40 @@ export type FilterField =
 const DEFAULT_FILTER_OPTIONS: FilterField[] = ['account', 'datePicker', 'allHistory'];
 
 export interface StatusOption {
-  /** 状态 ID 值，如 "300"(DepositCreated), "350"(DepositCompleted) */
   value: string;
   label: string;
+}
+
+/** 筛选字段的原始值，onChange 对外暴露的结构 */
+export interface TradeFilterValues {
+  stateIds?: string;
+  isClosed?: boolean;
+  serviceId?: string;
+  symbol?: string;
+  account?: string;
+  dateRange?: DateRange;
+  pageSize?: number;
 }
 
 export interface TradeFilterProps {
   /** 筛选类型，决定状态映射、状态下拉选项和时间转换逻辑 */
   type: TradeFilterType;
-  /** 日期选择器默认值，不传则为空 */
-  defaultDateRange?: DateRange;
-  /**
-   * 要显示的筛选字段列表，默认 ['account', 'datePicker', 'allHistory']
-   * 可选值: 'stateIds' | 'isClosed' | 'service' | 'product' | 'account' | 'datePicker' | 'allHistory' | 'pageSize'
-   */
+  /** 要显示的筛选字段列表 */
   filterOptions?: FilterField[];
+  /** 各字段的默认值，外层变更时自动同步内部状态并触发搜索 */
+  defaultParam?: TradeFilterValues;
   /** 固定透传参数（如详情页自动携带账户） */
   fixedParams?: Record<string, unknown>;
   /** 页面大小可选项 */
   pageSizeOptions?: number[];
-  /** 默认页面大小 */
-  defaultPageSize?: number;
-  /**
-   * 搜索回调 — 参数为完整的查询条件
-   * stateIds 已映射为数组，时间已转换为 GMT
-   */
+  /** 搜索回调 — 参数为完整的查询条件（stateIds 已映射为数组，时间已转换为 GMT） */
   onSearch: (params: Record<string, unknown>) => void;
   /** 重置回调（会同时触发 onSearch） */
   onReset?: () => void;
   /** 全部历史回调 */
   onAllHistory?: () => void;
-  /** isClosed 切换回调（切换时自动触发搜索） */
-  onIsClosedChange?: (isClosed: boolean) => void;
+  /** 任意字段值变化时的通用回调，返回所有可见字段的最新值 */
+  onChange?: (values: TradeFilterValues) => void;
   /** 是否加载中 */
   isLoading?: boolean;
 }
@@ -213,15 +215,14 @@ export interface TradeFilterProps {
 
 export function TradeFilter({
   type,
-  defaultDateRange,
   filterOptions = DEFAULT_FILTER_OPTIONS,
+  defaultParam,
   fixedParams,
   pageSizeOptions = [10, 15, 20, 25, 30, 50, 100],
-  defaultPageSize = 25,
   onSearch,
   onReset,
   onAllHistory,
-  onIsClosedChange,
+  onChange,
   isLoading = false,
 }: TradeFilterProps) {
   const t = useTranslations('ib');
@@ -268,19 +269,48 @@ export function TradeFilter({
     [serviceOptions],
   );
 
-  const [status, setStatus] = useState<string | undefined>(undefined);
-  const [isClosed, setIsClosed] = useState(false);
-  const [serviceId, setServiceId] = useState<string>(defaultServiceValue);
-  const [symbol, setSymbol] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultDateRange);
-  const [pageSize, setPageSize] = useState<number>(defaultPageSize);
+  const [status, setStatus] = useState<string | undefined>(defaultParam?.stateIds);
+  const [isClosed, setIsClosed] = useState(defaultParam?.isClosed ?? false);
+  const [serviceId, setServiceId] = useState<string>(defaultParam?.serviceId ?? defaultServiceValue);
+  const [symbol, setSymbol] = useState(defaultParam?.symbol ?? '');
+  const [accountNumber, setAccountNumber] = useState(defaultParam?.account ?? '');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultParam?.dateRange);
+  const [pageSize, setPageSize] = useState<number>(defaultParam?.pageSize ?? 25);
+
+  // defaultParam 外部变更时同步内部状态
+  const [prevDefaultParam, setPrevDefaultParam] = useState(defaultParam);
+  const [defaultParamSyncVersion, setDefaultParamSyncVersion] = useState(0);
+  if (defaultParam !== prevDefaultParam) {
+    const dp = defaultParam || {};
+    const prev = prevDefaultParam || {};
+    setPrevDefaultParam(defaultParam);
+    let synced = false;
+    if (dp.dateRange !== prev.dateRange) { setDateRange(dp.dateRange); synced = true; }
+    if (dp.isClosed !== prev.isClosed) { setIsClosed(dp.isClosed ?? false); synced = true; }
+    if (dp.pageSize !== prev.pageSize) { setPageSize(dp.pageSize ?? 25); synced = true; }
+    if (dp.serviceId !== prev.serviceId) { setServiceId(dp.serviceId ?? defaultServiceValue); synced = true; }
+    if (dp.symbol !== prev.symbol) { setSymbol(dp.symbol ?? ''); synced = true; }
+    if (dp.account !== prev.account) { setAccountNumber(dp.account ?? ''); synced = true; }
+    if (dp.stateIds !== prev.stateIds) { setStatus(dp.stateIds); synced = true; }
+    if (synced) setDefaultParamSyncVersion((v) => v + 1);
+  }
 
   const { execute } = useServerAction({ showErrorToast: false });
   const executeRef = useRef(execute);
   useEffect(() => {
     executeRef.current = execute;
   }, [execute]);
+
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   const [symbolCodes, setSymbolCodes] = useState<string[]>([]);
   const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
   const symbolDropdownRef = useRef<HTMLDivElement>(null);
@@ -341,6 +371,29 @@ export function TradeFilter({
       : defaultStatusValue;
   }, [status, statusOptions, defaultStatusValue]);
 
+  const collectValues = useCallback(
+    (overrides?: Partial<TradeFilterValues>): TradeFilterValues => {
+      const o = overrides || {};
+      const values: TradeFilterValues = {};
+      if (visibleFields.has('stateIds')) values.stateIds = 'stateIds' in o ? o.stateIds : (status ?? resolvedStatus);
+      if (visibleFields.has('isClosed')) values.isClosed = 'isClosed' in o ? o.isClosed : isClosed;
+      if (visibleFields.has('service')) values.serviceId = 'serviceId' in o ? o.serviceId : serviceId;
+      if (visibleFields.has('product')) values.symbol = 'symbol' in o ? o.symbol : symbol;
+      if (visibleFields.has('account')) values.account = 'account' in o ? o.account : accountNumber;
+      if (visibleFields.has('datePicker')) values.dateRange = 'dateRange' in o ? o.dateRange : dateRange;
+      if (visibleFields.has('pageSize')) values.pageSize = 'pageSize' in o ? o.pageSize : pageSize;
+      return values;
+    },
+    [visibleFields, status, resolvedStatus, isClosed, serviceId, symbol, accountNumber, dateRange, pageSize],
+  );
+
+  const fireChange = useCallback(
+    (overrides: Partial<TradeFilterValues>) => {
+      onChangeRef.current?.(collectValues(overrides));
+    },
+    [collectValues],
+  );
+
   const resolveStateIds = useCallback(
     (statusValue: string): number[] | undefined => {
       if (!statusValue || statusValue === 'all') return undefined;
@@ -399,39 +452,98 @@ export function TradeFilter({
     [resolvedStatus, isClosed, serviceId, symbol, accountNumber, pageSize, dateRange, resolveStateIds, visibleFields, fixedParams],
   );
 
-  // ---- Actions ----
+  // 挂载时自动触发初始搜索
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (!isFirstRender.current) return;
+    isFirstRender.current = false;
+    onSearchRef.current(buildParams());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // defaultParam 外部变更同步后，自动触发搜索
+  useEffect(() => {
+    if (defaultParamSyncVersion === 0) return;
+    onSearchRef.current(buildParams());
+  }, [defaultParamSyncVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- Field change handlers ----
+
+  const handleStatusChange = (val: string) => {
+    setStatus(val);
+    fireChange({ stateIds: val });
+  };
+
+  const handleIsClosedToggle = (newVal: boolean) => {
+    setIsClosed(newVal);
+    fireChange({ isClosed: newVal });
+    onSearch(buildParams({ isClosed: newVal }));
+  };
+
+  const handleServiceChange = (val: string) => {
+    setServiceId(val);
+    fireChange({ serviceId: val });
+  };
+
+  const handleSymbolChange = (val: string) => {
+    setSymbol(val);
+    fireChange({ symbol: val });
+  };
+
+  const handleAccountChange = (val: string) => {
+    setAccountNumber(val);
+    fireChange({ account: val });
+  };
+
+  const handleDateRangeChange = (val: DateRange | undefined) => {
+    setDateRange(val);
+    fireChange({ dateRange: val });
+  };
+
+  const handlePageSizeChange = (val: number) => {
+    setPageSize(val);
+    fireChange({ pageSize: val });
+  };
+
+  // ---- Button actions ----
 
   const handleSearch = () => {
     onSearch(buildParams());
   };
 
-  const handleIsClosedToggle = (newVal: boolean) => {
-    setIsClosed(newVal);
-    onIsClosedChange?.(newVal);
-    onSearch(buildParams({ isClosed: newVal }));
-  };
+  const defaultIsClosed = defaultParam?.isClosed ?? false;
+  const defaultPageSize = defaultParam?.pageSize ?? 25;
 
   const handleReset = () => {
-    setStatus(undefined);
-    setIsClosed(false);
-    setServiceId(defaultServiceValue);
-    setSymbol('');
-    setAccountNumber('');
-    setDateRange(undefined);
+    setStatus(defaultParam?.stateIds);
+    setIsClosed(defaultIsClosed);
+    setServiceId(defaultParam?.serviceId ?? defaultServiceValue);
+    setSymbol(defaultParam?.symbol ?? '');
+    setAccountNumber(defaultParam?.account ?? '');
+    setDateRange(defaultParam?.dateRange);
     setPageSize(defaultPageSize);
 
     const resetParams: Record<string, unknown> = {};
-    const defaultStateIds = resolveStateIds(defaultStatusValue);
+    const defaultStateIds = resolveStateIds(defaultParam?.stateIds ?? defaultStatusValue);
     if (defaultStateIds) resetParams.stateIds = defaultStateIds;
-    if (visibleFields.has('isClosed')) resetParams.isClosed = false;
-    if (visibleFields.has('service') && defaultServiceValue) {
-      resetParams.serviceId = Number(defaultServiceValue);
+    if (visibleFields.has('isClosed')) resetParams.isClosed = defaultIsClosed;
+    if (visibleFields.has('service')) {
+      const svcId = defaultParam?.serviceId ?? defaultServiceValue;
+      if (svcId) resetParams.serviceId = Number(svcId);
     }
     if (visibleFields.has('pageSize')) {
       resetParams.size = defaultPageSize;
     }
 
-    onIsClosedChange?.(false);
+    const resetValues = collectValues({
+      stateIds: defaultParam?.stateIds,
+      isClosed: defaultIsClosed,
+      serviceId: defaultParam?.serviceId ?? defaultServiceValue,
+      symbol: defaultParam?.symbol ?? '',
+      account: defaultParam?.account ?? '',
+      dateRange: defaultParam?.dateRange,
+      pageSize: defaultPageSize,
+    });
+    onChangeRef.current?.(resetValues);
     onReset?.();
     onSearch(clearSumUpFields({ ...resetParams, ...(fixedParams || {}) }));
   };
@@ -458,7 +570,7 @@ export function TradeFilter({
     if (timeCriteria.from) params.from = timeCriteria.from;
     if (visibleFields.has('pageSize')) params.size = pageSize;
 
-    onIsClosedChange?.(true);
+    fireChange({ isClosed: true, dateRange: { from: allHistoryFrom, to: undefined } });
     onAllHistory?.();
     onSearch(clearSumUpFields({ ...params, ...(fixedParams || {}) }));
   };
@@ -472,7 +584,7 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {t('fields.status')}
           </span>
-          <Select value={resolvedStatus} onValueChange={setStatus}>
+          <Select value={resolvedStatus} onValueChange={handleStatusChange}>
             <SelectTrigger triggerSize="sm" className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
@@ -501,7 +613,7 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {t('trade.service')}
           </span>
-          <Select value={serviceId} onValueChange={setServiceId}>
+          <Select value={serviceId} onValueChange={handleServiceChange}>
             <SelectTrigger triggerSize="sm" className="w-[80px]">
               <SelectValue />
             </SelectTrigger>
@@ -525,7 +637,7 @@ export function TradeFilter({
             <Input
               value={symbol}
               onChange={(e) => {
-                setSymbol(e.target.value);
+                handleSymbolChange(e.target.value);
                 setShowSymbolDropdown(true);
               }}
               onFocus={() => setShowSymbolDropdown(true)}
@@ -545,7 +657,7 @@ export function TradeFilter({
                     key={code}
                     type="button"
                     onClick={() => {
-                      setSymbol(code);
+                      handleSymbolChange(code);
                       setShowSymbolDropdown(false);
                     }}
                     className="w-full cursor-pointer px-3 py-1.5 text-left text-sm text-text-primary hover:bg-surface-secondary"
@@ -566,7 +678,7 @@ export function TradeFilter({
           </span>
           <Input
             value={accountNumber}
-            onChange={(e) => setAccountNumber(e.target.value)}
+            onChange={(e) => handleAccountChange(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             inputSize="sm"
             className="w-[160px]"
@@ -580,7 +692,7 @@ export function TradeFilter({
             mode="range"
             size="sm"
             value={dateRange}
-            onChange={setDateRange}
+            onChange={handleDateRangeChange}
             className="w-auto"
           />
         </div>
@@ -591,7 +703,7 @@ export function TradeFilter({
           <span className="whitespace-nowrap text-sm text-text-secondary">
             {t('fields.pageSize')}
           </span>
-          <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+          <Select value={String(pageSize)} onValueChange={(v) => handlePageSizeChange(Number(v))}>
             <SelectTrigger triggerSize="sm" className="w-[90px]">
               <SelectValue />
             </SelectTrigger>

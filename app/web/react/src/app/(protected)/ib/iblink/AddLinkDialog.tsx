@@ -31,7 +31,7 @@ import type {
   IBAccountLevelSetting,
 } from '@/types/ib';
 import { LINK_LANGUAGE_OPTIONS } from '@/core/types/LanguageTypes';
-
+import { AccountRoleTypes } from '@/types/accounts';
 interface AddLinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -46,6 +46,15 @@ interface RebateFormRow {
   r: number;
 }
 
+function getPCOptionLabel(tType: ReturnType<typeof useTranslations>, type: 'pips' | 'commission', value: number) {
+  const key = type === 'pips' ? `pipOptions.${value}` : `commissionOptions.${value}`;
+  try {
+    return tType(key);
+  } catch {
+    return value.toString();
+  }
+}
+
 function AgentRebateTable({
   account,
   productCategory,
@@ -54,6 +63,7 @@ function AgentRebateTable({
   configLevelSetting,
   onRegister,
   t,
+  tType,
   tAccount,
 }: {
   account: IBAccountLevelSetting;
@@ -63,6 +73,7 @@ function AgentRebateTable({
   configLevelSetting: Record<string, IBDefaultLevelSettingOption[]>;
   onRegister: (accountType: number, collectData: () => Record<string, unknown>) => void;
   t: ReturnType<typeof useTranslations>;
+  tType: ReturnType<typeof useTranslations>;
   tAccount: ReturnType<typeof useTranslations>;
 }) {
   const [formRows, setFormRows] = useState<RebateFormRow[]>([]);
@@ -270,7 +281,7 @@ function AgentRebateTable({
                       onChange={(value) => handlePCValueChange(Number(value))}
                       options={(pcSelection.selectedPC === 'pips' ? account.allowPips : account.allowCommissions).map(v => ({
                         value: v.toString(),
-                        label: v.toString(),
+                        label: getPCOptionLabel(tType, pcSelection.selectedPC === 'pips' ? 'pips' : 'commission', v),
                       }))}
                       triggerSize="sm"
                     />
@@ -336,11 +347,13 @@ function ClientPCForm({
   account,
   onRegister,
   t,
+  tType,
   tAccount,
 }: {
   account: IBAccountLevelSetting;
   onRegister: (accountType: number, collectData: () => Record<string, unknown>) => void;
   t: ReturnType<typeof useTranslations>;
+  tType: ReturnType<typeof useTranslations>;
   tAccount: ReturnType<typeof useTranslations>;
 }) {
   const [selectedPC, setSelectedPC] = useState('');
@@ -417,7 +430,7 @@ function ClientPCForm({
             onChange={(value) => setPcValue(Number(value))}
             options={(selectedPC === 'pips' ? account.allowPips : account.allowCommissions).map(v => ({
               value: v.toString(),
-              label: v.toString(),
+              label: getPCOptionLabel(tType, selectedPC === 'pips' ? 'pips' : 'commission', v),
             }))}
             triggerSize="sm"
           />
@@ -429,6 +442,7 @@ function ClientPCForm({
 
 export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkDialogProps) {
   const t = useTranslations('ib');
+  const tType = useTranslations('type');
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
   const executeRef = useRef(execute);
@@ -635,8 +649,8 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
     }
   };
 
-  const isAgent = serviceType === 300;
-  const isClient = serviceType === 400;
+  const isAgent = serviceType === AccountRoleTypes.IB;
+  const isClient = serviceType === AccountRoleTypes.Client;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -796,6 +810,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
                           account={acc}
                           onRegister={registerPCFormCollector}
                           t={t}
+                          tType={tType}
                           tAccount={tAccount}
                         />
                       ))}
@@ -839,6 +854,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
                           configLevelSetting={configLevelSetting}
                           onRegister={registerFormCollector}
                           t={t}
+                          tType={tType}
                           tAccount={tAccount}
                         />
                       ))}
@@ -865,7 +881,6 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
             </div>
           )}
         </div>
-
         <DialogFooter className="mt-6">
           <div className="flex justify-end gap-3 md:gap-5">
             <Button variant="outline" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">

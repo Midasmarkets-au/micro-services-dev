@@ -196,7 +196,7 @@ export default function SalesDepositPage() {
       <TradeFilter
         type="deposit"
         filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
-        defaultPageSize={25}
+        defaultParam={{ pageSize: 25 }}
         fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}

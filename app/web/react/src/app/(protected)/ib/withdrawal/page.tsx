@@ -225,7 +225,7 @@ export default function IBWithdrawalPage() {
       <TradeFilter
         type="withdrawal"
         filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
-        defaultPageSize={25}
+        defaultParam={{ pageSize: 25 }}
         fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}

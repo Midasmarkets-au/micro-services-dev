@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Pagination, DataTable } from '@/components/ui';
-import type { DateRange, DataTableColumn } from '@/components/ui';
+import type { DataTableColumn } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
-import type { FilterField } from '@/components/TradeFilter';
+import type { FilterField, TradeFilterValues } from '@/components/TradeFilter';
 import { TimeShow } from '@/components/TimeShow';
 import { handleTradeBuySellDisplay } from '@/lib/trade';
 
@@ -60,14 +60,12 @@ export interface TradeReportTableProps {
   } | null>;
   /** TradeFilter 显示的筛选字段 */
   filterOptions?: FilterField[];
-  /** 默认 isClosed 状态 */
-  defaultIsClosed?: boolean;
+  /** TradeFilter 各字段的默认值 */
+  defaultParam?: TradeFilterValues;
   /** 每页条数，默认 25 */
   pageSize?: number;
   /** 是否显示账号列（sales/trade 和 ib/trade 需要） */
   showAccountNumber?: boolean;
-  /** 默认日期范围 */
-  defaultDateRange?: DateRange;
   /** 变化时自动重新获取第一页数据（如 accountUid） */
   autoFetchKey?: unknown;
 }
@@ -94,10 +92,9 @@ function getProfitColorClass(value: number): string {
 export function TradeReportTable({
   fetchData,
   filterOptions = ['isClosed', 'product', 'datePicker', 'allHistory'],
-  defaultIsClosed = false,
+  defaultParam,
   pageSize = 25,
   showAccountNumber = false,
-  defaultDateRange,
   autoFetchKey,
 }: TradeReportTableProps) {
   const t = useTranslations('accounts');
@@ -108,7 +105,8 @@ export function TradeReportTable({
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [isClosed, setIsClosed] = useState(defaultIsClosed);
+  const [isClosed, setIsClosed] = useState(defaultParam?.isClosed ?? false);
+  const [activeDefaultParam, setActiveDefaultParam] = useState(defaultParam);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({});
 
   const fetchDataRef = useRef(fetchData);
@@ -138,7 +136,10 @@ export function TradeReportTable({
     [pageSize],
   );
 
+  const prevAutoFetchKeyRef = useRef(autoFetchKey);
   useEffect(() => {
+    if (prevAutoFetchKeyRef.current === autoFetchKey) return;
+    prevAutoFetchKeyRef.current = autoFetchKey;
     loadData(1);
   }, [autoFetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -151,9 +152,15 @@ export function TradeReportTable({
     [loadData],
   );
 
-  const handleIsClosedChange = useCallback((val: boolean) => {
-    setIsClosed(val);
-  }, []);
+  const handleFilterChange = useCallback((values: TradeFilterValues) => {
+    if (values.isClosed !== undefined) {
+      setIsClosed(values.isClosed);
+      setActiveDefaultParam((prev) => ({
+        ...prev,
+        dateRange: values.isClosed ? defaultParam?.dateRange : undefined,
+      }));
+    }
+  }, [defaultParam?.dateRange]);
 
   const handlePageChange = useCallback(
     (p: number) => {
@@ -389,11 +396,10 @@ export function TradeReportTable({
     <>
       <TradeFilter
         type="trade"
-        
         filterOptions={filterOptions}
-        defaultDateRange={defaultDateRange}
+        defaultParam={activeDefaultParam}
         onSearch={handleSearch}
-        onIsClosedChange={handleIsClosedChange}
+        onChange={handleFilterChange}
         isLoading={isLoading}
       />
 

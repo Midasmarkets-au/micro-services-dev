@@ -4,18 +4,22 @@ import { useCallback, useMemo } from 'react';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBTradeReports } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
-import type { DateRange } from '@/components/ui';
 import { TradeReportTable } from '@/components/TradeReportTable';
 
 export default function IBTradePage() {
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
-  const todayRange = useMemo<DateRange>(() => {
+  const todayRange = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return { from: d, to: d };
   }, []);
+
+  const defaultParam = useMemo(() => ({
+    isClosed: false,
+    dateRange: todayRange,
+  }), [todayRange]);
 
   const fetchData = useCallback(
     async (params: Record<string, unknown>) => {
@@ -37,9 +41,8 @@ export default function IBTradePage() {
       <TradeReportTable
         fetchData={fetchData}
         filterOptions={['isClosed', 'service', 'product', 'account', 'datePicker', 'allHistory']}
-        defaultIsClosed={false}
+        defaultParam={defaultParam}
         showAccountNumber={true}
-        defaultDateRange={todayRange}
         autoFetchKey={agentAccount?.uid}
       />
     </div>

@@ -13,11 +13,7 @@ import { getLanguageLabel } from '@/core/types/LanguageTypes';
 import { RebateSettingsDialog } from './RebateSettingsDialog';
 import { AddLinkDialog } from './AddLinkDialog';
 import { EditLinkDialog } from './EditLinkDialog';
-
-const ROLE_TYPE_LABELS: Record<number, string> = {
-  300: 'IB',
-  400: 'Client',
-};
+import { AccountRoleTypes } from '@/types/accounts';
 
 function CopyLinkCell({ item, onCopy }: { item: IBLink; onCopy: (item: IBLink) => void }) {
   const t = useTranslations('ib');
@@ -188,7 +184,7 @@ export default function IBLinkPage() {
       skeletonWidth: 'w-16',
       render: (item) => (
         <span className="text-sm">
-          {ROLE_TYPE_LABELS[item.serviceType ?? 0] || item.type || '-'}
+          {AccountRoleTypes[item.serviceType ?? AccountRoleTypes.Unknown] || item.type || '-'}
         </span>
       ),
     },
@@ -290,7 +286,7 @@ export default function IBLinkPage() {
               <div className="flex items-center gap-2">
                 <span className="shrink-0 text-text-secondary">{t('link.accountType')}:</span>
                 <div className="flex flex-wrap gap-1">
-                  {(copyConfirmItem.serviceType !== 400
+                  {(copyConfirmItem.serviceType !== AccountRoleTypes.Client
                     ? copyConfirmItem.summary?.schema
                     : copyConfirmItem.summary?.allowAccountTypes
                   )?.map((s, i) => (
@@ -310,7 +306,7 @@ export default function IBLinkPage() {
               <div className="flex gap-2">
                 <span className="text-text-secondary">{t('link.linkType')}:</span>
                 <span className="text-text-primary">
-                  {ROLE_TYPE_LABELS[copyConfirmItem.serviceType ?? 0] || '-'}
+                  {AccountRoleTypes[copyConfirmItem.serviceType ?? AccountRoleTypes.Unknown] || '-'}
                 </span>
               </div>
               <div className="flex gap-2">

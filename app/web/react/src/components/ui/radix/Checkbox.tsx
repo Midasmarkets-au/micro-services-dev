@@ -31,7 +31,7 @@ const Checkbox = React.forwardRef<
           'disabled:cursor-not-allowed disabled:opacity-50',
           isRadio
             ? [
-                'size-4 rounded-full border-[1.33px]',
+                'size-4 rounded-full border-2',
                 'data-[state=unchecked]:bg-transparent border-(--color-text-secondary)',
                 'data-[state=checked]:border-[#800020] data-[state=checked]:bg-transparent',
                 'dark:data-[state=checked]:border-[#004EFF] dark:data-[state=checked]:bg-[#111111]',

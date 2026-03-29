@@ -11,6 +11,7 @@ import {
   DialogDescription,
   Button,
   Input,
+  Checkbox,
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
@@ -442,18 +443,20 @@ function ClientView({
           className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
         >
           <div className="flex items-center gap-3">
-            <span
-              className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                index === schemas.length - 1 ? 'border-primary' : 'border-border'
-              }`}
+            {/* <span
+              className={`flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary`}
             >
-              {index === schemas.length - 1 && (
-                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-              )}
-            </span>
-            <span className="text-sm font-medium text-text-primary">
+               <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+            </span> 
+              <span className="text-sm font-medium text-text-primary">
               {tAccount(`accountTypes.${schema.accountType}`)}
-            </span>
+            </span> */}
+            <Checkbox
+              variant="radio"
+              checked={true}
+              label= {tAccount(`accountTypes.${schema.accountType}`)}
+            />
+           
             {schema.optionName && (
               <span
                 className="rounded-md px-2 py-0.5 text-xs font-semibold"

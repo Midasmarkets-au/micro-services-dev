@@ -221,9 +221,9 @@ export default function SalesTransactionPage() {
       <TradeFilter
         type="transaction"
         filterOptions={['stateIds', 'account', 'datePicker', 'pageSize']}
+        defaultParam={{ pageSize: 25 }}
         fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
-        defaultPageSize={25}
         isLoading={isLoading}
       />
 
