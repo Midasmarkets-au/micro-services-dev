@@ -25,6 +25,7 @@ mod grpc;
 mod jobs;
 mod mail;
 mod models;
+mod nats;
 mod report;
 mod storage;
 mod utils;
