@@ -24,6 +24,7 @@ mod generated;
 mod grpc;
 mod jobs;
 mod mail;
+mod models;
 mod report;
 mod storage;
 mod utils;
