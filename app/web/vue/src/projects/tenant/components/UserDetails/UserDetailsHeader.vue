@@ -205,11 +205,11 @@ const requestUserToken = async () => {
     MsgPrompt.success(res.message).then(() => {
       Clipboard.copy(
         (process.env.VUE_APP_BASE_CDN_URL +
-          "/set-token?token=" +
+          "/set-token?key=" +
           res.token) as string
       );
       window.open(
-        process.env.VUE_APP_BASE_CDN_URL + "/set-token?token=" + res.token,
+        process.env.VUE_APP_BASE_CDN_URL + "/set-token?key=" + res.token,
         "_blank"
       );
     });

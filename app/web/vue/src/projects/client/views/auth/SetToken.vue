@@ -4,26 +4,26 @@
 
 <script lang="ts" setup>
 import { onMounted } from "vue";
-// import { useRouter } from "vue-router";
-
-// const router = useRouter();
+import { axiosInstance } from "@/core/services/api.client";
 
 const props = defineProps({
-  token: {
+  tokenKey: {
     type: String,
     required: true,
   },
 });
 
 onMounted(async () => {
-  const token = props.token;
-  if (token) {
-    // await store.dispatch(Actions.LOGOUT);
+  const key = props.tokenKey;
+  if (key) {
     window.localStorage.clear();
-
-    localStorage.setItem("jwt_token", JSON.stringify({ access_token: token }));
-    localStorage.setItem("id_token", token);
-    // router.push({ name: "dashboard" });
+    try {
+      await axiosInstance.post("/api/v2/auth/god-mode/exchange", { key });
+    } catch {
+      window.location.href = "/";
+      return;
+    }
+    localStorage.setItem("id_token", "cookie");
     window.location.href = "/portal";
   }
 });

@@ -34,6 +34,12 @@ public partial class Startup
             // ── Server: token endpoint + password/refresh flows ──────────────
             .AddServer(options =>
             {
+                // Explicitly set issuer so tokens signed behind a TLS-terminating proxy
+                // (where mono sees http:// but clients use https://) have a consistent issuer.
+                var issuerEnv = GetEnvValue("OPENIDDICT_ISSUER", "");
+                if (!string.IsNullOrEmpty(issuerEnv))
+                    options.SetIssuer(new Uri(issuerEnv));
+
                 // Token endpoint: POST /connect/token  (mirrors old IS4 path)
                 options.SetTokenEndpointUris("/connect/token");
 

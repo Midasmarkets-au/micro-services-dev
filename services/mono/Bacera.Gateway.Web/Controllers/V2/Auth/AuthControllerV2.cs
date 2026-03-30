@@ -285,6 +285,23 @@ public partial class AuthControllerV2(
     }
 
     [AllowAnonymous]
+    [HttpPost("god-mode/exchange")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ExchangeGodModeKey([FromBody] ExchangeGodModeKeyRequest req)
+    {
+        var redisKey = $"godmode:key:{req.Key}";
+        var token = await myCache.GetStringAsync(redisKey);
+        if (string.IsNullOrEmpty(token))
+            return BadRequest(Result.Error("Invalid or expired key"));
+
+        await myCache.KeyDeleteAsync(redisKey);
+
+        Identity.ApplyTokenResponseHandler.AppendAccessTokenCookie(Response, token, 86400, Request.IsHttps);
+        return Ok(Result.Success("ok"));
+    }
+
+    [AllowAnonymous]
     [HttpPost("password/forgot")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -551,3 +568,5 @@ public partial class AuthControllerV2(
     [GeneratedRegex("[^A-Z0-9]")]
     private static partial Regex ReferCodeRegex();
 }
+
+public record ExchangeGodModeKeyRequest(string Key);

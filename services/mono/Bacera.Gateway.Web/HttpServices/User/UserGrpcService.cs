@@ -28,7 +28,8 @@ public class TenantUserGrpcService(
     TagService tagSvc,
     TradingService tradingSvc,
     AccountingService accountingSvc,
-    BcrTokenService bcrTokenSvc)
+    BcrTokenService bcrTokenSvc,
+    IMyCache cache)
     : TenantUserService.TenantUserServiceBase
 {
     // ─── List / Get ───────────────────────────────────────────────────────────
@@ -585,8 +586,11 @@ public class TenantUserGrpcService(
 
         var res = await bcrTokenSvc.GetUserTokenAsync(targetUser, godPartyId: GetPartyId(context));
 
+        var oneTimeKey = Guid.NewGuid().ToString("N");
+        await cache.SetStringAsync($"godmode:key:{oneTimeKey}", res.AccessToken, TimeSpan.FromSeconds(30));
+
         var proto = MapAuthUserToProto(targetUser);
-        proto.Token = res.AccessToken;
+        proto.Token = oneTimeKey;
         return proto;
     }
 
