@@ -21,7 +21,6 @@ public class ConfigurationController(
     TradingService tradingSvc)
     : TenantBaseController
 {
-    [NonAction]
     [HttpGet("sites")]
     public async Task<IActionResult> Sites()
     {
@@ -39,7 +38,6 @@ public class ConfigurationController(
             .ToTenantViewModel()
             .FirstOrDefaultAsync();
 
-    [NonAction]
     [HttpGet]
     public async Task<IActionResult> Query([FromQuery] Configuration.Criteria? criteria = null)
     {
@@ -52,7 +50,6 @@ public class ConfigurationController(
         return Ok(Result<List<Configuration.TenantViewModel>, Configuration.Criteria>.Of(items, criteria));
     }
 
-    [NonAction]
     [ServiceFilter(typeof(ConfigurationFilter))]
     [HttpGet("{category}/{rowId:long}")]
     public async Task<IActionResult> Index(string category, long rowId)
@@ -76,7 +73,6 @@ public class ConfigurationController(
     //     _ => Ok(new List<Configuration.TenantViewModel>()),
     // };
 
-    [NonAction]
     [ServiceFilter(typeof(ConfigurationFilter))]
     [HttpGet("{category}/{rowId:long}/{key}")]
     public async Task<IActionResult> Detail(string category, long rowId, string key, [FromQuery] bool? isInherit = false)
@@ -111,7 +107,6 @@ public class ConfigurationController(
         return Ok(result);
     }
 
-    [NonAction]
     [ServiceFilter(typeof(ConfigurationFilter))]
     [HttpPut("{category}/{rowId:long}/{key}")]
     public async Task<IActionResult> Update(string category, long rowId, string key,
@@ -157,7 +152,6 @@ public class ConfigurationController(
         // return Ok(item);
     }
 
-    [NonAction]
     [ServiceFilter(typeof(ConfigurationFilter))]
     [HttpDelete("{category}/{rowId:long}/{key}")]
     public async Task<IActionResult> Delete(string category, long rowId, string key)
@@ -253,7 +247,6 @@ public class ConfigurationController(
     /// <param name="siteId"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
-    [NonAction]
     [HttpPut("site/{siteId:int}/default-email-address")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApplicationConfigure.IntValue))]
     public async Task<IActionResult> SetDefaultEmailAddress(int siteId,
@@ -269,7 +262,6 @@ public class ConfigurationController(
     /// <param name="siteId"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
-    [NonAction]
     [HttpPut("site/{siteId:int}/default-email-display-name")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApplicationConfigure.IntValue))]
     public async Task<IActionResult> SetDefaultEmailDisplayName(int siteId,
@@ -285,7 +277,6 @@ public class ConfigurationController(
     /// <param name="siteId"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
-    [NonAction]
     [HttpPut("site/{siteId:int}/default-fund-type")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApplicationConfigure.IntValue))]
     public async Task<IActionResult> SetDefaultFundType(int siteId, [FromBody] ApplicationConfigure.IntValue spec)
@@ -304,7 +295,6 @@ public class ConfigurationController(
     /// <param name="siteId"></param>
     /// <param name="spec"></param>
     /// <returns></returns>
-    [NonAction]
     [HttpPut("site/{siteId:int}/default-trade-service")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApplicationConfigure.IntValue))]
     public async Task<IActionResult> SetDefaultTradeService(int siteId, [FromBody] ApplicationConfigure.IntValue spec)

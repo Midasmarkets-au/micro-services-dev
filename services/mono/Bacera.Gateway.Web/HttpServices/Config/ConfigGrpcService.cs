@@ -62,7 +62,7 @@ public class TenantConfigurationGrpcService(
 
         var response = new ListConfigurationsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,

@@ -51,7 +51,7 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
 
         var response = new ListNewsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,
@@ -98,7 +98,7 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
 
         var response = new ListPostsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,
@@ -177,7 +177,7 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
 
         var response = new ListEconomicCalendarResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,

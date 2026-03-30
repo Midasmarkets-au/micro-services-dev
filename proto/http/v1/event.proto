@@ -436,7 +436,7 @@ message ListEventsRequest {
 
 message ListEventsResponse {
   repeated Event data = 1;
-  PaginationMeta meta = 2;
+  PaginationMeta criteria = 2;
 }
 
 // 按 id 查询活动
@@ -481,7 +481,7 @@ message ListEventUsersRequest {
 
 message ListEventUsersResponse {
   repeated EventUser data = 1;
-  PaginationMeta     meta = 2;
+  PaginationMeta     criteria = 2;
 }
 
 // 按 party_id 操作活动用户
@@ -501,7 +501,7 @@ message ListShopItemsRequest {
 
 message ListShopItemsResponse {
   repeated ShopItem data = 1;
-  PaginationMeta    meta = 2;
+  PaginationMeta    criteria = 2;
 }
 
 // 按 id 查询商品
@@ -566,7 +566,7 @@ message ListShopRewardsRequest {
 
 message ListShopRewardsResponse {
   repeated ShopReward data = 1;
-  PaginationMeta      meta = 2;
+  PaginationMeta      criteria = 2;
 }
 
 // 按 id 查询奖励
@@ -587,7 +587,7 @@ message ListShopOrdersRequest {
 
 message ListShopOrdersResponse {
   repeated ShopOrder data = 1;
-  PaginationMeta     meta = 2;
+  PaginationMeta     criteria = 2;
 }
 
 // 按 id 查询订单
@@ -625,7 +625,7 @@ message ListShopPointTransactionsRequest {
 
 message ListShopPointTransactionsResponse {
   repeated ShopPointTransaction data = 1;
-  PaginationMeta                meta = 2;
+  PaginationMeta                criteria = 2;
 }
 
 // ─── Client Event 相关消息 ────────────────────────────────────────────────────
@@ -665,7 +665,7 @@ message ListClientShopItemsRequest {
 
 message ListClientShopItemsResponse {
   repeated ClientShopItem data = 1;
-  PaginationMeta          meta = 2;
+  PaginationMeta          criteria = 2;
 }
 
 // 按 hash_id 查询商品（客户端）
@@ -681,7 +681,7 @@ message ListClientShopOrdersRequest {
 
 message ListClientShopOrdersResponse {
   repeated ClientShopOrder data = 1;
-  PaginationMeta           meta = 2;
+  PaginationMeta           criteria = 2;
 }
 
 // 购买商品请求（客户端）
@@ -710,7 +710,7 @@ message ListClientShopRewardsRequest {
 
 message ListClientShopRewardsResponse {
   repeated ClientShopReward data = 1;
-  PaginationMeta            meta = 2;
+  PaginationMeta            criteria = 2;
 }
 
 // 购买虚拟奖励请求（客户端）
@@ -727,5 +727,5 @@ message ListClientShopPointTransactionsRequest {
 
 message ListClientShopPointTransactionsResponse {
   repeated ClientShopPointTransaction data = 1;
-  PaginationMeta                      meta = 2;
+  PaginationMeta                      criteria = 2;
 }

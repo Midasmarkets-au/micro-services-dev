@@ -50,7 +50,7 @@ public class TenantMessageGrpcService(
 
         var response = new ListMessagesResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,
@@ -299,7 +299,7 @@ public class TenantEmailGrpcService(
 
         var response = new ListTopicsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,
@@ -370,7 +370,7 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
 
         var response = new ListTopicsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = result.Criteria.Page,
                 Size      = result.Criteria.Size,

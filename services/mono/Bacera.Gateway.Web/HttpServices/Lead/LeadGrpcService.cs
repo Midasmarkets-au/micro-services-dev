@@ -79,7 +79,7 @@ public class TenantLeadGrpcService(
 
         var response = new ListLeadsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(MapToProto));
         return response;

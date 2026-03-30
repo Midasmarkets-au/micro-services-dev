@@ -13,10 +13,8 @@ import "http/v1/common.proto";
 // 账户绑定、锁定/解锁、迁移及社交媒体信息等全量管理功能。
 
 service TenantUserService {
-  // 分页查询用户列表；可按关键字（email/name）、status 及注册日期范围过滤
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/user" };
-  }
+  // HTTP 路由由 MVC UserController.Index 处理，支持完整 Party.Criteria 过滤
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {}
   // 按 party_id 获取用户完整信息
   rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}" };
@@ -45,10 +43,8 @@ service TenantUserService {
   rpc RemoveUserTag(UserTagRequest) returns (User) {
     option (google.api.http) = { delete: "/api/v1/tenant/user/{party_id}/tag/{tag}" };
   }
-  // 获取 tenant 下所有可用角色列表
-  rpc GetAllRoles(EmptyRequest) returns (RolesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/user/role" };
-  }
+  // 获取 tenant 下所有可用角色列表；HTTP 路由由 MVC UserController.GetAllRoles 处理，返回原始数组格式
+  rpc GetAllRoles(EmptyRequest) returns (RolesResponse) {}
   // 按 role_id 为用户添加角色
   rpc AddRole(UserRoleRequest) returns (User) {
     option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/role/{role_id}/add" };
@@ -177,14 +173,10 @@ service TenantUserService {
   rpc GetLegacyKycCorrection(GetUserRequest) returns (LegacyInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/legacy/kyc-correction" };
   }
-  // 获取用户社交媒体信息（平台+账号）
-  rpc GetSocialMediaInfo(GetUserRequest) returns (SocialMediaInfoResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/user/{party_id}/social-media-info" };
-  }
-  // 更新用户社交媒体信息（body 字段名为 spec）
-  rpc UpdateSocialMediaInfo(UpdateSocialMediaRequest) returns (SocialMediaInfoResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/user/{party_id}/social-media-info", body: "*" };
-  }
+  // 获取用户社交媒体信息（HTTP 路由由 MVC UserController 处理，gRPC 仅内部调用）
+  rpc GetSocialMediaInfo(GetUserRequest) returns (LegacyInfoResponse) {}
+  // 更新用户社交媒体信息（HTTP 路由由 MVC UserController 处理，gRPC 仅内部调用）
+  rpc UpdateSocialMediaInfo(UpdateSocialMediaRequest) returns (LegacyInfoResponse) {}
 }
 
 // ─── Tenant Role API (api/v1/tenant/role) ────────────────────────────────────
@@ -217,9 +209,8 @@ service TenantPermissionService {
 
 service TenantKycService {
   // 分页查询 KYC 列表；可按 status 过滤
-  rpc ListKycs(ListKycsRequest) returns (ListKycsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/kyc" };
-  }
+  // HTTP 路由由 MVC KycController 处理，支持完整 Verification.Criteria（含 statuses 多值过滤）
+  rpc ListKycs(ListKycsRequest) returns (ListKycsResponse) {}
   // 按 party_id 获取用户 KYC 表单（含 form_data JSON）
   rpc GetKyc(GetKycRequest) returns (KycForm) {
     option (google.api.http) = { get: "/api/v1/tenant/kyc/{party_id}" };
@@ -264,14 +255,10 @@ service TenantKycService {
 // 支持单独审批/拒绝文件，以及邮件验证码发送。
 
 service TenantVerificationService {
-  // 分页查询验证申请列表；可按 party_id、status 过滤
-  rpc ListVerifications(ListVerificationsRequest) returns (ListVerificationsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/verification" };
-  }
-  // 按 id 获取验证申请详情
-  rpc GetVerification(GetVerificationRequest) returns (Verification) {
-    option (google.api.http) = { get: "/api/v1/tenant/verification/{id}" };
-  }
+  // HTTP 路由由 MVC VerificationController 处理，返回完整 VerificationDTO 格式（含 user/items/comments）
+  rpc ListVerifications(ListVerificationsRequest) returns (ListVerificationsResponse) {}
+  // HTTP 路由由 MVC VerificationController 处理
+  rpc GetVerification(GetVerificationRequest) returns (Verification) {}
   // 获取验证申请中的特定 item（文件/证件条目）
   rpc GetVerificationItem(GetVerificationItemRequest) returns (VerificationItem) {
     option (google.api.http) = { get: "/api/v1/tenant/verification/{id}/item/{item_id}" };
@@ -547,7 +534,7 @@ message ListUsersRequest {
 
 message ListUsersResponse {
   repeated User  data = 1;
-  PaginationMeta meta = 2;
+  PaginationMeta criteria = 2;
 }
 
 // 按 party_id 查询用户
@@ -625,7 +612,7 @@ message ListUserAuditsRequest {
 
 message ListUserAuditsResponse {
   repeated UserAudit data = 1;
-  PaginationMeta     meta = 2;
+  PaginationMeta     criteria = 2;
 }
 
 // 用户审计记录实体
@@ -679,7 +666,7 @@ message ListAddressesRequest {
 
 message ListAddressesResponse {
   repeated Address data = 1;
-  PaginationMeta   meta = 2;
+  PaginationMeta   criteria = 2;
 }
 
 // 按 address_id 查询地址（后台）
@@ -728,11 +715,13 @@ message SocialMediaInfoResponse {
   string handle   = 2; // 账号/用户名
 }
 
-// 更新社交媒体信息请求
+// 更新社交媒体信息请求（字段与旧 SocialMediaType 模型对齐）
 message UpdateSocialMediaRequest {
-  int64  party_id  = 1;
-  string platform  = 2;
-  string handle    = 3;
+  int64           party_id    = 1;
+  string          name        = 2; // 平台名称，如 "whatsApp"、"weChat"
+  string          account     = 3; // 账号/用户名
+  optional string connect_id  = 4;
+  optional string staff_name  = 5;
 }
 
 // ─── Role/Permission 相关消息 ──────────────────────────────────────────────────
@@ -759,7 +748,7 @@ message ListKycsRequest {
 
 message ListKycsResponse {
   repeated KycForm data = 1;
-  PaginationMeta   meta = 2;
+  PaginationMeta   criteria = 2;
 }
 
 // 按 party_id 查询 KYC
@@ -807,7 +796,7 @@ message ListVerificationsRequest {
 
 message ListVerificationsResponse {
   repeated Verification data = 1;
-  PaginationMeta        meta = 2;
+  PaginationMeta        criteria = 2;
 }
 
 // 按 id 查询验证申请

@@ -60,7 +60,7 @@ public class TenantAccountGrpcService(
 
         var response = new ListAccountsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
@@ -124,7 +124,7 @@ public class TenantAccountGrpcService(
 
         var response = new ListAccountLogsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
@@ -566,7 +566,7 @@ public class TenantAccountGrpcService(
         var items = await tenantCtx.ReferralCodes.PagedFilterBy(criteria).ToListAsync();
         var response = new ListReferralsResponse
         {
-            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+            Criteria = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
         };
         response.Items.AddRange(items.Select(r => new ProtoReferralCode
         {
@@ -605,7 +605,7 @@ public class TenantAccountGrpcService(
         var items = await tenantCtx.Referrals.PagedFilterBy(criteria).ToListAsync();
         var response = new ListReferralHistoryResponse
         {
-            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+            Criteria = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
         };
         response.Items.AddRange(items.Select(r => new ReferralHistoryItem
         {
@@ -713,7 +713,7 @@ public class TenantAccountGrpcService(
             .ToListAsync();
         var response = new ListCommunicationsResponse
         {
-            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+            Criteria = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
         };
         response.Items.AddRange(items.Select(x => new CommunicationItem
         {
@@ -746,7 +746,7 @@ public class TenantAccountGrpcService(
 
         var response = new ListAccountBalanceAuditsResponse
         {
-            Meta = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
+            Criteria = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
         };
         response.Items.AddRange(items.Select(x => new AccountBalanceAuditItem
         {
@@ -1136,7 +1136,7 @@ public class ClientAccountGrpcService(
         var result = await tradingSvc.AccountQueryForClientAsync(criteria, partyId);
         var response = new ListAccountsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
@@ -1241,7 +1241,7 @@ public class SalesAccountGrpcService(
         var items = await accManSvc.QueryAccountForSalesAsync(salesId, criteria);
         var response = new ListAccountsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
@@ -1570,7 +1570,7 @@ public class AgentAccountGrpcService(
         var result = await tradingSvc.AccountQueryForParentAsync(criteria, GetPartyId(context), parentLevel, false);
         var response = new ListAccountsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
@@ -1808,7 +1808,7 @@ public class RepAccountGrpcService(
         var result = await tradingSvc.AccountQueryForParentAsync(criteria, GetPartyId(context), parentLevel, false);
         var response = new ListAccountsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,

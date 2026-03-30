@@ -42,55 +42,20 @@ service TenantMessageService {
 // ─── Tenant Email API (api/v1/tenant/email) ──────────────────────────────────
 // 提供 tenant 级别的邮件发送能力，包括调试邮件、单发、批量发送及退订名单管理。
 
+// HTTP 路由全部由 MVC EmailController 处理，返回完整数据（含 SendBatchEmailInfo 全字段）
 service TenantEmailService {
-  // 发送调试邮件（仅测试用，直接指定 to/subject/body）
-  rpc DebugEmail(DebugEmailRequest) returns (OperationResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/email/debug", body: "*" };
-  }
-  // 按 party_id 向指定用户发送邮件
-  rpc SendToUser(SendToUserRequest) returns (OperationResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/email/send-to-user", body: "*" };
-  }
-  // 创建批量邮件任务（基于 topic_content_id 和受众筛选条件）
-  rpc CreateBatch(CreateBatchRequest) returns (EmailBatch) {
-    option (google.api.http) = { post: "/api/v1/tenant/email/batch", body: "*" };
-  }
-  // 获取当前批量邮件任务的收件人数量汇总
-  rpc GetBatchInfo(EmptyRequest) returns (EmailBatchInfoResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/email/batch/info" };
-  }
-  // 获取当前批量邮件任务的收件人邮箱列表（用于预检）
-  rpc GetBatchDetail(EmptyRequest) returns (EmailBatchDetailResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/email/batch/detail" };
-  }
-  // 向测试邮箱发送批量邮件预览
-  rpc TestBatch(TestBatchEmailRequest) returns (OperationResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/email/batch/test", body: "*" };
-  }
-  // 确认发送批量邮件（触发实际发送任务）
-  rpc ConfirmBatch(ConfirmBatchRequest) returns (OperationResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/email/batch/confirm", body: "*" };
-  }
-  // 检查指定邮箱是否在退订名单（suppression list）中
-  rpc CheckSuppression(CheckSuppressionRequest) returns (SuppressionResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/email/suppression-check" };
-  }
-  // 将邮箱从退订名单移除（恢复接收邮件）
-  rpc RemoveSuppression(SuppressionEmailRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/email/suppression-remove" };
-  }
-  // 将邮箱加入退订名单（阻止接收邮件）
-  rpc AddSuppression(SuppressionEmailRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/email/suppression-add" };
-  }
-  // 分页查询邮件模板列表（type 固定为 EmailTemplate）
-  rpc ListEmailTemplates(ListEmailTemplatesRequest) returns (ListTopicsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/email" };
-  }
-  // 分页获取批量邮件任务的收件人邮箱列表（用于大量数据预检）
-  rpc GetBatchReceiverEmails(GetBatchReceiverEmailsRequest) returns (BatchReceiverEmailsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/email/batch/receiver-emails" };
-  }
+  rpc DebugEmail(DebugEmailRequest) returns (OperationResponse) {}
+  rpc SendToUser(SendToUserRequest) returns (OperationResponse) {}
+  rpc CreateBatch(CreateBatchRequest) returns (EmailBatch) {}
+  rpc GetBatchInfo(EmptyRequest) returns (EmailBatchInfoResponse) {}
+  rpc GetBatchDetail(EmptyRequest) returns (EmailBatchDetailResponse) {}
+  rpc TestBatch(TestBatchEmailRequest) returns (OperationResponse) {}
+  rpc ConfirmBatch(ConfirmBatchRequest) returns (OperationResponse) {}
+  rpc CheckSuppression(CheckSuppressionRequest) returns (SuppressionResponse) {}
+  rpc RemoveSuppression(SuppressionEmailRequest) returns (OperationResponse) {}
+  rpc AddSuppression(SuppressionEmailRequest) returns (OperationResponse) {}
+  rpc ListEmailTemplates(ListEmailTemplatesRequest) returns (ListTopicsResponse) {}
+  rpc GetBatchReceiverEmails(GetBatchReceiverEmailsRequest) returns (BatchReceiverEmailsResponse) {}
 }
 
 // ─── Tenant Topic API (api/v1/tenant/topic) ──────────────────────────────────
@@ -99,9 +64,8 @@ service TenantEmailService {
 
 service TenantTopicService {
   // 分页查询 Topic 列表；可按 type、status、关键字过滤
-  rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/topic" };
-  }
+  // HTTP 路由由 MVC TopicController 处理，返回完整 ResponseModel（含 contents/effectiveFrom/effectiveTo/updatedOn）
+  rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse) {}
   // 按 id 获取 Topic（可指定 language 只返回该语言的内容）
   rpc GetTopic(GetTopicRequest) returns (Topic) {
     option (google.api.http) = { get: "/api/v1/tenant/topic/{id}" };
@@ -193,7 +157,7 @@ message ListMessagesRequest {
 
 message ListMessagesResponse {
   repeated Message data = 1;
-  PaginationMeta   meta = 2;
+  PaginationMeta   criteria = 2;
 }
 
 // 按 id 查询站内信
@@ -311,7 +275,7 @@ message ListTopicsRequest {
 
 message ListTopicsResponse {
   repeated Topic data = 1;
-  PaginationMeta meta = 2;
+  PaginationMeta criteria = 2;
 }
 
 // 按 id（含可选语言）查询 Topic

@@ -13,153 +13,53 @@ import "http/v1/payment.proto";
 // 管理平台所有账户（IB/Client/Sales/Rep），支持状态变更、标签、资金类型、
 // 等级规则、推荐码等操作，并提供 MT 组合品种查询和账户号码校验/变更工具。
 
+// HTTP 路由全部由 MVC AccountController 处理，gRPC 仅保留内部调用定义
 service TenantAccountService {
-  // 分页查询账户列表；可按 keywords（姓名/邮箱）、status、role、party_id、fund_type 及日期范围过滤
-  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account" };
-  }
-  // 按 id 获取单条账户详情
-  rpc GetAccount(GetAccountRequest) returns (Account) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}" };
-  }
-  // 从 MT4/MT5 服务器拉取最新账户数据并刷新本地缓存
-  rpc RefreshAccount(GetAccountRequest) returns (Account) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/refresh" };
-  }
-  // 分页查询账户操作日志；可按 account_id、action 关键字及日期范围过滤
-  rpc ListAccountLogs(ListAccountLogsRequest) returns (ListAccountLogsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/log" };
-  }
-  // 获取所有可用的日志 action 枚举值列表，供前端过滤下拉框使用
-  rpc GetLogActions(EmptyRequest) returns (LogActionsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/log-actions" };
-  }
-  // 修改账户类型（对应 MT 账户组或产品分类）
-  rpc UpdateAccountType(UpdateAccountTypeRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/type", body: "spec" };
-  }
-  // 修改账户所属站点（site_id 对应 WebsiteDbContext 中的站点记录）
-  rpc UpdateAccountSite(UpdateAccountSiteRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/site", body: "spec" };
-  }
-  // 修改账户状态（status：0=inactive/1=active/2=locked/3=suspended），body 可附带操作备注
-  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/status/{status}", body: "spec" };
-  }
-  // 批量替换账户标签列表（tags 为字符串数组，全量覆盖）
-  rpc UpdateAccountTags(UpdateAccountTagsRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/tags", body: "spec" };
-  }
-  // 切换账户是否启用等级返佣规则（has_level_rule=true 时按 LevelSetting 计算返佣）
-  rpc UpdateHasLevelRule(UpdateHasLevelRuleRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/has-level-rule" };
-  }
-  // 修改账户资金类型（fund_type 枚举值，影响出入金渠道可用性）
-  rpc UpdateFundType(UpdateFundTypeRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v1/tenant/account/{id}/fund-type" };
-  }
-  // 获取账户的等级返佣设置（level→name→触发金额阈值列表）
-  rpc GetLevelSetting(GetAccountRequest) returns (LevelSettingResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/level-setting" };
-  }
-  // 获取账户名下所有推荐码，含类型和是否默认
-  rpc GetReferralCodes(GetAccountRequest) returns (ReferralCodesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/referral-codes" };
-  }
-  // 获取账户开户向导当前步骤和完成状态
-  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/wizard" };
-  }
-  // 查询 MT4/MT5 指定 service、group、symbol 的品种组合配置
-  rpc GetMtGroupSymbol(GetMtGroupSymbolRequest) returns (MtGroupSymbolResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/mt-group-symbol" };
-  }
-  // 校验 MT 账户号码是否合法且未被占用
-  rpc CheckAccountNumber(CheckAccountNumberRequest) returns (CheckAccountNumberResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/check-account-number/{account_number}" };
-  }
-  // 将账户关联的 MT 登录号变更为指定 account_number
-  rpc ChangeAccountNumber(ChangeAccountNumberRequest) returns (Account) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/change-account-number/{account_number}" };
-  }
-  // 将 IB（Agent）账户转换为 Sales 账户（uid=账户ID，code=新推荐码，real_code=实际绑定码）
-  rpc IbToSales(IbToSalesRequest) returns (Account) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/ib-to-sales/{uid}/{code}/{real_code}" };
-  }
-  // 查询账户的所有上级账户链（从直属父级到根节点）
-  rpc GetParentAccounts(GetAccountRequest) returns (ParentAccountsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/{id}/parent-accounts" };
-  }
-  // 生成账户活动报告（PDF/Excel），body 含报告类型和日期范围
-  rpc GetActivityReport(GetActivityReportRequest) returns (OperationResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/activity-report", body: "spec" };
-  }
-  // 获取所有 MT 账户组名称列表（供 Tenant 管理员使用）
-  rpc GetFullAccountGroupNames(GetAccountGroupNamesRequest) returns (GroupNameListResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/group/name-list" };
-  }
-  // 将账户分配给指定 Sales 账户管理（建立 sales 关联关系）
-  rpc AssignAccountToSales(AssignAccountRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/assign/sales/{target_uid}" };
-  }
-  // 将账户分配给指定 Agent（IB）账户管理（建立 agent 关联关系）
-  rpc AssignAccountToAgent(AssignAccountRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/assign/agent/{target_uid}" };
-  }
-  // 将账户从指定 Agent 的管理下移除
-  rpc RemoveAccountFromAgent(AssignAccountRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/remove/agent/{target_uid}" };
-  }
-  // 变更账户所属的 Agent 组（移动到另一个 Agent 下）
-  rpc ChangeAgentGroup(AssignAccountRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/change/agent/{target_uid}" };
-  }
-  // 变更账户所属的 Sales 组（移动到另一个 Sales 下）
-  rpc ChangeSalesGroup(AssignAccountRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/change/sales/{target_uid}" };
-  }
-  // 修改账户在 Agent 组内的自定义组名（MT 账户组别名）
-  rpc ChangeAgentGroupName(ChangeAgentGroupNameRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v1/tenant/account/{id}/change/agent-group-name", body: "spec" };
-  }
-  // 重命名 Tenant 自定义分组（group/{groupId}）
-  rpc RenameGroup(RenameGroupRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/group/{group_id}", body: "spec" };
-  }
-  // 查询 Tenant 下所有推荐码（分页，可按 account_id、code 过滤）
-  // HTTP 路由由旧 MVC ReferralController 处理，gRPC 仅保留内部调用
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {}
+  rpc GetAccount(GetAccountRequest) returns (Account) {}
+  rpc RefreshAccount(GetAccountRequest) returns (Account) {}
+  rpc ListAccountLogs(ListAccountLogsRequest) returns (ListAccountLogsResponse) {}
+  rpc GetLogActions(EmptyRequest) returns (LogActionsResponse) {}
+  rpc UpdateAccountType(UpdateAccountTypeRequest) returns (Account) {}
+  rpc UpdateAccountSite(UpdateAccountSiteRequest) returns (Account) {}
+  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (Account) {}
+  rpc UpdateAccountTags(UpdateAccountTagsRequest) returns (Account) {}
+  rpc UpdateHasLevelRule(UpdateHasLevelRuleRequest) returns (Account) {}
+  rpc UpdateFundType(UpdateFundTypeRequest) returns (Account) {}
+  rpc GetLevelSetting(GetAccountRequest) returns (LevelSettingResponse) {}
+  rpc GetReferralCodes(GetAccountRequest) returns (ReferralCodesResponse) {}
+  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {}
+  rpc GetMtGroupSymbol(GetMtGroupSymbolRequest) returns (MtGroupSymbolResponse) {}
+  rpc CheckAccountNumber(CheckAccountNumberRequest) returns (CheckAccountNumberResponse) {}
+  rpc ChangeAccountNumber(ChangeAccountNumberRequest) returns (Account) {}
+  rpc IbToSales(IbToSalesRequest) returns (Account) {}
+  rpc GetParentAccounts(GetAccountRequest) returns (ParentAccountsResponse) {}
+  rpc GetActivityReport(GetActivityReportRequest) returns (OperationResponse) {}
+  rpc GetFullAccountGroupNames(GetAccountGroupNamesRequest) returns (GroupNameListResponse) {}
+  rpc AssignAccountToSales(AssignAccountRequest) returns (Account) {}
+  rpc AssignAccountToAgent(AssignAccountRequest) returns (Account) {}
+  rpc RemoveAccountFromAgent(AssignAccountRequest) returns (Account) {}
+  rpc ChangeAgentGroup(AssignAccountRequest) returns (Account) {}
+  rpc ChangeSalesGroup(AssignAccountRequest) returns (Account) {}
+  rpc ChangeAgentGroupName(ChangeAgentGroupNameRequest) returns (Account) {}
+  rpc RenameGroup(RenameGroupRequest) returns (OperationResponse) {}
   rpc ListReferrals(ListReferralsRequest) returns (ListReferralsResponse) {}
-  // 根据推荐码字符串查询该推荐码所属账户详情
   rpc GetReferralByCode(GetReferralByCodeRequest) returns (ReferralDetailResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/referral/referred-by-account/{code}" };
   }
-  // 查询推荐码使用历史（分页，可按 code、account_id 及日期范围过滤）
-  // HTTP 路由由旧 MVC ReferralController 处理，gRPC 仅保留内部调用
   rpc GetReferralHistory(ListReferralHistoryRequest) returns (ListReferralHistoryResponse) {}
-  // 为账户新增一条推荐码记录
   rpc AddReferralCode(AddReferralCodeRequest) returns (ReferralCode) {
     option (google.api.http) = { post: "/api/v1/tenant/referral", body: "*" };
   }
-  // 更新推荐码的默认支付方式列表（全量覆盖）
   rpc UpdateReferralDefaultPaymentMethods(UpdateReferralPaymentMethodsRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/referral/{id}/default-payment-method", body: "spec" };
   }
-  // 分页查询账户沟通记录（communicate 模块）
   rpc ListCommunications(ListCommunicationsRequest) returns (ListCommunicationsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/communicate" };
   }
-  // 查询 Tenant 下账户余额变更审计记录（credit/debit 操作日志）
-  rpc ListAccountBalanceAudits(ListAccountBalanceAuditsRequest) returns (ListAccountBalanceAuditsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/audit/account-change-balance" };
-  }
-  // Tenant 视角：查询指定账户下辖子账户网络汇总统计（充值/提款/返佣/盈亏，按货币分组）
-  rpc GetChildNetStat(GetTenantChildNetStatRequest) returns (ChildNetStatResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/child/stat" };
-  }
-  // Tenant 视角：按交易品种分组汇总下辖网络返佣金额
-  rpc GetChildRebateBySymbol(GetTenantChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/account/child/stat/rebate/symbol-grouped" };
-  }
+  rpc ListAccountBalanceAudits(ListAccountBalanceAuditsRequest) returns (ListAccountBalanceAuditsResponse) {}
+  rpc GetChildNetStat(GetTenantChildNetStatRequest) returns (ChildNetStatResponse) {}
+  rpc GetChildRebateBySymbol(GetTenantChildStatByRangeRequest) returns (SymbolGroupStatResponse) {}
 }
 
 // ─── Tenant Account V2 API (api/v2/tenant/account) ──────────────────────────
@@ -194,111 +94,45 @@ service TenantAccountServiceV2 {
   rpc DisableTransfer(GetAccountRequest) returns (Account) {
     option (google.api.http) = { put: "/api/v2/tenant/account/{id}/disable-transfer" };
   }
-  // 获取指定日期范围内交易量/盈亏排行榜 Top N（count 指定条数）
-  rpc GetStatTop(GetStatTopRequest) returns (StatTopResponse) {
-    option (google.api.http) = { get: "/api/v2/tenant/account/stat-top" };
-  }
+  // HTTP 路由由 MVC AccountControllerV2.TopAccountStat 处理
+  rpc GetStatTop(GetStatTopRequest) returns (StatTopResponse) {}
 }
 
 // ─── Client Account API (api/v1/client/account) ─────────────────────────────
 // 客户端账户查询接口，仅当前登录用户自己的账户可见；支持刷新和开户向导。
 
+// HTTP 路由由 MVC Areas/Client/Controllers/AccountController 处理
 service ClientAccountService {
-  // 分页查询当前客户名下的实盘账户列表；可按 keywords、status 及日期范围过滤
-  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
-    option (google.api.http) = { get: "/api/v1/client/account" };
-  }
-  // 按 id 获取当前客户名下的单条账户详情
-  rpc GetAccount(GetAccountRequest) returns (Account) {
-    option (google.api.http) = { get: "/api/v1/client/account/{id}" };
-  }
-  // 获取账户开户向导当前步骤和完成状态
-  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {
-    option (google.api.http) = { get: "/api/v1/client/account/{id}/wizard" };
-  }
-  // 从 MT4/MT5 服务器拉取最新账户数据并刷新本地缓存
-  rpc RefreshAccount(GetAccountRequest) returns (Account) {
-    option (google.api.http) = { get: "/api/v1/client/account/{id}/refresh" };
-  }
+  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {}
+  rpc GetAccount(GetAccountRequest) returns (Account) {}
+  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {}
+  rpc RefreshAccount(GetAccountRequest) returns (Account) {}
 }
 
 // ─── Client Account V2 API (api/v2/client/account) ──────────────────────────
 // 客户端账户增强接口，包括模拟账户管理、开户配置、推荐码查询、杠杆/密码修改、
 // 支付状态查询，以及账户级别的出入金和转账记录查询。
 
+// HTTP 路由由 MVC Areas/Client/Controllers/V2/AccountControllerV2 处理
 service ClientAccountServiceV2 {
-  // 分页查询当前客户名下所有实盘账户
-  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account" };
-  }
-  // 分页查询当前客户名下所有模拟账户
-  rpc ListDemoAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/demo" };
-  }
-  // 创建模拟账户（指定账户类型字符串、初始保证金和杠杆倍数）
-  rpc CreateDemoAccount(CreateDemoAccountRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v2/client/account/demo", body: "*" };
-  }
-  // 获取实盘开户配置（平台支持的账户类型列表）
-  rpc GetApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/application-config" };
-  }
-  // 获取模拟账户开户配置（平台支持的模拟账户类型列表）
-  rpc GetDemoApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/demo/application-config" };
-  }
-  // 根据推荐码查询对应可用账户类型列表（用于推荐注册流程中的账户类型筛选）
-  rpc GetAccountTypeByReferral(GetAccountTypeByReferralRequest) returns (AccountTypesResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/type/referral" };
-  }
-  // 获取指定账户的运行时配置（当前杠杆、是否开启转账等）
-  rpc GetAccountConfig(GetAccountRequest) returns (AccountConfigResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{id}/config" };
-  }
-  // 将指定账户设为默认父账户（用于资金归集和推荐层级计算）
-  rpc SetDefaultParent(GetAccountRequest) returns (Account) {
-    option (google.api.http) = { put: "/api/v2/client/account/{id}/default-parent" };
-  }
-  // 修改 MT 账户杠杆倍数（实时推送到 MT4/MT5 服务器）
-  rpc ChangeLeverage(ChangeLeverageRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v2/client/account/{id}/change-leverage", body: "spec" };
-  }
-  // 修改 MT 账户交易密码（需同时提供旧密码验证）
-  rpc ChangePassword(AccountChangePasswordRequest) returns (Account) {
-    option (google.api.http) = { post: "/api/v2/client/account/{id}/change-password", body: "spec" };
-  }
-  // 查询关联账户上某笔支付（payment_number）的当前处理状态
-  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (PaymentStatusResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{id}/payment/{payment_number}/status" };
-  }
-  // 分页查询指定账户（account_uid）的充值记录；可按 status 和日期范围过滤
-  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit" };
-  }
-  // 在指定账户下发起充值（选择 payment_method_id、金额和货币）
-  rpc CreateDeposit(CreateDepositRequest) returns (Deposit) {
-    option (google.api.http) = { post: "/api/v2/client/account/{account_uid}/deposit", body: "spec" };
-  }
-  // 获取指定充值单（deposit_hash_id）的支付引导信息（如收款账户、二维码等）
-  rpc GetDepositGuide(GetDepositGuideRequest) returns (DepositGuideResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit/{deposit_hash_id}/guide" };
-  }
-  // 获取指定充值单的回执凭证 URL（上传的付款截图或系统生成的收据）
-  rpc GetDepositReceipt(GetDepositReceiptRequest) returns (DepositReceiptResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/deposit/{deposit_hash_id}/receipt" };
-  }
-  // 分页查询指定账户的提款记录；可按 status 和日期范围过滤
-  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/withdrawal" };
-  }
-  // 在指定账户下发起提款（选择 payment_info_id 即收款账户、金额和货币）
-  rpc CreateWithdrawal(CreateWithdrawalRequest) returns (Withdrawal) {
-    option (google.api.http) = { post: "/api/v2/client/account/{account_uid}/withdrawal", body: "spec" };
-  }
-  // 分页查询指定账户的账户间转账记录；可按日期范围过滤
-  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse) {
-    option (google.api.http) = { get: "/api/v2/client/account/{account_uid}/transfer" };
-  }
+  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {}
+  rpc ListDemoAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {}
+  rpc CreateDemoAccount(CreateDemoAccountRequest) returns (Account) {}
+  rpc GetApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {}
+  rpc GetDemoApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {}
+  rpc GetAccountTypeByReferral(GetAccountTypeByReferralRequest) returns (AccountTypesResponse) {}
+  rpc GetAccountConfig(GetAccountRequest) returns (AccountConfigResponse) {}
+  rpc SetDefaultParent(GetAccountRequest) returns (Account) {}
+  rpc ChangeLeverage(ChangeLeverageRequest) returns (Account) {}
+  rpc ChangePassword(AccountChangePasswordRequest) returns (Account) {}
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (PaymentStatusResponse) {}
+  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {}
+  rpc CreateDeposit(CreateDepositRequest) returns (Deposit) {}
+  rpc GetDepositGuide(GetDepositGuideRequest) returns (DepositGuideResponse) {}
+  rpc GetDepositReceipt(GetDepositReceiptRequest) returns (DepositReceiptResponse) {}
+  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {}
+  rpc CreateWithdrawal(CreateWithdrawalRequest) returns (Withdrawal) {}
+  rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse) {}
 }
 
 // ─── Sales Account API (api/v1/sales/{salesUid}/account) ────────────────────
@@ -559,7 +393,7 @@ message ListAccountsRequest {
 
 message ListAccountsResponse {
   repeated Account data = 1;
-  PaginationMeta   meta = 2;
+  PaginationMeta   criteria = 2;
 }
 
 // 按账户 id 查询
@@ -585,7 +419,7 @@ message ListAccountLogsRequest {
 
 message ListAccountLogsResponse {
   repeated AccountLog data = 1;
-  PaginationMeta      meta = 2;
+  PaginationMeta      criteria = 2;
 }
 
 // 账户操作日志条目
@@ -931,7 +765,7 @@ message ListTransfersRequest {
 
 message ListTransfersResponse {
   repeated Transfer data = 1;
-  PaginationMeta    meta = 2;
+  PaginationMeta    criteria = 2;
 }
 
 // 账户间转账记录实体
@@ -1229,7 +1063,7 @@ message ListReferralsRequest {
 // 推荐码列表响应
 message ListReferralsResponse {
   repeated ReferralCode items = 1;
-  PaginationMeta        meta  = 2;
+  PaginationMeta        criteria  = 2;
 }
 
 // 按推荐码查询账户详情请求
@@ -1259,7 +1093,7 @@ message ListReferralHistoryRequest {
 // 推荐码使用历史响应
 message ListReferralHistoryResponse {
   repeated ReferralHistoryItem items = 1;
-  PaginationMeta               meta  = 2;
+  PaginationMeta               criteria  = 2;
 }
 
 // 单条推荐码使用历史记录
@@ -1305,7 +1139,7 @@ message ListCommunicationsRequest {
 // 沟通记录列表响应
 message ListCommunicationsResponse {
   repeated CommunicationItem items = 1;
-  PaginationMeta             meta  = 2;
+  PaginationMeta             criteria  = 2;
 }
 
 // 单条沟通记录
@@ -1330,7 +1164,7 @@ message ListAccountBalanceAuditsRequest {
 // 账户余额变更审计响应
 message ListAccountBalanceAuditsResponse {
   repeated AccountBalanceAuditItem items = 1;
-  PaginationMeta                   meta  = 2;
+  PaginationMeta                   criteria  = 2;
 }
 
 // 单条余额变更审计记录

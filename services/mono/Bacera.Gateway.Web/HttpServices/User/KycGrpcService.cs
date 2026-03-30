@@ -34,7 +34,7 @@ public class TenantKycGrpcService(
 
         var response = new ListKycsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
