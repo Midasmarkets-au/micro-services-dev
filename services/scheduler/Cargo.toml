@@ -46,6 +46,8 @@ thiserror = "2"
 dotenvy = "0.15"
 # Async trait
 async-trait = "0.1"
+# NATS JetStream
+async-nats = "0.38"
 # Futures
 futures = "0.3"
 # Enum serde

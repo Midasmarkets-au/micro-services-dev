@@ -37,6 +37,9 @@ pub struct Config {
     // mono gRPC URL (for NotifyReportDone callback)
     pub mono_grpc_url: String,
 
+    // NATS JetStream URL
+    pub nats_url: String,
+
     // Worker settings
     pub worker_concurrency: usize,
 }
@@ -80,6 +83,8 @@ impl Config {
             smtp_from: env_str("SMTP_FROM", "noreply@example.com"),
 
             mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:50005"),
+
+            nats_url: env_str("NATS_URL", "nats://localhost:4222"),
 
             worker_concurrency: env_usize("WORKER_CONCURRENCY", 4),
         })
