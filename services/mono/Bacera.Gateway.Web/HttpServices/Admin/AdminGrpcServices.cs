@@ -39,7 +39,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
 
         var response = new ListAuditsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
@@ -89,7 +89,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
 
         var response = new ListAuditsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
@@ -119,7 +119,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
             .ToTenantPageModel()
             .ToListAsync();
 
-        var response = new ListAuditsResponse { Meta = BuildMeta(1, 1, items.Count) };
+        var response = new ListAuditsResponse { Criteria = BuildMeta(1, 1, items.Count) };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
             Id        = a.Id,
@@ -179,7 +179,7 @@ public class TenantIpBlacklistGrpcService(
 
         var response = new ListIpBlacklistResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(MapToProto));
         return response;
@@ -305,7 +305,7 @@ public class TenantUserBlacklistGrpcService(
 
         var response = new ListUserBlacklistResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(MapToProto));
         return response;
@@ -459,7 +459,7 @@ public class TenantApiLogGrpcService(TenantDbContext tenantDb)
 
         var response = new ListApiLogsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(l => new ProtoApiLog
         {

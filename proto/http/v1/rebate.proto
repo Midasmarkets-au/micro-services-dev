@@ -229,14 +229,10 @@ service TenantRebateDirectSchemaService {
   rpc BatchUpdateRebateDirectSchemaItems(BatchUpdateDirectSchemaItemsRequest) returns (RebateDirectSchema) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/items", body: "items" };
   }
-  // 查询哪些 DirectRule 引用了该 DirectSchema（用于变更前影响范围评估）
-  rpc GetUsedDirectRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateDirectRulesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}/used-direct-rule-schema" };
-  }
-  // 查询哪些 ClientRule 引用了该 DirectSchema（用于变更前影响范围评估）
-  rpc GetUsedClientRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateClientRulesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}/used-client-rule-schema" };
-  }
+  // 查询哪些 DirectRule 引用了该 DirectSchema（HTTP 路由由 MVC RebateDirectSchemaController 处理，返回 AccountViewModel 列表）
+  rpc GetUsedDirectRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateDirectRulesResponse) {}
+  // 查询哪些 ClientRule 引用了该 DirectSchema（HTTP 路由由 MVC RebateDirectSchemaController 处理，返回 AccountViewModel 列表）
+  rpc GetUsedClientRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateClientRulesResponse) {}
 }
 
 // ─── Tenant Rebate Schema Bundle API (api/v1/tenant/rebate-schema-bundle) ─────
@@ -519,7 +515,7 @@ message ListRebatesRequest {
 
 message ListRebatesResponse {
   repeated Rebate data = 1;
-  PaginationMeta  meta = 2;
+  PaginationMeta  criteria = 2;
 }
 
 // 按 id 查询返佣/TradeRebate 记录
@@ -556,7 +552,7 @@ message ListRebateAgentRulesRequest {
 
 message ListRebateAgentRulesResponse {
   repeated RebateAgentRule data = 1;
-  PaginationMeta           meta = 2;
+  PaginationMeta           criteria = 2;
 }
 
 // 按 id 查询规则
@@ -611,7 +607,7 @@ message ListRebateClientRulesRequest {
 
 message ListRebateClientRulesResponse {
   repeated RebateClientRule data = 1;
-  PaginationMeta            meta = 2;
+  PaginationMeta            criteria = 2;
 }
 
 // 更新分配类型请求
@@ -634,7 +630,7 @@ message ListRebateDirectRulesRequest {
 
 message ListRebateDirectRulesResponse {
   repeated RebateDirectRule data = 1;
-  PaginationMeta            meta = 2;
+  PaginationMeta            criteria = 2;
 }
 
 // 创建直接返佣规则请求
@@ -675,7 +671,7 @@ message SchemaNameItem {
 // BaseSchema 列表响应
 message ListRebateBaseSchemasResponse {
   repeated RebateBaseSchema data = 1;
-  PaginationMeta            meta = 2;
+  PaginationMeta            criteria = 2;
 }
 
 // 按 schema_id 查询 Schema
@@ -735,7 +731,7 @@ message BatchUpdateSchemaItemsRequest {
 // DirectSchema 列表响应
 message ListRebateDirectSchemasResponse {
   repeated RebateDirectSchema data = 1;
-  PaginationMeta              meta = 2;
+  PaginationMeta              criteria = 2;
 }
 
 // 创建 DirectSchema 请求
@@ -788,7 +784,7 @@ message GetUsedBySchemaRequest {
 // SchemaBundle 列表响应
 message ListRebateSchemaBundlesResponse {
   repeated RebateSchemaBundle data = 1;
-  PaginationMeta              meta = 2;
+  PaginationMeta              criteria = 2;
 }
 
 // 按 bundle_id 查询 SchemaBundle
@@ -819,7 +815,7 @@ message ListSalesRebatesRequest {
 
 message ListSalesRebatesResponse {
   repeated SalesRebate data = 1;
-  PaginationMeta       meta = 2;
+  PaginationMeta       criteria = 2;
 }
 
 // 更新 Sales 返佣记录请求
@@ -841,7 +837,7 @@ message ListSalesRebateSchemasRequest {
 
 message ListSalesRebateSchemasResponse {
   repeated SalesRebateSchema data = 1;
-  PaginationMeta             meta = 2;
+  PaginationMeta             criteria = 2;
 }
 
 // 创建 Sales 返佣 Schema 请求
@@ -874,7 +870,7 @@ message ListTradeRebatesRequest {
 
 message ListTradeRebatesResponse {
   repeated TradeRebate data = 1;
-  PaginationMeta       meta = 2;
+  PaginationMeta       criteria = 2;
 }
 
 // TradeRebate 校验结果

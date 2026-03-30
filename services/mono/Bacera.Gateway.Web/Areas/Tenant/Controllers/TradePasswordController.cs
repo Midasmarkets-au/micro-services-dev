@@ -1,9 +1,8 @@
-using OpenIddict.Validation.AspNetCore;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.Controllers;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using OpenIddict.Validation.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

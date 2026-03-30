@@ -12,23 +12,12 @@ import "http/v1/common.proto";
 // 查询后台操作审计记录，包括账户余额变动和高额交易监控。
 // 审计记录由系统自动写入，仅支持只读查询。
 
+// HTTP 路由全部由 MVC AuditController 处理，返回含 user/account 的完整格式
 service TenantAuditService {
-  // 分页查询审计记录；可按 account_id、action 关键字及日期范围过滤
-  rpc ListAudits(ListAuditsRequest) returns (ListAuditsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/audit" };
-  }
-  // 按 id 获取单条审计记录详情
-  rpc GetAudit(GetAuditRequest) returns (Audit) {
-    option (google.api.http) = { get: "/api/v1/tenant/audit/{id}" };
-  }
-  // 查询账户余额变动类型的审计记录（action 固定为 account-change-balance）
-  rpc ListAccountChangeBalanceAudits(ListAuditsRequest) returns (ListAuditsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/audit/account-change-balance" };
-  }
-  // 获取最近的高额交易审计记录（固定返回最新若干条，无需分页参数）
-  rpc GetHighDollarLatest(EmptyRequest) returns (ListAuditsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/audit/high-dollar/latest" };
-  }
+  rpc ListAudits(ListAuditsRequest) returns (ListAuditsResponse) {}
+  rpc GetAudit(GetAuditRequest) returns (Audit) {}
+  rpc ListAccountChangeBalanceAudits(ListAuditsRequest) returns (ListAuditsResponse) {}
+  rpc GetHighDollarLatest(EmptyRequest) returns (ListAuditsResponse) {}
 }
 
 // ─── Tenant IP Blacklist API (api/v1/tenant/ip-black-list) ───────────────────
@@ -88,38 +77,23 @@ service TenantUserBlacklistService {
 // 查询 HTTP API 访问日志，用于调试和安全审查。
 
 service TenantApiLogService {
-  // 分页查询 API 日志；可按 path 前缀、HTTP 状态码及日期范围过滤
-  rpc ListApiLogs(ListApiLogsRequest) returns (ListApiLogsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/api-log" };
-  }
+  // 分页查询 API 日志；HTTP 路由由 MVC ApiLogController 处理，返回含 user/requestContent/responseContent 的完整格式
+  rpc ListApiLogs(ListApiLogsRequest) returns (ListApiLogsResponse) {}
 }
 
 // ─── Tenant Statistics API (api/v2/tenant/statistic) ────────────────────────
 // 实时在线用户统计，包括管理员和客户端在线人数。
 
+// HTTP 路由由 MVC StatisticControllerV2 处理
 service TenantStatisticsService {
-  // 获取当前在线管理员列表及数量（通过 SignalR 连接状态统计）
-  rpc GetOnlineAdmins(EmptyRequest) returns (OnlineAdminsResponse) {
-    option (google.api.http) = { get: "/api/v2/tenant/statistic/online-admins" };
-  }
-  // 获取当前在线客户端用户列表及数量，按 tenant 分组含浏览器/设备统计
-  rpc GetOnlineUsers(EmptyRequest) returns (OnlineUsersResponse) {
-    option (google.api.http) = { get: "/api/v2/tenant/statistic/online-users" };
-  }
+  rpc GetOnlineAdmins(EmptyRequest) returns (OnlineAdminsResponse) {}
+  rpc GetOnlineUsers(EmptyRequest) returns (OnlineUsersResponse) {}
 }
 
-// ─── Tenant Statistics V2 API (api/v2/tenant/statistic) ──────────────────────
-// MT4/MT5 服务器指标监控（CPU、内存使用率）。
-
+// HTTP 路由由 MVC StatisticControllerV2 处理
 service TenantStatisticsServiceV2 {
-  // 获取 MT 服务器列表（id、name、host）
-  rpc GetServers(EmptyRequest) returns (ServersResponse) {
-    option (google.api.http) = { get: "/api/v2/tenant/statistic/server" };
-  }
-  // 获取所有 MT 服务器的最新指标（CPU/内存使用率）
-  rpc GetServerMetrics(EmptyRequest) returns (ServerMetricsResponse) {
-    option (google.api.http) = { get: "/api/v2/tenant/statistic/server/metrics" };
-  }
+  rpc GetServers(EmptyRequest) returns (ServersResponse) {}
+  rpc GetServerMetrics(EmptyRequest) returns (ServerMetricsResponse) {}
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────
@@ -176,7 +150,7 @@ message ListAuditsRequest {
 
 message ListAuditsResponse {
   repeated Audit data = 1;
-  PaginationMeta meta = 2;
+  PaginationMeta criteria = 2;
 }
 
 // 按 id 查询审计记录
@@ -197,7 +171,7 @@ message ListIpBlacklistRequest {
 
 message ListIpBlacklistResponse {
   repeated IpBlacklistItem data = 1;
-  PaginationMeta           meta = 2;
+  PaginationMeta           criteria = 2;
 }
 
 // 按 id 查询 IP 黑名单
@@ -230,7 +204,7 @@ message ListUserBlacklistRequest {
 
 message ListUserBlacklistResponse {
   repeated UserBlacklistItem data = 1;
-  PaginationMeta             meta = 2;
+  PaginationMeta             criteria = 2;
 }
 
 // 按 id 查询用户黑名单
@@ -265,7 +239,7 @@ message ListApiLogsRequest {
 
 message ListApiLogsResponse {
   repeated ApiLog data = 1;
-  PaginationMeta  meta = 2;
+  PaginationMeta  criteria = 2;
 }
 
 // ─── Statistics 相关消息 ──────────────────────────────────────────────────────
@@ -326,51 +300,19 @@ message ServerMetric {
 // 后台管理员账户、角色与权限管理：查询管理员列表、角色/权限 CRUD，
 // 以及用户角色/权限的切换（toggle）操作。
 
+// HTTP 路由全部由 MVC AdminController 处理
 service TenantAdminService {
-  // 获取所有后台管理员用户列表（含角色 ID 列表）
-  rpc ListAdminUsers(EmptyRequest) returns (ListAdminUsersResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/admin/users" };
-  }
-  // 按 party_id 获取管理员详情（含用户权限、角色权限及答题锁定状态）
-  rpc GetAdminUser(GetAdminUserRequest) returns (AdminUserDetail) {
-    option (google.api.http) = { get: "/api/v1/tenant/admin/users/{party_id}" };
-  }
-  // 获取 tenant 下所有角色列表
-  rpc ListAdminRoles(EmptyRequest) returns (AdminRolesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/admin/roles" };
-  }
-  // 按 id 获取角色关联的权限 ID 列表
-  rpc GetAdminRole(GetAdminRoleRequest) returns (AdminRoleDetail) {
-    option (google.api.http) = { get: "/api/v1/tenant/admin/roles/{id}" };
-  }
-  // 获取 tenant 下所有权限列表
-  rpc ListAdminPermissions(EmptyRequest) returns (AdminPermissionsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/admin/permissions" };
-  }
-  // 创建新权限记录（定义 API 路由访问控制规则）
-  rpc CreateAdminPermission(CreatePermissionRequest) returns (AdminPermission) {
-    option (google.api.http) = { post: "/api/v1/tenant/admin/permissions", body: "*" };
-  }
-  // 切换权限的启用/禁用状态
-  rpc TogglePermission(TogglePermissionRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/admin/permissions/{id}/toggle" };
-  }
-  // 切换用户角色（已有则移除，未有则添加）
-  rpc ToggleUserRole(ToggleUserRoleRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/admin/users/{id}/role/{role_id}/toggle" };
-  }
-  // 切换用户直接权限（已有则移除，未有则添加）
-  rpc ToggleUserPermission(ToggleUserPermissionRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/admin/users/{id}/permission/{permission_id}/toggle" };
-  }
-  // 切换角色权限关联（已有则移除，未有则添加）
-  rpc ToggleRolePermission(ToggleRolePermissionRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/admin/roles/{id}/permission/{permission_id}/toggle" };
-  }
-  // 按 party_id 获取用户的权限详情（V2，含用户直接权限和角色继承权限）
-  rpc GetUserPermissionsByPartyId(GetPermissionsByPartyIdRequest) returns (UserPermissionsDetailResponse) {
-    option (google.api.http) = { get: "/api/v2/tenant/permissions/user/{party_id}" };
-  }
+  rpc ListAdminUsers(EmptyRequest) returns (ListAdminUsersResponse) {}
+  rpc GetAdminUser(GetAdminUserRequest) returns (AdminUserDetail) {}
+  rpc ListAdminRoles(EmptyRequest) returns (AdminRolesResponse) {}
+  rpc GetAdminRole(GetAdminRoleRequest) returns (AdminRoleDetail) {}
+  rpc ListAdminPermissions(EmptyRequest) returns (AdminPermissionsResponse) {}
+  rpc CreateAdminPermission(CreatePermissionRequest) returns (AdminPermission) {}
+  rpc TogglePermission(TogglePermissionRequest) returns (OperationResponse) {}
+  rpc ToggleUserRole(ToggleUserRoleRequest) returns (OperationResponse) {}
+  rpc ToggleUserPermission(ToggleUserPermissionRequest) returns (OperationResponse) {}
+  rpc ToggleRolePermission(ToggleRolePermissionRequest) returns (OperationResponse) {}
+  rpc GetUserPermissionsByPartyId(GetPermissionsByPartyIdRequest) returns (UserPermissionsDetailResponse) {}
 }
 
 // ─── Admin RBAC 相关消息 ──────────────────────────────────────────────────────

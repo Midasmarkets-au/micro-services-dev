@@ -43,7 +43,7 @@ public class TenantReportGrpcService(
 
         var response = new ListReportRequestsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,
@@ -436,7 +436,7 @@ public class TenantAccountReportGrpcService(
 
         var response = new ListAccountReportsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,

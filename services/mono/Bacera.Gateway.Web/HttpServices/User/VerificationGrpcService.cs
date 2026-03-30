@@ -47,7 +47,7 @@ public class TenantVerificationGrpcService(
 
         var response = new ListVerificationsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,

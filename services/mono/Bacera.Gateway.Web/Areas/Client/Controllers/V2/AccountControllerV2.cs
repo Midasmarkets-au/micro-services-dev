@@ -177,8 +177,9 @@ public class AccountControllerV2(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [HttpGet("type/referral")]
-    public async Task<IActionResult> GetAccountTypesByReferralCode([FromQuery] string code)
+    public async Task<IActionResult> GetAccountTypesByReferralCode([FromQuery] string? code)
     {
+        if (string.IsNullOrEmpty(code)) return BadRequest(Result.Error("Invalid_referral_code"));
         var partyId = GetPartyId();
 
         var selfCodes = await tenantCtx.ReferralCodes

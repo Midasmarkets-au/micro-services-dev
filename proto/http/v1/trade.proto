@@ -98,31 +98,14 @@ service TenantTradeService {
 // ─── Tenant Trade Password API (api/v1/tenant/tradepassword) ─────────────────
 // 管理 MT4/MT5 交易密码：重置、修改、查看初始密码及历史。
 
+// HTTP 路由全部由 MVC TradePasswordController 处理，gRPC 仅保留内部调用定义
 service TenantTradePasswordService {
-  // 通过 CRM 管理员重置交易密码（body 字段名为 request）
-  rpc ResetCrmPassword(ResetCrmPasswordRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/tradepassword/account/{account_id}/crm-password/reset", body: "request" };
-  }
-  // 获取账户的初始交易密码（开户时系统生成的密码）
-  rpc GetInitialTradePassword(GetTradeAccountIdRequest) returns (InitialPasswordResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/initial" };
-  }
-  // 修改主密码（交易密码），需验证旧密码（body 字段名为 request）
-  rpc ChangeMainPassword(ChangeTradePasswordRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/main", body: "request" };
-  }
-  // 修改观察密码（investor password），需验证旧密码
-  rpc ChangeInvestorPassword(ChangeTradePasswordRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/investor", body: "request" };
-  }
-  // 重置为初始密码（notify=true 时向用户发送通知邮件）
-  rpc ResetToInitialPassword(ResetToInitialPasswordRequest) returns (OperationResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/reset-to-initial", body: "request" };
-  }
-  // 查询密码修改历史记录；可按 password_type 过滤（"main"/"investor"）
-  rpc GetPasswordHistory(GetPasswordHistoryRequest) returns (PasswordHistoryResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/tradepassword/account/{account_id}/trade-password/history" };
-  }
+  rpc ResetCrmPassword(ResetCrmPasswordRequest) returns (OperationResponse) {}
+  rpc GetInitialTradePassword(GetTradeAccountIdRequest) returns (InitialPasswordResponse) {}
+  rpc ChangeMainPassword(ChangeTradePasswordRequest) returns (OperationResponse) {}
+  rpc ChangeInvestorPassword(ChangeTradePasswordRequest) returns (OperationResponse) {}
+  rpc ResetToInitialPassword(ResetToInitialPasswordRequest) returns (OperationResponse) {}
+  rpc GetPasswordHistory(GetPasswordHistoryRequest) returns (PasswordHistoryResponse) {}
 }
 
 // ─── Tenant Trade Service Configuration (api/v1/tenant/tradeserviceconfiguration) ──
@@ -335,7 +318,7 @@ message ListTradeAccountsRequest {
 
 message ListTradeAccountsResponse {
   repeated TradeAccount data = 1;
-  PaginationMeta        meta = 2;
+  PaginationMeta        criteria = 2;
 }
 
 // 按 uid 查询交易账户
@@ -352,7 +335,7 @@ message ListTradeDemoAccountsRequest {
 
 message ListTradeDemoAccountsResponse {
   repeated TradeDemoAccount data = 1;
-  PaginationMeta            meta = 2;
+  PaginationMeta            criteria = 2;
 }
 
 // 创建交易账户请求
@@ -409,7 +392,7 @@ message ListTradesRequest {
 
 message ListTradesResponse {
   repeated Trade data = 1;
-  PaginationMeta meta = 2;
+  PaginationMeta criteria = 2;
 }
 
 // 查询指定交易账户的交易记录（客户端）
@@ -430,7 +413,7 @@ message GetTradeAccountTransactionsRequest {
 
 message ListTradeTransactionsResponse {
   repeated Transaction data = 1;
-  PaginationMeta       meta = 2;
+  PaginationMeta       criteria = 2;
 }
 
 // ─── MT 服务相关 ───────────────────────────────────────────────────────────────

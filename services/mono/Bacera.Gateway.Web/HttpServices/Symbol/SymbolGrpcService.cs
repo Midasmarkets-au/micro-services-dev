@@ -36,7 +36,7 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
 
         var response = new ListSymbolsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(s => new ProtoSymbol
         {
@@ -292,7 +292,7 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
 
         var response = new ListExchangeRatesResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,

@@ -15,9 +15,8 @@ import "http/v1/account.proto";
 
 service TenantLeadService {
   // 分页查询 Lead 列表；可按关键字（姓名/邮箱/手机）、状态、来源、分配情况及日期范围过滤
-  rpc ListLeads(ListLeadsRequest) returns (ListLeadsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/lead" };
-  }
+  // HTTP 路由由 MVC LeadController 处理（含 hasUtm/utms SQL 过滤逻辑）
+  rpc ListLeads(ListLeadsRequest) returns (ListLeadsResponse) {}
   // 按 id 获取 Lead 详情（含已分配账户列表和操作评论记录）
   rpc GetLead(GetLeadRequest) returns (LeadDetail) {
     option (google.api.http) = { get: "/api/v1/tenant/lead/{id}" };
@@ -133,7 +132,7 @@ message ListLeadsRequest {
 
 message ListLeadsResponse {
   repeated Lead  data = 1;
-  PaginationMeta meta = 2;
+  PaginationMeta criteria = 2;
 }
 
 // 按 id 查询 Lead

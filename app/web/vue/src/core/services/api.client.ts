@@ -18,7 +18,8 @@ const axiosInstance2 = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  baseURL: process.env.VUE_APP_API_V2_URL,
+  baseURL: api,
+  // baseURL: process.env.VUE_APP_API_V2_URL,
 });
 
 // axiosInstance.interceptors.request.use((config) => {
