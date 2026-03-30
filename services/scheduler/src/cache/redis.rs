@@ -49,11 +49,11 @@ impl RedisCache {
     /// 向 Redis Hash 中设置字段值
     pub async fn hset(&self, key: &str, field: &str, value: &str) -> Result<()> {
         let mut conn = self.conn.clone();
-        redis::cmd("HSET")
+        let _: () = redis::cmd("HSET")
             .arg(key)
             .arg(field)
             .arg(value)
-            .query_async::<()>(&mut conn)
+            .query_async(&mut conn)
             .await?;
         Ok(())
     }
@@ -61,9 +61,9 @@ impl RedisCache {
     /// 删除整个 Redis key
     pub async fn del(&self, key: &str) -> Result<()> {
         let mut conn = self.conn.clone();
-        redis::cmd("DEL")
+        let _: () = redis::cmd("DEL")
             .arg(key)
-            .query_async::<()>(&mut conn)
+            .query_async(&mut conn)
             .await?;
         Ok(())
     }
