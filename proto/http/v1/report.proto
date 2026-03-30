@@ -31,10 +31,8 @@ service TenantReportService {
   rpc CreateReportRequest(CreateReportRequestRequest) returns (ReportRequest) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request", body: "*" };
   }
-  // 重新生成已有报表（重置 status 并触发后台重新生成）
-  rpc RegenReport(GetReportRequestRequest) returns (ReportRequest) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request/{id}/regen" };
-  }
+  // HTTP 路由由 MVC ReportController.RegenRequest 处理（需要 GetPartyId() MVC context）
+  rpc RegenReport(GetReportRequestRequest) returns (ReportRequest) {}
   // 创建并立即返回下载 URL（不持久化 ReportRequest 记录）
   rpc DownloadReport(CreateReportRequestRequest) returns (DownloadReportResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/download", body: "*" };
