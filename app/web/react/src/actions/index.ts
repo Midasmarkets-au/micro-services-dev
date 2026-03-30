@@ -227,6 +227,20 @@ export {
   getSalesRebateDirectSymbols,
 } from './sales';
 
+// Rep actions
+export {
+  getRepClients,
+  repFuzzySearchAccount,
+  getRepViewEmailCode,
+  getRepEmailByCode,
+  getRepClientTransactions,
+  getRepClientTrades,
+  getRepTradeReports,
+  getRepTransactionReports,
+  getRepDeposits,
+  getRepWithdrawals,
+} from './rep';
+
 // Wallet actions
 export {
   getWalletList,

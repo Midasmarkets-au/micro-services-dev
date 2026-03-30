@@ -376,7 +376,8 @@
       "supports": "Support",
       "eventshop": "Eventshop",
       "ib": "IB Center",
-      "sales": "Sales Center"
+      "sales": "Sales Center",
+      "rep": "Rep Center"
     },
     "openMenu": "Open Menu",
     "closeMenu": "Close Menu",
@@ -2580,5 +2581,124 @@
     "sendFailed": "Failed to send verification code",
     "verifyFailed": "Verification failed",
     "codePlaceholder": "Enter code"
+  },
+  "rep": {
+    "title": "Rep Center",
+    "menu": {
+      "customers": "Customer",
+      "trade": "Trade",
+      "transaction": "Transfer",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal"
+    },
+    "noRepAccount": "No Rep Account",
+    "fields": {
+      "customer": "Customer",
+      "accountNo": "Account No.",
+      "uid": "UID",
+      "email": "Email",
+      "type": "Type",
+      "group": "Group",
+      "code": "Code",
+      "createdOn": "Created On",
+      "balance": "Balance",
+      "actions": "Actions",
+      "accounts": "Accounts"
+    },
+    "action": {
+      "clear": "Clear",
+      "viewDetails": "View Details",
+      "viewAccounts": "View Accounts",
+      "search": "Search",
+      "reset": "Reset",
+      "action": "Action"
+    },
+    "customers": {
+      "title": "Customer",
+      "ibType": "IB",
+      "clientType": "Client",
+      "searchPlaceholder": "Email or Account Number"
+    },
+    "deposit": {
+      "showResults": "Showing <num>{count}</num> results",
+      "total": "Total",
+      "user": "User",
+      "email": "Email",
+      "currency": "Currency",
+      "targetAccount": "Target Account",
+      "group": "Group",
+      "amount": "Amount",
+      "status": "Status",
+      "createdOn": "Created On",
+      "completedDeposit": "Completed",
+      "incompleteDeposit": "Incomplete",
+      "client": "Client",
+      "ib": "IB"
+    },
+    "withdrawal": {
+      "showResults": "Showing <num>{count}</num> results",
+      "total": "Total",
+      "user": "User",
+      "email": "Email",
+      "currency": "Currency",
+      "sourceAccount": "Source Account",
+      "exchangeRate": "Exchange Rate",
+      "group": "Group",
+      "amount": "Amount",
+      "status": "Status",
+      "createdOn": "Created On",
+      "completedWithdrawal": "Completed",
+      "incompleteWithdrawal": "Incomplete",
+      "client": "Client",
+      "ib": "IB"
+    },
+    "transaction": {
+      "showResults": "Showing <num>{count}</num> results",
+      "total": "Total",
+      "user": "User",
+      "email": "Email",
+      "currency": "Currency",
+      "sourceAccount": "Source Account",
+      "targetAccount": "Target Account",
+      "group": "Group",
+      "amount": "Amount",
+      "status": "Status",
+      "createdOn": "Created On",
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed",
+      "client": "Client",
+      "ib": "IB"
+    },
+    "customerDetail": {
+      "backToList": "Back to customer list",
+      "balance": "Balance",
+      "equity": "Equity",
+      "credit": "Credit",
+      "role": "Role",
+      "account": "Account",
+      "roleClient": "Client",
+      "roleIB": "IB",
+      "roleSales": "Sales",
+      "showResults": "Showing <num>{count}</num> results",
+      "noData": "No data",
+      "tabs": {
+        "transaction": "Transaction",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "tradeReport": "Trade Report"
+      },
+      "columns": {
+        "transaction": "Transaction",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "status": "Status",
+        "currency": "Currency",
+        "amount": "Amount",
+        "time": "Time",
+        "account": "Account",
+        "group": "Group",
+        "exchangeRate": "Exchange Rate"
+      }
+    }
   }
 }

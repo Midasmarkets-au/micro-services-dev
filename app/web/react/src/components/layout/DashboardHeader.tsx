@@ -264,6 +264,12 @@ export function DashboardHeader() {
                 <Link href="/sales"  className='text-sm'>{t('menu.sales')}</Link>
               </Button>
             )}
+            {/* Rep Center 按钮 */}
+            {!isMenuLoading && hasMenuAccess(user?.roles, ['Rep']) && (
+              <Button asChild variant="primary" size="xs" className="hidden lg:inline-flex">
+                <Link href="/rep" className='text-sm'>{t('menu.rep')}</Link>
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -340,8 +346,8 @@ export function DashboardHeader() {
                 </Link>
               ))}
 
-              {/* 移动端 IB / Sales 入口 */}
-              {(hasMenuAccess(user?.roles, ['IB', 'Sales']) || hasMenuAccess(user?.roles, ['Sales'])) && (
+              {/* 移动端 IB / Sales / Rep 入口 */}
+              {(hasMenuAccess(user?.roles, ['IB', 'Sales']) || hasMenuAccess(user?.roles, ['Sales']) || hasMenuAccess(user?.roles, ['Rep'])) && (
                 <div className="my-2 border-t border-border pt-2">
                   {hasMenuAccess(user?.roles, ['IB', 'Sales']) && (
                     <Link
@@ -371,6 +377,22 @@ export function DashboardHeader() {
                     >
                       {t('menu.sales')}
                       {pathname.startsWith('/sales') && (
+                        <div className="h-0.5 w-5 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  )}
+                  {hasMenuAccess(user?.roles, ['Rep']) && (
+                    <Link
+                      href="/rep"
+                      onClick={closeDrawer}
+                      className={`flex flex-col gap-1 rounded-lg px-4 py-3.5 text-base transition-colors ${
+                        pathname.startsWith('/rep')
+                          ? 'font-medium text-primary'
+                          : 'text-text-primary hover:bg-surface-secondary'
+                      }`}
+                    >
+                      {t('menu.rep')}
+                      {pathname.startsWith('/rep') && (
                         <div className="h-0.5 w-5 rounded-full bg-primary" />
                       )}
                     </Link>

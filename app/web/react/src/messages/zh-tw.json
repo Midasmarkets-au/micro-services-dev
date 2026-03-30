@@ -139,7 +139,9 @@
       "platforms": "交易平台",
       "supports": "支持",
       "eventshop": "商店",
-      "ib": "IB 中心"
+      "ib": "代理中心",
+      "sales": "銷售中心",
+      "rep": "代表中心"
     },
     "openMenu": "打開菜單",
     "closeMenu": "關閉菜單",
@@ -1127,6 +1129,7 @@
       "customer": "客戶",
       "role": "角色",
       "accountUid": "帳戶 UID",
+      "uid": "UID",
       "accountNo": "帳號",
       "group": "組",
       "code": "代碼",
@@ -1169,6 +1172,7 @@
       "comment": "備註"
     },
     "action": {
+      "noRepAccount": "未找到代表帳戶，請聯繫客服。",
       "search": "搜尋",
       "reset": "重置",
       "viewDetails": "查看詳情",
@@ -1305,7 +1309,8 @@
     },
     "tip": {
       "searchKeyWords": "搜尋關鍵詞...",
-      "copied": "已複製到剪貼板"
+      "copied": "已複製到剪貼板",
+      "emailOrAccountNumber": "郵箱或帳號"
     },
     "deposit": {
       "showResults": "顯示 <num>{count}</num> 條結果",
@@ -1352,5 +1357,124 @@
     "sendFailed": "驗證碼發送失敗",
     "verifyFailed": "驗證失敗",
     "codePlaceholder": "輸入驗證碼"
+  },
+  "rep": {
+    "title": "代表中心",
+    "menu": {
+      "customers": "客戶",
+      "trade": "交易",
+      "transaction": "轉帳",
+      "deposit": "入金",
+      "withdrawal": "取款"
+    },
+    "noRepAccount": "無代表帳戶",
+    "fields": {
+      "customer": "客戶",
+      "accountNo": "帳號",
+      "uid": "用戶ID",
+      "email": "電子郵件",
+      "type": "類型",
+      "group": "群組",
+      "code": "代碼",
+      "createdOn": "創建時間",
+      "balance": "餘額",
+      "actions": "操作",
+      "accounts": "帳戶"
+    },
+    "action": {
+      "clear": "清除",
+      "viewDetails": "查看詳情",
+      "viewAccounts": "查看帳戶",
+      "search": "搜尋",
+      "reset": "重置",
+      "action": "操作"
+    },
+    "customers": {
+      "title": "客戶",
+      "ibType": "IB",
+      "clientType": "Client",
+      "searchPlaceholder": "電子郵件或帳號"
+    },
+    "deposit": {
+      "showResults": "顯示<num>{count}</num>條結果",
+      "total": "合計",
+      "user": "用戶",
+      "email": "電子郵件",
+      "currency": "幣種",
+      "targetAccount": "目標帳戶",
+      "group": "群組",
+      "amount": "金額",
+      "status": "狀態",
+      "createdOn": "建立時間",
+      "completedDeposit": "已完成",
+      "incompleteDeposit": "未完成",
+      "client": "客戶",
+      "ib": "IB"
+    },
+    "withdrawal": {
+      "showResults": "顯示<num>{count}</num>條結果",
+      "total": "合計",
+      "user": "用戶",
+      "email": "電子郵件",
+      "currency": "幣種",
+      "sourceAccount": "來源帳戶",
+      "exchangeRate": "匯率",
+      "group": "群組",
+      "amount": "金額",
+      "status": "狀態",
+      "createdOn": "建立時間",
+      "completedWithdrawal": "已完成",
+      "incompleteWithdrawal": "未完成",
+      "client": "客戶",
+      "ib": "IB"
+    },
+    "transaction": {
+      "showResults": "顯示<num>{count}</num>條結果",
+      "total": "合計",
+      "user": "用戶",
+      "email": "電子郵件",
+      "currency": "幣種",
+      "sourceAccount": "來源帳戶",
+      "targetAccount": "目標帳戶",
+      "group": "群組",
+      "amount": "金額",
+      "status": "狀態",
+      "createdOn": "建立時間",
+      "incompleteTransaction": "已建立",
+      "completedTransaction": "已完成",
+      "client": "客戶",
+      "ib": "IB"
+    },
+    "customerDetail": {
+      "backToList": "返回客戶列表",
+      "balance": "餘額",
+      "equity": "淨值",
+      "credit": "信用",
+      "role": "角色",
+      "account": "帳戶",
+      "roleClient": "客戶",
+      "roleIB": "IB",
+      "roleSales": "銷售",
+      "showResults": "顯示<num>{count}</num>條結果",
+      "noData": "暫無數據",
+      "tabs": {
+        "transaction": "轉賬",
+        "deposit": "入金",
+        "withdrawal": "出金",
+        "tradeReport": "交易報告"
+      },
+      "columns": {
+        "transaction": "轉賬",
+        "deposit": "入金",
+        "withdrawal": "出金",
+        "status": "狀態",
+        "currency": "幣種",
+        "amount": "金額",
+        "time": "時間",
+        "account": "帳戶",
+        "group": "群組",
+        "exchangeRate": "匯率"
+      }
+    }
   }
 }

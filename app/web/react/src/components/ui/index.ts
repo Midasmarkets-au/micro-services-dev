@@ -51,6 +51,8 @@ export { LanguageToggle } from './LanguageToggle';
 
 // SearchableSelect (基于 react-select)
 export { SearchableSelect } from './SearchableSelect';
+export { SearchFilter } from './SearchFilter';
+export type { SearchFilterResult } from './SearchFilter';
 
 // SelectInput (通用组合选择输入框)
 export { SelectInput, PhoneInput } from './SelectInput';
