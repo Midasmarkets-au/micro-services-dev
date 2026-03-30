@@ -354,7 +354,7 @@ pub async fn find_account_by_number(
     let row: Option<(i64, i32, String)> = sqlx::query_as(
         r#"SELECT "Id", COALESCE("CurrencyId", -1), COALESCE("ReferPath", '')
            FROM trd."_Account"
-           WHERE "AccountNumber" = $1 AND "ServiceId" = $2 AND "Status" = 0
+           WHERE "AccountNumber" = $1 AND "ServiceId" = $2 AND "Status" = 0 AND "IsClosed" = 0
            LIMIT 1"#,
     )
     .bind(account_number)

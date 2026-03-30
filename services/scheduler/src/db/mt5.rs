@@ -181,7 +181,7 @@ pub async fn poll_closed_deals(
         FROM mt5_deals_2025
         WHERE VolumeClosed > 0
           AND Action IN (0, 1)
-          AND Login < 82200000
+          AND Login < 82200000 -- exclude system/dealer logins (>= 82200000)
           AND (TimeMsc > ? OR (TimeMsc = ? AND Deal > ?))
         ORDER BY TimeMsc ASC, Deal ASC
         LIMIT ?
@@ -209,7 +209,7 @@ pub async fn get_open_deals_by_positions(
         r#"SELECT PositionID, TimeMsc, Price
            FROM mt5_deals_2025
            WHERE PositionID IN ({})
-             AND Entry = 0"#,
+             AND VolumeClosed = 0"# /* 开仓 deal: VolumeClosed = 0 */,
         placeholders
     );
     let mut q = sqlx::query_as::<_, Mt5OpenDeal>(&sql);
