@@ -85,6 +85,12 @@ function getProfitColorClass(value: number): string {
   return 'text-text-primary';
 }
 
+function getTodayDateRange() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return { from: d, to: d };
+}
+
 // ====================================================================
 // Component
 // ====================================================================
@@ -135,7 +141,6 @@ export function TradeReportTable({
     },
     [pageSize],
   );
-
   const prevAutoFetchKeyRef = useRef(autoFetchKey);
   useEffect(() => {
     if (prevAutoFetchKeyRef.current === autoFetchKey) return;
@@ -157,10 +162,10 @@ export function TradeReportTable({
       setIsClosed(values.isClosed);
       setActiveDefaultParam((prev) => ({
         ...prev,
-        dateRange: values.isClosed ? defaultParam?.dateRange : undefined,
+        dateRange: values.isClosed ? getTodayDateRange() : undefined,
       }));
     }
-  }, [defaultParam?.dateRange]);
+  }, []);
 
   const handlePageChange = useCallback(
     (p: number) => {

@@ -10,17 +10,6 @@ export default function IBTradePage() {
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
-  const todayRange = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return { from: d, to: d };
-  }, []);
-
-  const defaultParam = useMemo(() => ({
-    isClosed: false,
-    dateRange: todayRange,
-  }), [todayRange]);
-
   const fetchData = useCallback(
     async (params: Record<string, unknown>) => {
       if (!agentAccount) return null;
@@ -41,7 +30,6 @@ export default function IBTradePage() {
       <TradeReportTable
         fetchData={fetchData}
         filterOptions={['isClosed', 'service', 'product', 'account', 'datePicker', 'allHistory']}
-        defaultParam={defaultParam}
         showAccountNumber={true}
         autoFetchKey={agentAccount?.uid}
       />

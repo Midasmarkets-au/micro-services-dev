@@ -526,7 +526,6 @@ export default function IBCustomerDetailPage({
         return null;
     }
   };
-
   return (
     <div className="@container flex w-full flex-col gap-3">
       {/* Back Link */}

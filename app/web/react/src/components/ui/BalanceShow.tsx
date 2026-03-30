@@ -74,7 +74,7 @@ export function formatBalance(
   locale: string = 'en-US'
 ): string {
   const id = currencyId === -1 ? 840 : currencyId;
-  const value = balance / 100;
+  const value = balance;
   const hasDecimal = value % 1 !== 0;
   const fractionDigits = hasDecimal ? 4 : 2;
   const code = CurrencyCodeMap[id] || 'USD';
@@ -85,7 +85,7 @@ export function formatBalance(
       currency: code,
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits,
-    }).format(value);
+    }).format(value/100);
   } catch {
     return `${code} ${value.toFixed(fractionDigits)}`;
   }

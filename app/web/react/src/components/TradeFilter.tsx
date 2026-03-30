@@ -85,6 +85,12 @@ function formatDateStr(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+function getTodayDateRange(): DateRange {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return { from: d, to: d };
+}
+
 /**
  * 对应 Vue convertTradeTime(from, to)
  * 返回 [createdFrom, createdTo]
@@ -407,7 +413,7 @@ export function TradeFilter({
   );
 
   const buildParams = useCallback(
-    (overrides?: { fromDate?: string; clearStatus?: boolean; isClosed?: boolean }) => {
+    (overrides?: { fromDate?: string; clearStatus?: boolean; isClosed?: boolean; dateRange?: DateRange }) => {
       const params: Record<string, unknown> = {};
 
       if (!overrides?.clearStatus) {
@@ -431,15 +437,16 @@ export function TradeFilter({
 
       let fromStr: string | null = null;
       let toStr: string | null = null;
+      const effectiveDateRange = overrides?.dateRange ?? dateRange;
 
       if (overrides?.fromDate) {
         fromStr = overrides.fromDate;
-      } else if (dateRange?.from) {
-        fromStr = formatDateStr(dateRange.from);
+      } else if (effectiveDateRange?.from) {
+        fromStr = formatDateStr(effectiveDateRange.from);
       }
 
-      if (dateRange?.to) {
-        toStr = formatDateStr(dateRange.to);
+      if (effectiveDateRange?.to) {
+        toStr = formatDateStr(effectiveDateRange.to);
       }
 
       const timeCriteria = buildTimeCriteria(fromStr, toStr);
@@ -475,6 +482,13 @@ export function TradeFilter({
 
   const handleIsClosedToggle = (newVal: boolean) => {
     setIsClosed(newVal);
+    if (newVal && visibleFields.has('datePicker')) {
+      const todayRange = getTodayDateRange();
+      setDateRange(todayRange);
+      fireChange({ isClosed: newVal, dateRange: todayRange });
+      onSearch(buildParams({ isClosed: newVal, dateRange: todayRange }));
+      return;
+    }
     fireChange({ isClosed: newVal });
     onSearch(buildParams({ isClosed: newVal }));
   };
