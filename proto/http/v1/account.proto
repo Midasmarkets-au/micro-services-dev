@@ -44,19 +44,13 @@ service TenantAccountService {
   rpc ChangeAgentGroupName(ChangeAgentGroupNameRequest) returns (Account) {}
   rpc RenameGroup(RenameGroupRequest) returns (OperationResponse) {}
   rpc ListReferrals(ListReferralsRequest) returns (ListReferralsResponse) {}
-  rpc GetReferralByCode(GetReferralByCodeRequest) returns (ReferralDetailResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/referral/referred-by-account/{code}" };
-  }
+  // HTTP 路由由 MVC ReferralController 处理
+  rpc GetReferralByCode(GetReferralByCodeRequest) returns (ReferralDetailResponse) {}
   rpc GetReferralHistory(ListReferralHistoryRequest) returns (ListReferralHistoryResponse) {}
-  rpc AddReferralCode(AddReferralCodeRequest) returns (ReferralCode) {
-    option (google.api.http) = { post: "/api/v1/tenant/referral", body: "*" };
-  }
-  rpc UpdateReferralDefaultPaymentMethods(UpdateReferralPaymentMethodsRequest) returns (OperationResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/referral/{id}/default-payment-method", body: "spec" };
-  }
-  rpc ListCommunications(ListCommunicationsRequest) returns (ListCommunicationsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/communicate" };
-  }
+  rpc AddReferralCode(AddReferralCodeRequest) returns (ReferralCode) {}
+  rpc UpdateReferralDefaultPaymentMethods(UpdateReferralPaymentMethodsRequest) returns (OperationResponse) {}
+  // HTTP 路由由 MVC CommunicateController 处理
+  rpc ListCommunications(ListCommunicationsRequest) returns (ListCommunicationsResponse) {}
   rpc ListAccountBalanceAudits(ListAccountBalanceAuditsRequest) returns (ListAccountBalanceAuditsResponse) {}
   rpc GetChildNetStat(GetTenantChildNetStatRequest) returns (ChildNetStatResponse) {}
   rpc GetChildRebateBySymbol(GetTenantChildStatByRangeRequest) returns (SymbolGroupStatResponse) {}
