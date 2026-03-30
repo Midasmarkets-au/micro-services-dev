@@ -2,6 +2,7 @@ pub mod auth;
 pub mod mt4;
 pub mod mt5;
 pub mod tenant;
+pub mod trade_rebate;
 
 use anyhow::Result;
 use sqlx::{MySqlPool, PgPool};

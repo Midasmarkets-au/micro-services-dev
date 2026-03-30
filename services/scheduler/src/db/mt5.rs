@@ -121,3 +121,101 @@ pub async fn get_open_positions(pool: &MySqlPool, logins: &[i64]) -> Result<Vec<
     let rows = q.fetch_all(pool).await?;
     Ok(rows)
 }
+
+/// 已平仓 deal（用于 TradeMonitor 轮询）
+#[derive(Debug, sqlx::FromRow)]
+pub struct Mt5ClosedDeal {
+    #[sqlx(rename = "Deal")]
+    pub deal: u64,
+    #[sqlx(rename = "Login")]
+    pub login: u64,
+    #[sqlx(rename = "TimeMsc")]
+    pub time_msc: chrono::DateTime<chrono::Utc>,
+    #[sqlx(rename = "Symbol")]
+    pub symbol: String,
+    #[sqlx(rename = "Price")]
+    pub price: f64,           // close price
+    #[sqlx(rename = "VolumeClosed")]
+    pub volume_closed: u64,
+    #[sqlx(rename = "Volume")]
+    pub volume: u64,
+    #[sqlx(rename = "Profit")]
+    pub profit: f64,
+    #[sqlx(rename = "Commission")]
+    pub commission: f64,
+    #[sqlx(rename = "Storage")]
+    pub storage: f64,         // → Swaps
+    #[sqlx(rename = "Reason")]
+    pub reason: u32,
+    #[sqlx(rename = "Action")]
+    pub action: u32,
+    #[sqlx(rename = "Digits")]
+    pub digits: u32,
+    #[sqlx(rename = "PositionID")]
+    pub position_id: u64,
+    #[sqlx(rename = "Timestamp")]
+    pub timestamp: i64,       // bigint
+}
+
+/// 开仓 deal（仅获取 OpenPrice 和 OpenAt）
+#[derive(Debug, sqlx::FromRow)]
+pub struct Mt5OpenDeal {
+    #[sqlx(rename = "PositionID")]
+    pub position_id: u64,
+    #[sqlx(rename = "TimeMsc")]
+    pub time_msc: chrono::DateTime<chrono::Utc>,
+    #[sqlx(rename = "Price")]
+    pub price: f64,           // open price
+}
+
+/// 查询新的已平仓 deals（TradeMonitor 专用，cursor-based 分页）
+pub async fn poll_closed_deals(
+    pool: &MySqlPool,
+    after_time: chrono::DateTime<chrono::Utc>,
+    after_deal: u64,
+    limit: u32,
+) -> Result<Vec<Mt5ClosedDeal>> {
+    let sql = r#"
+        SELECT Deal, Login, TimeMsc, Symbol, Price, VolumeClosed, Volume,
+               Profit, Commission, Storage, Reason, Action, Digits, PositionID, Timestamp
+        FROM mt5_deals_2025
+        WHERE VolumeClosed > 0
+          AND Action IN (0, 1)
+          AND Login < 82200000
+          AND (TimeMsc > ? OR (TimeMsc = ? AND Deal > ?))
+        ORDER BY TimeMsc ASC, Deal ASC
+        LIMIT ?
+    "#;
+    let rows = sqlx::query_as::<_, Mt5ClosedDeal>(sql)
+        .bind(after_time)
+        .bind(after_time)
+        .bind(after_deal)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
+/// 批量查询对应的开仓 deal（获取 OpenPrice、OpenAt）
+pub async fn get_open_deals_by_positions(
+    pool: &MySqlPool,
+    position_ids: &[u64],
+) -> Result<Vec<Mt5OpenDeal>> {
+    if position_ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let placeholders = position_ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
+    let sql = format!(
+        r#"SELECT PositionID, TimeMsc, Price
+           FROM mt5_deals_2025
+           WHERE PositionID IN ({})
+             AND Entry = 0"#,
+        placeholders
+    );
+    let mut q = sqlx::query_as::<_, Mt5OpenDeal>(&sql);
+    for id in position_ids {
+        q = q.bind(id);
+    }
+    let rows = q.fetch_all(pool).await?;
+    Ok(rows)
+}

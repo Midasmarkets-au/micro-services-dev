@@ -343,3 +343,33 @@ pub async fn get_mt5_connection_string(pool: &PgPool, service_id: i64) -> Result
     }
     Ok(None)
 }
+
+/// 按 AccountNumber + ServiceId 查询账号信息（用于 TradeHandler）
+/// 返回 (account_id, currency_id, refer_path)
+pub async fn find_account_by_number(
+    pool: &sqlx::PgPool,
+    account_number: i64,
+    service_id: i32,
+) -> anyhow::Result<Option<(i64, i32, String)>> {
+    let row: Option<(i64, i32, String)> = sqlx::query_as(
+        r#"SELECT "Id", COALESCE("CurrencyId", -1), COALESCE("ReferPath", '')
+           FROM trd."_Account"
+           WHERE "AccountNumber" = $1 AND "ServiceId" = $2 AND "Status" = 0
+           LIMIT 1"#,
+    )
+    .bind(account_number)
+    .bind(service_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
+/// 获取当前租户 DB 中所有 MT5 TradeService IDs（Platform = 2 = MetaTrader5）
+pub async fn get_mt5_service_ids(pool: &sqlx::PgPool) -> anyhow::Result<Vec<i32>> {
+    let rows: Vec<(i32,)> = sqlx::query_as(
+        r#"SELECT "Id" FROM trd."_TradeService" WHERE "Platform" = 2"#,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows.into_iter().map(|(id,)| id).collect())
+}
