@@ -13,10 +13,8 @@ import "http/v1/common.proto";
 // 支持自定义查询预览（SQL-like）和权益报表（equity report）两种生成模式。
 
 service TenantReportService {
-  // 分页查询报表请求列表；可按 type、status 及日期范围过滤
-  rpc ListReportRequests(ListReportRequestsRequest) returns (ListReportRequestsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/report/request" };
-  }
+  // HTTP 路由由 MVC ReportController 处理，返回完整 ReportRequest 实体（含 name/generatedOn/expireOn/query/isFromApi）
+  rpc ListReportRequests(ListReportRequestsRequest) returns (ListReportRequestsResponse) {}
   // 按 id 获取单条报表请求详情（含 file_url 下载链接）
   rpc GetReportRequest(GetReportRequestRequest) returns (ReportRequest) {
     option (google.api.http) = { get: "/api/v1/tenant/report/request/{id}" };
@@ -100,11 +98,13 @@ message ListReportRequestsRequest {
   optional int32    status     = 3; // 按状态过滤（0=pending、1=processing、2=completed、3=failed）
   optional string   date_from  = 4; // 创建时间起点，ISO 8601 格式
   optional string   date_to    = 5; // 创建时间终点，ISO 8601 格式
+  optional int32    page       = 6; // 兼容前端直接传 page
+  optional int32    size       = 7; // 兼容前端直接传 size
 }
 
 message ListReportRequestsResponse {
   repeated ReportRequest data = 1;
-  PaginationMeta         meta = 2;
+  PaginationMeta         criteria = 2;
 }
 
 // 按 id 查询报表请求
@@ -178,11 +178,14 @@ message ListAccountReportsRequest {
   optional int32    status      = 3; // 按状态过滤
   optional string   date_from   = 4; // ISO 8601 格式
   optional string   date_to     = 5; // ISO 8601 格式
+  optional int32    page        = 6; // 兼容前端直接传 page
+  optional int32    size        = 7; // 兼容前端直接传 size
+  optional int32    page_size   = 8; // 兼容前端传 pageSize
 }
 
 message ListAccountReportsResponse {
   repeated AccountReport data = 1;
-  PaginationMeta         meta = 2;
+  PaginationMeta         criteria = 2;
 }
 
 // 按 id 查询账户报表

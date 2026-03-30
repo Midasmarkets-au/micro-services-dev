@@ -2,6 +2,8 @@ using Bacera.Gateway.Auth;
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Permission;
+using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Grpc.Core;
 using Http.V1;
@@ -37,7 +39,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
 
         var response = new ListAuditsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
@@ -87,7 +89,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
 
         var response = new ListAuditsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
@@ -117,7 +119,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
             .ToTenantPageModel()
             .ToListAsync();
 
-        var response = new ListAuditsResponse { Meta = BuildMeta(1, 1, items.Count) };
+        var response = new ListAuditsResponse { Criteria = BuildMeta(1, 1, items.Count) };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
             Id        = a.Id,
@@ -165,8 +167,8 @@ public class TenantIpBlacklistGrpcService(
     {
         var criteria = new IpBlackList.Criteria
         {
-            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
             Ip   = request.HasIp ? request.Ip : null,
         };
 
@@ -177,7 +179,7 @@ public class TenantIpBlacklistGrpcService(
 
         var response = new ListIpBlacklistResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(MapToProto));
         return response;
@@ -291,8 +293,8 @@ public class TenantUserBlacklistGrpcService(
     {
         var criteria = new UserBlackList.Criteria
         {
-            Page  = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size  = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page  = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size  = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
             Email = request.HasEmail ? request.Email : null,
         };
 
@@ -303,7 +305,7 @@ public class TenantUserBlacklistGrpcService(
 
         var response = new ListUserBlacklistResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(MapToProto));
         return response;
@@ -438,8 +440,8 @@ public class TenantApiLogGrpcService(TenantDbContext tenantDb)
     {
         var criteria = new ApiLog.Criteria
         {
-            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
             Action     = request.HasPath       ? request.Path       : null,
             StatusCode = request.HasStatusCode ? (short)request.StatusCode : null,
         };
@@ -457,7 +459,7 @@ public class TenantApiLogGrpcService(TenantDbContext tenantDb)
 
         var response = new ListApiLogsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(l => new ProtoApiLog
         {
@@ -465,8 +467,8 @@ public class TenantApiLogGrpcService(TenantDbContext tenantDb)
             Method     = l.Method ?? "",
             Path       = l.Action ?? "",
             StatusCode = l.StatusCode ?? 0,
-            Duration   = 0,
-            CreatedAt  = "",
+            Duration   = l.DurationInSeconds ?? 0,
+            CreatedAt  = l.CreatedOn?.ToString("O") ?? "",
         }));
         return response;
     }
@@ -635,5 +637,242 @@ public class TenantStatisticsV2GrpcService(MybcrDbContext bcrCtx, IHttpClientFac
         var response = new ServerMetricsResponse();
         response.Metrics.AddRange(metrics);
         return response;
+    }
+}
+
+// ─── Admin RBAC ───────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Replaces Areas/Tenant/Controllers/AdminController.cs (RBAC endpoints).
+/// Routes defined in admin.proto via google.api.http annotations.
+/// </summary>
+public class TenantAdminGrpcService(
+    AuthDbContext authDb,
+    ITenantGetter tenantGetter,
+    UserService userService,
+    PermissionService permissionSvc)
+    : TenantAdminService.TenantAdminServiceBase
+{
+    // ─── Users ────────────────────────────────────────────────────────────────
+
+    public override async Task<ListAdminUsersResponse> ListAdminUsers(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var tenantId = tenantGetter.GetTenantId();
+        var items = await authDb.Users
+            .Where(x => x.TenantId == tenantId)
+            .Where(u => u.UserRoles.Any(ur => ur.RoleId < 100))
+            .ToUserAdminViewModel()
+            .ToListAsync();
+
+        var response = new ListAdminUsersResponse();
+        response.Data.AddRange(items.Select(MapToProto));
+        return response;
+    }
+
+    public override async Task<AdminUserDetail> GetAdminUser(
+        GetAdminUserRequest request, ServerCallContext context)
+    {
+        var tenantId = tenantGetter.GetTenantId();
+        var user = await authDb.Users
+            .Where(x => x.TenantId == tenantId && x.PartyId == request.PartyId)
+            .ToUserAdminViewModel()
+            .SingleOrDefaultAsync();
+        if (user == null) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
+
+        var roles = await userService.GetUserRolesAsync(user.PartyId);
+        var userPermissions = await permissionSvc.GetUserPermissionIdsAsync(tenantId, user.PartyId);
+        var rolePermissions = await permissionSvc.GetRolePermissionIdsAsync(roles.ToArray());
+        var quizLockedOut   = await userService.IsUserLockedOutAsync(user.PartyId);
+
+        var detail = new AdminUserDetail
+        {
+            User          = MapToProto(user),
+            QuizLockedOut = quizLockedOut,
+        };
+        detail.UserPermissions.AddRange(userPermissions.Select(id =>
+            new AdminPermission { Id = id }));
+        detail.RolePermissions.AddRange(rolePermissions.Select(id =>
+            new AdminPermission { Id = id }));
+        return detail;
+    }
+
+    // ─── Roles ────────────────────────────────────────────────────────────────
+
+    public override async Task<AdminRolesResponse> ListAdminRoles(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var items = await userService.GetAllRolesAsync();
+        var response = new AdminRolesResponse();
+        response.Data.AddRange(items
+            .Where(r => r.Id < 100)
+            .Select(r => new AdminRole { Id = r.Id, Name = r.Name ?? "" }));
+        return response;
+    }
+
+    public override async Task<AdminRoleDetail> GetAdminRole(
+        GetAdminRoleRequest request, ServerCallContext context)
+    {
+        var role = await authDb.ApplicationRoles
+            .Where(r => r.Id == request.Id)
+            .Select(r => new { r.Id, r.Name })
+            .FirstOrDefaultAsync();
+        if (role?.Name == null) throw new RpcException(new Status(StatusCode.NotFound, "Role not found"));
+
+        var permIds = await permissionSvc.GetRolePermissionIdsAsync(role.Name);
+        var detail  = new AdminRoleDetail { Id = role.Id, Name = role.Name };
+        detail.PermissionIds.AddRange(permIds);
+        return detail;
+    }
+
+    // ─── Permissions ──────────────────────────────────────────────────────────
+
+    public override async Task<AdminPermissionsResponse> ListAdminPermissions(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var items    = await permissionSvc.GetAllAsync();
+        var response = new AdminPermissionsResponse();
+        response.Data.AddRange(items.Select(MapPermToProto));
+        return response;
+    }
+
+    public override async Task<AdminPermission> CreateAdminPermission(
+        CreatePermissionRequest request, ServerCallContext context)
+    {
+        var ok = await permissionSvc.CreateAsync(
+            request.Auth, request.Action, request.Method, request.Category, request.Key);
+        if (!ok) throw new RpcException(new Status(StatusCode.AlreadyExists, "Permission already exists"));
+
+        var created = await authDb.Permissions
+            .Where(x => x.Action == request.Action && x.Method == request.Method && x.Category == request.Category)
+            .FirstOrDefaultAsync()
+            ?? throw new RpcException(new Status(StatusCode.Internal, "Failed to retrieve created permission"));
+        return MapPermToProto(created);
+    }
+
+    public override async Task<OperationResponse> TogglePermission(
+        TogglePermissionRequest request, ServerCallContext context)
+    {
+        var ok = await permissionSvc.ToggleAuthAsync(request.Id);
+        return new OperationResponse { Success = ok };
+    }
+
+    // ─── User role / permission toggles ──────────────────────────────────────
+
+    public override async Task<OperationResponse> ToggleUserRole(
+        ToggleUserRoleRequest request, ServerCallContext context)
+    {
+        var partyId = await authDb.Users
+            .Where(x => x.Id == request.Id)
+            .Select(x => x.PartyId)
+            .SingleOrDefaultAsync();
+        if (partyId == 0) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
+
+        var roleName = await authDb.ApplicationRoles
+            .Where(x => x.Id == request.RoleId)
+            .Select(x => x.Name)
+            .SingleOrDefaultAsync();
+        if (roleName == null) throw new RpcException(new Status(StatusCode.NotFound, "Role not found"));
+
+        var operatorPartyId = GetPartyId(context);
+        var ok = await userService.HasRoleAsync(partyId, roleName)
+            ? await userService.RemoveRoleAsync(partyId, roleName, operatorPartyId)
+            : await userService.AddRoleAsync(partyId, roleName, operatorPartyId);
+
+        return new OperationResponse { Success = ok };
+    }
+
+    public override async Task<OperationResponse> ToggleUserPermission(
+        ToggleUserPermissionRequest request, ServerCallContext context)
+    {
+        var tenantId = tenantGetter.GetTenantId();
+        var partyId  = await authDb.Users
+            .Where(x => x.Id == request.Id)
+            .Select(x => x.PartyId)
+            .SingleOrDefaultAsync();
+        if (partyId == 0) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
+
+        var ok = await permissionSvc.UserHasPermissionAsync(tenantId, partyId, request.PermissionId)
+            ? await permissionSvc.RemoveUserPermissionAsync(tenantId, partyId, request.PermissionId)
+            : await permissionSvc.AddUserPermissionAsync(tenantId, partyId, request.PermissionId);
+
+        return new OperationResponse { Success = ok };
+    }
+
+    public override async Task<OperationResponse> ToggleRolePermission(
+        ToggleRolePermissionRequest request, ServerCallContext context)
+    {
+        var roleName = await authDb.ApplicationRoles
+            .Where(x => x.Id == request.Id)
+            .Select(x => x.Name)
+            .SingleOrDefaultAsync();
+        if (roleName == null) throw new RpcException(new Status(StatusCode.NotFound, "Role not found"));
+
+        var ok = await permissionSvc.RoleHasPermissionAsync(roleName, request.PermissionId)
+            ? await permissionSvc.RemoveRolePermissionAsync(roleName, request.PermissionId)
+            : await permissionSvc.AddRolePermissionAsync(roleName, request.PermissionId);
+
+        return new OperationResponse { Success = ok };
+    }
+
+    // ─── User permissions by party ID (v2) ───────────────────────────────────
+
+    public override async Task<UserPermissionsDetailResponse> GetUserPermissionsByPartyId(
+        GetPermissionsByPartyIdRequest request, ServerCallContext context)
+    {
+        var tenantId        = tenantGetter.GetTenantId();
+        var webPermissions  = await permissionSvc.GetUserWebPermissions(tenantId, request.PartyId);
+        var roles           = await userService.GetUserRolesAsync(request.PartyId);
+        var rolePermIds     = await permissionSvc.GetRolePermissionIdsAsync(roles.ToArray());
+
+        var allPerms    = await permissionSvc.GetAllAsync();
+        var rolePermActions = allPerms
+            .Where(p => rolePermIds.Contains(p.Id) && p.Category == "WEB")
+            .Select(p => p.Action)
+            .Distinct()
+            .ToList();
+
+        var response = new UserPermissionsDetailResponse();
+        response.UserPermissions.AddRange(webPermissions);
+        response.RolePermissions.AddRange(rolePermActions);
+        return response;
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    private static AdminUser MapToProto(Bacera.Gateway.ViewModels.Tenant.UserAdminViewModel u)
+    {
+        var proto = new AdminUser
+        {
+            Id         = u.Id,
+            Uid        = u.Uid,
+            PartyId    = u.PartyId,
+            Email      = u.Email,
+            Avatar     = u.Avatar,
+            Language   = u.Language,
+            FirstName  = u.FirstName ?? "",
+            LastName   = u.LastName  ?? "",
+            NativeName = u.NativeName ?? "",
+        };
+        proto.RoleIds.AddRange(u.Roles);
+        return proto;
+    }
+
+    private static AdminPermission MapPermToProto(Bacera.Gateway.Permission p) => new()
+    {
+        Id        = p.Id,
+        Action    = p.Action,
+        Method    = p.Method,
+        Category  = p.Category,
+        Key       = p.Key,
+        Auth      = p.Auth,
+        CreatedAt = p.CreatedOn.ToString("O"),
+        UpdatedAt = p.UpdatedOn.ToString("O"),
+    };
+
+    private static long GetPartyId(ServerCallContext ctx)
+    {
+        var httpCtx = ctx.GetHttpContext();
+        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
     }
 }

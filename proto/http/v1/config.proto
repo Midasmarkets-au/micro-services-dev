@@ -17,10 +17,8 @@ service TenantConfigurationService {
   rpc GetSites(EmptyRequest) returns (SitesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/configuration/sites" };
   }
-  // 分页查询配置项列表；可按 category 或关键字过滤
-  rpc ListConfigurations(ListConfigurationsRequest) returns (ListConfigurationsResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/configuration" };
-  }
+  // 分页查询配置项列表；HTTP 路由由 MVC ConfigurationController.Query 处理，返回 TenantViewModel 格式
+  rpc ListConfigurations(ListConfigurationsRequest) returns (ListConfigurationsResponse) {}
   // 获取特定分类（category + row_id）下的所有配置项，以 key→value map 返回
   rpc GetCategoryConfig(GetCategoryConfigRequest) returns (CategoryConfigResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/configuration/{category}/{row_id}" };
@@ -53,6 +51,22 @@ service TenantConfigurationService {
   rpc UpdateSiteDefaultTradeService(UpdateSiteIntValueRequest) returns (OperationResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/default-trade-service", body: "spec" };
   }
+  // 获取指定站点的所有配置项，以 key→value map 返回（与 /configuration/{category}/{row_id} 同构）
+  rpc GetSiteAllConfigs(GetSiteAllConfigsRequest) returns (CategoryConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/site/{site_id}/all" };
+  }
+  // 获取 tenant 下全量配置项列表（按 name 字母排序，供配置总览页使用）
+  rpc GetAllConfigurations(EmptyRequest) returns (AllConfigurationsResponse) {
+    option (google.api.http) = { get: "/api/v1/tenant/configuration/all" };
+  }
+  // 重新加载配置缓存（将数据库最新配置同步到内存/Redis，变更后立即生效）
+  rpc ReloadConfiguration(EmptyRequest) returns (OperationResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/reload" };
+  }
+  // 通用站点配置更新（按 site_id + key 更新任意配置值）
+  rpc UpdateSiteConfig(UpdateSiteConfigRequest) returns (ConfigValueResponse) {
+    option (google.api.http) = { put: "/api/v1/tenant/configuration/site/{site_id}/{key}", body: "spec" };
+  }
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────
@@ -80,7 +94,7 @@ message ListConfigurationsRequest {
 
 message ListConfigurationsResponse {
   repeated ConfigItem data = 1;
-  PaginationMeta      meta = 2;
+  PaginationMeta      criteria = 2;
 }
 
 // 单条配置项（三级定位：category + row_id + key）
@@ -139,5 +153,22 @@ message UpdateSiteStringValueRequest {
 message UpdateSiteIntValueRequest {
   int32    site_id = 1; // 目标站点 ID
   IntValue spec    = 2;
+}
+
+// 获取站点全量配置请求
+message GetSiteAllConfigsRequest {
+  int32 site_id = 1; // 目标站点 ID
+}
+
+// 全量配置列表响应（GetAllConfigurations 使用，按 name 排序）
+message AllConfigurationsResponse {
+  repeated ConfigItem data = 1;
+}
+
+// 通用站点配置更新请求（UpdateSiteConfig 使用）
+message UpdateSiteConfigRequest {
+  int32            site_id = 1; // 目标站点 ID
+  string           key     = 2; // 配置键名，如 "DefaultFundType"
+  ConfigCreateSpec spec    = 3; // 新配置值（字符串形式）
 }
 

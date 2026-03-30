@@ -38,8 +38,8 @@ public class TenantUserGrpcService(
     {
         var criteria = new Bacera.Gateway.Party.Criteria
         {
-            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page       = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1,
+            Size       = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
             SearchText = request.HasKeywords ? request.Keywords : null,
         };
 
@@ -50,7 +50,7 @@ public class TenantUserGrpcService(
 
         var response = new ListUsersResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(MapToProto));
         return response;
@@ -63,7 +63,11 @@ public class TenantUserGrpcService(
             .ToTenantDetailModel(false)
             .SingleOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
-        return MapDetailToProto(item);
+
+        var proto = MapDetailToProto(item);
+        if (await userSvc.IsUserLockedOutAsync(request.PartyId))
+            proto.LockoutEnd = DateTime.MaxValue.ToString("O");
+        return proto;
     }
 
     public override Task<ProtoUser> GetUserByPid(GetUserByPidRequest request, ServerCallContext context)
@@ -89,7 +93,7 @@ public class TenantUserGrpcService(
 
         var response = new ListUsersResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(u => new ProtoUser
         {
@@ -394,7 +398,7 @@ public class TenantUserGrpcService(
 
         var response = new ListUserAuditsResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(rawItems.Select(a => new ProtoUserAudit
         {
@@ -581,9 +585,9 @@ public class TenantUserGrpcService(
 
         var res = await bcrTokenSvc.GetUserTokenAsync(targetUser, godPartyId: GetPartyId(context));
 
-        // Return the user with the access token embedded in the email field as a workaround;
-        // callers should use the full response from the legacy endpoint until a dedicated token RPC is added.
-        return MapAuthUserToProto(targetUser);
+        var proto = MapAuthUserToProto(targetUser);
+        proto.Token = res.AccessToken;
+        return proto;
     }
 
     // ─── Addresses ────────────────────────────────────────────────────────────
@@ -605,7 +609,7 @@ public class TenantUserGrpcService(
 
         var response = new ListAddressesResponse
         {
-            Meta = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
+            Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
         response.Data.AddRange(items.Select(a => new ProtoAddress
         {
@@ -682,26 +686,19 @@ public class TenantUserGrpcService(
 
     // ─── Social media ─────────────────────────────────────────────────────────
 
-    public override async Task<SocialMediaInfoResponse> GetSocialMediaInfo(
+    public override async Task<LegacyInfoResponse> GetSocialMediaInfo(
         GetUserRequest request, ServerCallContext context)
     {
         var supplement = await tenantDb.Supplements
             .Where(x => x.RowId == request.PartyId && x.Type == (long)SupplementTypes.SocialMediaRecord)
             .SingleOrDefaultAsync();
 
-        if (supplement == null) return new SocialMediaInfoResponse();
+        if (supplement == null) return new LegacyInfoResponse { Data = "[]" };
 
-        var list = JsonConvert.DeserializeObject<List<Bacera.Gateway.Auth.User.SocialMediaType>>(supplement.Data)
-                   ?? new List<Bacera.Gateway.Auth.User.SocialMediaType>();
-        var first = list.FirstOrDefault();
-        return new SocialMediaInfoResponse
-        {
-            Platform = first?.Name    ?? "",
-            Handle   = first?.Account ?? "",
-        };
+        return new LegacyInfoResponse { Data = supplement.Data ?? "[]" };
     }
 
-    public override async Task<SocialMediaInfoResponse> UpdateSocialMediaInfo(
+    public override async Task<LegacyInfoResponse> UpdateSocialMediaInfo(
         UpdateSocialMediaRequest request, ServerCallContext context)
     {
         var supplement = await tenantDb.Supplements
@@ -720,14 +717,20 @@ public class TenantUserGrpcService(
         var data = JsonConvert.DeserializeObject<List<Bacera.Gateway.Auth.User.SocialMediaType>>(supplement.Data)
                    ?? new List<Bacera.Gateway.Auth.User.SocialMediaType>();
 
-        var spec = new Bacera.Gateway.Auth.User.SocialMediaType { Name = request.Platform, Account = request.Handle };
+        var spec = new Bacera.Gateway.Auth.User.SocialMediaType
+        {
+            Name      = request.Name,
+            Account   = request.Account,
+            ConnectId = request.HasConnectId  ? request.ConnectId  : null,
+            StaffName = request.HasStaffName  ? request.StaffName  : null,
+        };
         var index = data.FindIndex(x => x.Name == spec.Name);
         if (index >= 0) data[index] = spec; else data.Add(spec);
 
         supplement.Data = JsonConvert.SerializeObject(data);
         await tenantDb.SaveChangesAsync();
 
-        return new SocialMediaInfoResponse { Platform = spec.Name ?? "", Handle = spec.Account ?? "" };
+        return new LegacyInfoResponse { Data = supplement.Data };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

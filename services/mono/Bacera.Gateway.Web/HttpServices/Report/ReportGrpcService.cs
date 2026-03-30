@@ -27,8 +27,8 @@ public class TenantReportGrpcService(
     public override async Task<ListReportRequestsResponse> ListReportRequests(
         ListReportRequestsRequest request, ServerCallContext context)
     {
-        var page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1;
-        var size = request.Pagination?.Size > 0 ? request.Pagination.Size : 20;
+        var page = request.Pagination?.Page > 0 ? request.Pagination.Page : request.HasPage && request.Page > 0 ? request.Page : 1;
+        var size = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20;
 
         var query = tenantCtx.ReportRequests.AsQueryable();
         if (request.HasType)   query = query.Where(x => x.Type == request.Type);
@@ -43,7 +43,7 @@ public class TenantReportGrpcService(
 
         var response = new ListReportRequestsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = page,
                 Size      = size,
@@ -122,8 +122,164 @@ public class TenantReportGrpcService(
         item.FileName    = "";
         item.GeneratedOn = null;
 
+        // 对 Rebate / WalletTransactionForTenant / DailyEquity / DailyEquityMonthly 类型，
+        // 同时查找或创建配对报告（ClosingTime Based ↔ ReleasedTime Based）
+        if (item.Type == (int)ReportRequestTypes.Rebate ||
+            item.Type == (int)ReportRequestTypes.WalletTransactionForTenant ||
+            item.Type == (int)ReportRequestTypes.DailyEquity ||
+            item.Type == (int)ReportRequestTypes.DailyEquityMonthly)
+        {
+            bool? useClosingTime = null;
+            try
+            {
+                var qd = JsonConvert.DeserializeObject<Dictionary<string, object>>(item.Query ?? "{}");
+                if (qd != null && qd.ContainsKey("UseClosingTime"))
+                    useClosingTime = Convert.ToBoolean(qd["UseClosingTime"]);
+            }
+            catch { /* ignore parse errors */ }
+
+            var currentName = item.Name ?? "";
+            var isClosingTimeBased = useClosingTime == true
+                || (useClosingTime == null && currentName.Contains("MT5 ClosingTime Based"));
+            var isReleasedTimeBased = useClosingTime == false
+                || (useClosingTime == null && currentName.Contains("ReleasedTime Based"));
+
+            if (!isClosingTimeBased && !isReleasedTimeBased)
+            {
+                if (item.IsFromApi == 0) isClosingTimeBased = true;
+                else isReleasedTimeBased = useClosingTime != true;
+            }
+
+            DateTime? reportDate = null;
+            DateTime fromDate = DateTime.UtcNow.AddDays(-1);
+            try
+            {
+                var qd = JsonConvert.DeserializeObject<Dictionary<string, object>>(item.Query ?? "{}");
+                if (qd != null && qd.ContainsKey("to"))
+                    reportDate = DateTime.Parse(qd["to"].ToString()!);
+            }
+            catch { /* ignore */ }
+            if (!reportDate.HasValue)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(currentName, @"(\d{4}-\d{2}-\d{2})");
+                if (m.Success) reportDate = DateTime.Parse(m.Groups[1].Value);
+            }
+
+            if (reportDate.HasValue)
+            {
+                fromDate = reportDate.Value.AddDays(-1);
+                var reportType = item.Type;
+                var dateStr = reportDate.Value.ToString("yyyy-MM-dd");
+                var isPerOffice = currentName.Contains("Per Office");
+                var is3Day = currentName.Contains("(Sat-Mon)");
+                string closingPattern, releasedPattern;
+
+                if (reportType == (int)ReportRequestTypes.Rebate)
+                {
+                    closingPattern  = $"Rebate Daily Record (MT5 ClosingTime Based) {dateStr}";
+                    releasedPattern = $"Rebate Daily Record (ReleasedTime Based) {dateStr}";
+                }
+                else if (reportType == (int)ReportRequestTypes.WalletTransactionForTenant)
+                {
+                    closingPattern  = $"Wallet Daily Transaction (MT5 ClosingTime Based) {dateStr}";
+                    releasedPattern = $"Wallet Daily Transaction (ReleasedTime Based) {dateStr}";
+                }
+                else if (reportType == (int)ReportRequestTypes.DailyEquity)
+                {
+                    var prefix = isPerOffice ? "Daily Equity Per Office" : "Daily Equity Report";
+                    if (is3Day) { fromDate = reportDate.Value.AddDays(-4); dateStr = reportDate.Value.ToString("yyyy-MM-dd"); }
+                    closingPattern  = $"{prefix}{(is3Day ? " (Sat-Mon)" : "")} (MT5 ClosingTime Based) {dateStr}";
+                    releasedPattern = $"{prefix}{(is3Day ? " (Sat-Mon)" : "")} (ReleasedTime Based) {dateStr}";
+                }
+                else // DailyEquityMonthly
+                {
+                    var prefix = isPerOffice ? "Daily Equity Per Office Monthly" : "Daily Equity Monthly Report";
+                    var monthStr = reportDate.Value.ToString("yyyy-MM");
+                    dateStr = monthStr;
+                    try
+                    {
+                        var qd = JsonConvert.DeserializeObject<Dictionary<string, object>>(item.Query ?? "{}");
+                        if (qd != null && qd.ContainsKey("from")) fromDate = DateTime.Parse(qd["from"].ToString()!);
+                    }
+                    catch { /* ignore */ }
+                    closingPattern  = $"{prefix} (MT5 ClosingTime Based) {monthStr}";
+                    releasedPattern = $"{prefix} (ReleasedTime Based) {monthStr}";
+                }
+
+                var fromUtc = DateTime.SpecifyKind(fromDate, DateTimeKind.Utc);
+                var toUtc   = DateTime.SpecifyKind(reportDate.Value, DateTimeKind.Utc);
+                var queryJson = isPerOffice
+                    ? JsonConvert.SerializeObject(new { from = fromUtc, to = toUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                    : JsonConvert.SerializeObject(new { from = fromUtc, to = toUtc }, Utils.AppJsonSerializerSettings);
+
+                Bacera.Gateway.ReportRequest? paired = null;
+
+                if (isClosingTimeBased)
+                {
+                    paired = await tenantCtx.ReportRequests.FirstOrDefaultAsync(x =>
+                        x.Type == reportType && x.IsFromApi == 1
+                        && x.Name.Contains("ReleasedTime Based") && x.Name.Contains(dateStr)
+                        && (is3Day ? x.Name.Contains("(Sat-Mon)") : !x.Name.Contains("(Sat-Mon)"))
+                        && (isPerOffice ? x.Name.Contains("Per Office") : !x.Name.Contains("Per Office"))
+                        && x.PartyId == item.PartyId && x.Id != item.Id);
+
+                    if (paired == null)
+                    {
+                        paired = new Bacera.Gateway.ReportRequest
+                        {
+                            PartyId = item.PartyId, Type = reportType,
+                            Name = releasedPattern, Query = queryJson, IsFromApi = 1,
+                        };
+                        tenantCtx.ReportRequests.Add(paired);
+                        await tenantCtx.SaveChangesAsync();
+                    }
+                }
+                else if (isReleasedTimeBased)
+                {
+                    paired = await tenantCtx.ReportRequests.FirstOrDefaultAsync(x =>
+                        x.Type == reportType && x.IsFromApi == 0
+                        && x.Name.Contains("ClosingTime Based") && x.Name.Contains(dateStr)
+                        && (is3Day ? x.Name.Contains("(Sat-Mon)") : !x.Name.Contains("(Sat-Mon)"))
+                        && (isPerOffice ? x.Name.Contains("Per Office") : !x.Name.Contains("Per Office"))
+                        && x.PartyId == item.PartyId && x.Id != item.Id);
+
+                    if (paired == null)
+                    {
+                        paired = new Bacera.Gateway.ReportRequest
+                        {
+                            PartyId = item.PartyId, Type = reportType,
+                            Name = closingPattern, Query = queryJson, IsFromApi = 0,
+                        };
+                        tenantCtx.ReportRequests.Add(paired);
+                        await tenantCtx.SaveChangesAsync();
+                    }
+                }
+
+                if (paired != null)
+                {
+                    paired.FileName    = "";
+                    paired.GeneratedOn = null;
+                    await tenantCtx.SaveChangesAsync();
+                    var pairedTenantId = tenantGetter.GetTenantId();
+                    var pairedId = paired.Id;
+                    _ = Task.Run(async () =>
+                    {
+                        try { await reportJob.ProcessReportRequest(pairedTenantId, pairedId); }
+                        catch (Exception ex) { Console.Error.WriteLine($"Paired report failed {pairedId}: {ex.Message}"); }
+                    });
+                }
+            }
+        }
+
         await tenantCtx.SaveChangesAsync();
-        await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
+
+        var tenantId  = tenantGetter.GetTenantId();
+        var requestId = item.Id;
+        _ = Task.Run(async () =>
+        {
+            try { await reportJob.ProcessReportRequest(tenantId, requestId); }
+            catch (Exception ex) { Console.Error.WriteLine($"Report failed {requestId}: {ex.Message}"); }
+        });
 
         return MapToProto(item);
     }
@@ -264,8 +420,13 @@ public class TenantAccountReportGrpcService(
     {
         var criteria = new Bacera.Gateway.AccountReport.Criteria
         {
-            Page      = request.Pagination?.Page > 0 ? request.Pagination.Page : 1,
-            Size      = request.Pagination?.Size > 0 ? request.Pagination.Size : 20,
+            Page      = request.Pagination?.Page > 0 ? request.Pagination.Page
+                      : request.HasPage     && request.Page     > 0 ? request.Page
+                      : 1,
+            Size      = request.Pagination?.Size > 0 ? request.Pagination.Size
+                      : request.HasSize     && request.Size     > 0 ? request.Size
+                      : request.HasPageSize && request.PageSize > 0 ? request.PageSize
+                      : 20,
             AccountId = request.HasAccountId ? request.AccountId : null,
         };
 
@@ -275,7 +436,7 @@ public class TenantAccountReportGrpcService(
 
         var response = new ListAccountReportsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,

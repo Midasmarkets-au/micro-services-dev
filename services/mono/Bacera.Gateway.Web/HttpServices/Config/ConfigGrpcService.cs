@@ -62,7 +62,7 @@ public class TenantConfigurationGrpcService(
 
         var response = new ListConfigurationsResponse
         {
-            Meta = new PaginationMeta
+            Criteria = new PaginationMeta
             {
                 Page      = criteria.Page,
                 Size      = criteria.Size,
@@ -183,6 +183,62 @@ public class TenantConfigurationGrpcService(
         var partyId = GetPartyId(context);
         var ok = await configurationService.SetDefaultTradeServiceAsync(request.Spec?.Value ?? 0, request.SiteId, partyId);
         return new OperationResponse { Success = ok };
+    }
+
+    // ─── Additional site / bulk endpoints ────────────────────────────────────
+
+    public override async Task<CategoryConfigResponse> GetSiteAllConfigs(
+        GetSiteAllConfigsRequest request, ServerCallContext context)
+    {
+        var items = await configurationService.GetAllConfigurationBySiteAsync(request.SiteId);
+        var response = new CategoryConfigResponse();
+        // GetAllConfigurationBySiteAsync returns ApplicationConfigure.AllSetting;
+        // flatten all key→value pairs from its raw Configuration list
+        var rawItems = await tenantDb.Configurations
+            .Where(x => x.RowId == request.SiteId)
+            .ToTenantViewModel()
+            .ToListAsync();
+        foreach (var item in rawItems)
+            if (item.Key != null)
+                response.Items[item.Key] = item.ValueString ?? "";
+        return response;
+    }
+
+    public override async Task<AllConfigurationsResponse> GetAllConfigurations(
+        EmptyRequest request, ServerCallContext context)
+    {
+        var items = await tenantDb.Configurations
+            .OrderBy(x => x.Key)
+            .ToTenantViewModel()
+            .ToListAsync();
+
+        var response = new AllConfigurationsResponse();
+        response.Data.AddRange(items.Select(c => new ConfigItem
+        {
+            Category = c.Category ?? "",
+            RowId    = c.RowId,
+            Key      = c.Key ?? "",
+            Value    = c.ValueString ?? "",
+        }));
+        return response;
+    }
+
+    public override async Task<OperationResponse> ReloadConfiguration(
+        EmptyRequest request, ServerCallContext context)
+    {
+        await configurationService.ResetCacheAsync();
+        await configSvc.ResetCacheAsync();
+        return new OperationResponse { Success = true };
+    }
+
+    public override async Task<ConfigValueResponse> UpdateSiteConfig(
+        UpdateSiteConfigRequest request, ServerCallContext context)
+    {
+        var partyId = GetPartyId(context);
+        var category = ConfigCategoryTypes.ParseCategory(nameof(Public));
+        await configSvc.SetAsync<object>(category, request.SiteId, request.Key, request.Spec.Value, partyId);
+        var value = await configSvc.GetRawValueAsync(category, request.SiteId, request.Key);
+        return new ConfigValueResponse { Key = request.Key, Value = value ?? "" };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
