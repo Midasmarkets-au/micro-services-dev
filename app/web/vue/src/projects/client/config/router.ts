@@ -244,7 +244,7 @@ const authRoutes: Array<RouteRecordRaw> = [
           requireAuth: false,
         },
         props: (route) => ({
-          token: route.query.token as string,
+          tokenKey: route.query.key as string,
         }),
       },
       {
