@@ -203,7 +203,7 @@ export function DashboardMainContent() {
           </button>
         </div>
       </div>
-      <div className='bg-surface rounded p-4 h-full'>
+      <div className="min-h-0 rounded bg-surface p-4">
         {/* 账户切换标签栏 */}
         <div className="flex flex-col mb-4">
           <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between">

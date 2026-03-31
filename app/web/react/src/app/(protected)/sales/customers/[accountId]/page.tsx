@@ -175,9 +175,10 @@ export default function SalesCustomerDetailPage({
   // ---- Tabs 动态生成 ----
   const tabs: TabItem<DetailTab>[] = useMemo(() => {
     const list: TabItem<DetailTab>[] = [
+      { key: 'transaction', label: td('tabs.transaction') }, 
       { key: 'deposit', label: td('tabs.deposit') },
       { key: 'withdrawal', label: td('tabs.withdrawal') },
-      { key: 'transaction', label: td('tabs.transaction') }, 
+      
     ];
     if (accountDetail?.tradeAccount?.accountNumber && accountDetail.tradeAccount.accountNumber !== 0) {
       list.push({ key: 'tradeReport', label: td('tabs.tradeReport') });
