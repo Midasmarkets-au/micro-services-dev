@@ -25,12 +25,14 @@ pub async fn run(ctx: AppContext) -> Result<()> {
     info!("TradeHandler: listening on NATS stream {}", STREAM_NAME);
 
     loop {
-        let mut messages = consumer
-            .fetch()
-            .max_messages(10)
-            .messages()
-            .await
-            .map_err(|e| anyhow::anyhow!("NATS fetch error: {}", e))?;
+        let mut messages = match consumer.fetch().max_messages(10).messages().await {
+            Ok(m) => m,
+            Err(e) => {
+                warn!("TradeHandler: fetch error (will retry): {:#}", e);
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                continue;
+            }
+        };
 
         while let Some(msg_result) = messages.next().await {
             match msg_result {

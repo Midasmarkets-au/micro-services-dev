@@ -50,6 +50,8 @@ async-trait = "0.1"
 async-nats = "0.38"
 # Futures
 futures = "0.3"
+# URL encoding
+percent-encoding = "2"
 # Enum serde
 serde_repr = "0.1"
 

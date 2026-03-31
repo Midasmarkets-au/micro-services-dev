@@ -3,6 +3,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+
 use anyhow::Result;
 use apalis::prelude::*;
 use apalis_board_api::framework::{ApiBuilder, RegisterRoute};
@@ -172,7 +174,9 @@ fn parse_cs_connection_string(cs: &str) -> Result<String> {
         .or_else(|| map.get("password"))
         .cloned()
         .unwrap_or_default();
-    Ok(format!("mysql://{}:{}@{}:{}/{}", user, pwd, host, port, db))
+    let user_enc = utf8_percent_encode(user, NON_ALPHANUMERIC).to_string();
+    let pwd_enc = utf8_percent_encode(&pwd, NON_ALPHANUMERIC).to_string();
+    Ok(format!("mysql://{}:{}@{}:{}/{}", user_enc, pwd_enc, host, port, db))
 }
 
 // ── HTTP health endpoint (axum) ───────────────────────────────────────────────

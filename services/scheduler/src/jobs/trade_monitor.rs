@@ -41,7 +41,9 @@ pub async fn run(ctx: AppContext) -> Result<()> {
         }
     }
     for h in handles {
-        let _ = h.await;
+        if let Err(e) = h.await {
+            error!("TradeMonitor: poll task panicked: {:?}", e);
+        }
     }
     Ok(())
 }
