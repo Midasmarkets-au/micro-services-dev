@@ -9,9 +9,10 @@ use apalis_board_api::framework::{ApiBuilder, RegisterRoute};
 use apalis_board_api::sse::TracingBroadcaster;
 use apalis_board_api::ui::ServeUI;
 use apalis_redis::{connect as redis_connect, ConnectionManager, RedisStorage};
+use async_nats::jetstream;
 use axum::response::Json;
 use axum::{routing::get, Router};
-use sqlx::PgPool;
+use sqlx::{MySqlPool, PgPool};
 use tokio::sync::RwLock;
 use tonic::transport::Server as TonicServer;
 use tower_http::trace::TraceLayer;
@@ -53,8 +54,12 @@ pub struct AppContext {
     pub cache: Arc<RedisCache>,
     /// gRPC client for calling mono's MonoCallbackService
     pub mono_callback: Arc<MonoCallbackClient>,
+    /// NATS JetStream context for publishing/consuming trade events
+    pub jetstream: Arc<jetstream::Context>,
     // Per-tenant pool cache: tenant_id → PgPool
     tenant_pools: Arc<RwLock<HashMap<i64, PgPool>>>,
+    // Per-MT5-service MySQL pool cache: service_id → MySqlPool
+    mt5_pools: Arc<RwLock<HashMap<i32, MySqlPool>>>,
 }
 
 impl AppContext {
@@ -67,6 +72,13 @@ impl AppContext {
         let cache = Arc::new(RedisCache::new(&config).await?);
         let mono_callback = Arc::new(MonoCallbackClient::new(&config.mono_grpc_url));
 
+        let nats_client = async_nats::connect(&config.nats_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to connect to NATS at {}: {}", config.nats_url, e))?;
+        let jetstream_ctx = async_nats::jetstream::new(nats_client);
+        nats::client::ensure_trade_stream(&jetstream_ctx).await?;
+        let jetstream = Arc::new(jetstream_ctx);
+
         Ok(Self {
             config: Arc::new(config),
             auth_pool,
@@ -76,7 +88,9 @@ impl AppContext {
             mail,
             cache,
             mono_callback,
+            jetstream,
             tenant_pools: Arc::new(RwLock::new(HashMap::new())),
+            mt5_pools: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -103,6 +117,62 @@ impl AppContext {
 
         Ok(pool)
     }
+
+    /// Get or create a MySQL connection pool for an MT5 service.
+    /// Connection string is loaded from trd."_TradeService"."Options" JSON in the tenant DB.
+    pub async fn mt5_pool(&self, service_id: i32, tenant_pool: &PgPool) -> Result<MySqlPool> {
+        {
+            let pools = self.mt5_pools.read().await;
+            if let Some(pool) = pools.get(&service_id) {
+                return Ok(pool.clone());
+            }
+        }
+        let conn_str = db::tenant::get_mt5_connection_string(tenant_pool, service_id as i64)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("No MT5 connection string for service {}", service_id))?;
+        let mysql_url = parse_cs_connection_string(&conn_str)?;
+        let pool = sqlx::mysql::MySqlPoolOptions::new()
+            .max_connections(5)
+            .connect(&mysql_url)
+            .await?;
+        {
+            let mut pools = self.mt5_pools.write().await;
+            pools.entry(service_id).or_insert_with(|| pool.clone());
+        }
+        Ok(pool)
+    }
+}
+
+/// Converts a C# style connection string to a MySQL URL.
+/// Input:  "Server=host;Port=3306;Database=db;Uid=user;Pwd=pass;"
+/// Output: "mysql://user:pass@host:3306/db"
+fn parse_cs_connection_string(cs: &str) -> Result<String> {
+    let mut map = std::collections::HashMap::new();
+    for part in cs.split(';') {
+        let part = part.trim();
+        if let Some((k, v)) = part.split_once('=') {
+            map.insert(k.trim().to_lowercase(), v.trim().to_string());
+        }
+    }
+    let host = map
+        .get("server")
+        .or_else(|| map.get("host"))
+        .ok_or_else(|| anyhow::anyhow!("Missing Server in connection string"))?;
+    let port = map.get("port").map(|s| s.as_str()).unwrap_or("3306");
+    let db = map
+        .get("database")
+        .ok_or_else(|| anyhow::anyhow!("Missing Database in connection string"))?;
+    let user = map
+        .get("uid")
+        .or_else(|| map.get("user id"))
+        .or_else(|| map.get("user"))
+        .ok_or_else(|| anyhow::anyhow!("Missing Uid in connection string"))?;
+    let pwd = map
+        .get("pwd")
+        .or_else(|| map.get("password"))
+        .cloned()
+        .unwrap_or_default();
+    Ok(format!("mysql://{}:{}@{}:{}/{}", user, pwd, host, port, db))
 }
 
 // ── HTTP health endpoint (axum) ───────────────────────────────────────────────
@@ -178,6 +248,28 @@ async fn main() -> Result<()> {
                 });
             if let Err(e) = monitor.run().await {
                 error!("Monitor failed: {:#}. Restarting in 5s...", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    });
+
+    // ── Spawn TradeMonitorService (MT5 poll → NATS publish) ──────────────
+    let ctx_tm = ctx.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(e) = jobs::trade_monitor::run(ctx_tm.clone()).await {
+                error!("TradeMonitorService error: {:#}. Restarting in 5s...", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    });
+
+    // ── Spawn TradeHandler (NATS consume → DB write) ──────────────────────
+    let ctx_th = ctx.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(e) = jobs::trade_handler::run(ctx_th.clone()).await {
+                error!("TradeHandler error: {:#}. Restarting in 5s...", e);
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }
