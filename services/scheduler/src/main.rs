@@ -112,6 +112,10 @@ impl AppContext {
         let url = self.config.tenant_db_url_by_name(&db_name);
         let pool = db::tenant_pg_pool(&url).await?;
 
+        if let Err(e) = db::trade_rebate::ensure_table(&pool).await {
+            tracing::warn!("Failed to ensure trd._TradeRebateNew for tenant {}: {:#}", tenant_id, e);
+        }
+
         {
             let mut pools = self.tenant_pools.write().await;
             pools.insert(tenant_id, pool.clone());
@@ -121,7 +125,7 @@ impl AppContext {
     }
 
     /// Get or create a MySQL connection pool for an MT5 service.
-    /// Connection string is loaded from trd."_TradeService"."Options" JSON in the tenant DB.
+    /// Connection string is loaded from trd."_TradeService"."Configuration" JSON in the tenant DB.
     pub async fn mt5_pool(&self, service_id: i32, tenant_pool: &PgPool) -> Result<MySqlPool> {
         {
             let pools = self.mt5_pools.read().await;
@@ -129,7 +133,7 @@ impl AppContext {
                 return Ok(pool.clone());
             }
         }
-        let conn_str = db::tenant::get_mt5_connection_string(tenant_pool, service_id as i64)
+        let conn_str = db::tenant::get_mt5_connection_string_from_central(tenant_pool, service_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("No MT5 connection string for service {}", service_id))?;
         let mysql_url = parse_cs_connection_string(&conn_str)?;
@@ -168,6 +172,7 @@ fn parse_cs_connection_string(cs: &str) -> Result<String> {
         .get("uid")
         .or_else(|| map.get("user id"))
         .or_else(|| map.get("user"))
+        .or_else(|| map.get("username"))
         .ok_or_else(|| anyhow::anyhow!("Missing Uid in connection string"))?;
     let pwd = map
         .get("pwd")
@@ -261,10 +266,17 @@ async fn main() -> Result<()> {
     let ctx_tm = ctx.clone();
     tokio::spawn(async move {
         loop {
-            if let Err(e) = jobs::trade_monitor::run(ctx_tm.clone()).await {
-                error!("TradeMonitorService error: {:#}. Restarting in 5s...", e);
-                tokio::time::sleep(Duration::from_secs(5)).await;
+            match jobs::trade_monitor::run(ctx_tm.clone()).await {
+                Err(e) => {
+                    error!("TradeMonitorService error: {:#}. Restarting in 5s...", e);
+                }
+                Ok(()) => {
+                    // run() returned Ok but exited (e.g. no MT5 services configured yet)
+                    // retry after a longer delay to avoid busy-looping
+                    tracing::warn!("TradeMonitorService exited cleanly. Retrying in 60s...");
+                }
             }
+            tokio::time::sleep(Duration::from_secs(60)).await;
         }
     });
 

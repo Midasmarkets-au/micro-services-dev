@@ -1,3 +1,4 @@
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -17,12 +18,12 @@ pub struct MetaTrade {
     pub digits: i32,
     pub volume: f64,            // volume as float (VolumeClosed / 10000.0)
     pub volume_original: i32,   // VolumeClosedExt / 100
-    pub open_price: Option<f64>,
-    pub close_price: Option<f64>,
+    pub open_price: Option<Decimal>,
+    pub close_price: Option<Decimal>,
     pub reason: i32,
-    pub profit: f64,
-    pub commission: f64,
-    pub swaps: f64,             // from Storage field
+    pub profit: Decimal,
+    pub commission: Decimal,
+    pub swaps: Decimal,             // from Storage field
 }
 
 #[derive(Debug)]
@@ -42,11 +43,11 @@ pub struct NewTradeRebate {
     pub deal_id: i64,
     pub symbol: String,
     pub refer_path: String,
-    pub commission: f64,
-    pub swaps: f64,
-    pub open_price: f64,
-    pub close_price: f64,
-    pub profit: f64,
+    pub commission: Decimal,
+    pub swaps: Decimal,
+    pub open_price: Decimal,
+    pub close_price: Decimal,
+    pub profit: Decimal,
     pub reason: i32,
 }
 
@@ -71,8 +72,8 @@ impl MetaTrade {
             refer_path: String::new(),   // handler 后续填充
             commission: self.commission,
             swaps: self.swaps,
-            open_price: self.open_price.unwrap_or(0.0),
-            close_price: self.close_price.unwrap_or(0.0),
+            open_price: self.open_price.unwrap_or(Decimal::ZERO),
+            close_price: self.close_price.unwrap_or(Decimal::ZERO),
             profit: self.profit,
             reason: self.reason,
         }

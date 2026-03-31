@@ -30,7 +30,7 @@ snowflaked = "0.1.2"
 # Build / HTTP client (e.g. codegen)
 reqwest = { version = "0.11", features = ["blocking", "rustls-tls", "json"] }
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "chrono", "rust_decimal"] }
 # Auth / JWT
 jsonwebtoken = "9"
 chrono = { version = "0.4", features = ["serde"] }

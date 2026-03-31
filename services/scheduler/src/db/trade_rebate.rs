@@ -3,6 +3,57 @@ use sqlx::PgPool;
 
 use crate::models::meta_trade::NewTradeRebate;
 
+/// 确保 trd._TradeRebateNew 表存在，不存在则自动创建。
+/// 在每个租户 pool 首次建立时调用。
+pub async fn ensure_table(pool: &PgPool) -> Result<()> {
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS trd."_TradeRebateNew" (
+            "Id"             BIGSERIAL        PRIMARY KEY,
+            "AccountId"      BIGINT,
+            "TradeServiceId" INT              NOT NULL,
+            "Ticket"         BIGINT           NOT NULL,
+            "AccountNumber"  BIGINT           NOT NULL,
+            "CurrencyId"     INT              NOT NULL DEFAULT -1,
+            "Volume"         INT              NOT NULL DEFAULT 0,
+            "Status"         INT              NOT NULL DEFAULT 0,
+            "RuleType"       INT              NOT NULL DEFAULT 199,
+            "CreatedOn"      TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+            "UpdatedOn"      TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+            "ClosedOn"       TIMESTAMPTZ      NOT NULL,
+            "OpenedOn"       TIMESTAMPTZ      NOT NULL,
+            "TimeStamp"      BIGINT           NOT NULL DEFAULT 0,
+            "Action"         INT              NOT NULL DEFAULT 0,
+            "DealId"         BIGINT           NOT NULL DEFAULT 0,
+            "Symbol"         VARCHAR(32)      NOT NULL DEFAULT '',
+            "ReferPath"      VARCHAR(512)     NOT NULL DEFAULT '',
+            "Commission"     NUMERIC(18,8)    NOT NULL DEFAULT 0,
+            "Swaps"          NUMERIC(18,8)    NOT NULL DEFAULT 0,
+            "OpenPrice"      NUMERIC(18,8)    NOT NULL DEFAULT 0,
+            "ClosePrice"     NUMERIC(18,8)    NOT NULL DEFAULT 0,
+            "Profit"         NUMERIC(18,8)    NOT NULL DEFAULT 0,
+            "Reason"         INT              NOT NULL DEFAULT 0
+        )
+    "#)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS "UX__TradeRebateNew_Ticket_ServiceId"
+            ON trd."_TradeRebateNew" ("Ticket", "TradeServiceId")
+    "#)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(r#"
+        CREATE INDEX IF NOT EXISTS "IX__TradeRebateNew_AccountNumber"
+            ON trd."_TradeRebateNew" ("AccountNumber")
+    "#)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 /// 检查 _TradeRebateNew 中是否已存在该 ticket + service 组合（去重）
 pub async fn exists(pool: &PgPool, ticket: i64, service_id: i32) -> Result<bool> {
     let row: (bool,) = sqlx::query_as(

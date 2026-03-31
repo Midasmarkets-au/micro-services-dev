@@ -18,7 +18,7 @@ pub struct Mt5Daily {
     pub floating: Option<f64>,
 }
 
-/// Mirrors mt5_deals_2025 (or current year partition)
+/// Mirrors mt5_deals (current active deals table)
 #[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
 pub struct Mt5Deal {
     pub deal: i64,
@@ -87,7 +87,7 @@ pub async fn get_deals(
     // Use the 2025 partition table (matches C# Mt5Deals2025s)
     let sql = format!(
         r#"SELECT deal, login, time, symbol, volume, price, profit, commission, swap, action, entry, comment
-           FROM mt5_deals_2025
+           FROM mt5_deals
            WHERE time >= ? AND time < ?
            AND login IN ({})
            AND entry = 1"#, // entry=1 = deal out (closed)
@@ -178,7 +178,7 @@ pub async fn poll_closed_deals(
     let sql = r#"
         SELECT Deal, Login, TimeMsc, Symbol, Price, VolumeClosed, Volume,
                Profit, Commission, Storage, Reason, Action, Digits, PositionID, Timestamp
-        FROM mt5_deals_2025
+        FROM mt5_deals
         WHERE VolumeClosed > 0
           AND Action IN (0, 1)
           AND Login < 82200000 -- exclude system/dealer logins (>= 82200000)
@@ -207,7 +207,7 @@ pub async fn get_open_deals_by_positions(
     let placeholders = position_ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
     let sql = format!(
         r#"SELECT PositionID, TimeMsc, Price
-           FROM mt5_deals_2025
+           FROM mt5_deals
            WHERE PositionID IN ({})
              AND VolumeClosed = 0"# /* 开仓 deal: VolumeClosed = 0 */,
         placeholders

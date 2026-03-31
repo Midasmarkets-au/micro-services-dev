@@ -3,6 +3,9 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use tracing::{error, info, warn};
 
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+
 use crate::db::{mt5, tenant};
 use crate::models::meta_trade::MetaTrade;
 use crate::nats::client::SUBJECT_TRADE;
@@ -12,11 +15,14 @@ const DEDUP_HASH_KEY: &str = "trade:queue:dedup";
 const LAST_TIME_KEY_PREFIX: &str = "trade:monitor:last_time:";
 const LAST_DEAL_KEY_PREFIX: &str = "trade:monitor:last_deal:";
 
-/// Entry point: discovers all MT5 services across tenants and spawns a polling loop per service.
+/// Entry point: discovers all MT5 services across all tenants and spawns a polling loop per service.
 pub async fn run(ctx: AppContext) -> Result<()> {
     let tenant_ids = tenant::get_all_tenant_ids(&ctx.central_pool).await?;
 
-    let mut handles = vec![];
+    // Collect unique (service_id, tenant_pool) pairs across all tenants
+    let mut service_tenant: Vec<(i32, sqlx::PgPool)> = vec![];
+    let mut seen_service_ids = std::collections::HashSet::new();
+
     for tenant_id in tenant_ids {
         let tenant_pool = match ctx.tenant_pool(tenant_id).await {
             Ok(p) => p,
@@ -25,7 +31,7 @@ pub async fn run(ctx: AppContext) -> Result<()> {
                 continue;
             }
         };
-        let service_ids = match tenant::get_mt5_service_ids(&tenant_pool).await {
+        let service_ids = match tenant::get_mt5_service_ids_from_central(&tenant_pool).await {
             Ok(ids) => ids,
             Err(e) => {
                 warn!("TradeMonitor: failed to get MT5 services for tenant {}: {:#}", tenant_id, e);
@@ -33,12 +39,25 @@ pub async fn run(ctx: AppContext) -> Result<()> {
             }
         };
         for service_id in service_ids {
-            let ctx2 = ctx.clone();
-            let tp = tenant_pool.clone();
-            handles.push(tokio::spawn(async move {
-                poll_service_loop(ctx2, service_id, tp).await;
-            }));
+            if seen_service_ids.insert(service_id) {
+                service_tenant.push((service_id, tenant_pool.clone()));
+            }
         }
+    }
+
+    if service_tenant.is_empty() {
+        warn!("TradeMonitor: no MT5 trade services found in any tenant trd._TradeService. Trade monitoring will exit.");
+        return Ok(());
+    }
+
+    info!("TradeMonitor: found {} MT5 service(s): {:?}", service_tenant.len(), service_tenant.iter().map(|(id, _)| id).collect::<Vec<_>>());
+
+    let mut handles = vec![];
+    for (service_id, tenant_pool) in service_tenant {
+        let ctx2 = ctx.clone();
+        handles.push(tokio::spawn(async move {
+            poll_service_loop(ctx2, service_id, tenant_pool).await;
+        }));
     }
     for h in handles {
         if let Err(e) = h.await {
@@ -161,12 +180,12 @@ fn build_meta_trade(
         digits: closed.digits as i32,
         volume: closed.volume_closed as f64 / 10000.0,
         volume_original: (closed.volume_closed / 100) as i32,
-        open_price: open.map(|o| o.price),
-        close_price: Some(closed.price),
+        open_price: open.and_then(|o| Decimal::from_f64(o.price)),
+        close_price: Decimal::from_f64(closed.price),
         reason: closed.reason as i32,
-        profit: closed.profit,
-        commission: closed.commission,
-        swaps: closed.storage,
+        profit: Decimal::from_f64(closed.profit).unwrap_or(Decimal::ZERO),
+        commission: Decimal::from_f64(closed.commission).unwrap_or(Decimal::ZERO),
+        swaps: Decimal::from_f64(closed.storage).unwrap_or(Decimal::ZERO),
     }
 }
 

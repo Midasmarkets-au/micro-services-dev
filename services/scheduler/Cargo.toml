@@ -15,6 +15,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 # Database
 sqlx = { workspace = true, features = ["mysql"] }
+rust_decimal = { version = "1", features = ["serde-float"] }
 # Utils
 chrono = { workspace = true }
 uuid = { workspace = true }
