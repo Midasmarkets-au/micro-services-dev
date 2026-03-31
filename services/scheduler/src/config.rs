@@ -84,7 +84,7 @@ impl Config {
 
             mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:50005"),
 
-            nats_url: env_str("NATS_URL", "nats://localhost:4222"),
+            nats_url: env_str("NATS_URL", "nats://nats:4222"),
 
             worker_concurrency: env_usize("WORKER_CONCURRENCY", 4),
         })
