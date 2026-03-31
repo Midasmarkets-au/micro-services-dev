@@ -60,9 +60,14 @@ pub async fn generate_account_to_send_confirmation_report(
 
     // Stage 1b: accounts with open MT5 positions but no closed trades.
     // Mirrors C# `mt5Ctx.Mt5Positions.Where(x => x.Login == login).AnyAsync()`.
-    if let Ok(Some(mt5_conn)) =
-        crate::db::tenant::get_mt5_connection_string(tenant_pool, 1).await
-    {
+    let first_mt5_service = crate::db::tenant::get_mt5_service_ids_from_central(tenant_pool)
+        .await
+        .ok()
+        .and_then(|ids| ids.into_iter().next());
+    if let Some(sid) = first_mt5_service {
+        if let Ok(Some(mt5_conn)) =
+            crate::db::tenant::get_mt5_connection_string_from_central(tenant_pool, sid).await
+        {
         match crate::db::mysql_pool(&mt5_conn).await {
             Ok(mt5_pool) => {
                 let all_accounts: Vec<(i64, i64, i64)> =
@@ -105,7 +110,8 @@ pub async fn generate_account_to_send_confirmation_report(
                 );
             }
         }
-    }
+        } // end if let Ok(Some(mt5_conn))
+    } // end if let Some(sid)
 
     Ok(count)
 }

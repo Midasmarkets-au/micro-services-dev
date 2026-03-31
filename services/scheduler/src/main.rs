@@ -3,15 +3,20 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use chrono::Datelike;
+
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+
 use anyhow::Result;
 use apalis::prelude::*;
 use apalis_board_api::framework::{ApiBuilder, RegisterRoute};
 use apalis_board_api::sse::TracingBroadcaster;
 use apalis_board_api::ui::ServeUI;
 use apalis_redis::{connect as redis_connect, ConnectionManager, RedisStorage};
+use async_nats::jetstream;
 use axum::response::Json;
 use axum::{routing::get, Router};
-use sqlx::PgPool;
+use sqlx::{MySqlPool, PgPool};
 use tokio::sync::RwLock;
 use tonic::transport::Server as TonicServer;
 use tower_http::trace::TraceLayer;
@@ -24,6 +29,8 @@ mod generated;
 mod grpc;
 mod jobs;
 mod mail;
+mod models;
+mod nats;
 mod report;
 mod storage;
 mod utils;
@@ -51,8 +58,14 @@ pub struct AppContext {
     pub cache: Arc<RedisCache>,
     /// gRPC client for calling mono's MonoCallbackService
     pub mono_callback: Arc<MonoCallbackClient>,
+    /// NATS JetStream context for publishing/consuming trade events
+    pub jetstream: Arc<jetstream::Context>,
     // Per-tenant pool cache: tenant_id → PgPool
     tenant_pools: Arc<RwLock<HashMap<i64, PgPool>>>,
+    // Per-MT5-service MySQL pool cache: service_id → MySqlPool
+    mt5_pools: Arc<RwLock<HashMap<i32, MySqlPool>>>,
+    // Tracks which (tenant_id, year) rebate tables have already been ensured this process lifetime
+    ensured_rebate_tables: Arc<RwLock<std::collections::HashSet<(i64, i32)>>>,
 }
 
 impl AppContext {
@@ -65,6 +78,13 @@ impl AppContext {
         let cache = Arc::new(RedisCache::new(&config).await?);
         let mono_callback = Arc::new(MonoCallbackClient::new(&config.mono_grpc_url));
 
+        let nats_client = async_nats::connect(&config.nats_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to connect to NATS at {}: {}", config.nats_url, e))?;
+        let jetstream_ctx = async_nats::jetstream::new(nats_client);
+        nats::client::ensure_trade_stream(&jetstream_ctx).await?;
+        let jetstream = Arc::new(jetstream_ctx);
+
         Ok(Self {
             config: Arc::new(config),
             auth_pool,
@@ -74,7 +94,10 @@ impl AppContext {
             mail,
             cache,
             mono_callback,
+            jetstream,
             tenant_pools: Arc::new(RwLock::new(HashMap::new())),
+            mt5_pools: Arc::new(RwLock::new(HashMap::new())),
+            ensured_rebate_tables: Arc::new(RwLock::new(std::collections::HashSet::new())),
         })
     }
 
@@ -99,8 +122,90 @@ impl AppContext {
             pools.insert(tenant_id, pool.clone());
         }
 
+        // Ensure current year and next year's rebate tables exist on first connection.
+        // Fail fast on error to prevent mid-year-rollover table-missing issues.
+        let current_year = chrono::Utc::now().year();
+        self.ensure_rebate_table(tenant_id, &pool, current_year).await?;
+        self.ensure_rebate_table(tenant_id, &pool, current_year + 1).await?;
+
         Ok(pool)
     }
+
+    /// Ensure trd._TradeRebate_{year} exists for the given tenant.
+    /// Uses an in-memory set to avoid redundant DDL calls within the same process lifetime.
+    /// Returns Err if table creation fails — callers should propagate the error so NATS retries.
+    pub async fn ensure_rebate_table(&self, tenant_id: i64, pool: &PgPool, year: i32) -> Result<()> {
+        {
+            let seen = self.ensured_rebate_tables.read().await;
+            if seen.contains(&(tenant_id, year)) {
+                return Ok(());
+            }
+        }
+        db::trade_rebate::ensure_table(pool, year).await
+            .map_err(|e| anyhow::anyhow!("Failed to ensure trd._TradeRebate_{} for tenant {}: {:#}", year, tenant_id, e))?;
+        let mut seen = self.ensured_rebate_tables.write().await;
+        seen.insert((tenant_id, year));
+        Ok(())
+    }
+
+    /// Get or create a MySQL connection pool for an MT5 service.
+    /// Connection string is loaded from trd."_TradeService"."Configuration" JSON in the tenant DB.
+    pub async fn mt5_pool(&self, service_id: i32, tenant_pool: &PgPool) -> Result<MySqlPool> {
+        {
+            let pools = self.mt5_pools.read().await;
+            if let Some(pool) = pools.get(&service_id) {
+                return Ok(pool.clone());
+            }
+        }
+        let conn_str = db::tenant::get_mt5_connection_string_from_central(tenant_pool, service_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("No MT5 connection string for service {}", service_id))?;
+        let mysql_url = parse_cs_connection_string(&conn_str)?;
+        let pool = sqlx::mysql::MySqlPoolOptions::new()
+            .max_connections(5)
+            .connect(&mysql_url)
+            .await?;
+        {
+            let mut pools = self.mt5_pools.write().await;
+            pools.entry(service_id).or_insert_with(|| pool.clone());
+        }
+        Ok(pool)
+    }
+}
+
+/// Converts a C# style connection string to a MySQL URL.
+/// Input:  "Server=host;Port=3306;Database=db;Uid=user;Pwd=pass;"
+/// Output: "mysql://user:pass@host:3306/db"
+fn parse_cs_connection_string(cs: &str) -> Result<String> {
+    let mut map = std::collections::HashMap::new();
+    for part in cs.split(';') {
+        let part = part.trim();
+        if let Some((k, v)) = part.split_once('=') {
+            map.insert(k.trim().to_lowercase(), v.trim().to_string());
+        }
+    }
+    let host = map
+        .get("server")
+        .or_else(|| map.get("host"))
+        .ok_or_else(|| anyhow::anyhow!("Missing Server in connection string"))?;
+    let port = map.get("port").map(|s| s.as_str()).unwrap_or("3306");
+    let db = map
+        .get("database")
+        .ok_or_else(|| anyhow::anyhow!("Missing Database in connection string"))?;
+    let user = map
+        .get("uid")
+        .or_else(|| map.get("user id"))
+        .or_else(|| map.get("user"))
+        .or_else(|| map.get("username"))
+        .ok_or_else(|| anyhow::anyhow!("Missing Uid in connection string"))?;
+    let pwd = map
+        .get("pwd")
+        .or_else(|| map.get("password"))
+        .cloned()
+        .unwrap_or_default();
+    let user_enc = utf8_percent_encode(user, NON_ALPHANUMERIC).to_string();
+    let pwd_enc = utf8_percent_encode(&pwd, NON_ALPHANUMERIC).to_string();
+    Ok(format!("mysql://{}:{}@{}:{}/{}", user_enc, pwd_enc, host, port, db))
 }
 
 // ── HTTP health endpoint (axum) ───────────────────────────────────────────────
@@ -176,6 +281,35 @@ async fn main() -> Result<()> {
                 });
             if let Err(e) = monitor.run().await {
                 error!("Monitor failed: {:#}. Restarting in 5s...", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    });
+
+    // ── Spawn TradeMonitorService (MT5 poll → NATS publish) ──────────────
+    let ctx_tm = ctx.clone();
+    tokio::spawn(async move {
+        loop {
+            match jobs::trade_monitor::run(ctx_tm.clone()).await {
+                Err(e) => {
+                    error!("TradeMonitorService error: {:#}. Restarting in 5s...", e);
+                }
+                Ok(()) => {
+                    // run() returned Ok but exited (e.g. no MT5 services configured yet)
+                    // retry after a longer delay to avoid busy-looping
+                    tracing::warn!("TradeMonitorService exited cleanly. Retrying in 60s...");
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        }
+    });
+
+    // ── Spawn TradeHandler (NATS consume → DB write) ──────────────────────
+    let ctx_th = ctx.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(e) = jobs::trade_handler::run(ctx_th.clone()).await {
+                error!("TradeHandler error: {:#}. Restarting in 5s...", e);
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }

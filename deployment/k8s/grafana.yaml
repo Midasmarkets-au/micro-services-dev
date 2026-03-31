@@ -4,16 +4,10 @@
 #  端口：3000 (HTTP)，通过 Ingress /grafana 路径访问
 #  依赖：loki Service（loki:3100）
 # ============================================================================
-apiVersion: v1
-kind: Secret
-metadata:
-  name: grafana-admin
-  labels:
-    app: grafana
-type: Opaque
-stringData:
-  admin-user: "admin"
-  admin-password: "changeme"
+# Secret grafana-admin 需在集群中手动创建，不提交到 git：
+# kubectl create secret generic grafana-admin \
+#   --from-literal=admin-user=admin \
+#   --from-literal=admin-password=<your-password>
 ---
 apiVersion: v1
 kind: ConfigMap

@@ -682,7 +682,7 @@ async fn query_mt5(
 
     for (service_id, rows) in &service_groups {
         let mt5_conn =
-            match crate::db::tenant::get_mt5_connection_string(tenant_pool, *service_id).await {
+            match crate::db::tenant::get_mt5_connection_string_from_central(tenant_pool, *service_id as i32).await {
                 Ok(Some(c)) => c,
                 _ => {
                     warn!("[DailyEquity MT5] No connection string for ServiceId={}", service_id);
@@ -787,7 +787,7 @@ async fn query_mt5_lots(
     let ph = logins.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
     let sql = format!(
         "SELECT COALESCE(SUM(Volume / 10000.0), 0) AS lots \
-         FROM mt5_deals_2025 \
+         FROM mt5_deals \
          WHERE Time >= ? AND Time <= ? \
            AND Login IN ({}) \
            AND Entry IN (1, 2, 3) \

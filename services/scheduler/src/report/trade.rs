@@ -36,8 +36,12 @@ pub async fn generate_trade_csv(
     let from = criteria.from.unwrap_or_else(|| Utc::now() - chrono::Duration::days(1));
     let to = criteria.to.unwrap_or_else(Utc::now);
 
-    // Get MT5 connection string from the first available MT5 trade service
-    let mt5_conn = crate::db::tenant::get_mt5_connection_string(tenant_pool, 1).await?;
+    // Get MT5 service IDs from tenant DB and use the first one
+    let service_ids = crate::db::tenant::get_mt5_service_ids_from_central(tenant_pool).await?;
+    let mt5_conn = match service_ids.first() {
+        Some(&sid) => crate::db::tenant::get_mt5_connection_string_from_central(tenant_pool, sid).await?,
+        None => None,
+    };
 
     if let Some(conn_str) = mt5_conn {
         let mt5_pool = crate::db::mysql_pool(&conn_str).await?;

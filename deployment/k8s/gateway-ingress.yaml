@@ -207,3 +207,34 @@ metadata:
   namespace: ingress-nginx
 data:
   Host: "mm-front-public.s3.ap-southeast-2.amazonaws.com"
+---
+# ============================================================================
+#  NATS 监控 UI — https://portal.trademdm.com/nats/
+#  代理到 nats:8222，路径 /nats(/|$)(.*) → /$2
+#  建议生产环境加 basic-auth Secret 保护
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nats-monitor-ingress
+  labels:
+    app: nats
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: nats-monitor-auth
+    nginx.ingress.kubernetes.io/auth-realm: "NATS Monitor"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /nats(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: nats
+                port:
+                  number: 8222

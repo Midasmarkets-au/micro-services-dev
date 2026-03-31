@@ -290,25 +290,6 @@ pub async fn get_tenant_db_name(central_pool: &PgPool, tenant_id: i64) -> Result
     Ok(row.map(|(name,)| name))
 }
 
-/// Get MT4 trade service connection string for a given service ID.
-pub async fn get_mt4_connection_string(pool: &PgPool, service_id: i64) -> Result<Option<String>> {
-    let row: Option<(String,)> = sqlx::query_as(
-        r#"SELECT "Options" FROM trd."_TradeService"
-           WHERE "Id" = $1 AND "Platform" = 1"#, // Platform 1 = MetaTrader4
-    )
-    .bind(service_id)
-    .fetch_optional(pool)
-    .await?;
-
-    if let Some((options_json,)) = row {
-        let v: serde_json::Value = serde_json::from_str(&options_json)?;
-        if let Some(conn_str) = v["Database"]["ConnectionString"].as_str() {
-            return Ok(Some(conn_str.to_string()));
-        }
-    }
-    Ok(None)
-}
-
 /// Get active client accounts with their MT5 account numbers.
 /// Returns `(account_id, account_number, party_id)` tuples.
 /// Used by AccountDailyConfirmation to check for open MT5 positions.
@@ -325,21 +306,75 @@ pub async fn get_active_client_account_logins(pool: &PgPool) -> Result<Vec<(i64,
     Ok(rows)
 }
 
-/// Get MT5 trade service connection string for a given service ID.
-pub async fn get_mt5_connection_string(pool: &PgPool, service_id: i64) -> Result<Option<String>> {
-    let row: Option<(String,)> = sqlx::query_as(
-        r#"SELECT "Options" FROM trd."_TradeService"
-           WHERE "Id" = $1 AND "Platform" = 2"#, // Platform 2 = MetaTrader5
+/// 按 AccountNumber + ServiceId 查询账号信息（用于 TradeHandler）
+/// 返回 (account_id, currency_id, refer_path)
+pub async fn find_account_by_number(
+    pool: &sqlx::PgPool,
+    account_number: i64,
+    service_id: i32,
+) -> anyhow::Result<Option<(i64, i32, String)>> {
+    let row: Option<(i64, i32, String)> = sqlx::query_as(
+        r#"SELECT "Id", COALESCE("CurrencyId", -1), COALESCE("ReferPath", '')
+           FROM trd."_Account"
+           WHERE "AccountNumber" = $1 AND "ServiceId" = $2 AND "Status" = 0 AND "IsClosed" = 0
+           LIMIT 1"#,
     )
+    .bind(account_number)
     .bind(service_id)
     .fetch_optional(pool)
     .await?;
+    Ok(row)
+}
 
-    if let Some((options_json,)) = row {
-        let v: serde_json::Value = serde_json::from_str(&options_json)?;
-        if let Some(conn_str) = v["Database"]["ConnectionString"].as_str() {
+/// 从租户库的 trd._TradeService 获取所有 MT5 Real 服务 ID。
+/// 与 mono TradeMonitorService 一致：Name 包含 "MT5"，Description 不含 "DEMO"
+pub async fn get_mt5_service_ids_from_central(tenant_pool: &sqlx::PgPool) -> anyhow::Result<Vec<i32>> {
+    let rows: Vec<(i32,)> = sqlx::query_as(
+        r#"SELECT "Id" FROM trd."_TradeService"
+           WHERE UPPER("Name") LIKE '%MT5%'
+             AND UPPER("Description") NOT LIKE '%DEMO%'"#,
+    )
+    .fetch_all(tenant_pool)
+    .await?;
+    Ok(rows.into_iter().map(|(id,)| id).collect())
+}
+
+/// 从租户库的 trd._TradeService 获取 MT5 服务的 MySQL 连接字符串。
+/// Configuration 字段是 JSON，结构为 {"Database": {"Host":..., "Port":..., "Database":..., "Username":..., "Password":...}}
+pub async fn get_mt5_connection_string_from_central(
+    tenant_pool: &sqlx::PgPool,
+    service_id: i32,
+) -> anyhow::Result<Option<String>> {
+    let row: Option<(String,)> = sqlx::query_as(
+        r#"SELECT "Configuration" FROM trd."_TradeService"
+           WHERE "Id" = $1"#,
+    )
+    .bind(service_id)
+    .fetch_optional(tenant_pool)
+    .await?;
+
+    let Some((config_json,)) = row else {
+        return Ok(None);
+    };
+
+    let v: serde_json::Value = serde_json::from_str(&config_json)?;
+    let db = &v["Database"];
+
+    // Prefer the pre-built ConnectionString if available
+    if let Some(conn_str) = db["ConnectionString"].as_str() {
+        if !conn_str.is_empty() {
             return Ok(Some(conn_str.to_string()));
         }
     }
-    Ok(None)
+
+    // Fallback: build from individual fields
+    let host = db["Host"].as_str().unwrap_or("localhost");
+    let port = db["Port"].as_u64().unwrap_or(3306);
+    let database = db["Database"].as_str().unwrap_or("");
+    let username = db["Username"].as_str().unwrap_or("");
+    let password = db["Password"].as_str().unwrap_or("");
+
+    Ok(Some(format!(
+        "Server={host};Port={port};Database={database};Uid={username};Pwd={password};"
+    )))
 }

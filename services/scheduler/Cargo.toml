@@ -15,6 +15,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 # Database
 sqlx = { workspace = true, features = ["mysql"] }
+rust_decimal = { version = "1", features = ["serde-float"] }
 # Utils
 chrono = { workspace = true }
 uuid = { workspace = true }
@@ -46,8 +47,12 @@ thiserror = "2"
 dotenvy = "0.15"
 # Async trait
 async-trait = "0.1"
+# NATS JetStream
+async-nats = "0.38"
 # Futures
 futures = "0.3"
+# URL encoding
+percent-encoding = "2"
 # Enum serde
 serde_repr = "0.1"
 

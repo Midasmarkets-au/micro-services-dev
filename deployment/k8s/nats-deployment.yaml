@@ -1,0 +1,76 @@
+# ============================================================================
+#  NATS JetStream — 持久化消息队列
+#  端口：4222 (client), 8222 (monitor)
+#  JetStream 数据持久化到 PVC（gp2），Pod 重启后数据不丢失
+# ============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  labels:
+    app: nats
+spec:
+  serviceName: nats
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: nats
+          image: nats:2.10-alpine
+          args:
+            - -js
+            - --store_dir=/data
+            - -m
+            - "8222"
+          ports:
+            - name: client
+              containerPort: 4222
+            - name: monitor
+              containerPort: 8222
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  labels:
+    app: nats
+spec:
+  type: ClusterIP
+  ports:
+    - name: client
+      port: 4222
+      targetPort: 4222
+      protocol: TCP
+    - name: monitor
+      port: 8222
+      targetPort: 8222
+      protocol: TCP
+  selector:
+    app: nats
