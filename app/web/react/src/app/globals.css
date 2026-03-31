@@ -1427,7 +1427,7 @@ input:-webkit-autofill:active {
 .mdm-calendar .rdp-today:not(.rdp-outside) .rdp-day_button {
   border: 1px solid var(--rdp-accent-color);
   font-weight: 600;
-  color: var(--rdp-accent-color);
+  color: bg-white;
 }
 
 .mdm-calendar .rdp-outside .rdp-day_button {

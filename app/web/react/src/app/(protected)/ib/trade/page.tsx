@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBTradeReports } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';

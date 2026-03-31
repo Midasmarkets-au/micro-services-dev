@@ -160,10 +160,6 @@ export function TradeReportTable({
   const handleFilterChange = useCallback((values: TradeFilterValues) => {
     if (values.isClosed !== undefined) {
       setIsClosed(values.isClosed);
-      setActiveDefaultParam((prev) => ({
-        ...prev,
-        dateRange: values.isClosed ? getTodayDateRange() : undefined,
-      }));
     }
   }, []);
 
@@ -233,7 +229,7 @@ export function TradeReportTable({
         align: 'right',
         skeletonWidth: 'w-20',
         render: (item) => (
-          <span className="text-text-primary">{toFixedSafe(item.openPrice, 5)}</span>
+          <span className="text-text-primary">{toFixedSafe(item.openPrice, 2)}</span>
         ),
       },
       {
@@ -278,7 +274,7 @@ export function TradeReportTable({
           render: (item: TradeRecord) => (
             <span className="text-text-primary">
               {item.closePrice != null && item.closePrice > 0
-                ? toFixedSafe(item.closePrice, 5)
+                ? toFixedSafe(item.closePrice, 2)
                 : '--'}
             </span>
           ),
