@@ -3,11 +3,30 @@ use sqlx::PgPool;
 
 use crate::models::meta_trade::NewTradeRebate;
 
-/// 确保 trd._TradeRebateNew 表存在，不存在则自动创建。
-/// 在每个租户 pool 首次建立时调用。
-pub async fn ensure_table(pool: &PgPool) -> Result<()> {
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS trd."_TradeRebateNew" (
+/// Returns the per-year table name, e.g. `trd."_TradeRebate_2026"`.
+fn table_name(year: i32) -> String {
+    format!(r#"trd."_TradeRebate_{}""#, year)
+}
+
+/// Unique index name for a given year.
+fn ux_name(year: i32) -> String {
+    format!(r#"UX__TradeRebate_{}_Ticket_ServiceId"#, year)
+}
+
+/// Account number index name for a given year.
+fn ix_account_name(year: i32) -> String {
+    format!(r#"IX__TradeRebate_{}_AccountNumber"#, year)
+}
+
+/// Ensure the per-year trd._TradeRebate_{year} table exists.
+/// Called on tenant pool init (current year) and lazily before insert (any year).
+pub async fn ensure_table(pool: &PgPool, year: i32) -> Result<()> {
+    let tbl = table_name(year);
+    let ux = ux_name(year);
+    let ix = ix_account_name(year);
+
+    sqlx::query(&format!(r#"
+        CREATE TABLE IF NOT EXISTS {tbl} (
             "Id"             BIGSERIAL        PRIMARY KEY,
             "AccountId"      BIGINT,
             "TradeServiceId" INT              NOT NULL,
@@ -33,35 +52,36 @@ pub async fn ensure_table(pool: &PgPool) -> Result<()> {
             "Profit"         NUMERIC(18,8)    NOT NULL DEFAULT 0,
             "Reason"         INT              NOT NULL DEFAULT 0
         )
-    "#)
+    "#))
     .execute(pool)
     .await?;
 
-    sqlx::query(r#"
-        CREATE UNIQUE INDEX IF NOT EXISTS "UX__TradeRebateNew_Ticket_ServiceId"
-            ON trd."_TradeRebateNew" ("Ticket", "TradeServiceId")
-    "#)
+    sqlx::query(&format!(r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS "{ux}"
+            ON {tbl} ("Ticket", "TradeServiceId")
+    "#))
     .execute(pool)
     .await?;
 
-    sqlx::query(r#"
-        CREATE INDEX IF NOT EXISTS "IX__TradeRebateNew_AccountNumber"
-            ON trd."_TradeRebateNew" ("AccountNumber")
-    "#)
+    sqlx::query(&format!(r#"
+        CREATE INDEX IF NOT EXISTS "{ix}"
+            ON {tbl} ("AccountNumber")
+    "#))
     .execute(pool)
     .await?;
 
     Ok(())
 }
 
-/// 检查 _TradeRebateNew 中是否已存在该 ticket + service 组合（去重）
-pub async fn exists(pool: &PgPool, ticket: i64, service_id: i32) -> Result<bool> {
-    let row: (bool,) = sqlx::query_as(
+/// Check if a ticket+service already exists in the given year's table.
+pub async fn exists(pool: &PgPool, ticket: i64, service_id: i32, year: i32) -> Result<bool> {
+    let tbl = table_name(year);
+    let row: (bool,) = sqlx::query_as(&format!(
         r#"SELECT EXISTS(
-            SELECT 1 FROM trd."_TradeRebateNew"
+            SELECT 1 FROM {tbl}
             WHERE "Ticket" = $1 AND "TradeServiceId" = $2
         )"#,
-    )
+    ))
     .bind(ticket)
     .bind(service_id)
     .fetch_one(pool)
@@ -69,11 +89,15 @@ pub async fn exists(pool: &PgPool, ticket: i64, service_id: i32) -> Result<bool>
     Ok(row.0)
 }
 
-/// 插入新 TradeRebate 记录。ON CONFLICT DO NOTHING（幂等）
-/// 返回 Some(id) 成功插入，None 表示已存在
-pub async fn insert(pool: &PgPool, rebate: &NewTradeRebate) -> Result<Option<i64>> {
-    let row: Option<(i64,)> = sqlx::query_as(
-        r#"INSERT INTO trd."_TradeRebateNew" (
+/// Insert a new TradeRebate record into the given year's table. Idempotent via ON CONFLICT DO NOTHING.
+/// Returns Some(id) on insert, None if already exists.
+/// Lazily creates the table if it doesn't exist yet (handles year rollover).
+pub async fn insert(pool: &PgPool, rebate: &NewTradeRebate, year: i32) -> Result<Option<i64>> {
+    ensure_table(pool, year).await?;
+
+    let tbl = table_name(year);
+    let row: Option<(i64,)> = sqlx::query_as(&format!(
+        r#"INSERT INTO {tbl} (
             "AccountId", "TradeServiceId", "Ticket", "AccountNumber",
             "CurrencyId", "Volume", "Status", "RuleType",
             "CreatedOn", "UpdatedOn", "ClosedOn", "OpenedOn",
@@ -86,7 +110,7 @@ pub async fn insert(pool: &PgPool, rebate: &NewTradeRebate) -> Result<Option<i64
         )
         ON CONFLICT ("Ticket", "TradeServiceId") DO NOTHING
         RETURNING "Id""#,
-    )
+    ))
     .bind(rebate.account_id)
     .bind(rebate.trade_service_id)
     .bind(rebate.ticket)

@@ -19,15 +19,18 @@ pub async fn ensure_trade_stream(js: &jetstream::Context) -> Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get/create stream {}: {}", STREAM_NAME, e))?;
 
-    // Create or get the durable pull consumer
+    // Create or get the durable pull consumer.
+    // max_deliver: -1 = unlimited retries (no data loss on transient failures).
+    // ack_wait: 5 minutes — gives enough time for DDL + DB write before redelivery.
     stream
         .get_or_create_consumer(
             CONSUMER_NAME,
             consumer::pull::Config {
                 durable_name: Some(CONSUMER_NAME.to_string()),
                 ack_policy: consumer::AckPolicy::Explicit,
-                max_deliver: 5,
+                max_deliver: -1,
                 max_ack_pending: 10,
+                ack_wait: std::time::Duration::from_secs(300),
                 ..Default::default()
             },
         )

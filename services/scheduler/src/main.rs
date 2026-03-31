@@ -3,6 +3,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use chrono::Datelike;
+
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
 use anyhow::Result;
@@ -62,6 +64,8 @@ pub struct AppContext {
     tenant_pools: Arc<RwLock<HashMap<i64, PgPool>>>,
     // Per-MT5-service MySQL pool cache: service_id → MySqlPool
     mt5_pools: Arc<RwLock<HashMap<i32, MySqlPool>>>,
+    // Tracks which (tenant_id, year) rebate tables have already been ensured this process lifetime
+    ensured_rebate_tables: Arc<RwLock<std::collections::HashSet<(i64, i32)>>>,
 }
 
 impl AppContext {
@@ -93,6 +97,7 @@ impl AppContext {
             jetstream,
             tenant_pools: Arc::new(RwLock::new(HashMap::new())),
             mt5_pools: Arc::new(RwLock::new(HashMap::new())),
+            ensured_rebate_tables: Arc::new(RwLock::new(std::collections::HashSet::new())),
         })
     }
 
@@ -112,16 +117,35 @@ impl AppContext {
         let url = self.config.tenant_db_url_by_name(&db_name);
         let pool = db::tenant_pg_pool(&url).await?;
 
-        if let Err(e) = db::trade_rebate::ensure_table(&pool).await {
-            tracing::warn!("Failed to ensure trd._TradeRebateNew for tenant {}: {:#}", tenant_id, e);
-        }
-
         {
             let mut pools = self.tenant_pools.write().await;
             pools.insert(tenant_id, pool.clone());
         }
 
+        // Ensure current year and next year's rebate tables exist on first connection.
+        // Fail fast on error to prevent mid-year-rollover table-missing issues.
+        let current_year = chrono::Utc::now().year();
+        self.ensure_rebate_table(tenant_id, &pool, current_year).await?;
+        self.ensure_rebate_table(tenant_id, &pool, current_year + 1).await?;
+
         Ok(pool)
+    }
+
+    /// Ensure trd._TradeRebate_{year} exists for the given tenant.
+    /// Uses an in-memory set to avoid redundant DDL calls within the same process lifetime.
+    /// Returns Err if table creation fails — callers should propagate the error so NATS retries.
+    pub async fn ensure_rebate_table(&self, tenant_id: i64, pool: &PgPool, year: i32) -> Result<()> {
+        {
+            let seen = self.ensured_rebate_tables.read().await;
+            if seen.contains(&(tenant_id, year)) {
+                return Ok(());
+            }
+        }
+        db::trade_rebate::ensure_table(pool, year).await
+            .map_err(|e| anyhow::anyhow!("Failed to ensure trd._TradeRebate_{} for tenant {}: {:#}", year, tenant_id, e))?;
+        let mut seen = self.ensured_rebate_tables.write().await;
+        seen.insert((tenant_id, year));
+        Ok(())
     }
 
     /// Get or create a MySQL connection pool for an MT5 service.
