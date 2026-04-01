@@ -58,6 +58,20 @@ impl RedisCache {
         Ok(())
     }
 
+    /// SET key value EX ttl NX — returns true if the lock was acquired.
+    pub async fn set_nx(&self, key: &str, value: &str, ttl: Duration) -> Result<bool> {
+        let mut conn = self.conn.clone();
+        let result: Option<String> = redis::cmd("SET")
+            .arg(key)
+            .arg(value)
+            .arg("EX")
+            .arg(ttl.as_secs())
+            .arg("NX")
+            .query_async(&mut conn)
+            .await?;
+        Ok(result.is_some())
+    }
+
     /// 删除整个 Redis key
     pub async fn del(&self, key: &str) -> Result<()> {
         let mut conn = self.conn.clone();

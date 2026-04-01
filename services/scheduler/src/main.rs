@@ -122,11 +122,15 @@ impl AppContext {
             pools.insert(tenant_id, pool.clone());
         }
 
-        // Ensure current year and next year's rebate tables exist on first connection.
-        // Fail fast on error to prevent mid-year-rollover table-missing issues.
+        // Ensure current year and next year's tables exist on first connection.
         let current_year = chrono::Utc::now().year();
         self.ensure_rebate_table(tenant_id, &pool, current_year).await?;
         self.ensure_rebate_table(tenant_id, &pool, current_year + 1).await?;
+        // Also ensure _Matter_{year} and _Rebate_{year} partitioned tables.
+        db::rebate_calc::ensure_rebate_tables(&pool, current_year).await
+            .map_err(|e| anyhow::anyhow!("Failed to ensure rebate tables for year {} tenant {}: {:#}", current_year, tenant_id, e))?;
+        db::rebate_calc::ensure_rebate_tables(&pool, current_year + 1).await
+            .map_err(|e| anyhow::anyhow!("Failed to ensure rebate tables for year {} tenant {}: {:#}", current_year + 1, tenant_id, e))?;
 
         Ok(pool)
     }

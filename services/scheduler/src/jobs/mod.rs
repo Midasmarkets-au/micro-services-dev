@@ -4,5 +4,6 @@ pub mod crypto;
 pub mod process_request;
 pub mod rebate;
 pub mod release_rebate;
+pub mod rebate_calc;
 pub mod trade_handler;
 pub mod trade_monitor;
