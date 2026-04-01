@@ -31,20 +31,20 @@ pub async fn execute(ctx: AppContext) -> Result<()> {
 async fn process_tenant(ctx: AppContext, tenant_id: i64) -> Result<()> {
     let pool = ctx.tenant_pool(tenant_id).await?;
 
-    if !db::rebate::is_rebate_enabled(&pool).await? {
+    if !db::rebate_calc::is_rebate_enabled(&pool).await? {
         return Ok(());
     }
 
-    let ids = db::rebate::get_pending_rebate_ids(&pool).await?;
-    if ids.is_empty() {
+    let items = db::rebate::get_pending_rebate_ids(&pool).await?;
+    if items.is_empty() {
         return Ok(());
     }
 
-    info!(tenant_id, count = ids.len(), "ReleaseRebate: processing rebates");
+    info!(tenant_id, count = items.len(), "ReleaseRebate: processing rebates");
 
-    for rebate_id in ids {
-        if let Err(e) = db::rebate::process_rebate(&pool, rebate_id).await {
-            error!(tenant_id, rebate_id, error = %e, "ReleaseRebate: failed to process rebate");
+    for (year, rebate_id) in items {
+        if let Err(e) = db::rebate::process_rebate(&pool, year, rebate_id).await {
+            error!(tenant_id, rebate_id, year, error = %e, "ReleaseRebate: failed to process rebate");
         }
     }
 
