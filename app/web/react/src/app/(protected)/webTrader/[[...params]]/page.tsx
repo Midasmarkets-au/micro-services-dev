@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { use, useMemo } from 'react';
 import { useLocale } from 'next-intl';
 import { ServiceTypes } from '@/types/accounts';
 
 interface WebTraderPageProps {
-  params: {
+  params: Promise<{
     params?: string[];
-  };
+  }>;
 }
 
 function mapLocaleToWebTraderLang(locale: string): string {
@@ -32,10 +32,11 @@ function mapLocaleToWebTraderLang(locale: string): string {
 }
 
 export default function WebTraderPage({ params }: WebTraderPageProps) {
+  const resolvedParams = use(params);
   const locale = useLocale();
   const webTraderLang = mapLocaleToWebTraderLang(locale);
-  const accountNumber = params.params?.[0];
-  const serviceIdRaw = params.params?.[1];
+  const accountNumber = resolvedParams.params?.[0];
+  const serviceIdRaw = resolvedParams.params?.[1];
   const serviceId = serviceIdRaw ? Number(serviceIdRaw) : undefined;
 
   const webTraderUrl = useMemo(() => {
