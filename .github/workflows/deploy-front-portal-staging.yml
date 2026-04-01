@@ -45,6 +45,7 @@ jobs:
           cat > .env << ENVEOF
           JWT_SECRET=${{ secrets.PORTAL_STAGING_JWT_SECRET }}
           JWT_EXPIRES_IN=${{ vars.PORTAL_STAGING_JWT_EXPIRES_IN }}
+          API_BASE_URL=${{ vars.PORTAL_STAGING_API_BASE_URL }}
           ENVEOF
 
       - name: Debug .env contents
