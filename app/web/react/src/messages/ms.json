@@ -412,7 +412,7 @@
     "mobile": "Mudah Alih & Tablet",
     "scanToDownload": "Imbas untuk Muat Turun",
     "visit": "Lawati",
-    "disclaimer": "Walaupun lesen platform perisian dipegang oleh rakan strategik kami, pengeluar produk yang tersedia di bawah perjanjian pelanggan ini adalah MM Co Ltd.",
+    "disclaimer": "Walaupun lesen platform perisian dipegang oleh rakan strategik kami, pengeluar produk yang tersedia di bawah perjanjian pelanggan ini adalah MDM Co Ltd.",
     "noPlatforms": "Tiada platform dagangan tersedia"
   },
   "supports": {
@@ -980,7 +980,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",
@@ -1333,9 +1337,13 @@
       "status": "Status",
       "createdOn": "Dicipta",
       "completedWithdrawal": "Selesai",
-      "incompleteWithdrawal": "Tidak Lengkap",
+      "incompleteWithdrawal": "Dicipta",
       "client": "Pelanggan",
       "ib": "IB"
+    },
+    "transaction": {
+      "incompleteTransaction": "Dicipta",
+      "completedTransaction": "Selesai"
     }
   },
   "unlockEmail": {

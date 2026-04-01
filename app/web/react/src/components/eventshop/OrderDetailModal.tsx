@@ -11,6 +11,7 @@ import { ShopPoints } from './ShopPoints';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogTitle,
   Button,
   formatDateValue,
@@ -232,20 +233,22 @@ export function OrderDetailModal({ open, onOpenChange, orderHashId, onRefresh }:
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-5">
-              {order.status === OrderStatus.Shipped && (
-                <Button
-                  variant="outline"
-                  onClick={handleConfirmDelivery}
-                  disabled={isConfirming}
-                >
-                  {isConfirming ? '...' : t('orderDetail.confirmDelivered')}
+            <DialogFooter>
+              <div className="flex justify-end gap-5">
+                {order.status === OrderStatus.Shipped && (
+                  <Button
+                    variant="outline"
+                    onClick={handleConfirmDelivery}
+                    disabled={isConfirming}
+                  >
+                    {isConfirming ? '...' : t('orderDetail.confirmDelivered')}
+                  </Button>
+                )}
+                <Button variant="outline" className="w-[120px]" onClick={() => onOpenChange(false)}>
+                  {t('orderDetail.close')}
                 </Button>
-              )}
-              <Button variant="primary" className="w-[120px]" onClick={() => onOpenChange(false)}>
-                {t('orderDetail.close')}
-              </Button>
-            </div>
+              </div>
+            </DialogFooter>
           </>
         )}
       </DialogContent>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBLatestDeposits } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
@@ -11,8 +12,10 @@ import type { IBLatestDeposit } from '@/types/ib';
 
 export function LatestDepositsWidget() {
   const t = useTranslations('ib.dashboard');
+  const pathname = usePathname();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
+  const requestIdRef = useRef(0);
 
   const [deposits, setDeposits] = useState<IBLatestDeposit[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -20,12 +23,13 @@ export function LatestDepositsWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    if (!agentAccount) return;
+    if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
+    const currentRequestId = ++requestIdRef.current;
 
     const load = async () => {
       const result = await execute(getIBLatestDeposits, agentAccount.uid, 5);
-      if (cancelled) return;
+      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
       if (result.success && Array.isArray(result.data)) {
         setDeposits(result.data);
       }
@@ -33,8 +37,10 @@ export function LatestDepositsWidget() {
     };
 
     load();
-    return () => { cancelled = true; };
-  }, [agentAccount, execute]);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentAccount, execute, pathname]);
 
   const columns: DataTableColumn<IBLatestDeposit>[] = useMemo(() => [
     {
@@ -107,7 +113,7 @@ export function LatestDepositsWidget() {
             skeletonRows={5}
             rounded="xl"
             emptyContent={t('noRecords')}
-            className="flex-1"
+           
           />
         </div>
       </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
   getIBRebateTodayValue,
@@ -40,8 +41,10 @@ function ReportValueDisplay({ values, sign = '' }: { values: IBReportValue[]; si
 
 export default function IBDashboardPage() {
   const t = useTranslations('ib.dashboard');
+  const pathname = usePathname();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
+  const requestIdRef = useRef(0);
 
   const [todayRebate, setTodayRebate] = useState<IBReportValue[]>([]);
   const [totalRebate, setTotalRebate] = useState<IBReportValue[]>([]);
@@ -53,8 +56,9 @@ export default function IBDashboardPage() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    if (!agentAccount) return;
+    if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
+    const currentRequestId = ++requestIdRef.current;
 
     const load = async () => {
       const tz = -(new Date().getTimezoneOffset() / 60);
@@ -67,7 +71,7 @@ export default function IBDashboardPage() {
           execute(getIBTodayAccountCreation, agentAccount.uid),
           execute(getIBDepositTodayValue, agentAccount.uid),
         ]);
-      if (cancelled) return;
+      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
 
       if (rebateToday.success) setTodayRebate(rebateToday.data || []);
       if (rebateTotal.success) setTotalRebate(rebateTotal.data || []);
@@ -79,8 +83,10 @@ export default function IBDashboardPage() {
     };
 
     load();
-    return () => { cancelled = true; };
-  }, [agentAccount, execute]);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentAccount, execute, pathname]);
 
   return (
     <div className="flex w-full flex-col gap-5">

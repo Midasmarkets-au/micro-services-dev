@@ -10,6 +10,9 @@ export {
   setToken,
   setLocale,
   getSiteConfig,
+  createDemoAccountFromNonAuth,
+  confirmEmail,
+  verify2FA,
 } from './auth';
 
 // User actions
@@ -37,6 +40,11 @@ export {
 // Verification actions
 export {
   getVerificationStatus,
+  saveStartedInfo,
+  checkClientAnswer,
+  checkClientProfessionalAnswer,
+  getMyReferralCode,
+  getReferralInfoByReferralCode,
   savePersonalInfo,
   saveFinancialInfo,
   saveAgreement,
@@ -117,6 +125,8 @@ export {
   updateOrderAddress,
   getPointsHistory,
   getRewardRebateList,
+  getEventList,
+  markEventChecked,
 } from './eventshop';
 
 // IB actions
@@ -157,6 +167,7 @@ export {
   updateIBReferralCode,
   getRebateSymbolCategory,
   getSymbolCategory,
+  getAllSymbols,
   getIBAgentRules,
   getBrokerRebateRules,
   getIBReportRequests,
@@ -189,6 +200,7 @@ export {
   getSalesDeposits,
   getSalesWithdrawals,
   getSalesLinks,
+  getReferralLinkDetail,
   getSalesLinkDetail,
   createSalesLinkForIB,
   createSalesLinkForClient,
@@ -219,6 +231,20 @@ export {
   getSalesSymbolCategory,
   getSalesRebateDirectSymbols,
 } from './sales';
+
+// Rep actions
+export {
+  getRepClients,
+  repFuzzySearchAccount,
+  getRepViewEmailCode,
+  getRepEmailByCode,
+  getRepClientTransactions,
+  getRepClientTrades,
+  getRepTradeReports,
+  getRepTransactionReports,
+  getRepDeposits,
+  getRepWithdrawals,
+} from './rep';
 
 // Wallet actions
 export {

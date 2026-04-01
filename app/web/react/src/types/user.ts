@@ -84,6 +84,7 @@ export interface SiteConfiguration {
   twoFactorAuth: boolean;
   passwordChangedWithinLast24h?: boolean;
   twoFactorAuthForTransactions: TwoFactorAuthForTransactions;
+  HoursGapForMT5: number;
 }
 
 // 解析后的站点配置（contactInfo 已解析）

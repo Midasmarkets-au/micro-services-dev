@@ -32,7 +32,7 @@ import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
 import { AddSalesLinkDialog } from '../_components/modals/AddSalesLinkDialog';
 import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
 
-type RoleTab = 'ib' | 'client' | 'sales';
+type RoleTab = 'all' | 'ib' | 'client' | 'sales';
 
 function getUserName(item: SalesClientAccount): string {
   const u = item.user;
@@ -47,6 +47,7 @@ function getUserName(item: SalesClientAccount): string {
 function getRoleValue(tab: RoleTab): number {
   if (tab === 'ib') return AccountRoleTypes.IB;
   if (tab === 'client') return AccountRoleTypes.Client;
+  if (tab === 'all') return 0;
   return AccountRoleTypes.Sales;
 }
 
@@ -60,6 +61,7 @@ const INITIAL_CRITERIA: SalesClientCriteria = {
   relativeLevel: 1,
   multiLevel: false,
 };
+
 
 export default function SalesCustomersPage() {
   const t = useTranslations('sales');
@@ -94,6 +96,7 @@ export default function SalesCustomersPage() {
   } | null>(null);
 
   const tabs: TabItem<RoleTab>[] = useMemo(() => [
+    { key: 'all', label: t('customers.all') },
     { key: 'ib', label: t('customers.ibType') },
     { key: 'client', label: t('customers.clientType') },
     { key: 'sales', label: t('customers.salesType') },
@@ -111,7 +114,7 @@ export default function SalesCustomersPage() {
             page: raw.page ?? 1,
             size: raw.size ?? 15,
             total: raw.total,
-            role: raw.role,
+            role: raw.role || undefined,
             sortField: raw.sortField,
             sortFlag: raw.sortFlag,
             searchText: raw.searchText,
@@ -132,12 +135,10 @@ export default function SalesCustomersPage() {
     if (salesAccount) {
       fetchData({
         ...INITIAL_CRITERIA,
-        role: getRoleValue(activeTab),
+        role: getRoleValue(activeTab) || undefined,
         sortFlag: true,
         multiLevel: criteria.multiLevel ?? false,
       });
-    } else {
-      setIsLoading(false);
     }
   }, [salesAccount, activeTab, fetchData]);
 
@@ -152,7 +153,7 @@ export default function SalesCustomersPage() {
       ...criteria,
       page: 1,
       searchText: searchText || undefined,
-      role: getRoleValue(activeTab),
+      role: getRoleValue(activeTab) || undefined,
       sortFlag: true,
       relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
       multiLevel: criteria.multiLevel ?? false,
@@ -171,15 +172,16 @@ export default function SalesCustomersPage() {
     fetchData({
       ...criteria,
       page: 1,
-      childParentAccountUid: ibAccount.uid,
+      parentAccountUid: ibAccount.uid,
       relativeLevel: ibChain.length + 2,
       searchText: undefined,
+      hasMore:false,
     });
   }, [criteria, ibChain.length, fetchData]);
 
   const handleClearChain = () => {
     setIbChain([]);
-    fetchData({ ...INITIAL_CRITERIA, role: getRoleValue(activeTab), sortFlag: true, multiLevel: criteria.multiLevel ?? false });
+    fetchData({ ...INITIAL_CRITERIA, role: getRoleValue(activeTab) || undefined, sortFlag: true, multiLevel: criteria.multiLevel ?? false });
   };
 
   const handleGoToLevel = (idx: number) => {
@@ -332,6 +334,7 @@ export default function SalesCustomersPage() {
         key: 'balance',
         title: t('fields.balance'),
         skeletonWidth: 'w-20',
+        align: 'right',
         render: (item) =>
           item.role !== AccountRoleTypes.IB && item.tradeAccount ? (
             <BalanceShow
@@ -498,7 +501,7 @@ export default function SalesCustomersPage() {
                 {getUserName(acc)}
               </button>
               <span className="rounded-full bg-yellow-400 px-1.5 text-xs font-medium text-gray-900">
-                Lv{idx + 2}
+                Lv{idx + 1}
               </span>
               <span className="text-text-secondary">/</span>
             </div>

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBLinks, getReferralCodeSupplement } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
-import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { IBLink, IBReferralSupplement } from '@/types/ib';
 import { useUserStore } from '@/stores/userStore';
@@ -13,11 +13,7 @@ import { getLanguageLabel } from '@/core/types/LanguageTypes';
 import { RebateSettingsDialog } from './RebateSettingsDialog';
 import { AddLinkDialog } from './AddLinkDialog';
 import { EditLinkDialog } from './EditLinkDialog';
-
-const ROLE_TYPE_LABELS: Record<number, string> = {
-  300: 'IB',
-  400: 'Client',
-};
+import { AccountRoleTypes } from '@/types/accounts';
 
 function CopyLinkCell({ item, onCopy }: { item: IBLink; onCopy: (item: IBLink) => void }) {
   const t = useTranslations('ib');
@@ -120,7 +116,16 @@ export default function IBLinkPage() {
     setCopyConfirmOpen(true);
   }, [siteConfig]);
 
-  const columns = useMemo<DataTableColumn<IBLink>[]>(() => [
+  const columns = useMemo<DataTableColumn<IBLink>[]>(() => {
+    const viewRebateLabel = (() => {
+      try {
+        return t('link.viewRebate');
+      } catch {
+        return t('link.view');
+      }
+    })();
+
+    return [
     {
       key: 'name',
       title: t('link.linkName'),
@@ -179,7 +184,7 @@ export default function IBLinkPage() {
       skeletonWidth: 'w-16',
       render: (item) => (
         <span className="text-sm">
-          {ROLE_TYPE_LABELS[item.serviceType ?? 0] || item.type || '-'}
+          {AccountRoleTypes[item.serviceType ?? AccountRoleTypes.Unknown] || item.type || '-'}
         </span>
       ),
     },
@@ -201,7 +206,7 @@ export default function IBLinkPage() {
           className="cursor-pointer text-sm font-medium hover:underline"
           onClick={() => handleViewRebateSettings(item)}
         >
-          {t('link.view')}
+          {viewRebateLabel}
         </span>
       ),
     },
@@ -213,7 +218,8 @@ export default function IBLinkPage() {
         <CopyLinkCell item={item} onCopy={handleCopyLink} />
       ),
     },
-  ], [t, tAccount, handleCopyLink, handleViewRebateSettings, handleEditLink]);
+  ];
+  }, [t, tAccount, handleCopyLink, handleViewRebateSettings, handleEditLink]);
 
   return (
     <div className="flex min-h-full w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
@@ -234,7 +240,6 @@ export default function IBLinkPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       <RebateSettingsDialog
@@ -281,7 +286,7 @@ export default function IBLinkPage() {
               <div className="flex items-center gap-2">
                 <span className="shrink-0 text-text-secondary">{t('link.accountType')}:</span>
                 <div className="flex flex-wrap gap-1">
-                  {(copyConfirmItem.serviceType !== 400
+                  {(copyConfirmItem.serviceType !== AccountRoleTypes.Client
                     ? copyConfirmItem.summary?.schema
                     : copyConfirmItem.summary?.allowAccountTypes
                   )?.map((s, i) => (
@@ -301,7 +306,7 @@ export default function IBLinkPage() {
               <div className="flex gap-2">
                 <span className="text-text-secondary">{t('link.linkType')}:</span>
                 <span className="text-text-primary">
-                  {ROLE_TYPE_LABELS[copyConfirmItem.serviceType ?? 0] || '-'}
+                  {AccountRoleTypes[copyConfirmItem.serviceType ?? AccountRoleTypes.Unknown] || '-'}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -316,11 +321,13 @@ export default function IBLinkPage() {
               </div>
             </div>
           )}
-          <div className="mt-6 flex justify-end gap-3 md:gap-5">
-            <Button variant="secondary" onClick={() => setCopyConfirmOpen(false)} className="w-auto min-w-20 md:w-[120px]">
-              OK
-            </Button>
-          </div>
+          <DialogFooter>
+            <div className="mt-6 flex justify-end gap-3 md:gap-5">
+              <Button variant="outline" onClick={() => setCopyConfirmOpen(false)} className="w-auto min-w-20 md:w-[120px]">
+                OK
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

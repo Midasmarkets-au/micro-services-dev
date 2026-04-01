@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { updateIBLink, setIBDefaultClient } from '@/actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Input, Button, Switch } from '@/components/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Button, Switch } from '@/components/ui';
 import type { IBLink } from '@/types/ib';
 
 interface EditLinkDialogProps {
@@ -106,19 +106,21 @@ export function EditLinkDialog({ isOpen, onClose, onSuccess, item, agentUid }: E
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 md:gap-5">
-          <Button variant="outline" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
-            {t('link.close')}
-          </Button>
-          <Button
-            onClick={handleUpdate}
-            loading={isLoading}
-            disabled={!newName.trim()}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.update')}
-          </Button>
-        </div>
+        <DialogFooter>
+          <div className="mt-6 flex justify-end gap-3 md:gap-5">
+            <Button variant="outline" onClick={onClose} className="w-auto min-w-20 md:w-[120px]">
+              {t('link.close')}
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              loading={isLoading}
+              disabled={!newName.trim()}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.update')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

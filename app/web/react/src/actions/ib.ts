@@ -1,7 +1,7 @@
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList,buildQuery } from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   IBClientListResponse,
@@ -52,21 +52,6 @@ function unwrapData<T>(response: unknown): T {
     return (response as Record<string, unknown>).data as T;
   }
   return response as T;
-}
-
-function buildQuery(params?: Record<string, unknown>): string {
-  if (!params) return '';
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    if (Array.isArray(value)) {
-      value.forEach((v) => qs.append(key, String(v)));
-    } else {
-      qs.append(key, String(value));
-    }
-  });
-  const str = qs.toString();
-  return str ? `?${str}` : '';
 }
 
 // ============================================
@@ -653,6 +638,17 @@ export async function getSymbolCategory(): Promise<ActionResponse<SymbolCategory
     return { success: true, data: unwrapData<SymbolCategory[]>(response) };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch symbol category');
+  }
+}
+
+export async function getAllSymbols(): Promise<ActionResponse<{ code: string }[]>> {
+  try {
+    const response = await apiClient.v1.get<{ code: string }[]>(
+      '/client/symbol'
+    );
+    return { success: true, data: unwrapData<{ code: string }[]>(response) };
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch symbols');
   }
 }
 

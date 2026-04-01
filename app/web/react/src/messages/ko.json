@@ -412,7 +412,7 @@
     "mobile": "모바일 & 태블릿",
     "scanToDownload": "스캔하여 다운로드",
     "visit": "방문",
-    "disclaimer": "소프트웨어 플랫폼 라이선스는 전략적 파트너가 보유하고 있지만, 이 고객 계약에 따라 제공되는 상품의 발행자는 MM Co Ltd입니다.",
+    "disclaimer": "소프트웨어 플랫폼 라이선스는 전략적 파트너가 보유하고 있지만, 이 고객 계약에 따라 제공되는 상품의 발행자는 MDM Co Ltd입니다.",
     "noPlatforms": "이용 가능한 거래 플랫폼이 없습니다"
   },
   "supports": {
@@ -961,7 +961,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",

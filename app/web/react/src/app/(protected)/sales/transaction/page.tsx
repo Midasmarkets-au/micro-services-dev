@@ -12,13 +12,16 @@ import {
   Pagination,
   DataTable,
   Tag,
-  Icon,
-  Button,
+  Switch,
 } from '@/components/ui';
 import type { DataTableColumn, TagVariant } from '@/components/ui';
 import { CurrencyCodeMap } from '@/components/ui';
 import type { SalesTransactionRecord, SalesTransactionListResponse } from '@/types/sales';
 import { TradeFilter } from '@/components/TradeFilter';
+import type { TradeFilterValues } from '@/components/TradeFilter';
+import { TimeShow } from '@/components/TimeShow';
+
+const FIXED_PARAMS: Record<string, unknown> = { isClosed: false };
 
 function getUserName(item: SalesTransactionRecord): string {
   const u = item.user;
@@ -35,13 +38,6 @@ function getTransferStateVariant(stateId: number): TagVariant {
   return 'info';
 }
 
-function formatTime(time: string | null | undefined) {
-  if (!time) return '-';
-  const d = new Date(time);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
 export default function SalesTransactionPage() {
   const t = useTranslations('sales');
   const tAccount = useTranslations('accounts');
@@ -51,21 +47,28 @@ export default function SalesTransactionPage() {
 
   const salesAccount = useSalesStore((s) => s.salesAccount);
 
+  const defaultFilterParam = useMemo<TradeFilterValues>(() => ({
+    pageSize: 25,
+  }), []);
+
   const [data, setData] = useState<SalesTransactionRecord[]>([]);
   const [criteria, setCriteria] = useState<SalesTransactionListResponse['criteria'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
-  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({});
-  const pageSize = 25;
+  const [pageSize, setPageSize] = useState(25);
+  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
+    size: 25,
+    ...FIXED_PARAMS,
+  });
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams, ...FIXED_PARAMS };
         const result = await executeRef.current(getSalesTransactionReports, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -81,7 +84,7 @@ export default function SalesTransactionPage() {
         setIsLoading(false);
       }
     },
-    [salesAccount, filterParams, isClient],
+    [salesAccount, filterParams, isClient, pageSize],
   );
 
   const salesUid = salesAccount?.uid;
@@ -90,21 +93,28 @@ export default function SalesTransactionPage() {
     else setIsLoading(false);
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSearch = (params: Record<string, unknown>) => {
-    setFilterParams(params);
-    setPage(1);
-    fetchData(1, params);
-  };
+  const handleSearch = useCallback(
+    (params: Record<string, unknown>) => {
+      const mergedParams = { ...params, ...FIXED_PARAMS };
+      if (typeof params.size === 'number') setPageSize(params.size);
+      setFilterParams(mergedParams);
+      setPage(1);
+      fetchData(1, mergedParams);
+    },
+    [fetchData],
+  );
 
-  const handlePageChange = (p: number) => {
-    setPage(p);
-    fetchData(p);
-  };
+  const handlePageChange = useCallback(
+    (p: number) => {
+      setPage(p);
+      fetchData(p);
+    },
+    [fetchData],
+  );
 
-  const handleToggleRole = () => {
-    setIsClient((prev) => !prev);
-    setPage(1);
-  };
+  const handleRoleToggle = useCallback((val: boolean) => {
+    setIsClient(val);
+  }, []);
 
   const columns = useMemo<DataTableColumn<SalesTransactionRecord>[]>(() => [
     {
@@ -120,10 +130,7 @@ export default function SalesTransactionPage() {
       render: (item) => (
         <div className="flex items-center gap-3">
           <Avatar src={item.user?.avatar} alt={getUserName(item)} size="sm" />
-          <div className="flex flex-col">
-            <span className="text-sm text-text-primary">{getUserName(item)}</span>
-            <span className="text-xs text-text-secondary">{item.user?.email || item.userEmail || ''}</span>
-          </div>
+          <span className="text-sm text-text-primary">{getUserName(item)}</span>
         </div>
       ),
     },
@@ -149,8 +156,10 @@ export default function SalesTransactionPage() {
         if (!acc) return item.fromAccountNumber ?? '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
-            <span className="text-xs">Group: {acc.group || '***'}</span>
+            <span className="text-sm font-semibold text-text-primary">
+              No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '***'})
+            </span>
+            <span className="text-xs text-text-secondary">Group: {acc.group || '***'}</span>
           </div>
         );
       },
@@ -165,8 +174,10 @@ export default function SalesTransactionPage() {
         if (!acc) return item.toAccountNumber ?? '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '-'})</span>
-            <span className="text-xs">Group: {acc.group || '***'}</span>
+            <span className="text-sm font-semibold text-text-primary">
+              No.{acc.accountNumber} ({CurrencyCodeMap[acc.currencyId ?? 0] || '***'})
+            </span>
+            <span className="text-xs text-text-secondary">Group: {acc.group || '***'}</span>
           </div>
         );
       },
@@ -175,6 +186,7 @@ export default function SalesTransactionPage() {
       key: 'amount',
       title: t('transaction.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),
@@ -194,9 +206,7 @@ export default function SalesTransactionPage() {
       title: t('transaction.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow type="inFields" dateIsoString={item.createdOn} />
       ),
     },
   ], [t, tAccount]);
@@ -207,14 +217,15 @@ export default function SalesTransactionPage() {
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">
       <TradeFilter
-        type="trade"
-        translationNamespace="sales"
-        filterOptions={['account', 'datePicker']}
+        type="transaction"
+        filterOptions={['datePicker', 'target', 'allHistory']}
+        defaultParam={defaultFilterParam}
+        fixedParams={FIXED_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <span className="text-lg font-semibold text-text-secondary">
             {t.rich('transaction.showResults', {
@@ -226,15 +237,12 @@ export default function SalesTransactionPage() {
           <BalanceShow balance={totalAmount} currencyId={firstCurrencyId} className="text-lg font-bold text-text-primary" />
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleToggleRole}
-          className="flex shrink-0 items-center gap-1"
-        >
-          {isClient ? t('transaction.client') : t('transaction.ib')}
-          <Icon name="reset-line" size={14} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-text-secondary">
+            {isClient ? t('transaction.client') : t('transaction.ib')}
+          </span>
+          <Switch checked={isClient} onChange={handleRoleToggle} />
+        </div>
       </div>
 
       <DataTable<SalesTransactionRecord>
@@ -242,6 +250,7 @@ export default function SalesTransactionPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
+        skeletonRows={5}
       />
 
       <Pagination page={page} total={total} size={pageSize} onPageChange={handlePageChange} />

@@ -20,13 +20,15 @@ import type { TagVariant } from '@/components/ui';
 import type { IBWithdrawalRecord, IBWithdrawalListResponse } from '@/types/ib';
 import { CurrencyCodeMap } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
-import type { StatusOption } from '@/components/TradeFilter';
 
 /**
- * 出金默认 StateIds — 对应 Vue processStateIds:
+ * 出金默认 stateIds — 对应 Vue processStateIds:
  * simpleWithdrawalSelections[1] = WithdrawalCompleted(450) → [450,430]
  */
-const DEFAULT_WITHDRAWAL_STATE_IDS = [450, 430];
+const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: IBWithdrawalRecord): string {
   const u = item.user;
@@ -65,17 +67,19 @@ export default function IBWithdrawalPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
-    StateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+    stateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+    size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
-  const pageSize = 25;
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getIBWithdrawals, agentAccount.uid, {
           page: p,
           size: pageSize,
@@ -91,7 +95,7 @@ export default function IBWithdrawalPage() {
         setIsLoading(false);
       }
     },
-    [agentAccount, filterParams, isClient],
+    [agentAccount, filterParams, isClient, pageSize],
   );
 
   const agentUid = agentAccount?.uid;
@@ -101,9 +105,11 @@ export default function IBWithdrawalPage() {
   }, [agentUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
-    setFilterParams(params);
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
+    if (typeof params.size === 'number') setPageSize(params.size);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
@@ -115,11 +121,6 @@ export default function IBWithdrawalPage() {
     setIsClient((prev) => !prev);
     setPage(1);
   };
-
-  const statusOptions = useMemo<StatusOption[]>(() => [
-    { value: '400', label: t('withdrawal.incompleteWithdrawal') },
-    { value: '450', label: t('withdrawal.completedWithdrawal') },
-  ], [t]);
 
   const columns = useMemo<DataTableColumn<IBWithdrawalRecord>[]>(() => [
     {
@@ -165,11 +166,11 @@ export default function IBWithdrawalPage() {
               if (!src) return item.accountNumber ? `No.${item.accountNumber}` : '-';
               return (
                 <div className="flex flex-col items-center">
-                  <span className="text-xs">
+                  <span className=" text-text-primary font-semibold">
                     No.{src.displayNumber} ({CurrencyCodeMap[src.currencyId ?? 0] || '-'})
                   </span>
-                  <span className="text-xs text-text-primary font-semibold">
-                    Group: {src.agentGroupName || '***'}
+                  <span className="text-xs">
+                    {t('customerDetail.columns.group')}: {src.agentGroupName || '***'}
                   </span>
                 </div>
               );
@@ -220,12 +221,12 @@ export default function IBWithdrawalPage() {
 
   return (
     <div className="flex min-h-full w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
-      {/* Filter Bar — filterOptions=["period","withdrawalState","accountNumber"] */}
+      {/* Filter Bar — filterOptions=["period","stateIds","accountNumber"] */}
       <TradeFilter
         type="withdrawal"
-        statusOptions={statusOptions}
-        statusLabel={t('withdrawal.status')}
-        filterOptions={['status', 'account', 'datePicker', 'allHistory']}
+        filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
+        defaultParam={{ pageSize: 25 }}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />
@@ -260,7 +261,6 @@ export default function IBWithdrawalPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       {/* Pagination */}

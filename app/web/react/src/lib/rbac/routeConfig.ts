@@ -70,6 +70,14 @@ export const specialRouteConfigs: SpecialRouteConfig[] = [
     allowRoles: ['Sales'],
     redirectTo: '/403',
   },
+
+  // Rep Center - 需要 Rep 角色
+  {
+    path: '/rep',
+    matchType: 'prefix',
+    allowRoles: ['Rep'],
+    redirectTo: '/403',
+  },
   
   // Supports 模块示例 - 需要 Supports 角色
   // {

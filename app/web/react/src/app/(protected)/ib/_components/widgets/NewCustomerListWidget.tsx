@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBReferralHistory } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
@@ -11,8 +12,10 @@ import type { IBReferralHistory } from '@/types/ib';
 
 export function NewCustomerListWidget() {
   const t = useTranslations('ib.dashboard');
+  const pathname = usePathname();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
+  const requestIdRef = useRef(0);
 
   const [customers, setCustomers] = useState<IBReferralHistory[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -20,8 +23,9 @@ export function NewCustomerListWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    if (!agentAccount) return;
+    if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
+    const currentRequestId = ++requestIdRef.current;
 
     const load = async () => {
       try {
@@ -30,20 +34,24 @@ export function NewCustomerListWidget() {
           size: 5,
           IsUnverified: true,
         });
-        if (cancelled) return;
+        if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
         if (result.success && result.data?.data) {
           setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
         }
       } catch {
         // ignore
       } finally {
-        if (!cancelled) setLoadedUid(agentAccount.uid);
+        if (!cancelled && requestIdRef.current === currentRequestId && pathname === '/ib') {
+          setLoadedUid(agentAccount.uid);
+        }
       }
     };
 
     load();
-    return () => { cancelled = true; };
-  }, [agentAccount, execute]);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentAccount, execute, pathname]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-surface p-5">

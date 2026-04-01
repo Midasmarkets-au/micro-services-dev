@@ -62,14 +62,14 @@ export function VerificationComplete({ status, rejectionReason }: VerificationCo
           </h2>
 
           {/* 描述 */}
-          <p className="text-sm text-text-secondary text-center">
+          <p className="text-sm text-text-secondary text-center whitespace-nowrap">
             {t(`complete.${config.description}`)}
           </p>
 
           {/* 拒绝原因 */}
           {status === 'rejected' && rejectionReason && (
             <div className="mt-4 w-full rounded border border-error/30 bg-error/10 p-4">
-              <p className="text-sm font-medium text-error">
+              <p className="text-sm font-medium error-text">
                 {t('complete.rejectionReason')}:
               </p>
               <p className="mt-1 text-sm text-text-secondary">

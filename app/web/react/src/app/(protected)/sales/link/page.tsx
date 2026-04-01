@@ -6,7 +6,7 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesLinks } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
 import { useUserStore } from '@/stores/userStore';
-import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { SalesLink } from '@/types/sales';
 import { getLanguageLabel } from '@/core/types/LanguageTypes';
@@ -138,6 +138,13 @@ export default function SalesLinkPage() {
   }, [fetchData]);
 
   const columns = useMemo<DataTableColumn<SalesLink>[]>(() => {
+    const viewRebateLabel = (() => {
+      try {
+        return t('link.viewRebate');
+      } catch {
+        return t('link.view');
+      }
+    })();
     const cols: DataTableColumn<SalesLink>[] = [
       {
         key: 'name',
@@ -230,12 +237,17 @@ export default function SalesLinkPage() {
             className="cursor-pointer text-sm font-medium hover:underline"
             onClick={() => handleViewRebateSettings(item)}
           >
-            {t('link.view')}
+            {viewRebateLabel}
           </span>
         ),
       });
     }
-
+    cols.push({
+      key: 'isAutoCreatePaymentMethod',
+      title: t('link.autoCreateAccount'),
+      skeletonWidth: 'w-10',
+      render: (item) => <span className="text-sm">{item.isAutoCreatePaymentMethod === 1 ? t('link.yes') : t('link.no')}</span>,
+    });
     cols.push({
       key: 'copyLink',
       title: t('link.clickCopy'),
@@ -385,15 +397,17 @@ export default function SalesLinkPage() {
               </div>
             </div>
           )}
-          <div className="mt-6 flex justify-end gap-3 md:gap-5">
-            <Button
-              variant="outline"
-              onClick={() => setCopyConfirmOpen(false)}
-              className="w-auto min-w-20 md:w-[120px]"
-            >
-              OK
-            </Button>
-          </div>
+          <DialogFooter>
+            <div className="mt-6 flex justify-end gap-3 md:gap-5">
+              <Button
+                variant="outline"
+                onClick={() => setCopyConfirmOpen(false)}
+                className="w-auto min-w-20 md:w-[120px]"
+              >
+                OK
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

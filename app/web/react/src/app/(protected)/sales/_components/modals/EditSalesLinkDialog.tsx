@@ -7,6 +7,7 @@ import { updateSalesLink, setSalesDefaultCode } from '@/actions';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -129,23 +130,25 @@ export function EditSalesLinkDialog({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 md:gap-5">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.close')}
-          </Button>
-          <Button
-            onClick={handleUpdate}
-            loading={isLoading}
-            disabled={!newName.trim()}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.update')}
-          </Button>
-        </div>
+        <DialogFooter>
+          <div className="mt-6 flex justify-end gap-3 md:gap-5">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.close')}
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              loading={isLoading}
+              disabled={!newName.trim()}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.update')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

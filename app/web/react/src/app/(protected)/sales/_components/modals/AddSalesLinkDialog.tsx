@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -245,6 +246,13 @@ export function AddSalesLinkDialog({
     () => Object.values(schemaForm),
     [schemaForm]
   );
+  const productCategoryNameMap = useMemo(() => {
+    try {
+      return t.raw('type.productCategory') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }, [t]);
 
   const selectedAccounts = useMemo(
     () => filteredAccounts.filter((a) => a.selected),
@@ -560,24 +568,30 @@ export function AddSalesLinkDialog({
                         {/* IB Mode: show rebate items */}
                         {isAgent && acc.selected && (
                           <div className="mt-2 rounded-lg border border-dashed border-border p-4">
-                            <div className="flex flex-wrap gap-3">
+                            <div className="grid grid-cols-4 gap-3">
                               {acc.items.map((item) => {
-                                const catName =
+                                const rawCatName =
                                   productCategory.find(
                                     (c) => c.key === item.cid
                                   )?.value ?? String(item.cid);
+                                const catName =
+                                  productCategoryNameMap[rawCatName] ??
+                                  productCategoryNameMap[
+                                    rawCatName.replace(/\./g, '_')
+                                  ] ??
+                                  rawCatName;
                                 return (
                                   <div
                                     key={item.cid}
-                                    className="flex items-center gap-2 rounded bg-surface-secondary px-3 py-1.5 text-sm"
+                                    className=" min-w-0 items-center justify-between gap-2 rounded px-3 py-1.5 text-sm"
                                   >
-                                    <span className="text-text-secondary">
+                                    <span className="min-w-0 flex-1 wrap-break-word text-text-secondary whitespace-normal">
                                       {catName}
                                     </span>
                                     <Input
                                       value={String(item.r)}
                                       disabled
-                                      className="h-7 w-16 text-center"
+                                      className="h-7 w-16"
                                     />
                                   </div>
                                 );
@@ -701,23 +715,25 @@ export function AddSalesLinkDialog({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3 md:gap-5">
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.close')}
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            loading={submitting}
-            disabled={initLoading}
-            className="w-auto min-w-20 md:w-[120px]"
-          >
-            {t('link.submit')}
-          </Button>
-        </div>
+        <DialogFooter>
+          <div className="mt-6 flex justify-end gap-3 md:gap-5">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.close')}
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={initLoading}
+              className="w-auto min-w-20 md:w-[120px]"
+            >
+              {t('link.submit')}
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

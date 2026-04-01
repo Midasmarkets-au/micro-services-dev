@@ -1,7 +1,7 @@
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList ,buildQuery} from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   Account,
@@ -18,6 +18,7 @@ import type {
   AccountDeposit,
   AccountWithdrawal,
   AccountTrade,
+  AccountTradeListResponse,
   TransactionQueryParams,
   DepositQueryParams,
   WithdrawalQueryParams,
@@ -37,6 +38,65 @@ const getPlatformNameFromId = (platform: number): string => {
   return names[platform] || 'Unknown';
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parsePaginatedPayload<T>(response: any): {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+  criteria: { total: number; page: number; size: number };
+} {
+  const raw = response?.data;
+  const items: T[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.data)
+      ? raw.data
+      : [];
+
+  const total =
+    response?.total ??
+    response?.criteria?.total ??
+    raw?.total ??
+    raw?.criteria?.total ??
+    raw?.pagination?.total ??
+    items.length;
+
+  const page =
+    response?.page ??
+    response?.criteria?.page ??
+    raw?.page ??
+    raw?.criteria?.page ??
+    raw?.pagination?.page ??
+    1;
+
+  const size =
+    response?.size ??
+    response?.pageSize ??
+    response?.criteria?.size ??
+    raw?.size ??
+    raw?.pageSize ??
+    raw?.criteria?.size ??
+    raw?.pagination?.size ??
+    20;
+
+  const criteria = {
+    total:
+      response?.criteria?.total ??
+      raw?.criteria?.total ??
+      total,
+    page:
+      response?.criteria?.page ??
+      raw?.criteria?.page ??
+      page,
+    size:
+      response?.criteria?.size ??
+      raw?.criteria?.size ??
+      size,
+  };
+
+  return { items, total, page, size, criteria };
+}
+
 /**
  * 获取真实账户列表
  */
@@ -44,22 +104,9 @@ export async function getLiveAccounts(
   params?: GetAccountsParams
 ): Promise<ActionResponse<Account[]>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.hasTradeAccount !== undefined) {
-      queryParams.append('hasTradeAccount', String(params.hasTradeAccount));
-    }
-    if (params?.status !== undefined) {
-      queryParams.append('status', String(params.status));
-    }
-    if (params?.roles?.length) {
-      params.roles.forEach((role) => queryParams.append('roles', String(role)));
-    }
-    if (params?.uids?.length) {
-      params.uids.forEach((uid) => queryParams.append('uids', String(uid)));
-    }
 
-    const queryString = queryParams.toString();
-    const url = `/client/account${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params as Record<string, unknown>);
+    const url = `/client/account${queryString}`;
 
     const response = await apiClient.v1.get<{ data: Account[] | Record<string, unknown> }>(url);
     const rawData = response.data;
@@ -84,19 +131,8 @@ export async function getPendingApplications(
   params?: GetApplicationsParams
 ): Promise<ActionResponse<Application[]>> {
   try {
-    // 构建查询参数
-    const queryParams = new URLSearchParams();
-    if (params?.statuses?.length) {
-      params.statuses.forEach((status) =>
-        queryParams.append('statuses', String(status))
-      );
-    }
-    if (params?.type !== undefined) {
-      queryParams.append('type', String(params.type));
-    }
-
-    const queryString = queryParams.toString();
-    const url = `/client/application${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params)
+    const url = `/client/application${queryString}`;
 
     const response = await apiClient.v1.get<{ data: Application[] }>(url);
     return { success: true, data: response.data || [] };
@@ -334,34 +370,25 @@ export async function getAccountTransactions(
   params?: TransactionQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountTransaction>>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.type !== undefined) queryParams.append('type', String(params.type));
+    console.log('params===', params);
+    const queryString = buildQuery(params)
+    const url = `/client/trade-account/${tradeAccountUid}/transaction${queryString}`;
 
-    const queryString = queryParams.toString();
-    const url = `/client/trade-account/${tradeAccountUid}/transaction${queryString ? `?${queryString}` : ''}`;
-
-    const response = await apiClient.v1.get<{
-      data: AccountTransaction[];
-      total: number;
-      page: number;
-      size: number;
-    }>(url);
-
+    const response = await apiClient.v1.get(url);
+    const parsed = parsePaginatedPayload<AccountTransaction>(response);
     const normalized = normalizeAmountList(
-      response.data || [],
+      parsed.items as unknown as Record<string, unknown>[],
       ['amountInCents', 'amount']
-    ) as AccountTransaction[];
+    ) as unknown as AccountTransaction[];
 
     return {
       success: true,
       data: {
         data: normalized,
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        total: parsed.total,
+        page: parsed.page,
+        size: parsed.size,
+        criteria: parsed.criteria,
       },
     };
   } catch (error) {
@@ -381,34 +408,24 @@ export async function getAccountDeposits(
   params?: DepositQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountDeposit>>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.state !== undefined) queryParams.append('depositState', String(params.state));
+    const queryString = buildQuery(params)
+    const url = `/client/account/${accountUid}/deposit${queryString}`;
 
-    const queryString = queryParams.toString();
-    const url = `/client/account/${accountUid}/deposit${queryString ? `?${queryString}` : ''}`;
-
-    const response = await apiClient.v2.get<{
-      data: AccountDeposit[];
-      total: number;
-      page: number;
-      size: number;
-    }>(url);
-
+    const response = await apiClient.v2.get(url);
+    const parsed = parsePaginatedPayload<AccountDeposit>(response);
     const normalized = normalizeAmountList(
-      response.data || [],
+      parsed.items as unknown as Record<string, unknown>[],
       ['amountInCents', 'amount']
-    ) as AccountDeposit[];
+    ) as unknown as AccountDeposit[];
 
     return {
       success: true,
       data: {
         data: normalized,
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        total: parsed.total,
+        page: parsed.page,
+        size: parsed.size,
+        criteria: parsed.criteria,
       },
     };
   } catch (error) {
@@ -428,34 +445,24 @@ export async function getAccountWithdrawals(
   params?: WithdrawalQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountWithdrawal>>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.state !== undefined) queryParams.append('withdrawalState', String(params.state));
+    const queryString = buildQuery(params)
+    const url = `/client/account/${accountUid}/withdrawal${queryString}`;
 
-    const queryString = queryParams.toString();
-    const url = `/client/account/${accountUid}/withdrawal${queryString ? `?${queryString}` : ''}`;
-
-    const response = await apiClient.v2.get<{
-      data: AccountWithdrawal[];
-      total: number;
-      page: number;
-      size: number;
-    }>(url);
-
+    const response = await apiClient.v2.get(url);
+    const parsed = parsePaginatedPayload<AccountWithdrawal>(response);
     const normalized = normalizeAmountList(
-      response.data || [],
+      parsed.items as unknown as Record<string, unknown>[],
       ['amountInCents', 'amount']
-    ) as AccountWithdrawal[];
+    ) as unknown as AccountWithdrawal[];
 
     return {
       success: true,
       data: {
         data: normalized,
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        total: parsed.total,
+        page: parsed.page,
+        size: parsed.size,
+        criteria: parsed.criteria,
       },
     };
   } catch (error) {
@@ -473,32 +480,56 @@ export async function getAccountWithdrawals(
 export async function getAccountTrades(
   tradeAccountUid: number,
   params?: TradeQueryParams
-): Promise<ActionResponse<PaginatedResponse<AccountTrade>>> {
+): Promise<ActionResponse<AccountTradeListResponse>> {
   try {
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) queryParams.append('page', String(params.page));
-    if (params?.size !== undefined) queryParams.append('size', String(params.size));
-    if (params?.period) queryParams.append('period', params.period);
-    if (params?.symbol) queryParams.append('symbol', params.symbol);
-    if (params?.isClosed !== undefined) queryParams.append('isClosed', String(params.isClosed));
-
-    const queryString = queryParams.toString();
-    const url = `/client/trade-account/${tradeAccountUid}/trade${queryString ? `?${queryString}` : ''}`;
+    const queryString = buildQuery(params)
+    const url = `/client/trade-account/${tradeAccountUid}/trade${queryString}`;
 
     const response = await apiClient.v1.get<{
       data: AccountTrade[];
-      total: number;
-      page: number;
-      size: number;
+      criteria?: {
+        page?: number;
+        size?: number;
+        total?: number;
+        isClosed?: boolean;
+        pageTotalVolume?: number;
+        pageTotalCommission?: number;
+        pageTotalSwap?: number;
+        pageTotalProfit?: number;
+        totalVolume?: number;
+        totalCommission?: number;
+        totalSwap?: number;
+        totalProfit?: number;
+      };
+      total?: number;
+      page?: number;
+      size?: number;
     }>(url);
+
+    const criteria = response.criteria || {
+      page: response.page || 1,
+      size: response.size || 20,
+      total: response.total || 0,
+    };
 
     return {
       success: true,
       data: {
         data: response.data || [],
-        total: response.total || 0,
-        page: response.page || 0,
-        size: response.size || 20,
+        criteria: {
+          page: criteria.page || 1,
+          size: criteria.size || 20,
+          total: criteria.total ?? 0,
+          isClosed: criteria.isClosed,
+          pageTotalVolume: criteria.pageTotalVolume,
+          pageTotalCommission: criteria.pageTotalCommission,
+          pageTotalSwap: criteria.pageTotalSwap,
+          pageTotalProfit: criteria.pageTotalProfit,
+          totalVolume: criteria.totalVolume,
+          totalCommission: criteria.totalCommission,
+          totalSwap: criteria.totalSwap,
+          totalProfit: criteria.totalProfit,
+        },
       },
     };
   } catch (error) {

@@ -11,7 +11,7 @@ import type {
   RewardRebate,
   CriteriaParams,
 } from '@/types/eventshop';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList, buildQuery } from '@/lib/utils';
 import Decimal from 'decimal.js';
 
 function normalizeUserPoint(user: EventUserDetail): EventUserDetail {
@@ -95,15 +95,7 @@ export async function getShopItems(
   criteria?: CriteriaParams
 ): Promise<ActionResponse<{ items: ShopItem[]; total: number; page: number; size: number }>> {
   try {
-    const params = new URLSearchParams();
-    if (criteria) {
-      Object.entries(criteria).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          params.append(key, String(value));
-        }
-      });
-    }
-    const query = params.toString() ? `?${params.toString()}` : '';
+    const query = buildQuery(criteria);
     const response = await apiClient.v1.get<{
       status: number;
       data: ShopItem[];
@@ -221,17 +213,6 @@ interface ListApiResponse<T> {
   message: string;
 }
 
-function buildQuery(criteria?: CriteriaParams): string {
-  if (!criteria) return '';
-  const params = new URLSearchParams();
-  Object.entries(criteria).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
-      params.append(key, String(value));
-    }
-  });
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
-}
 
 export async function getShopOrderList(
   criteria?: CriteriaParams
@@ -282,6 +263,41 @@ export async function getPointsHistory(
       return { success: false, error: error.message, errorCode: error.errorCode };
     }
     return { success: false, error: 'Failed to fetch points history' };
+  }
+}
+
+// EventNotice 相关：获取活动列表
+export async function getEventList(
+  criteria?: { page?: number; size?: number; status?: number; sortField?: string; sortFlag?: boolean; idLargerThan?: number }
+): Promise<ActionResponse<{ data: EventDetail[]; criteria: { total: number } }>> {
+  try {
+    const query = buildQuery(criteria);
+    const response = await apiClient.v1.get<{
+      data: EventDetail[];
+      criteria: { total: number };
+    }>(`/client/event${query}`);
+    return { success: true, data: { data: response.data || [], criteria: response.criteria } };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to fetch event list' };
+  }
+}
+
+// EventNotice 相关：标记活动已查看
+export async function markEventChecked(key: string): Promise<ActionResponse<unknown>> {
+  try {
+    const response = await apiClient.v1.put<{ data: unknown }>(
+      `/client/event/${key}/last-check`,
+      {}
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to mark event as checked' };
   }
 }
 

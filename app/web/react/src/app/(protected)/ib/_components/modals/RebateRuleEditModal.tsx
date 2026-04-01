@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter
 } from '@/components/ui/radix/Dialog';
 import { Button, Skeleton } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -90,6 +91,14 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
   const [parentIsRoot, setParentIsRoot] = useState(false);
   const mountedRef = useRef(false);
 
+  const categoryNameMap = useMemo(() => {
+    try {
+      return t.raw('type.productCategory') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }, [t]);
+
   const initData = useCallback(async () => {
     if (!agentAccount || !account) return;
     setIsLoading(true);
@@ -169,7 +178,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
 
         const rows: FormRow[] = categories.map((cat: { key: number; value: string }) => ({
           cid: cat.key,
-          name: cat.value,
+          name: categoryNameMap[cat.value] ?? categoryNameMap[cat.value.replace(/\./g, '_')] ?? cat.value,
           total: newSettings[at].items[cat.key] ?? dl?.category?.[cat.key] ?? 0,
           r: hasEdit ? (editItems[cat.key] ?? 0) : 0,
         }));
@@ -223,7 +232,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
     } finally {
       setIsLoading(false);
     }
-  }, [agentAccount, account, execute]);
+  }, [agentAccount, account, execute, categoryNameMap]);
 
   useEffect(() => {
     if (open && !mountedRef.current) {
@@ -339,7 +348,6 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
                   {rows.map((row, idx) => {
                     const maxVal = hasEdit ? (editRebateRuleDetails[at]?.items?.find((i: any) => i.cid === row.cid)?.r ?? row.total) : row.total;
                     const remain = row.total < row.r ? 0 : Number((row.total - row.r).toFixed(1));
-
                     return (
                       <tr key={row.cid} className="border-t border-border">
                         <td className="px-3 py-3">{row.name}</td>
@@ -460,7 +468,13 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
             </div>
           </div>
         )}
+        <DialogFooter>
+          <Button variant="outline" size="sm" className="w-auto min-w-20 md:w-[120px]" onClick={() => onOpenChange(false)}>
+            {t('action.close')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
+      
     </Dialog>
   );
 }

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesWithdrawals } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { AccountRoleTypes } from '@/types/accounts';
+import { AccountRoleTypes, TransactionAccountType } from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
@@ -20,9 +20,11 @@ import type { TagVariant } from '@/components/ui';
 import type { SalesWithdrawalRecord, SalesWithdrawalListResponse } from '@/types/sales';
 import { CurrencyCodeMap } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
-import type { StatusOption } from '@/components/TradeFilter';
 
-const DEFAULT_WITHDRAWAL_STATE_IDS = [450, 430];
+const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: SalesWithdrawalRecord): string {
   const u = item.user;
@@ -61,17 +63,19 @@ export default function SalesWithdrawalPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
-    StateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+    stateIds: DEFAULT_WITHDRAWAL_STATE_IDS,
+    size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
-  const pageSize = 25;
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getSalesWithdrawals, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -87,7 +91,7 @@ export default function SalesWithdrawalPage() {
         setIsLoading(false);
       }
     },
-    [salesAccount, filterParams, isClient],
+    [salesAccount, filterParams, isClient, pageSize],
   );
 
   const salesUid = salesAccount?.uid;
@@ -97,9 +101,11 @@ export default function SalesWithdrawalPage() {
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
-    setFilterParams(params);
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
+    if (typeof params.size === 'number') setPageSize(params.size);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
@@ -111,11 +117,6 @@ export default function SalesWithdrawalPage() {
     setIsClient((prev) => !prev);
     setPage(1);
   };
-
-  const statusOptions = useMemo<StatusOption[]>(() => [
-    { value: '400', label: t('withdrawal.incompleteWithdrawal') },
-    { value: '450', label: t('withdrawal.completedWithdrawal') },
-  ], [t]);
 
   const columns = useMemo<DataTableColumn<SalesWithdrawalRecord>[]>(() => [
     {
@@ -161,11 +162,11 @@ export default function SalesWithdrawalPage() {
               if (!src) return item.accountNumber ? `No.${item.accountNumber}` : '-';
               return (
                 <div className="flex flex-col items-center">
-                  <span className="text-sm">
+                  <span className="text-sm text-text-primary font-semibold">
                     No.{src.displayNumber} ({CurrencyCodeMap[src.currencyId ?? 0] || '-'})
                   </span>
                   <span className="text-xs">
-                    Group: {src.agentGroupName || '***'}
+                    {t('withdrawal.group')}: {src.agentGroupName || '***'}
                   </span>
                 </div>
               );
@@ -183,6 +184,7 @@ export default function SalesWithdrawalPage() {
       key: 'amount',
       title: t('withdrawal.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),
@@ -216,10 +218,9 @@ export default function SalesWithdrawalPage() {
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">
       <TradeFilter
         type="withdrawal"
-        translationNamespace="sales"
-        statusOptions={statusOptions}
-        statusLabel={t('withdrawal.status')}
-        filterOptions={['status', 'account', 'datePicker', 'allHistory']}
+        filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
+        defaultParam={{ pageSize: 25 }}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />
@@ -243,7 +244,7 @@ export default function SalesWithdrawalPage() {
           className="flex shrink-0 items-center gap-1"
         >
           {isClient ? t('withdrawal.client') : t('withdrawal.ib')}
-          <Icon name="reset-line" size={14} />
+          <Icon name="switch" size={14} />
         </Button>
       </div>
 

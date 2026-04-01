@@ -412,7 +412,7 @@
     "mobile": "มือถือและแท็บเล็ต",
     "scanToDownload": "สแกนเพื่อดาวน์โหลด",
     "visit": "เยี่ยมชม",
-    "disclaimer": "แม้ว่าใบอนุญาตแพลตฟอร์มซอฟต์แวร์จะถือโดยพันธมิตรเชิงกลยุทธ์ แต่ผู้ออกผลิตภัณฑ์ที่มีภายใต้ข้อตกลงลูกค้านี้คือ MM Co Ltd",
+    "disclaimer": "แม้ว่าใบอนุญาตแพลตฟอร์มซอฟต์แวร์จะถือโดยพันธมิตรเชิงกลยุทธ์ แต่ผู้ออกผลิตภัณฑ์ที่มีภายใต้ข้อตกลงลูกค้านี้คือ MDM Co Ltd",
     "noPlatforms": "ไม่มีแพลตฟอร์มการซื้อขายที่พร้อมใช้งาน"
   },
   "supports": {
@@ -980,7 +980,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",
@@ -1333,9 +1337,13 @@
       "status": "สถานะ",
       "createdOn": "สร้างเมื่อ",
       "completedWithdrawal": "ถอนสำเร็จ",
-      "incompleteWithdrawal": "ถอนไม่สมบูรณ์",
+      "incompleteWithdrawal": "สร้างแล้ว",
       "client": "ลูกค้า",
       "ib": "IB"
+    },
+    "transaction": {
+      "incompleteTransaction": "โอนที่สร้างแล้ว",
+      "completedTransaction": "โอนสำเร็จ"
     }
   },
   "unlockEmail": {

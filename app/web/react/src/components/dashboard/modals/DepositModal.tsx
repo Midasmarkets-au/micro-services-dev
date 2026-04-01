@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/radix/Dialog';
-import { Button } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import { BalanceShow } from '@/components/ui/BalanceShow';
 import { Stepper } from '@/components/ui/Stepper';
 import {
@@ -30,7 +30,7 @@ import type {
   CurrencyRate,
 } from '@/types/deposit';
 import { DepositActions } from '@/types/deposit';
-import { CurrencyTypes, getCurrencySymbol } from '@/types/accounts';
+import { CurrencyTypes } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 
 interface DepositModalProps {
@@ -64,7 +64,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [paymentCurrency, setPaymentCurrency] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
-  const [amountError, setAmountError] = useState<string>('');
+  const [amountError, setAmountError] = useState<'' | 'required' | 'range'>('');
 
   // Step 4 & 5
   const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
@@ -103,6 +103,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   // Step 2: 加载渠道详情
   const loadGroupInfo = useCallback(async () => {
     if (!account || !selectedGroup) return;
+    if (selectedGroup.isActive === false) return;
     setIsLoadingInfo(true);
     try {
       const result = await execute(getDepositGroupInfo, account.uid, selectedGroup.group);
@@ -127,16 +128,6 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
   }, [account, selectedGroup, execute]);
 
-  // 金额范围
-  const amountRange = useMemo(() => {
-    if (!groupInfo?.range || !account) return { min: 0, max: 0 };
-    const [rawMin, rawMax] = groupInfo.range;
-    if (account.currencyId === CurrencyTypes.USC) {
-      return { min: rawMin, max: rawMax };
-    }
-    return { min: rawMin / 100, max: rawMax / 100 };
-  }, [groupInfo, account]);
-
   // 当前汇率
   const currentRate = useMemo((): CurrencyRate | null => {
     if (!groupInfo?.currencyRates?.length || !paymentCurrency) return null;
@@ -155,24 +146,33 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
   }, [amount, currentRate]);
 
-  // 金额校验
+  // 金额校验：
+  // - range 为 USD 固定值（如 5000 -> 500 USD），先转成 USD 口径
+  // - 输入值按账户币种换算到 USD（1 USD = 100 USC）后再比较
   const validateAmount = useCallback((val: string): boolean => {
     const num = Number(val);
     if (!num || num <= 0) {
-      setAmountError(t('error.amountRequired'));
+      setAmountError('required');
       return false;
     }
-    if (amountRange.min > 0 && num < amountRange.min) {
-      setAmountError(t('error.amountRange', { min: amountRange.min, max: amountRange.max }));
-      return false;
-    }
-    if (amountRange.max > 0 && num > amountRange.max) {
-      setAmountError(t('error.amountRange', { min: amountRange.min, max: amountRange.max }));
-      return false;
+
+    if (groupInfo?.range && account) {
+      const [rawMin, rawMax] = groupInfo.range;
+      const minInUsd = rawMin / 100;
+      const maxInUsd = rawMax / 100;
+      const inputInUsd = account.currencyId === CurrencyTypes.USC ? num / 100 : num;
+      if (minInUsd > 0 && inputInUsd < minInUsd) {
+        setAmountError('range');
+        return false;
+      }
+      if (maxInUsd > 0 && inputInUsd > maxInUsd) {
+        setAmountError('range');
+        return false;
+      }
     }
     setAmountError('');
     return true;
-  }, [amountRange, t]);
+  }, [groupInfo, account]);
 
   // 可见的动态字段
   const visibleRequestKeys = useMemo(() => {
@@ -258,6 +258,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
     return completed;
   }, [step]);
+  const selectedGroupIsActive = selectedGroup?.isActive !== false;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else onOpenChange(v); }}>
@@ -288,15 +289,20 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     {groups.map((group) => {
                       const isSelected = selectedGroup?.group === group.group;
+                      const isGroupActive = group.isActive !== false;
+                      const groupRange = group.range?.map(r => r * 100);
                       return (
                         <button
                           key={group.group}
                           type="button"
+                          disabled={!isGroupActive}
                           onClick={() => setSelectedGroup(group)}
-                          className={`relative flex cursor-pointer items-start gap-4 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
-                            isSelected
-                              ? 'border-primary bg-surface'
-                              : 'border-border bg-surface hover:border-primary/50'
+                          className={`relative flex items-start gap-4 overflow-hidden rounded-lg border p-4 text-left transition-colors ${
+                            !isGroupActive
+                              ? 'cursor-not-allowed border-border bg-surface opacity-50'
+                              : isSelected
+                                ? 'cursor-pointer border-primary bg-surface'
+                                : 'cursor-pointer border-border bg-surface hover:border-primary/50'
                           }`}
                         >
                           {group.logo && (
@@ -321,8 +327,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                             <span className="text-xs text-text-secondary">
                               {t('channel.processing')}：{'< 1'}{t('channel.hour')}
                             </span>
+                            {groupRange && account && (
+                              <>
+                                <span className="text-xs text-text-secondary">
+                                  Min: <BalanceShow balance={groupRange[0]} currencyId={CurrencyTypes.USD} />
+                                </span>
+                                <span className="text-xs text-text-secondary">
+                                  Max: <BalanceShow balance={groupRange[1]} currencyId={CurrencyTypes.USD} />
+                                </span>
+                              </>
+                            )}
                           </div>
-                          {isSelected && (
+                          {isSelected && isGroupActive && (
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="absolute -bottom-px -right-px">
                               <path d="M0 24L24 24L24 0L0 24Z" fill="var(--color-primary)" />
                               <path d="M17 15L14.5 17.5L12.5 15.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -355,9 +371,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 <h3 className="text-base font-semibold text-text-primary">
                   {t('fill.depositTo')}
                 </h3>
-
                 {/* 支付币种 */}
-                {groupInfo.currencyRates && groupInfo.currencyRates.length > 1 && (
+                {groupInfo.currencyRates && (
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center text-sm font-medium text-text-secondary">
                       <span className="mr-1 text-primary">*</span>
@@ -377,76 +392,67 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                     </Select>
                   </div>
                 )}
-
-                {/* 金额输入 */}
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-center text-sm font-medium text-text-secondary">
-                    <span className="mr-1 text-primary">*</span>
-                    {t('fill.amount')}（{getCurrencyName(account.currencyId)}）
-                  </label>
-                  <div className="relative">
-                    <input
+                {/* 金额输入 + 存款金额 */}
+                <div className="flex flex-row gap-4">
+                  <div className="flex-2">
+                    <Input
                       type="number"
+                      label={`${t('fill.amount')}（${getCurrencyName(account.currencyId)}）`}
+                      required
+                      inputSize="md"
                       value={amount}
                       onChange={(e) => {
                         setAmount(e.target.value);
                         if (amountError) validateAmount(e.target.value);
                       }}
                       onBlur={() => amount && validateAmount(amount)}
-                      min={amountRange.min}
-                      max={amountRange.max}
-                      className="h-12 w-full rounded bg-input-bg px-3 text-sm font-medium text-text-primary outline-none"
                       placeholder="0"
+                      error={amountError === 'required' ? t('error.amountRequired') : undefined}
+                      errorPosition="bottom"
                     />
-                    {amountRange.max > 0 && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
-                        {t('fill.amountHint')}：{getCurrencySymbol(account.currencyId)}{amountRange.min}~{getCurrencySymbol(account.currencyId)}{amountRange.max}
-                      </span>
+                    {amountError === 'range' && groupInfo?.range && (
+                      <p className="error-text mt-1 text-sm">
+                        {t('error.amountRange')}
+                        <BalanceShow balance={account.currencyId === CurrencyTypes.USC ? groupInfo.range[0] * 100 : groupInfo.range[0]} currencyId={account.currencyId} />
+                        ~
+                        <BalanceShow balance={account.currencyId === CurrencyTypes.USC ? groupInfo.range[1] * 100 : groupInfo.range[1]} currencyId={account.currencyId} />
+                      </p>
                     )}
                   </div>
-                  {amountError && (
-                    <span className="text-xs text-error">{amountError}</span>
+
+                  {currentRate && currentRate.rate !== 1 && (
+                    <div className="flex-1">
+                      <Input
+                        label={t('fill.depositAmount')}
+                        inputSize="md"
+                        value={targetAmount || ''}
+                        readOnly
+                      />
+                      <span className="mt-1 block text-right text-xs text-text-secondary">
+                        {t('fill.exchangeRate')} = 1:{currentRate.rate}
+                      </span>
+                    </div>
                   )}
                 </div>
 
-                {/* 存款金额（汇率换算） */}
-                {currentRate && currentRate.rate !== 1 && (
-                  <div className="flex flex-col gap-2">
-                    <label className="flex items-center text-sm font-medium text-text-secondary">
-                      <span className="mr-1 text-primary">*</span>
-                      {t('fill.depositAmount')}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={targetAmount || ''}
-                        readOnly
-                        className="h-12 w-full rounded bg-input-bg px-3 text-sm font-medium text-text-primary outline-none"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
-                        {t('fill.exchangeRate')}：1:{currentRate.rate}
-                      </span>
-                    </div>
+                {/* 动态表单字段 */}
+                {visibleRequestKeys.length > 0 && (
+                  <div className="flex flex-row gap-4">
+                    {visibleRequestKeys.map((key) => (
+                      <div key={key} className="flex-1">
+                        <Input
+                          label={t(`requestKeys.${key}`, { defaultMessage: key })}
+                          required
+                          inputSize="md"
+                          value={dynamicFields[key] || ''}
+                          onChange={(e) =>
+                            setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                {/* 动态表单字段 */}
-                {visibleRequestKeys.map((key) => (
-                  <div key={key} className="flex flex-col gap-2">
-                    <label className="flex items-center text-sm font-medium text-text-secondary">
-                      <span className="mr-1 text-primary">*</span>
-                      {t(`requestKeys.${key}`, { defaultMessage: key })}
-                    </label>
-                    <input
-                      type="text"
-                      value={dynamicFields[key] || ''}
-                      onChange={(e) =>
-                        setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
-                      }
-                      className="h-12 w-full rounded bg-input-bg px-3 text-sm font-medium text-text-primary outline-none"
-                    />
-                  </div>
-                ))}
               </div>
             )}
 
@@ -472,17 +478,9 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-text-secondary">{t('verify.amount')}</span>
                     <span className="text-sm text-text-primary">
-                      {getCurrencySymbol(account.currencyId)} {Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <BalanceShow balance={Number(amount) * 100} currencyId={account.currencyId} />
                     </span>
                   </div>
-                  {targetAmount > 0 && currentRate && currentRate.rate !== 1 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-text-secondary">{t('verify.depositAmount')}</span>
-                      <span className="text-sm text-text-primary">
-                        {getCurrencyName(Number(paymentCurrency))} {targetAmount.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -557,7 +555,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                           {t('guide.copyAddress')}
                         </Button>
                         {depositResponse.message && (
-                          <p className="text-xs text-error">
+                          <p className="text-xs ">
                             {t('guide.countdown', { minutes: depositResponse.message })}
                           </p>
                         )}
@@ -607,7 +605,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                         </span>
                       </div>
                     </div>
-                    <p className="text-sm text-error">
+                    <p className="text-sm error-text">
                       {depositResponse.error || t('guide.error')}
                     </p>
                   </div>
@@ -623,13 +621,13 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
             <>
               <div />
               <div className="flex gap-2 md:gap-5">
-                <Button variant="secondary" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
+                <Button variant="outline" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
                   {t('action.close')}
                 </Button>
                 <Button
                   variant="primary"
                   onClick={loadGroupInfo}
-                  disabled={!selectedGroup || isLoadingInfo}
+                  disabled={!selectedGroup || !selectedGroupIsActive || isLoadingInfo}
                   loading={isLoadingInfo}
                   className="w-auto min-w-20 md:w-[120px]"
                 >
@@ -643,7 +641,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 {t('action.prev')}
               </Button>
               <div className="flex gap-2 md:gap-5">
-                <Button variant="secondary" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
+                <Button variant="outline" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
                   {t('action.close')}
                 </Button>
                 <Button variant="primary" onClick={handleClose} className="w-auto min-w-20 md:w-[120px]">
@@ -662,7 +660,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 {t('action.prev')}
               </Button>
               <div className="flex gap-2 md:gap-5">
-                <Button variant="secondary" onClick={handleClose} disabled={isLoading} className="w-auto min-w-20 md:w-[120px]">
+                <Button variant="outline" onClick={handleClose} disabled={isLoading} className="w-auto min-w-20 md:w-[120px]">
                   {t('action.close')}
                 </Button>
                 <Button

@@ -268,6 +268,7 @@ export default function IBCustomersPage() {
         key: 'balance',
         title: t('fields.balance'),
         skeletonWidth: 'w-20',
+        align: 'right',
         render: (item) =>
           item.role !== AccountRoleTypes.IB && item.tradeAccount ? (
             <BalanceShow

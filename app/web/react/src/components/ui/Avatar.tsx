@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_AVATAR = '/images/default-avatar.svg';
+const DEFAULT_AVATAR_FALLBACK = '?';
 
 const avatarVariants = cva(
   'relative overflow-hidden rounded-full border-2 border-primary',
@@ -76,7 +76,10 @@ export function Avatar({
   className,
   clickable = false,
 }: AvatarProps) {
+  const gradientId = React.useId();
   const isClickable = clickable || !!onClick;
+  const normalizedAlt = alt.trim();
+  const avatarText = Array.from(normalizedAlt)[0]?.toUpperCase() || DEFAULT_AVATAR_FALLBACK;
 
   // 骨架屏状态
   if (skeleton) {
@@ -112,12 +115,42 @@ export function Avatar({
           : undefined
       }
     >
-      <Image
-        src={src || DEFAULT_AVATAR}
-        alt={alt}
-        fill
-        className="object-cover"
-      />
+      {src ? (
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          className="object-cover"
+        />
+      ) : (
+        <svg
+          viewBox="0 0 100 100"
+          aria-label={alt}
+          role="img"
+          className="size-full"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--color-primary)" />
+              <stop offset="100%" stopColor="var(--color-primary-hover)" />
+            </linearGradient>
+          </defs>
+          <rect width="100" height="100" fill={`url(#${gradientId})`} />
+          <text
+            x="50%"
+            y="50%"
+            dominantBaseline="middle"
+            textAnchor="middle"
+            fill="#ffffff"
+            fontSize="56"
+            fontWeight="700"
+            fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+          >
+            {avatarText}
+          </text>
+        </svg>
+      )}
 
       {/* 上传中遮罩 */}
       {loading && (

@@ -5,24 +5,24 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesDeposits } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { AccountRoleTypes } from '@/types/accounts';
+import { AccountRoleTypes, TransactionAccountType } from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
   Pagination,
   DataTable,
   Tag,
-  Icon,
-  Button,
 } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { SalesDepositRecord, SalesDepositListResponse } from '@/types/sales';
 import { CurrencyCodeMap } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
-import type { StatusOption } from '@/components/TradeFilter';
 
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: SalesDepositRecord): string {
   const u = item.user;
@@ -61,17 +61,19 @@ export default function SalesDepositPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
-    StateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
-  const pageSize = 25;
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getSalesDeposits, salesAccount.uid, {
           page: p,
           size: pageSize,
@@ -87,7 +89,7 @@ export default function SalesDepositPage() {
         setIsLoading(false);
       }
     },
-    [salesAccount, filterParams, isClient],
+    [salesAccount, filterParams, isClient, pageSize],
   );
 
   const salesUid = salesAccount?.uid;
@@ -97,25 +99,17 @@ export default function SalesDepositPage() {
   }, [salesUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (params: Record<string, unknown>) => {
-    setFilterParams(params);
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
+    if (typeof params.size === 'number') setPageSize(params.size);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
     setPage(p);
     fetchData(p);
   };
-
-  const handleToggleRole = () => {
-    setIsClient((prev) => !prev);
-    setPage(1);
-  };
-
-  const statusOptions = useMemo<StatusOption[]>(() => [
-    { value: '300', label: t('deposit.incompleteDeposit') },
-    { value: '350', label: t('deposit.completedDeposit') },
-  ], [t]);
 
   const columns = useMemo<DataTableColumn<SalesDepositRecord>[]>(() => [
     {
@@ -157,7 +151,7 @@ export default function SalesDepositPage() {
         if (!acc) return item.accountNumber ? `No.${item.accountNumber}` : '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber}</span>
+            <span className="text-sm text-text-primary font-semibold">No.{acc.accountNumber}</span>
             <span className="text-xs">{t('deposit.group')}：{acc.group || '***'}</span>
           </div>
         );
@@ -167,6 +161,7 @@ export default function SalesDepositPage() {
       key: 'amount',
       title: t('deposit.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (item) => (
         <BalanceShow balance={item.amount} currencyId={item.currencyId} className="font-semibold text-text-primary" />
       ),
@@ -200,10 +195,9 @@ export default function SalesDepositPage() {
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">
       <TradeFilter
         type="deposit"
-        translationNamespace="sales"
-        statusOptions={statusOptions}
-        statusLabel={t('deposit.status')}
-        filterOptions={['status', 'account', 'datePicker', 'allHistory']}
+        filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
+        defaultParam={{ pageSize: 25 }}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />

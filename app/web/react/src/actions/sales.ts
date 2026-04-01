@@ -1,7 +1,7 @@
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList } from '@/lib/utils';
+import { normalizeAmountList,buildQuery } from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   SalesClientListResponse,
@@ -43,20 +43,7 @@ function unwrapData<T>(response: unknown): T {
   return response as T;
 }
 
-function buildQuery(params?: Record<string, unknown>): string {
-  if (!params) return '';
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    if (Array.isArray(value)) {
-      value.forEach((v) => qs.append(key, String(v)));
-    } else {
-      qs.append(key, String(value));
-    }
-  });
-  const str = qs.toString();
-  return str ? `?${str}` : '';
-}
+ 
 
 // ============================================
 // Sales Account API
@@ -315,6 +302,18 @@ export async function getSalesLinks(
     return { success: true, data: response };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch sales links');
+  }
+}
+export async function getReferralLinkDetail(
+  code: string
+): Promise<ActionResponse<SalesLinkDetail>> {
+  try {
+    const response = await apiClient.v1.get<SalesLinkDetail>(
+      `/referralcode/${code}`
+    );
+    return { success: true, data: unwrapData<SalesLinkDetail>(response) };
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch link detail');
   }
 }
 

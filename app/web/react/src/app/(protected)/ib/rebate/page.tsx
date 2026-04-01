@@ -56,7 +56,7 @@ export default function IBRebatePage() {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams };
         const result = await executeRef.current(getIBRebates, agentAccount.uid, {
           page: p,
           size: pageSize,
@@ -127,6 +127,7 @@ export default function IBRebatePage() {
       key: 'volume',
       title: t('rebate.volume'),
       skeletonWidth: 'w-14',
+      align: 'right',
       render: (item) => item.trade?.volume != null ? item.trade.volume / 100 : '-',
     },
     {
@@ -181,8 +182,8 @@ export default function IBRebatePage() {
       <tr key={label} className={highlight ? 'bg-surface-secondary/50 font-semibold' : 'font-medium'}>
         <td className="px-4 py-3 text-text-primary">{label}</td>
         <td className="px-4 py-3" colSpan={3} />
-        <td className="px-4 py-3 text-text-primary">{vol}</td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 text-right text-text-primary">{vol}</td>
+        <td className="px-4 py-3 text-right">
           <BalanceShow balance={amount} currencyId={agentCurrencyId} className="font-semibold text-text-primary" />
         </td>
         <td className="px-4 py-3" colSpan={colCount - 6} />
@@ -222,8 +223,10 @@ export default function IBRebatePage() {
             num: (chunks) => <span className="text-text-primary">{chunks}</span>,
           })}
         </span>
-        <span className="whitespace-nowrap text-lg font-semibold text-text-secondary">{t('rebate.total')}：</span>
-        <BalanceShow balance={totalAmount} currencyId={agentCurrencyId} className="whitespace-nowrap text-lg font-bold text-text-primary" />
+        <div className="flex items-center gap-1">
+          <span className="whitespace-nowrap text-lg font-semibold text-text-secondary">{t('rebate.total')}：</span>
+          <BalanceShow balance={totalAmount} currencyId={agentCurrencyId} className="whitespace-nowrap text-lg font-bold text-text-primary" />
+        </div>
       </div>
 
       <DataTable<IBRebateRecord>
@@ -232,7 +235,6 @@ export default function IBRebatePage() {
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
         footer={footerRows}
-        className="flex-1"
       />
 
       <Pagination page={page} total={total} size={pageSize} onPageChange={handlePageChange} />

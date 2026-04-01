@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 const protectedPaths = ['/dashboard', '/admin', '/settings', '/profile', '/verification'];
 
 // 公开路径（不需要认证）
-const publicPaths = ['/sign-in', '/sign-up', '/forgot-password', '/reset-password', '/set-token', '/login', '/register', '/lead-create', '/change-account-password'];
+const publicPaths = ['/sign-in', '/sign-up', '/forgot-password', '/reset-password', '/set-token', '/login', '/register', '/lead-create', '/change-account-password', '/demo-account'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
       const response = NextResponse.next();
       response.cookies.delete('auth-token');
       response.cookies.delete('refresh-token');
+      response.cookies.delete('auth-mode');
       return response;
     }
     

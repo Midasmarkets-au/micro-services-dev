@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBTradeReports } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
@@ -11,8 +12,10 @@ import type { IBTradeRecord } from '@/types/ib';
 
 export function TradingLotsWidget() {
   const t = useTranslations('ib.dashboard');
+  const pathname = usePathname();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
+  const requestIdRef = useRef(0);
 
   const [trades, setTrades] = useState<IBTradeRecord[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -20,15 +23,16 @@ export function TradingLotsWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    if (!agentAccount) return;
+    if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
+    const currentRequestId = ++requestIdRef.current;
 
     const load = async () => {
       const result = await execute(getIBTradeReports, agentAccount.uid, {
         page: 1,
         size: 5,
       });
-      if (cancelled) return;
+      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
       if (result.success && result.data?.data) {
         setTrades(Array.isArray(result.data.data) ? result.data.data : []);
       }
@@ -36,8 +40,10 @@ export function TradingLotsWidget() {
     };
 
     load();
-    return () => { cancelled = true; };
-  }, [agentAccount, execute]);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentAccount, execute, pathname]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-surface p-5">

@@ -20,13 +20,15 @@ import type { TagVariant } from '@/components/ui';
 import type { IBDepositRecord, IBDepositListResponse } from '@/types/ib';
 import { CurrencyCodeMap } from '@/components/ui';
 import { TradeFilter } from '@/components/TradeFilter';
-import type { StatusOption } from '@/components/TradeFilter';
 
 /**
- * 入金默认 StateIds — 对应 Vue processStateIds:
+ * 入金默认 stateIds — 对应 Vue processStateIds:
  * simpleDepositSelections[1] = DepositCompleted(350) → [350,345]
  */
 const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const TAB_FIXED_FILTER_PARAMS: Record<string, unknown> = {
+  isClosed: false,
+};
 
 function getUserName(item: IBDepositRecord): string {
   const u = item.user;
@@ -65,17 +67,19 @@ export default function IBDepositPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [isClient, setIsClient] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
   const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
-    StateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    size: 25,
+    ...TAB_FIXED_FILTER_PARAMS,
   });
-  const pageSize = 25;
 
   const fetchData = useCallback(
     async (p: number, extraParams?: Record<string, unknown>) => {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const params = extraParams ?? filterParams;
+        const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
         const result = await executeRef.current(getIBDeposits, agentAccount.uid, {
           page: p,
           size: pageSize,
@@ -91,7 +95,7 @@ export default function IBDepositPage() {
         setIsLoading(false);
       }
     },
-    [agentAccount, filterParams, isClient],
+    [agentAccount, filterParams, isClient, pageSize],
   );
 
   const agentUid = agentAccount?.uid;
@@ -100,11 +104,13 @@ export default function IBDepositPage() {
     else setIsLoading(false);
   }, [agentUid, isClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** TradeFilter 回调 — params 已包含正确的 StateIds 数组和 GMT 时间 */
+  /** TradeFilter 回调 — params 已包含正确的 stateIds 数组和 GMT 时间 */
   const handleSearch = (params: Record<string, unknown>) => {
-    setFilterParams(params);
+    const mergedParams = { ...params, ...TAB_FIXED_FILTER_PARAMS };
+    if (typeof params.size === 'number') setPageSize(params.size);
+    setFilterParams(mergedParams);
     setPage(1);
-    fetchData(1, params);
+    fetchData(1, mergedParams);
   };
 
   const handlePageChange = (p: number) => {
@@ -116,11 +122,6 @@ export default function IBDepositPage() {
     setIsClient((prev) => !prev);
     setPage(1);
   };
-
-  const statusOptions = useMemo<StatusOption[]>(() => [
-    { value: '300', label: t('deposit.incompleteDeposit') },
-    { value: '350', label: t('deposit.completedDeposit') },
-  ], [t]);
 
   const columns = useMemo<DataTableColumn<IBDepositRecord>[]>(() => [
     {
@@ -162,7 +163,7 @@ export default function IBDepositPage() {
         if (!acc) return item.accountNumber ? `No.${item.accountNumber}` : '-';
         return (
           <div className="flex flex-col items-center">
-            <span className="text-sm">No.{acc.accountNumber}</span>
+            <span className="text-sm text-text-primary font-semibold">No.{acc.accountNumber}</span>
             <span className="text-xs">{t('deposit.group')}：{acc.group || '***'}</span>
           </div>
         );
@@ -207,9 +208,9 @@ export default function IBDepositPage() {
       {/* Filter Bar — filterOptions=["period","depositState","accountNumber"] */}
       <TradeFilter
         type="deposit"
-        statusOptions={statusOptions}
-        statusLabel={t('deposit.status')}
-        filterOptions={['status', 'account', 'datePicker', 'allHistory']}
+        filterOptions={['stateIds', 'account', 'datePicker', 'pageSize', 'allHistory']}
+        defaultParam={{ pageSize: 25 }}
+        fixedParams={TAB_FIXED_FILTER_PARAMS}
         onSearch={handleSearch}
         isLoading={isLoading}
       />
@@ -243,7 +244,6 @@ export default function IBDepositPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
-        className="flex-1"
       />
 
       {/* Pagination */}

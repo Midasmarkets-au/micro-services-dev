@@ -4,14 +4,13 @@ import { useTranslations } from 'next-intl';
 import { Stepper } from '@/components/ui/Stepper';
 import type { StepItem } from '@/components/ui/Stepper';
 
-export type MainStep = 'info' | 'financial' | 'agreement' | 'document' | 'complete';
+export type MainStep = 'started' | 'info' | 'agreement' | 'document' | 'complete';
 
 const mainStepDefs: { id: MainStep; labelKey: string; number: number }[] = [
-  { id: 'info', labelKey: 'personalInfo', number: 1 },
-  //{ id: 'financial', labelKey: 'financialInfo', number: 2 },
-  { id: 'agreement', labelKey: 'agreement', number: 2 },
-  { id: 'document', labelKey: 'documents', number: 3 },
-  { id: 'complete', labelKey: 'complete', number: 4 },
+  { id: 'started', labelKey: 'gettingStarted', number: 1 },
+  { id: 'info', labelKey: 'personalInfo', number: 2 },
+  { id: 'agreement', labelKey: 'agreement', number: 3 },
+  { id: 'document', labelKey: 'documents', number: 4 },
 ];
 
 interface VerificationStepperProps {
@@ -21,6 +20,7 @@ interface VerificationStepperProps {
 
 export function VerificationStepper({ currentStep, completedSteps }: VerificationStepperProps) {
   const t = useTranslations('verification');
+  const normalizedCurrentStep = currentStep === 'complete' ? 'document' : currentStep;
 
   const steps: StepItem[] = mainStepDefs.map((s) => ({
     id: s.id,
@@ -31,7 +31,7 @@ export function VerificationStepper({ currentStep, completedSteps }: Verificatio
   return (
     <Stepper
       steps={steps}
-      currentStep={currentStep}
+      currentStep={normalizedCurrentStep}
       completedSteps={completedSteps}
     />
   );

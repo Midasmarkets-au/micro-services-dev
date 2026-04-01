@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { useServerAction } from '@/hooks/useServerAction';
 import { Button, BalanceShow, EmptyState } from '@/components/ui';
 import {
@@ -60,8 +61,10 @@ function formatXLabel(dateStr: string | undefined, period: Period): string {
 
 export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidgetProps) {
   const t = useTranslations('ib.dashboard');
+  const pathname = usePathname();
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
+  const requestIdRef = useRef(0);
 
   const [period, setPeriod] = useState<Period>('hourly');
   const [data, setData] = useState<IBRebateDailySeries[]>([]);
@@ -71,27 +74,32 @@ export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidg
   const isLoading = !agentAccount || currentKey !== loadKey;
 
   useEffect(() => {
-    if (!agentAccount) return;
+    if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
+    const currentRequestId = ++requestIdRef.current;
 
     const load = async () => {
       try {
         const tz = -(new Date().getTimezoneOffset() / 60);
         const result = await execute(fetchers[period], agentAccount.uid, tz);
-        if (cancelled) return;
+        if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
         if (result.success && Array.isArray(result.data)) {
           setData(result.data);
         }
       } catch {
         // ignore
       } finally {
-        if (!cancelled) setLoadKey(`${agentAccount.uid}-${period}`);
+        if (!cancelled && requestIdRef.current === currentRequestId && pathname === '/ib') {
+          setLoadKey(`${agentAccount.uid}-${period}`);
+        }
       }
     };
 
     load();
-    return () => { cancelled = true; };
-  }, [agentAccount, period, execute]);
+    return () => {
+      cancelled = true;
+    };
+  }, [agentAccount, period, execute, pathname]);
 
   const maxValue = data.length > 0 ? Math.max(...data.map((d) => d.totalValue || 0), 0.01) : 0.05;
   const chartHeight = 200;

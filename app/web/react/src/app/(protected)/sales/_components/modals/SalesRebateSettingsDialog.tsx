@@ -13,7 +13,7 @@ import {
   Input,
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesLinkDetail, getSalesSymbolCategory } from '@/actions';
+import { getReferralLinkDetail, getSalesSymbolCategory } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
 import type { SalesLinkDetail, SalesLinkSchema } from '@/types/sales';
 
@@ -39,6 +39,7 @@ export function SalesRebateSettingsDialog({
   code,
 }: SalesRebateSettingsDialogProps) {
   const t = useTranslations('sales');
+  const tType = useTranslations('type');
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
@@ -68,7 +69,7 @@ export function SalesRebateSettingsDialog({
     (async () => {
       try {
         const [detailRes, categoryRes] = await Promise.all([
-          execute(getSalesLinkDetail, salesAccount.uid, code),
+          execute(getReferralLinkDetail, code),
           execute(getSalesSymbolCategory),
         ]);
 
@@ -115,38 +116,49 @@ export function SalesRebateSettingsDialog({
   }, [open, code, salesAccount, execute]);
 
   const productCategoryMap = useMemo(() => {
+    const i18nMap = (() => {
+      try {
+        return tType.raw('productCategory') as Record<string, string>;
+      } catch {
+        return {};
+      }
+    })();
     const map = new Map<number, string>();
     productCategory.forEach((item) => {
       const k = Number(item.key ?? item.id);
       if (!Number.isFinite(k)) return;
       const v = item.value ?? item.name;
-      if (v) map.set(k, v);
+      if (v)
+        map.set(
+          k,
+          i18nMap[v] ?? i18nMap[v.replace(/\./g, '_')] ?? v
+        );
     });
     return map;
-  }, [productCategory]);
+  }, [productCategory, tType]);
 
   const pipOptionMap = useMemo(() => {
     try {
-      return t.raw('type.pipOptions') as Record<string, string>;
+      return tType.raw('pipOptions') as Record<string, string>;
     } catch {
       return {};
     }
-  }, [t]);
+  }, [tType]);
 
   const commissionOptionMap = useMemo(() => {
     try {
-      return t.raw('type.commissionOptions') as Record<string, string>;
+      return tType.raw('commissionOptions') as Record<string, string>;
     } catch {
       return {};
     }
-  }, [t]);
+  }, [tType]);
 
   const isAgent = detail?.serviceType === SERVICE_TYPE_BROKER;
   const isClient = detail?.serviceType === SERVICE_TYPE_CLIENT;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[750px] p-4! sm:p-6!">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('link.rebateSettings')}</DialogTitle>
           <DialogDescription className="sr-only">
@@ -301,23 +313,23 @@ function AgentDetailView({
             {schema.optionName && (
               <span className="rounded-md bg-[rgba(128,0,32,0.2)] px-2 py-0.5 text-xs font-semibold text-[#800020]">
                 {schema.optionName === 'alpha'
-                  ? t('type.account.4')
+                  ? tAccount(`accountTypes.${schema.accountType}`)
                   : schema.optionName}
               </span>
             )}
           </div>
 
           {schema.items && schema.items.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {schema.items.map((item, idx) => (
-                <div key={idx} className="rounded-md bg-surface-secondary p-2">
+                <div key={idx} className="rounded-md p-2">
                   <div className="truncate text-xs text-text-secondary">
                     {productCategoryMap.get(item.cid) ?? String(item.cid)}
                   </div>
                   <Input
                     value={String(item.r)}
                     disabled
-                    className="mt-1 h-8 bg-transparent text-center text-sm"
+                    className="mt-1 h-8 bg-transparent text-sm"
                   />
                 </div>
               ))}
@@ -408,7 +420,7 @@ function ClientDetailView({
               {schema.optionName && (
                 <span className="rounded-md bg-[rgba(128,0,32,0.2)] px-2 py-0.5 text-xs font-semibold text-[#800020]">
                   {schema.optionName === 'alpha'
-                    ? t('type.account.4')
+                    ? tAccount(`accountTypes.${schema.accountType}`)
                     : schema.optionName}
                 </span>
               )}

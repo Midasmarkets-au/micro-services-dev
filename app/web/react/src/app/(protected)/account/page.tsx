@@ -189,28 +189,30 @@ export default function AccountPage() {
     <div className="flex w-full flex-col gap-6 rounded-xl bg-surface p-6">
       {/* Tab 栏 + 创建按钮 */}
       <div className="flex flex-col">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-start md:justify-between">
           <AccountTabs
             activeTab={activeTab}
             onTabChange={setActiveTab}
             disableRealAccounts={isGuest}
           />
-          <Button
-            size="xs"
-            className="gap-1"
-            onClick={() =>
-              activeTab === 'RealAccounts'
-                ? setShowCreateLiveModal(true)
-                : setShowCreateDemoModal(true)
-            }
-          >
-            <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
-            <span>
-              {activeTab === 'RealAccounts'
-                ? tAccounts('action.createTradeAccount')
-                : tAccounts('action.createDemoAccount')}
-            </span>
-          </Button>
+          <div className="w-full md:w-auto">
+            <Button
+              
+              className="w-full justify-center gap-1 md:h-auto md:w-auto md:px-2.5 md:py-1"
+              onClick={() =>
+                activeTab === 'RealAccounts'
+                  ? setShowCreateLiveModal(true)
+                  : setShowCreateDemoModal(true)
+              }
+            >
+              <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+              <span>
+                {activeTab === 'RealAccounts'
+                  ? tAccounts('action.createTradeAccount')
+                  : tAccounts('action.createDemoAccount')}
+              </span>
+            </Button>
+          </div>
         </div>
         <div className="mt-0 h-px w-full bg-border" />
       </div>

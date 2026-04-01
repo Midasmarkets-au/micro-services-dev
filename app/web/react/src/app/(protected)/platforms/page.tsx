@@ -174,7 +174,7 @@ function PlatformCard({
             height={20}
             className={`object-contain ${!webTraderUrl ? 'grayscale opacity-50' : ''}`}
           />
-          {webTraderUrl ? (
+          {/* {webTraderUrl ? (
             <a
               href={webTraderUrl}
               target="_blank"
@@ -187,7 +187,7 @@ function PlatformCard({
             <span className="bg-text-secondary text-white text-sm font-medium px-2.5 py-1 rounded w-20 text-center cursor-not-allowed">
               {t('visit')}
             </span>
-          )}
+          )} */}
         </div>
 
         {/* 分隔线 */}

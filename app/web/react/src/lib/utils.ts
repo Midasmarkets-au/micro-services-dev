@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
+import moment from 'moment';
 import { twMerge } from 'tailwind-merge';
-
+import { useUserStore } from '@/stores';
 /**
  * 合并 Tailwind CSS 类名
  * 使用 clsx 处理条件类名，twMerge 合并冲突的 Tailwind 类
@@ -41,4 +42,41 @@ export function normalizeAmountList<T extends Record<string, any>>(
   }
 
   return normalizeObject(data);
+}
+
+export function buildQuery<T extends object>(params?: T): string {
+  if (!params) return '';
+  const qs = new URLSearchParams();
+  Object.entries(params as Record<string, unknown>).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach((v) => qs.append(key, String(v)));
+    } else {
+      qs.append(key, String(value));
+    }
+  });
+  const str = qs.toString();
+  return str ? `?${str}` : '';
+}
+
+export function convertTradeTime(from: string | null, to: string | null): [string, string] {
+  const isDST = isDateInDST_US();
+  const startHour = isDST ? 21 : 22;
+  const endHour = isDST ? 20 : 21;
+
+  const timeFormat = `YYYY-MM-DD[T]`;
+
+  const createdFrom = (from ? moment(from) : moment.utc())
+    .subtract(1, 'day')
+    .format(`${timeFormat}${startHour}:00:00.000[Z]`);
+
+  const createdTo = (to ? moment(to) : moment.utc())
+    .format(`${timeFormat}${endHour}:59:59.000[Z]`);
+
+  return [createdFrom, createdTo];
+}
+
+function isDateInDST_US(): boolean {
+  const siteConfig = useUserStore.getState().siteConfig;
+  return siteConfig?.HoursGapForMT5 === 3;
 }

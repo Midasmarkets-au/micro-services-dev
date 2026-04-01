@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
-import { BalanceShow, Button, Skeleton, DatePicker, Tabs } from '@/components/ui';
-import type { TabItem } from '@/components/ui';
-import type { DateRange } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
+import { BalanceShow, Button, Skeleton, Tabs, DataTable, Pagination } from '@/components/ui';
+import { TradeReportTable } from '@/components/TradeReportTable';
+import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import {
   Select,
   SelectContent,
@@ -17,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/radix/Select';
-import { format, parse } from 'date-fns';
+import { TradeFilter } from '@/components/TradeFilter';
+import type { TradeFilterType } from '@/components/TradeFilter';
 import { DepositModal } from '@/components/dashboard/modals/DepositModal';
 import { WithdrawalModal } from '@/components/dashboard/modals/WithdrawalModal';
 import { TransferToAccountModal } from '@/components/dashboard/modals/TransferToAccountModal';
@@ -30,16 +32,13 @@ import {
   getAccountWithdrawals,
   getAccountTransactions,
   getAccountTrades,
-  getWalletList,
 } from '@/actions';
-import type { Wallet } from '@/types/wallet';
 import type {
   Account,
   ServiceMap,
   AccountDeposit,
   AccountWithdrawal,
   AccountTransaction,
-  AccountTrade,
 } from '@/types/accounts';
 import {
   AccountStatusTypes,
@@ -48,19 +47,11 @@ import {
   DepositState,
   WithdrawalState,
   TransferState,
+  getCurrencyFlag,
+  TransactionAccountType,
 } from '@/types/accounts';
-
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport';
 
-const getCurrencyFlag = (currencyId: number): string => {
-  const flagMap: Record<number, string> = {
-    [CurrencyTypes.AUD]: '/images/flags/au.svg',
-    [CurrencyTypes.CNY]: '/images/flags/cn.svg',
-    [CurrencyTypes.USD]: '/images/flags/us.svg',
-    [CurrencyTypes.USC]: '/images/flags/us.svg',
-  };
-  return flagMap[currencyId] || '/images/flags/us.svg';
-};
 
 const CopyIcon = () => (
   <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -73,18 +64,6 @@ const CopyIcon = () => (
     />
   </svg>
 );
-
-function formatTime(dateStr: string) {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-}
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-}
 
 const PENDING_STATES = new Set([
   DepositState.DepositCreated, DepositState.DepositPaymentCompleted, DepositState.DepositTenantApproved,
@@ -111,30 +90,39 @@ function getStateBadgeCls(stateId: number): string {
   return 'bg-gray-500/20 text-gray-500';
 }
 
-// 按日期分组
-function groupByDate<T extends { createdOn: string }>(items: T[]): Record<string, T[]> {
-  const groups: Record<string, T[]> = {};
-  items.forEach((item) => {
-    const key = formatDate(item.createdOn);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(item);
-  });
-  return groups;
+const DEFAULT_DEPOSIT_STATE_IDS = [350, 345];
+const DEFAULT_WITHDRAWAL_STATE_IDS = [450];
+const DEFAULT_TRANSACTION_STATE_IDS = [250];
+const TAB_FIXED_FILTER_PARAMS: Partial<Record<DetailTab, Record<string, unknown>>> = {
+  deposit: {
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    isClosed:false,
+  },
+  withdrawal: {
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    isClosed:false,
+  },
+  transfer: {
+    sourceAccountType: TransactionAccountType.TradeAccount,
+    targetAccountType: TransactionAccountType.TradeAccount,
+    isClosed:false,
+  },
+};
+
+function getPaginationTotal(payload: unknown, fallbackLength = 0): number {
+  const p = payload as {
+    criteria?: { total?: number };
+    data?: unknown[] | { criteria?: { total?: number } };
+  } | null;
+  const nested = p?.data && !Array.isArray(p.data) ? p.data : undefined;
+  return (
+    p?.criteria?.total ??
+    nested?.criteria?.total ??
+    fallbackLength
+  );
 }
-
-const DEPOSIT_STATUS_OPTIONS = [
-  { value: 'all', labelKey: 'statusFilter.all' },
-  { value: String(DepositState.DepositCreated), labelKey: 'statusFilter.pending' },
-  { value: String(DepositState.DepositCompleted), labelKey: 'statusFilter.completed' },
-];
-
-const WITHDRAWAL_STATUS_OPTIONS = [
-  { value: 'all', labelKey: 'statusFilter.all' },
-  { value: String(WithdrawalState.WithdrawalCreated), labelKey: 'statusFilter.pending' },
-  { value: String(WithdrawalState.WithdrawalCompleted), labelKey: 'statusFilter.completed' },
-];
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function AccountDetailPage() {
   const params = useParams();
@@ -154,7 +142,6 @@ export default function AccountDetailPage() {
   const [deposits, setDeposits] = useState<AccountDeposit[]>([]);
   const [withdrawals, setWithdrawals] = useState<AccountWithdrawal[]>([]);
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
-  const [trades, setTrades] = useState<AccountTrade[]>([]);
   const [tabLoading, setTabLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -162,16 +149,17 @@ export default function AccountDetailPage() {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [receiptModal, setReceiptModal] = useState<{ open: boolean; hashId: string; methodName: string }>({
+    open: false, hashId: '', methodName: '',
+  });
 
   // Filters
-  const [pageSize, setPageSize] = useState(20);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [startDate, setStartDate] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState<string | null>(null);
-
+  const [filterParams, setFilterParams] = useState<Record<string, unknown>>({
+    stateIds: DEFAULT_DEPOSIT_STATE_IDS,
+    size: 20,
+    page:1
+  });
   const isLoadedRef = useRef(false);
-
   const decorationImage = isDark
     ? '/images/verification/verify-night.svg'
     : '/images/verification/verify-day.svg';
@@ -179,7 +167,7 @@ export default function AccountDetailPage() {
   const loadAccountData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [accountResult, accountsResult, serviceResult, walletResult] = await Promise.all([
+      const [accountResult, accountsResult, serviceResult] = await Promise.all([
         execute(getAccountByNumber, accountNumber),
         execute(getLiveAccounts, {
           hasTradeAccount: true,
@@ -193,7 +181,6 @@ export default function AccountDetailPage() {
           ],
         }),
         execute(getServiceMap),
-        execute(getWalletList),
       ]);
 
       if (accountResult.success && accountResult.data) {
@@ -204,12 +191,6 @@ export default function AccountDetailPage() {
       }
       if (serviceResult.success) {
         setServiceMap(serviceResult.data || {});
-      }
-      if (walletResult.success && walletResult.data?.length) {
-        const matchedWallet = walletResult.data.find(
-          (w) => w.currencyId === accountResult.data?.currencyId
-        );
-        setWallet(matchedWallet || walletResult.data[0]);
       }
     } finally {
       setIsLoading(false);
@@ -223,44 +204,52 @@ export default function AccountDetailPage() {
     }
   }, [loadAccountData]);
 
-  const loadTabData = useCallback(async () => {
-    if (!currentAccount) return;
+  const getDefaultFilterParams = useCallback((tab: DetailTab): Record<string, unknown> => {
+    const fixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
+    if (tab === 'deposit') return { stateIds: DEFAULT_DEPOSIT_STATE_IDS, size: 20, ...fixedParams };
+    if (tab === 'withdrawal') return { stateIds: DEFAULT_WITHDRAWAL_STATE_IDS, size: 20, ...fixedParams };
+    if (tab === 'transfer') return { stateIds: DEFAULT_TRANSACTION_STATE_IDS, size: 20, ...fixedParams };
+    return fixedParams;
+  }, []);
+
+  const getFilterType = useCallback((tab: DetailTab): TradeFilterType => {
+    if (tab === 'deposit') return 'deposit';
+    if (tab === 'withdrawal') return 'withdrawal';
+    return 'transaction';
+  }, []);
+
+  const loadTabData = useCallback(async (extraParams?: Record<string, unknown>) => {
+    if (!currentAccount || activeTab === 'tradeReport') return;
     setTabLoading(true);
     try {
       const uid = currentAccount.uid;
-      const stateParam = statusFilter !== 'all' ? Number(statusFilter) : undefined;
-      const period = startDate && endDate ? `${startDate},${endDate}` : undefined;
-
+      const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
+      const params = { ...filterParams, ...extraParams, ...tabFixedParams };
       switch (activeTab) {
         case 'deposit': {
-          const result = await execute(getAccountDeposits, uid, { size: pageSize, state: stateParam, period });
+          const result = await execute(getAccountDeposits, uid, params);
           if (result.success) {
-            setDeposits(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            const rows = result.data?.data || [];
+            setDeposits(rows);
+            setTotalCount(getPaginationTotal(result.data, rows.length));
           }
           break;
         }
         case 'withdrawal': {
-          const result = await execute(getAccountWithdrawals, uid, { size: pageSize, state: stateParam, period });
+          const result = await execute(getAccountWithdrawals, uid, params);
           if (result.success) {
-            setWithdrawals(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            const rows = result.data?.data || [];
+            setWithdrawals(rows);
+            setTotalCount(getPaginationTotal(result.data, rows.length));
           }
           break;
         }
         case 'transfer': {
-          const result = await execute(getAccountTransactions, uid, { size: pageSize, period });
+          const result = await execute(getAccountTransactions, uid, params);
           if (result.success) {
-            setTransactions(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
-          }
-          break;
-        }
-        case 'tradeReport': {
-          const result = await execute(getAccountTrades, uid, { size: pageSize, isClosed: true, period });
-          if (result.success) {
-            setTrades(result.data?.data || []);
-            setTotalCount(result.data?.total || 0);
+            const rows = result.data?.data || [];
+            setTransactions(rows);
+            setTotalCount(getPaginationTotal(result.data, rows.length));
           }
           break;
         }
@@ -268,7 +257,7 @@ export default function AccountDetailPage() {
     } finally {
       setTabLoading(false);
     }
-  }, [currentAccount, activeTab, pageSize, statusFilter, startDate, endDate, execute]);
+  }, [currentAccount, activeTab, execute, filterParams]);
 
   useEffect(() => {
     if (currentAccount) {
@@ -306,30 +295,35 @@ export default function AccountDetailPage() {
     }
   };
 
-  const handleReset = () => {
-    setStatusFilter('all');
-    setPageSize(20);
-    setStartDate(null);
-    setEndDate(null);
-  };
-
-  const dateRange: DateRange | undefined = (() => {
-    const from = startDate ? parse(startDate, 'yyyy-MM-dd', new Date()) : undefined;
-    if (!from || isNaN(from.getTime())) return undefined;
-    const to = endDate ? parse(endDate, 'yyyy-MM-dd', new Date()) : undefined;
-    return { from, to: to && !isNaN(to.getTime()) ? to : undefined };
-  })();
-
-  const handleDateChange = (range: DateRange | undefined) => {
-    setStartDate(range?.from ? format(range.from, 'yyyy-MM-dd') : null);
-    setEndDate(range?.to ? format(range.to, 'yyyy-MM-dd') : null);
-  };
-
   const handleTabChange = (tab: DetailTab) => {
     setActiveTab(tab);
-    setStatusFilter('all');
+    const defaults = getDefaultFilterParams(tab);
+    setFilterParams(defaults);
     setTotalCount(0);
   };
+
+  const handleSearch = (params: Record<string, unknown>) => {
+    const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
+    const mergedParams = { ...params, page: 1, ...tabFixedParams };
+    setFilterParams(mergedParams);
+    loadTabData(mergedParams);
+  };
+
+  const handlePageChange = useCallback((nextPage: number) => {
+    const tabFixedParams = TAB_FIXED_FILTER_PARAMS[activeTab] ?? {};
+    const mergedParams = { ...filterParams, page: nextPage, ...tabFixedParams };
+    setFilterParams(mergedParams);
+    loadTabData(mergedParams);
+  }, [activeTab, filterParams, loadTabData]);
+
+  const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
+    if (!currentAccount) return null;
+    const result = await execute(getAccountTrades, currentAccount.uid, params);
+    if (result.success && result.data) {
+      return { data: result.data.data, criteria: result.data.criteria };
+    }
+    return null;
+  }, [currentAccount, execute]);
 
   const tradeAccount = currentAccount?.tradeAccount;
   const service = tradeAccount ? serviceMap[tradeAccount.serviceId] : undefined;
@@ -342,6 +336,228 @@ export default function AccountDetailPage() {
     { key: 'transfer', label: t('detail.tabs.transfer') },
     { key: 'tradeReport', label: t('detail.tabs.tradeReport') },
   ];
+
+  const groupHeaderRender = useCallback((groupKey: string) => {
+    const [weekday, dayMonthYear] = groupKey.split('||');
+    return (
+      <div className="flex flex-col gap-2.5">
+        <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
+        <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
+      </div>
+    );
+  }, []);
+
+  const dateGroupConfig = useMemo<DataTableGroupConfig<{ createdOn: string }>>(() => ({
+    groupBy: (item) => {
+      const d = new Date(item.createdOn);
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayMonthYear = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `${weekday}||${dayMonthYear}`;
+    },
+    renderGroupHeader: groupHeaderRender,
+    headerWidth: 'w-[140px]',
+  }), [groupHeaderRender]);
+
+  const transferDateGroupConfig = useMemo<DataTableGroupConfig<{ statedOn: string }>>(() => ({
+    groupBy: (item) => {
+      const d = new Date(item.statedOn);
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayMonthYear = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `${weekday}||${dayMonthYear}`;
+    },
+    renderGroupHeader: groupHeaderRender,
+    headerWidth: 'w-[140px]',
+  }), [groupHeaderRender]);
+
+  const depositColumns = useMemo<DataTableColumn<AccountDeposit>[]>(() => [
+    {
+      key: 'deposit',
+      title: t('detail.tabs.deposit'),
+      skeletonWidth: 'w-40',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <span className="text-[#004eff] text-xs font-bold">↓</span>
+          <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
+          {item.stateId === DepositState.DepositCreated && (
+            <button
+              type="button"
+              className="ml-2 inline-flex items-center gap-1 rounded bg-[#000f32] px-2.5 py-1 text-xs text-white transition-colors hover:bg-[#001a4d] cursor-pointer"
+              onClick={() => setReceiptModal({ open: true, hashId: item.hashId, methodName: item.paymentMethodName })}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14,2 14,8 20,8" />
+              </svg>
+              {t('action.uploadReceipt')}
+            </button>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('detail.table.status'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
+          {t(`transactionState.${item.stateId}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'payment',
+      title: t('detail.table.payment'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className="text-sm text-text-secondary">
+          {t(`paymentStatus.${item.paymentStatus}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('detail.table.amount'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => (
+        <BalanceShow
+          balance={item.amount}
+          currencyId={item.currencyId || tradeAccount?.currencyId || CurrencyTypes.USD}
+          className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
+        />
+      ),
+    },
+    {
+      key: 'time',
+      title: t('detail.table.createdOn'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <TimeShow dateIsoString={item.createdOn} format="HH:mm A" />,
+    },
+  ], [t, tradeAccount?.currencyId]);
+
+  const withdrawalColumns = useMemo<DataTableColumn<AccountWithdrawal>[]>(() => [
+    {
+      key: 'withdrawal',
+      title: t('detail.tabs.withdrawal'),
+      skeletonWidth: 'w-40',
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <span className="text-[#e02b1d] text-xs font-bold">↑</span>
+          <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('detail.table.status'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
+          {t(`transactionState.${item.stateId}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'payment',
+      title: t('detail.table.payment'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className="text-sm text-text-secondary">
+          {t(`paymentStatus.${item.paymentStatus}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('detail.table.amount'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => (
+        <BalanceShow
+          balance={item.amount}
+          currencyId={item.currencyId || tradeAccount?.currencyId || CurrencyTypes.USD}
+          className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
+        />
+      ),
+    },
+    {
+      key: 'createdOn',
+      title: t('detail.table.createdOn'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => <TimeShow dateIsoString={item.createdOn} format="HH:mm A" />,
+    },
+    {
+      key: 'updatedOn',
+      title: t('detail.table.updatedOn'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <TimeShow dateIsoString={item.updatedOn} format="HH:mm A" />,
+    },
+  ], [t, tradeAccount?.currencyId]);
+
+  const transferColumns = useMemo<DataTableColumn<AccountTransaction>[]>(() => [
+    {
+      key: 'transfer',
+      title: t('detail.tabs.transfer'),
+      skeletonWidth: 'w-40',
+      render: (item) => (
+        <div className="flex items-center gap-1 text-sm">
+          <span className={tradeAccount?.accountNumber === item.sourceAccountNumber ? ' border-primary text-primary' : 'text-text-primary'}>
+            NO.{item.sourceAccountNumber || 'Wallet'} 
+          </span>
+          <span className="text-primary mx-1">→</span>
+          <span className={tradeAccount?.accountNumber === item.targetAccountNumber ? ' border-primary text-primary' : 'text-text-primary'}>
+          NO.{item.targetAccountNumber || 'Wallet'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: t('detail.table.status'),
+      align: 'center',
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
+          {t(`transactionState.${item.stateId}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      title: t('detail.table.amount'),
+      align: 'right',
+      skeletonWidth: 'w-28',
+      render: (item) => {
+        const isIncoming = item.targetTradeAccountNumber === tradeAccount?.accountNumber;
+        return (
+          <div className="flex items-center justify-end gap-0.5">
+            <span className={isIncoming ? 'text-green-500' : 'text-red-500'}>
+              {isIncoming ? '+' : '-'}
+            </span>
+            <BalanceShow
+              balance={item.amount}
+              currencyId={tradeAccount?.currencyId || CurrencyTypes.USD}
+              className="inline text-base font-bold text-text-primary font-['DIN',sans-serif]"
+            />
+          </div>
+        );
+      },
+    },
+    {
+      key: 'time',
+      title: t('detail.table.createdOn'),
+      align: 'right',
+      skeletonWidth: 'w-20',
+      render: (item) => <TimeShow dateIsoString={item.statedOn} format="HH:mm A" />,
+    },
+  ], [t, tradeAccount?.accountNumber, tradeAccount?.currencyId]);
 
   if (isLoading) {
     return (
@@ -374,20 +590,6 @@ export default function AccountDetailPage() {
       </div>
     );
   }
-
-  // 获取当前 Tab 的状态筛选选项
-  const getStatusOptions = () => {
-    switch (activeTab) {
-      case 'deposit':
-        return DEPOSIT_STATUS_OPTIONS;
-      case 'withdrawal':
-        return WITHDRAWAL_STATUS_OPTIONS;
-      default:
-        return [];
-    }
-  };
-  const statusOptions = getStatusOptions();
-  const showStatusFilter = statusOptions.length > 0;
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -442,7 +644,7 @@ export default function AccountDetailPage() {
                       value={String(tradeAccount.accountNumber)}
                       onValueChange={handleAccountSwitch}
                     >
-                      <SelectTrigger className="h-auto! w-auto! border-none! bg-transparent! p-0! text-lg font-bold text-white shadow-none! gap-1.5">
+                      <SelectTrigger className="h-auto! w-auto! border-none! bg-transparent! p-0! text-lg font-bold text-white! shadow-none! gap-1.5">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -531,121 +733,94 @@ export default function AccountDetailPage() {
         size="base"
       />
 
-      {/* 筛选栏 */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 页面大小 */}
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.pageSize')}</span>
-            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="h-[28px]!">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 状态筛选 */}
-          {showStatusFilter && (
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.status')}</span>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-[28px]!">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{t(opt.labelKey)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* 时间选择 */}
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-text-secondary whitespace-nowrap">{t('detail.table.period')}</span>
-            <DatePicker
-              mode="range"
-              value={dateRange}
-              onChange={handleDateChange}
-              placeholder={t('detail.table.selectDate')}
-              className="h-[28px]! w-auto! min-w-0 rounded! border-border bg-input-bg px-2.5! py-1! text-sm!"
-            />
-          </div>
-
-          {/* 重置 / 搜索 / 全部历史 */}
-          <Button size="xs" onClick={handleReset} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
-            <Image src="/images/icons/refresh.svg" alt="" width={14} height={14} />
-            {t('detail.table.reset')}
-          </Button>
-          <Button size="xs" onClick={loadTabData} className="gap-1 bg-[#000f32] text-white hover:bg-[#001a4d]">
-            <Image src="/images/icons/search.svg" alt="" width={14} height={14} />
-            {t('detail.table.search')}
-          </Button>
-          <Button size="xs" className="bg-[#000f32] text-white hover:bg-[#001a4d]">
-            {t('detail.table.allHistory')}
-          </Button>
-        </div>
-
-        {/* 右侧快捷按钮 */}
-        {activeTab === 'deposit' && (
-          <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowDepositModal(true)}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {t('detail.tabs.deposit')}
-          </Button>
-        )}
-        {activeTab === 'withdrawal' && wallet && (
-          <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {t('detail.tabs.withdrawal')}
-          </Button>
-        )}
-        {activeTab === 'transfer' && currentAccount && (
-          <Button variant="primary" size="xs" className="gap-1.5 shrink-0" onClick={() => setShowTransferModal(true)}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M7 1V13M1 7H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {t('detail.tabs.transfer')}
-          </Button>
-        )}
-      </div>
-
-      {/* 结果计数 */}
-      <p className="text-sm text-text-secondary">
-        {t('detail.table.showingResults', { count: totalCount })}
-      </p>
-
-      {/* Tab 内容 */}
-      {tabLoading ? (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-12 w-full rounded" />
-          ))}
+      {activeTab === 'tradeReport' ? (
+       <div className="flex flex-col gap-5 mt-4">
+        <TradeReportTable
+            fetchData={fetchTradeData}
+            filterOptions={['isClosed', 'product', 'datePicker', 'allHistory']}
+            autoFetchKey={currentAccount?.uid}
+          />
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          {activeTab === 'deposit' && (
-            <DepositTable data={deposits} currencyId={tradeAccount.currencyId} accountUid={currentAccount.uid} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} t={t} onRefresh={loadTabData} />
-          )}
-          {activeTab === 'withdrawal' && (
-            <WithdrawalTable data={withdrawals} currencyId={tradeAccount.currencyId} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} t={t} />
-          )}
-          {activeTab === 'transfer' && (
-            <TransferTable data={transactions} currencyId={tradeAccount.currencyId} currentAccountNumber={tradeAccount.accountNumber} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} t={t} />
-          )}
-          {activeTab === 'tradeReport' && (
-            <TradeReportTable data={trades} noRecordsText={t('detail.table.noRecords')} isDark={isDark} mounted={mounted} />
-          )}
-        </div>
+        <>
+          {/* 筛选栏 */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 mt-4">
+            <TradeFilter
+              key={`trade-filter-${activeTab}`}
+              type={getFilterType(activeTab)}
+              filterOptions={['stateIds', 'datePicker', 'pageSize']}
+              defaultParam={{ pageSize: 20 }}
+              fixedParams={TAB_FIXED_FILTER_PARAMS[activeTab] ?? {}}
+              onSearch={handleSearch}
+              isLoading={tabLoading}
+            />
+
+            {/* 右侧快捷按钮 */}
+            {activeTab === 'deposit' && (
+              <Button variant="primary" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowDepositModal(true)}>
+                <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+                {t('detail.tabs.deposit')}
+              </Button>
+            )}
+            {activeTab === 'withdrawal' && tradeAccount && (
+              <Button variant="primary" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowWithdrawalModal(true)}>
+                 <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+                {t('detail.tabs.withdrawal')}
+              </Button>
+            )}
+            {activeTab === 'transfer' && currentAccount && (
+              <Button variant="primary" size="sm" className="gap-1.5 shrink-0" onClick={() => setShowTransferModal(true)}>
+                <Image src="/images/icons/add-plain.svg" alt="add" width={20} height={20} />
+                {t('detail.tabs.transfer')}
+              </Button>
+            )}
+          </div>
+
+          {/* 结果计数 */}
+          <p className="text-sm text-text-secondary">
+            {t('detail.table.showingResults', { count: totalCount })}
+          </p>
+
+          {/* Tab 内容 */}
+          <div className="overflow-x-auto">
+            {activeTab === 'deposit' && (
+              <DataTable<AccountDeposit>
+                columns={depositColumns}
+                data={deposits}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={tabLoading}
+                skeletonRows={3}
+                groupConfig={dateGroupConfig as DataTableGroupConfig<AccountDeposit>}
+              />
+            )}
+            {activeTab === 'withdrawal' && (
+              <DataTable<AccountWithdrawal>
+                columns={withdrawalColumns}
+                data={withdrawals}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={tabLoading}
+                skeletonRows={3}
+                groupConfig={dateGroupConfig as DataTableGroupConfig<AccountWithdrawal>}
+              />
+            )}
+            {activeTab === 'transfer' && (
+              <DataTable<AccountTransaction>
+                columns={transferColumns}
+                data={transactions}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={tabLoading}
+                skeletonRows={3}
+                groupConfig={transferDateGroupConfig as DataTableGroupConfig<AccountTransaction>}
+              />
+            )}
+          </div>
+          <Pagination
+            page={Number(filterParams.page) || 1}
+            total={totalCount}
+            size={Number(filterParams.size) || 20}
+            onPageChange={handlePageChange}
+          />
+        </>
       )}
 
       </div>
@@ -661,11 +836,11 @@ export default function AccountDetailPage() {
         account={currentAccount ? { uid: currentAccount.uid, currencyId: currentAccount.currencyId } : null}
       />
 
-      {wallet && (
+      {tradeAccount && (
         <WithdrawalModal
           open={showWithdrawalModal}
           onOpenChange={setShowWithdrawalModal}
-          wallet={wallet}
+          wallet={tradeAccount}
           type='account'
           accountNumber={tradeAccount.accountNumber}
           onSuccess={loadTabData}
@@ -681,405 +856,17 @@ export default function AccountDetailPage() {
           onSuccess={loadTabData}
         />
       )}
-    </div>
-  );
-}
-
-// ========================================
-// Sub-components
-// ========================================
-
-function EmptyState({ text, isDark, mounted }: { text: string; isDark: boolean; mounted: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16">
-      <Image
-        src={mounted && isDark ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
-        alt="No data"
-        width={100}
-        height={100}
-      />
-      <p className="mt-4 text-sm text-text-secondary">{text}</p>
-    </div>
-  );
-}
-
-function DepositTable({ data, currencyId, accountUid, noRecordsText, isDark, mounted, t, onRefresh }: {
-  data: AccountDeposit[];
-  currencyId: number;
-  accountUid: number;
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-  t: (key: string, values?: Record<string, string | number>) => string;
-  onRefresh?: () => void;
-}) {
-  const [receiptModal, setReceiptModal] = useState<{ open: boolean; hashId: string; methodName: string }>({
-    open: false, hashId: '', methodName: '',
-  });
-
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-  const groups = groupByDate(data);
-
-  return (
-    <>
-      <div className="flex flex-col gap-5">
-        {/* Column Headers */}
-        <div className="hidden md:flex items-center px-5 gap-[200px]">
-          <div className="w-[100px] shrink-0 opacity-0"><span>Date</span></div>
-          <div className="flex-1 flex items-center justify-between">
-            <div className="flex-1 pl-[43px]">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.tabs.deposit')}</span>
-            </div>
-            <div className="flex-1 text-center">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.status')}</span>
-            </div>
-            <div className="flex-1 text-center">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.payment')}</span>
-            </div>
-            <div className="flex-1 text-right">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.amount')}</span>
-            </div>
-            <div className="flex-1 text-right pr-[53px]">
-              <span className="text-sm font-medium text-text-secondary">{t('detail.table.createdOn')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Grouped rows */}
-        <div className="flex flex-col gap-5">
-          {Object.entries(groups).map(([dateKey, items]) => {
-            const firstDate = items[0]?.createdOn ? new Date(items[0].createdOn) : new Date();
-            const weekday = firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-            const dayMonthYear = firstDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-            return (
-              <div key={dateKey} className="flex flex-col md:flex-row md:items-start gap-4 md:gap-[200px] border border-border rounded-xl p-5 overflow-hidden">
-                <div className="shrink-0 w-[100px]">
-                  <div className="flex flex-col gap-2.5">
-                    <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
-                    <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
-                  </div>
-                </div>
-                <div className="flex-1 flex flex-col gap-5">
-                  {items.map((item, index) => (
-                    <div key={item.id || item.hashId || `${item.createdOn}-${index}`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div className="flex-1 flex items-center gap-2">
-                            <span className="text-[#004eff] text-xs font-bold">↓</span>
-                            <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
-                            {item.stateId === DepositState.DepositCreated && (
-                              <button
-                                type="button"
-                                className="ml-2 inline-flex items-center gap-1 rounded bg-[#000f32] px-2.5 py-1 text-xs text-white transition-colors hover:bg-[#001a4d] cursor-pointer"
-                                onClick={() => setReceiptModal({ open: true, hashId: item.hashId, methodName: item.paymentMethodName })}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                                  <polyline points="14,2 14,8 20,8" />
-                                </svg>
-                                {t('action.uploadReceipt')}
-                              </button>
-                            )}
-                          </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
-                            {t(`transactionState.${item.stateId}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className="text-sm text-text-secondary">
-                            {t(`paymentStatus.${item.paymentStatus}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-end">
-                          <BalanceShow
-                            balance={item.amount}
-                            currencyId={item.currencyId || currencyId}
-                            className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
-                          />
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-end">
-                          <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>
-                        </div>
-                      </div>
-                      {index < items.length - 1 && <div className="w-full h-px bg-border mt-5" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       <UploadReceiptModal
         open={receiptModal.open}
         onOpenChange={(open) => setReceiptModal((prev) => ({ ...prev, open }))}
-        accountUid={accountUid}
+        accountUid={currentAccount.uid}
         depositHashId={receiptModal.hashId}
         paymentMethodName={receiptModal.methodName}
-        onSuccess={onRefresh}
+        onSuccess={loadTabData}
       />
-    </>
-  );
-}
-
-function WithdrawalTable({ data, currencyId, noRecordsText, isDark, mounted, t, onCancel }: {
-  data: AccountWithdrawal[];
-  currencyId: number;
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-  t: (key: string, values?: Record<string, string | number>) => string;
-  onCancel?: (hashId: string) => void;
-}) {
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-  const groups = groupByDate(data);
-
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Column Headers */}
-      <div className="hidden md:flex items-center px-5 gap-[200px]">
-        <div className="w-[100px] shrink-0 opacity-0"><span>Date</span></div>
-        <div className="flex-1 flex items-center justify-between">
-          <div className="flex-1 pl-[43px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.tabs.withdrawal')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.status')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.payment')}</span>
-          </div>
-          <div className="flex-1 text-right">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.amount')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.createdOn')}</span>
-          </div>
-          <div className="flex-1 text-right pr-[53px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.updatedOn')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grouped rows */}
-      <div className="flex flex-col gap-5">
-        {Object.entries(groups).map(([dateKey, items]) => {
-          const firstDate = items[0]?.createdOn ? new Date(items[0].createdOn) : new Date();
-          const weekday = firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-          const dayMonthYear = firstDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-          return (
-            <div key={dateKey} className="flex flex-col md:flex-row md:items-start gap-4 md:gap-[200px] border border-border rounded-xl p-5 overflow-hidden">
-              <div className="shrink-0 w-[100px]">
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
-                  <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col gap-5">
-                {items.map((item, index) => {
-                  const canCancel = item.stateId === WithdrawalState.WithdrawalCreated;
-                  return (
-                    <div key={item.id || item.hashId || `${item.createdOn}-${index}`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex-1 flex items-center gap-2">
-                          <span className="text-[#e02b1d] text-xs font-bold">↑</span>
-                          <span className="text-sm text-text-primary">{item.paymentMethodName || '--'}</span>
-                          {canCancel && onCancel && item.hashId && (
-                            <Button variant="outline" size="xs" onClick={() => onCancel(item.hashId)} className="ml-2 text-xs text-red-500 border-red-500/30 hover:bg-red-500/10">
-                              {t('action.cancel')}
-                            </Button>
-                          )}
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
-                            {t(`transactionState.${item.stateId}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className="text-sm text-text-secondary">
-                            {t(`paymentStatus.${item.paymentStatus}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-end">
-                          <BalanceShow
-                            balance={item.amount}
-                            currencyId={item.currencyId || currencyId}
-                            className="text-base font-bold text-text-primary font-['DIN',sans-serif]"
-                          />
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-center">
-                          <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-end">
-                          <span className="text-sm text-text-secondary">{formatTime(item.updatedOn)}</span>
-                        </div>
-                      </div>
-                      {index < items.length - 1 && <div className="w-full h-px bg-border mt-5" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
-function TransferTable({ data, currencyId, currentAccountNumber, noRecordsText, isDark, mounted, t }: {
-  data: AccountTransaction[];
-  currencyId: number;
-  currentAccountNumber: number;
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-  t: (key: string, values?: Record<string, string | number>) => string;
-}) {
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-  const groups = groupByDate(data);
-
-  return (
-    <div className="flex flex-col gap-5">
-      {/* Column Headers */}
-      <div className="hidden md:flex items-center px-5 gap-[200px]">
-        <div className="w-[100px] shrink-0 opacity-0"><span>Date</span></div>
-        <div className="flex-1 flex items-center justify-between">
-          <div className="flex-1 pl-[43px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.tabs.transfer')}</span>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.status')}</span>
-          </div>
-          <div className="flex-1 text-right">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.amount')}</span>
-          </div>
-          <div className="flex-1 text-right pr-[53px]">
-            <span className="text-sm font-medium text-text-secondary">{t('detail.table.createdOn')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Grouped rows */}
-      <div className="flex flex-col gap-5">
-        {Object.entries(groups).map(([dateKey, items]) => {
-          const firstDate = items[0]?.createdOn ? new Date(items[0].createdOn) : new Date();
-          const weekday = firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-          const dayMonthYear = firstDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-
-          return (
-            <div key={dateKey} className="flex flex-col md:flex-row md:items-start gap-4 md:gap-[200px] border border-border rounded-xl p-5 overflow-hidden">
-              <div className="shrink-0 w-[100px]">
-                <div className="flex flex-col gap-2.5">
-                  <span className="text-xl font-bold text-text-primary font-['DIN',sans-serif]">{weekday}</span>
-                  <span className="text-sm text-text-secondary font-['DIN',sans-serif]">{dayMonthYear}</span>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col gap-5">
-                {items.map((item, index) => {
-                  const isIncoming = item.targetTradeAccountNumber === currentAccountNumber;
-                  return (
-                    <div key={item.id || item.hashId || `${item.createdOn}-${index}`}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex-1 flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-sm">
-                            <span className={currentAccountNumber === item.sourceTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
-                              {item.sourceTradeAccountNumber || 'Wallet'}
-                            </span>
-                            <span className="text-yellow-500 mx-1">→</span>
-                            <span className={currentAccountNumber === item.targetTradeAccountNumber ? 'border-b border-dashed border-primary text-primary' : 'text-text-primary'}>
-                              {item.targetTradeAccountNumber || 'Wallet'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-normal ${getStateBadgeCls(item.stateId)}`}>
-                            {t(`transactionState.${item.stateId}`)}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex justify-start md:justify-end">
-                          <span className={isIncoming ? 'text-green-500' : 'text-red-500'}>
-                            {isIncoming ? '+' : '-'}
-                          </span>
-                          <BalanceShow
-                            balance={item.amount}
-                            currencyId={currencyId}
-                            className="inline text-base font-bold text-text-primary font-['DIN',sans-serif]"
-                          />
-                        </div>
-                        <div className="flex-1 flex items-center justify-start md:justify-end">
-                          <span className="text-sm text-text-secondary">{formatTime(item.createdOn)}</span>
-                        </div>
-                      </div>
-                      {index < items.length - 1 && <div className="w-full h-px bg-border mt-5" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function TradeReportTable({ data, noRecordsText, isDark, mounted }: {
-  data: AccountTrade[];
-  noRecordsText: string;
-  isDark: boolean;
-  mounted: boolean;
-}) {
-  if (data.length === 0) return <EmptyState text={noRecordsText} isDark={isDark} mounted={mounted} />;
-
-  return (
-    <table className="w-full text-left text-sm">
-      <thead>
-        <tr className="border-b border-border text-text-secondary">
-          <th className="pb-3 pr-3 font-medium">Ticket</th>
-          <th className="pb-3 pr-3 font-medium">Symbol</th>
-          <th className="pb-3 pr-3 font-medium">Type</th>
-          <th className="pb-3 pr-3 font-medium text-right">Volume</th>
-          <th className="pb-3 pr-3 font-medium">Open Time</th>
-          <th className="pb-3 pr-3 font-medium text-right">Open Price</th>
-          <th className="pb-3 pr-3 font-medium text-right">S/L</th>
-          <th className="pb-3 pr-3 font-medium text-right">T/P</th>
-          <th className="pb-3 pr-3 font-medium">Close Time</th>
-          <th className="pb-3 pr-3 font-medium text-right">Close Price</th>
-          <th className="pb-3 pr-3 font-medium text-right">Commission</th>
-          <th className="pb-3 pr-3 font-medium text-right">Swap</th>
-          <th className="pb-3 font-medium text-right">P/L</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((item) => (
-          <tr key={item.id || item.ticket} className="border-b border-border/30">
-            <td className="py-3 pr-3 text-text-primary">{item.ticket}</td>
-            <td className="py-3 pr-3 text-text-primary">{item.symbol}</td>
-            <td className="py-3 pr-3">
-              <span className={item.type === 0 ? 'text-green-500' : 'text-red-500'}>
-                {item.type === 0 ? 'Buy' : 'Sell'}
-              </span>
-            </td>
-            <td className="py-3 pr-3 text-right text-text-primary">{item.volume.toFixed(2)}</td>
-            <td className="py-3 pr-3 text-text-secondary">{formatTime(item.openTime)}</td>
-            <td className="py-3 pr-3 text-right text-text-primary">{item.openPrice.toFixed(5)}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.sl > 0 ? item.sl.toFixed(5) : '--'}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.tp > 0 ? item.tp.toFixed(5) : '--'}</td>
-            <td className="py-3 pr-3 text-text-secondary">{item.closeTime ? formatTime(item.closeTime) : '--'}</td>
-            <td className="py-3 pr-3 text-right text-text-primary">{item.closePrice > 0 ? item.closePrice.toFixed(5) : '--'}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.commission.toFixed(2)}</td>
-            <td className="py-3 pr-3 text-right text-text-secondary">{item.swap.toFixed(2)}</td>
-            <td className={`py-3 text-right font-medium ${item.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {item.profit.toFixed(2)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 

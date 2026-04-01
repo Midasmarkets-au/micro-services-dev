@@ -412,7 +412,7 @@
     "mobile": "Mobile & Tablet",
     "scanToDownload": "Pindai untuk Mengunduh",
     "visit": "Kunjungi",
-    "disclaimer": "Meskipun lisensi platform perangkat lunak dipegang oleh mitra strategis kami, penerbit produk yang tersedia berdasarkan perjanjian klien ini adalah MM Co Ltd.",
+    "disclaimer": "Meskipun lisensi platform perangkat lunak dipegang oleh mitra strategis kami, penerbit produk yang tersedia berdasarkan perjanjian klien ini adalah MDM Co Ltd.",
     "noPlatforms": "Tidak ada platform trading yang tersedia"
   },
   "supports": {
@@ -961,7 +961,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",

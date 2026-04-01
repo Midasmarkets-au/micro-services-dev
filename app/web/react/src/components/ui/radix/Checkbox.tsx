@@ -9,7 +9,7 @@ interface CheckboxProps extends React.ComponentPropsWithoutRef<typeof CheckboxPr
   label?: React.ReactNode;
   description?: React.ReactNode;
   error?: boolean;
-  variant?: 'default' | 'circle';
+  variant?: 'default' | 'circle' | 'radio';
 }
 
 const Checkbox = React.forwardRef<
@@ -17,20 +17,33 @@ const Checkbox = React.forwardRef<
   CheckboxProps
 >(({ className, label, description, error, variant = 'default', ...props }, ref) => {
   const isCircle = variant === 'circle';
+  const isRadio = variant === 'radio';
 
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex gap-3 items-center">
       <CheckboxPrimitive.Root
         ref={ref}
         className={cn(
           'peer shrink-0 border-2 transition-colors duration-200',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2',
+          isRadio
+            ? 'focus-visible:outline-none'
+            : 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-primary) focus-visible:ring-offset-2',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          'data-[state=checked]:bg-[var(--color-primary)] data-[state=checked]:border-[var(--color-primary)]',
-          isCircle ? 'size-5 rounded-full' : 'size-5 rounded',
+          isRadio
+            ? [
+                'size-4 rounded-full border-2',
+                'data-[state=unchecked]:bg-transparent border-(--color-text-secondary)',
+                'data-[state=checked]:border-[#800020] data-[state=checked]:bg-transparent',
+                'dark:data-[state=checked]:border-[#004EFF] dark:data-[state=checked]:bg-[#111111]',
+              ]
+            : 'data-[state=checked]:bg-(--color-primary) data-[state=checked]:border-(--color-primary)',
+          isCircle || isRadio ? 'rounded-full' : 'rounded',
+          isRadio ? '' : 'size-5',
           error
-            ? 'border-[var(--color-error-border)]'
-            : 'border-[var(--color-text-secondary)] data-[state=unchecked]:bg-transparent',
+            ? 'border-(--color-error-border)'
+            : isRadio
+              ? ''
+              : 'border-(--color-text-secondary) data-[state=unchecked]:bg-transparent',
           className
         )}
         {...props}
@@ -38,19 +51,23 @@ const Checkbox = React.forwardRef<
         <CheckboxPrimitive.Indicator
           className={cn('flex items-center justify-center text-white')}
         >
-          <CheckIcon className={cn(isCircle ? 'size-3' : 'size-4')} />
+          {isRadio ? (
+            <span className="size-2 rounded-full bg-[#800020] dark:bg-[#004EFF]" />
+          ) : (
+            <CheckIcon className={cn(isCircle ? 'size-3' : 'size-4')} />
+          )}
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
 
       {(label || description) && (
         <div className="flex flex-col gap-1">
           {label && (
-            <label className="text-sm font-medium text-[var(--color-text-primary)] cursor-pointer">
+            <label className="cursor-pointer text-sm font-medium text-(--color-text-primary)">
               {label}
             </label>
           )}
           {description && (
-            <p className="text-xs text-[var(--color-text-secondary)]">
+            <p className="text-xs text-(--color-text-secondary)">
               {description}
             </p>
           )}

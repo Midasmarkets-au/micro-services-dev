@@ -412,7 +412,7 @@
     "mobile": "Di động & Máy tính bảng",
     "scanToDownload": "Quét để tải xuống",
     "visit": "Truy cập",
-    "disclaimer": "Mặc dù giấy phép nền tảng phần mềm do đối tác chiến lược nắm giữ, nhưng nhà phát hành các sản phẩm có sẵn theo thỏa thuận khách hàng này là MM Co Ltd.",
+    "disclaimer": "Mặc dù giấy phép nền tảng phần mềm do đối tác chiến lược nắm giữ, nhưng nhà phát hành các sản phẩm có sẵn theo thỏa thuận khách hàng này là MDM Co Ltd.",
     "noPlatforms": "Không có nền tảng giao dịch nào"
   },
   "supports": {
@@ -961,7 +961,11 @@
       "status": "Status",
       "createdOn": "Created On",
       "completedWithdrawal": "Completed",
-      "incompleteWithdrawal": "Incomplete"
+      "incompleteWithdrawal": "Created"
+    },
+    "transaction": {
+      "incompleteTransaction": "Created",
+      "completedTransaction": "Completed"
     },
     "rebate": {
       "title": "Rebate",

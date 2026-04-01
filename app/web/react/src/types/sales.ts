@@ -131,6 +131,7 @@ export interface SalesLink {
   url?: string;
   accountType?: number;
   rebateRuleId?: number;
+  isAutoCreatePaymentMethod?: number;
   displaySummary?: {
     language?: string;
     isAutoCreatePaymentMethod?: number;
@@ -289,6 +290,12 @@ export interface SalesWithdrawalRecord {
   createdOn: string;
   updatedOn?: string;
   user?: SalesClientUser;
+  source: {
+    accountNumber?: number;
+    agentGroupName?: string;
+    currencyId?: number;
+    displayNumber?: number;
+  };
   targetTradeAccount?: SalesTargetTradeAccount;
 }
 
