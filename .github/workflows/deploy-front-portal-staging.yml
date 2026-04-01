@@ -60,6 +60,7 @@ jobs:
           context: app/web/react
           push: true
           platforms: linux/arm64
+          no-cache: true
           tags: |
             ${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}:latest
             ${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}:latest-${{ github.sha }}
