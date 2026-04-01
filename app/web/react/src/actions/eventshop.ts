@@ -266,6 +266,41 @@ export async function getPointsHistory(
   }
 }
 
+// EventNotice 相关：获取活动列表
+export async function getEventList(
+  criteria?: { page?: number; size?: number; status?: number; sortField?: string; sortFlag?: boolean; idLargerThan?: number }
+): Promise<ActionResponse<{ data: EventDetail[]; criteria: { total: number } }>> {
+  try {
+    const query = buildQuery(criteria);
+    const response = await apiClient.v1.get<{
+      data: EventDetail[];
+      criteria: { total: number };
+    }>(`/client/event${query}`);
+    return { success: true, data: { data: response.data || [], criteria: response.criteria } };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to fetch event list' };
+  }
+}
+
+// EventNotice 相关：标记活动已查看
+export async function markEventChecked(key: string): Promise<ActionResponse<unknown>> {
+  try {
+    const response = await apiClient.v1.put<{ data: unknown }>(
+      `/client/event/${key}/last-check`,
+      {}
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to mark event as checked' };
+  }
+}
+
 export async function getRewardRebateList(
   criteria?: CriteriaParams
 ): Promise<ActionResponse<{ items: RewardRebate[]; total: number; page: number; size: number }>> {

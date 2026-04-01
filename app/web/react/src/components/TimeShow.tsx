@@ -20,6 +20,7 @@ export interface TimeShowProps {
   dateIsoString?: string | null;
   format?: string;
   type?: TimeShowType | string;
+  className?: string;
 }
 
 interface DateParts {
@@ -96,7 +97,7 @@ function formatByTemplate(parts: DateParts, template: string): string {
   return template.replace(/YYYY|MM|M|DD|D|HH|hh|mm|ss|A/g, (token) => tokenMap[token] ?? token);
 }
 
-export function TimeShow({ dateIsoString, format, type }: TimeShowProps) {
+export function TimeShow({ dateIsoString, format, type, className }: TimeShowProps) {
   const utcEnabled = useUserStore((s) => s.siteConfig?.utcEnabled ?? false);
 
   const displayParts = useMemo(() => {
@@ -170,12 +171,12 @@ export function TimeShow({ dateIsoString, format, type }: TimeShowProps) {
   }
 
   if (type === 'GMToneLiner') return <span>{getExactDateAndTime()}</span>;
-  if (type === 'oneLiner') return <div>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D HH:mm:ss') : '-'}</div>;
-  if (type === 'customCSS') return <span>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D HH:mm:ss') : '-'}</span>;
-  if (type === 'customCSSv2') return <span>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D') : '-'}</span>;
-  if (type === 'eventShop') return <span>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D') : '-'}</span>;
-  if (type === 'exactTime') return <span>{getExactDateAndTime()} GMT</span>;
-  if (type === 'reportTime') return <span>{getExactDateAndTime()}</span>;
-  if (type === 'reportDate') return <span>{getExactDate()}</span>;
-  return <span>{getDateAndTimeFromISOString()}</span>;
+  if (type === 'oneLiner') return <div className={className}>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D HH:mm:ss') : '-'}</div>;
+  if (type === 'customCSS') return <span className={className}>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D HH:mm:ss') : '-'}</span>;
+  if (type === 'customCSSv2') return <span className={className}>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D') : '-'}</span>;
+  if (type === 'eventShop') return <span className={className}>{displayParts ? formatByTemplate(displayParts, 'YYYY-M-D') : '-'}</span>;
+  if (type === 'exactTime') return <span className={className}>{getExactDateAndTime()} GMT</span>;
+  if (type === 'reportTime') return <span className={className}>{getExactDateAndTime()}</span>;
+  if (type === 'reportDate') return <span className={className}>{getExactDate()}</span>;
+  return <span className={className}>{getDateAndTimeFromISOString()}</span>;
 }

@@ -70,7 +70,10 @@ const PUBLIC_ENDPOINTS = [
   '/auth/password/forgot',    // 忘记密码
   '/auth/password/reset',     // 重置密码
   '/auth/resend-confirmation', // 重新发送确认邮件
+  '/user/email/confirm',      // 邮箱确认
+  '/auth/token/verify',       // 2FA 验证
   '/auth/c',                  // 获取站点配置
+  '/trade-demo-account',      // 未登录创建模拟账户
   '/api/app/lead',            // Lead 创建
   '/contact',                 // 联系表单
   '/trade-account/password',  // 交易账户密码修改（通过邮件链接）
@@ -80,7 +83,12 @@ const PUBLIC_ENDPOINTS = [
  * 判断端点是否需要认证
  */
 function needsAuth(endpoint: string): boolean {
-  return !PUBLIC_ENDPOINTS.some(path => endpoint.includes(path));
+  // 去掉 query/hash，只按路径判断，避免子串误命中
+  const endpointPath = endpoint.split('?')[0].split('#')[0];
+  const isPublic = PUBLIC_ENDPOINTS.some((path) => {
+    return endpointPath === path || endpointPath.startsWith(`${path}/`);
+  });
+  return !isPublic;
 }
 
 async function resolveAuthTokenForEndpoint(endpoint: string): Promise<string | undefined> {
@@ -120,10 +128,11 @@ async function hasCookieAuthContext(): Promise<boolean> {
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     console.log('[API Client] cookie store keys:', allCookies.map(c => c.name));
-    // 有 access_token（后端 session cookie）或 auth-mode=cookie 标记即视为已认证
+    // 有 access_token（后端 session cookie）或 auth-token（token 模式）或 auth-mode=cookie 标记即视为已认证
     const hasAccessToken = allCookies.some(c => c.name === 'access_token');
+    const hasAuthToken = allCookies.some(c => c.name === 'auth-token');
     const hasCookieMode = allCookies.some(c => c.name === 'auth-mode' && c.value === 'cookie');
-    return hasAccessToken || hasCookieMode;
+    return hasAccessToken || hasAuthToken || hasCookieMode;
   } catch {
     return false;
   }
@@ -226,7 +235,8 @@ async function resolveBearerTokenForCookieMode(extraCookies?: string): Promise<s
   // 其次从 Next.js cookie store 中读取（后续页面请求）
   try {
     const cookieStore = await cookies();
-    return cookieStore.get('access_token')?.value;
+    // 优先 access_token，其次兜底 auth-token，兼容 token/cookie 两种后端返回模式
+    return cookieStore.get('access_token')?.value ?? cookieStore.get('auth-token')?.value;
   } catch {
     return undefined;
   }
@@ -651,6 +661,10 @@ export const apiClient = {
     }
     // 如果以 /connect 开头（OAuth 端点），不添加版本前缀
     if (endpoint.startsWith('/connect')) {
+      return `${API_BASE_URL}${endpoint}`;
+    }
+    // 特殊端点：2FA 验证接口不走 /api 前缀
+    if (endpoint === '/auth/token/verify') {
       return `${API_BASE_URL}${endpoint}`;
     }
     // 如果以 /configuration 开头，不添加版本前缀（使用 /api/configuration/...）

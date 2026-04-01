@@ -10,6 +10,9 @@ export {
   setToken,
   setLocale,
   getSiteConfig,
+  createDemoAccountFromNonAuth,
+  confirmEmail,
+  verify2FA,
 } from './auth';
 
 // User actions
@@ -122,6 +125,8 @@ export {
   updateOrderAddress,
   getPointsHistory,
   getRewardRebateList,
+  getEventList,
+  markEventChecked,
 } from './eventshop';
 
 // IB actions

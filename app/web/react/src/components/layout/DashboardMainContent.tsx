@@ -29,6 +29,8 @@ import {
 } from '@/types/accounts';
 import { AccountTabs } from '@/components/dashboard/AccountTabs';
 import { TradeAccountCard } from '@/components/dashboard/TradeAccountCard';
+import { EventShopBanner } from '@/components/dashboard/EventShopBanner';
+import { EventNotice, type EventNoticeRef } from '@/components/dashboard/EventNotice';
 import { CreateLiveAccountModal } from '@/components/dashboard/modals/CreateLiveAccountModal';
 import { CreateDemoAccountModal } from '@/components/dashboard/modals/CreateDemoAccountModal';
 import { ResetPasswordModal } from '@/components/dashboard/modals/ResetPasswordModal';
@@ -47,6 +49,14 @@ export function DashboardMainContent() {
   // 获取用户信息判断是否为 Guest
   const user = useUserStore((state) => state.user);
   const isGuest = isGuestOnly(user?.roles ?? []);
+
+  // EventShop 显示条件：tenancy 为 bvi 或 sea 且角色包含 Client
+  const showEventShop =
+    (user?.tenancy === 'bvi' || user?.tenancy === 'sea') &&
+    (user?.roles ?? []).includes('Client');
+
+  // EventNotice 弹窗引用
+  const eventNoticeRef = useRef<EventNoticeRef>(null);
 
   // 账户状态 - Guest 用户默认显示模拟账户
   const [activeTab, setActiveTab] = useState<TabType>(isGuest ? 'DemoAccounts' : 'RealAccounts');
@@ -133,6 +143,11 @@ export function DashboardMainContent() {
     }
   }, [isGuest, loadData]);
 
+  // 页面加载后触发 EventNotice 弹窗检查
+  useEffect(() => {
+    eventNoticeRef.current?.showData();
+  }, []);
+
   // 刷新数据
   const handleRefresh = () => {
     loadData();
@@ -172,37 +187,39 @@ export function DashboardMainContent() {
 
   return (
     <div className="main-content-responsive">
-      {/* Banner - 高度 168px = 10.5rem，响应式缩放 */}
-      <div className="dashboard-banner relative h-42 w-full overflow-hidden rounded">
-        {/* 右侧装饰图片 - 根据主题切换 */}
-        {mounted && (
-          <div className="absolute right-0 top-1/2 h-[20.94rem] w-123 -translate-y-1/2">
-            <Image
-              src={bannerImage}
-              alt="decoration"
-              fill
-              className="object-contain object-right"
-            />
-          </div>
-        )}
+      {/* EventNotice 活动公告弹窗 */}
+      <EventNotice ref={eventNoticeRef} />
 
-        {/* 文字内容 */}
-        <div className="absolute left-17.5 top-5.5 z-10 flex flex-col">
-          <div className="text-responsive-2xl font-semibold text-white">
-            <p>MIDAS MARKET</p>
-            <p className="flex items-center">
-              <span>{t('bannerTitle')}</span>
-              <span className="banner-highlight-text ml-1">{t('bannerHighlight')}</span>
-            </p>
+      {/* Banner - EventShopBanner 替换原始 banner */}
+      {showEventShop ? (
+        <EventShopBanner />
+      ) : (
+        <div className="dashboard-banner relative h-42 w-full overflow-hidden rounded">
+          {mounted && (
+            <div className="absolute right-0 top-1/2 h-[20.94rem] w-123 -translate-y-1/2">
+              <Image
+                src={bannerImage}
+                alt="decoration"
+                fill
+                className="object-contain object-right"
+              />
+            </div>
+          )}
+          <div className="absolute left-17.5 top-5.5 z-10 flex flex-col">
+            <div className="text-responsive-2xl font-semibold text-white">
+              <p>MIDAS MARKET</p>
+              <p className="flex items-center">
+                <span>{t('bannerTitle')}</span>
+                <span className="banner-highlight-text ml-1">{t('bannerHighlight')}</span>
+              </p>
+            </div>
+            <button className="mt-5 flex h-7.5 w-26.75 items-center justify-center gap-1 rounded border border-white bg-primary text-xs font-semibold text-white backdrop-blur-sm hover:bg-primary-hover">
+              <span>{t('depositNow')}</span>
+              <Icon name="add-plain" size={12} />
+            </button>
           </div>
-
-          {/* Deposit Now 按钮 */}
-          <button className="mt-5 flex h-7.5 w-26.75 items-center justify-center gap-1 rounded border border-white bg-primary text-xs font-semibold text-white backdrop-blur-sm hover:bg-primary-hover">
-            <span>{t('depositNow')}</span>
-            <Icon name="add-plain" size={12} />
-          </button>
         </div>
-      </div>
+      )}
       <div className="min-h-0 rounded bg-surface p-4">
         {/* 账户切换标签栏 */}
         <div className="flex flex-col mb-4">

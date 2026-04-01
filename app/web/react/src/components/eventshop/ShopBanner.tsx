@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { getMediaUrl } from '@/actions';
-import { DateDisplay } from '@/components/ui';
 import type { EventDetail } from '@/types/eventshop';
+import { TimeShow } from '../TimeShow';
 
 interface ShopBannerProps {
   eventDetail: EventDetail;
@@ -81,8 +81,9 @@ export function ShopBanner({ eventDetail }: ShopBannerProps) {
           {t('title')}
         </p>
         <p className="text-responsive-2xl md:text-responsive-3xl font-semibold text-white">
-          {t('subtitle')}
-          <span
+          {/* {t('subtitle')} */}
+          {eventDetail.name}
+          {/* <span
             className="ml-2 font-semibold bg-clip-text text-transparent"
             style={{
               backgroundImage: config.textGradient,
@@ -91,14 +92,22 @@ export function ShopBanner({ eventDetail }: ShopBannerProps) {
             }}
           >
             {t('newArrival')}
-          </span>
+          </span> */}
         </p>
       </div>
 
       {/* 活动日期 — Figma: left=70, top=161 */}
       {hasDateRange && (
         <p className="absolute left-5 md:left-[70px] top-[161px] z-10 text-sm font-light text-white">
-          {t('eventDate')} ：<DateDisplay value={eventDetail.startOn} format="date" />——<DateDisplay value={eventDetail.endOn} format="date" />
+          {t('eventDate')} ：
+          {/* <DateDisplay value={eventDetail.startOn} format="date" /> */}
+          <TimeShow dateIsoString={eventDetail.startOn} className="text-sm font-medium text-white" type="eventShop" />
+          ——<TimeShow
+            dateIsoString={eventDetail.endOn}
+            className="text-sm  font-medium text-white"
+            type="eventShop"
+          />
+          {/* <DateDisplay value={eventDetail.endOn} format="date" /> */}
         </p>
       )}
 

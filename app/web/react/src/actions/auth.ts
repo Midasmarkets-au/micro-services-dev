@@ -59,12 +59,30 @@ const resendConfirmationSchema = z.object({
   confirmUrl: z.string().url('请提供有效的确认链接'),
 });
 
+const twoFAVerifySchema = z.object({
+  code: z.string().length(6, '请输入6位验证码'),
+});
+
 const setTokenSchema = z.object({
   token: z.string().min(1, 'Token 不能为空'),
 });
 
 const setLocaleSchema = z.object({
   locale: z.enum(locales),
+});
+
+const createDemoAccountFromNonAuthSchema = z.object({
+  platform: z.number(),
+  accountType: z.number(),
+  amount: z.number(),
+  currencyId: z.number(),
+  leverage: z.number(),
+  countryCode: z.string().min(1),
+  phoneNumber: z.string().min(1),
+  name: z.string().min(1),
+  email: z.string().email(),
+  referralCode: z.string().optional(),
+  tenantId: z.number().optional(),
 });
 
 // ==================== Types ====================
@@ -107,6 +125,20 @@ interface PasswordResetData {
 interface ResendConfirmationData {
   email: string;
   confirmUrl: string;
+}
+
+interface CreateDemoAccountFromNonAuthData {
+  platform: number;
+  accountType: number;
+  amount: number;
+  currencyId: number;
+  leverage: number;
+  countryCode: string;
+  phoneNumber: string;
+  name: string;
+  email: string;
+  referralCode?: string;
+  tenantId?: number;
 }
 
 // ==================== Actions ====================
@@ -491,6 +523,58 @@ export async function setLocale(data: { locale: string }): Promise<ActionRespons
 }
 
 /**
+ * 确认邮箱
+ * 对应 Vue: ClientGlobalService.confirmEmail({ code, email })
+ */
+export async function confirmEmail(params: {
+  code: string;
+  email: string;
+}): Promise<ActionResponse<unknown>> {
+  try {
+    const response = await apiClient.v1.post<{ data: unknown }>(
+      '/user/email/confirm',
+      params
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: '邮箱确认失败' };
+  }
+}
+
+/**
+ * 二次验证（2FA）
+ * 对应 Vue: PUT auth/token/verify
+ */
+export async function verify2FA(
+  params: { code: string } | Array<{ code: string }>
+): Promise<ActionResponse<unknown>> {
+  try {
+    const normalizedParams = Array.isArray(params) ? params[0] : params;
+    const validationResult = twoFAVerifySchema.safeParse(normalizedParams);
+    if (!validationResult.success) {
+      return {
+        success: false,
+        error: validationResult.error.flatten().fieldErrors.code?.[0] || '验证码无效',
+      };
+    }
+
+    const response = await apiClient.v1.put<{ data: unknown }>(
+      '/auth/token/verify',
+      validationResult.data
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: '验证失败' };
+  }
+}
+
+/**
  * 获取站点配置
  */
 export async function getSiteConfig(openAt: string = 'bvi'): Promise<ActionResponse<number[]>> {
@@ -507,5 +591,34 @@ export async function getSiteConfig(openAt: string = 'bvi'): Promise<ActionRespo
       success: true,
       data: [0],
     };
+  }
+}
+
+/**
+ * 未登录创建模拟账户
+ * 对应 Vue: ClientGlobalService.createDemoAccountFromNonAuth
+ */
+export async function createDemoAccountFromNonAuth(
+  data: CreateDemoAccountFromNonAuthData
+): Promise<ActionResponse<unknown>> {
+  try {
+    const validationResult = createDemoAccountFromNonAuthSchema.safeParse(data);
+    if (!validationResult.success) {
+      return {
+        success: false,
+        error: '验证失败',
+      };
+    }
+
+    const response = await apiClient.v1.post<{ data: unknown }>(
+      '/trade-demo-account',
+      validationResult.data
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: '创建模拟账户失败' };
   }
 }

@@ -42,6 +42,7 @@ export interface EventDetail {
   startOn: string;
   endOn: string;
   status: number;
+  name: string;
   instruction?: {
     pointsRule?: {
       all?: string;
