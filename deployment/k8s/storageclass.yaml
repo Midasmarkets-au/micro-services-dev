@@ -1,0 +1,18 @@
+# ============================================================================
+#  StorageClass — EKS Auto Mode 内置 EBS storage
+#  provisioner: ebs.csi.eks.amazonaws.com (EKS Auto Mode 内置，无需安装额外 addon)
+#  适用于 storageConfig.blockStorage.enabled: true 的 EKS Auto Mode 集群
+# ============================================================================
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp2
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.eks.amazonaws.com
+parameters:
+  type: gp2
+  fsType: ext4
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
