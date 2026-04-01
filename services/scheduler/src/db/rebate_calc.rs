@@ -74,7 +74,7 @@ pub async fn ensure_rebate_tables(pool: &PgPool, year: i32) -> Result<()> {
             "AccountId"     BIGINT       NOT NULL,
             "FundType"      INT          NOT NULL DEFAULT 0,
             "CurrencyId"    INT          NOT NULL DEFAULT -1,
-            "Amount"        NUMERIC      NOT NULL DEFAULT 0,
+            "Amount"        NUMERIC(20,8) NOT NULL DEFAULT 0,
             "TradeRebateId" BIGINT,
             "HoldUntilOn"   TIMESTAMPTZ,
             "Information"   TEXT         NOT NULL DEFAULT ''
