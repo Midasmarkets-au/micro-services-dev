@@ -1,7 +1,7 @@
 'use client';
 
 // import { useState, useEffect } from 'react';
-// import Image from 'next/image';
+import Image from 'next/image';
 // import { useTranslations } from 'next-intl';
 // import { useServerAction } from '@/hooks/useServerAction';
 // import { getSalesAccountStat } from '@/actions';
