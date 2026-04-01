@@ -12,11 +12,9 @@ pub async fn execute_calculate(ctx: AppContext) -> Result<()> {
     Ok(())
 }
 
-/// Trigger ReleaseRebate job in mono via gRPC.
+/// Execute ReleaseRebate directly in scheduler (no gRPC to mono).
 /// Cron: every 2 minutes (*/2 * * * *).
-/// Actual execution and concurrency control ([DisableConcurrentExecution]) remain in mono/Hangfire.
 pub async fn execute_release(ctx: AppContext) -> Result<()> {
-    info!("ReleaseRebateJob: triggering mono");
-    ctx.mono_callback.trigger_release_rebate().await;
-    Ok(())
+    info!("ReleaseRebateJob: executing directly");
+    super::release_rebate::execute(ctx).await
 }
