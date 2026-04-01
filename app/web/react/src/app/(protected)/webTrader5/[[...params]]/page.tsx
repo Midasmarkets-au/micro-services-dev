@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { use, useMemo } from 'react';
 import { useLocale } from 'next-intl';
 
 interface WebTrader5PageProps {
-  params: {
+  params: Promise<{
     params?: string[];
-  };
+  }>;
 }
 
 function mapLocaleToWebTraderLang(locale: string): string {
@@ -31,9 +31,10 @@ function mapLocaleToWebTraderLang(locale: string): string {
 }
 
 export default function WebTrader5Page({ params }: WebTrader5PageProps) {
+  const resolvedParams = use(params);
   const locale = useLocale();
   const webTraderLang = mapLocaleToWebTraderLang(locale);
-  const accountNumber = params.params?.[0];
+  const accountNumber = resolvedParams.params?.[0];
 
   const webTraderUrl = useMemo(() => {
     const base = 'https://mt5.midasmkts.com/terminal';
