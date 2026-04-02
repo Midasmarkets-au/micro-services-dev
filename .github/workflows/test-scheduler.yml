@@ -1,0 +1,43 @@
+name: Test Scheduler
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - "test/**"
+      - "feat/**"
+      - "fix/**"
+    paths:
+      - "services/scheduler/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "vendor/**"
+      - ".github/workflows/test-scheduler.yml"
+  pull_request:
+    paths:
+      - "services/scheduler/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "vendor/**"
+      - ".github/workflows/test-scheduler.yml"
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Run scheduler unit tests
+        run: cargo test -p scheduler

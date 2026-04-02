@@ -312,6 +312,37 @@ pub async fn get_pip_value(
 
 // ── Base rebate calculation ───────────────────────────────────────────────────
 
+/// Pure calculation core — no IO.
+/// All rates and pip_formula are pre-resolved by the caller.
+/// Mirrors mono's CalculateRatePipCommissionByDirectSchema arithmetic exactly.
+///
+/// - `source_exchange_rate`: trade currency → USD rate
+/// - `pip_formula`: pip value per lot for the symbol (0.0 if symbol has no pip value)
+/// - `exchange_rate_price`: raw MT5 bid price stored as metadata in BaseRebate.price
+pub(crate) fn calculate_base_rebate_pure(
+    schema_item: &DirectSchemaItem,
+    volume: i32,
+    source_exchange_rate: f64,
+    pip_formula: f64,
+    exchange_rate_price: f64,
+) -> BaseRebate {
+    let divided_volume = Decimal::new(volume as i64, 2); // volume / 100
+    let ser = Decimal::from_f64(source_exchange_rate).unwrap_or(Decimal::ONE);
+
+    let rate = dec_round_to_zero(schema_item.rate * ser * dec(100) * divided_volume * dec(100));
+
+    if schema_item.pips == Decimal::ZERO && schema_item.commission == Decimal::ZERO {
+        return BaseRebate { rate, pip: Decimal::ZERO, commission: Decimal::ZERO, price: 0.0 };
+    }
+
+    let commission = dec_round_to_zero(schema_item.commission * ser * dec(100) * divided_volume * dec(100));
+
+    let pip_dec = Decimal::from_f64(pip_formula).unwrap_or(Decimal::ZERO);
+    let pip = dec_round_to_zero(schema_item.pips * ser * dec(100) * divided_volume * pip_dec * dec(100));
+
+    BaseRebate { rate, pip, commission, price: exchange_rate_price }
+}
+
 /// Mirrors mono's CalculateRatePipCommissionByDirectSchema.
 /// Uses Decimal arithmetic throughout to match C# decimal precision.
 /// Final round uses MidpointRounding.ToZero (truncate), same as mono.
@@ -324,36 +355,18 @@ pub async fn calculate_base_rebate(
     source_currency_id: i32,
 ) -> Result<BaseRebate> {
     const USD: i32 = 1;
-    let divided_volume = Decimal::new(volume as i64, 2); // volume / 100
-    let source_exchange_rate_f64 =
+    let source_exchange_rate =
         get_mt_exchange_rate(ctx, tenant_pool, service_id, source_currency_id, USD).await?;
-    let source_exchange_rate = Decimal::from_f64(source_exchange_rate_f64).unwrap_or(Decimal::ONE);
 
-    let rate = dec_round_to_zero(schema_item.rate * source_exchange_rate * dec(100) * divided_volume * dec(100));
-
+    // Early-exit path: if no pips/commission, skip the MT5 price lookup entirely
     if schema_item.pips == Decimal::ZERO && schema_item.commission == Decimal::ZERO {
-        return Ok(BaseRebate {
-            rate,
-            pip: Decimal::ZERO,
-            commission: Decimal::ZERO,
-            price: 0.0,
-        });
+        return Ok(calculate_base_rebate_pure(schema_item, volume, source_exchange_rate, 0.0, 0.0));
     }
 
-    let commission = dec_round_to_zero(schema_item.commission * source_exchange_rate * dec(100) * divided_volume * dec(100));
-
-    let (pip_formula_f64, exchange_rate_price) =
+    let (pip_formula, exchange_rate_price) =
         get_pip_value(ctx, tenant_pool, service_id, &schema_item.symbol_code).await?;
-    let pip_formula = Decimal::from_f64(pip_formula_f64).unwrap_or(Decimal::ZERO);
 
-    let pip = dec_round_to_zero(schema_item.pips * source_exchange_rate * dec(100) * divided_volume * pip_formula * dec(100));
-
-    Ok(BaseRebate {
-        rate,
-        pip,
-        commission,
-        price: exchange_rate_price,
-    })
+    Ok(calculate_base_rebate_pure(schema_item, volume, source_exchange_rate, pip_formula, exchange_rate_price))
 }
 
 /// Decimal constant helper.
@@ -824,6 +837,50 @@ async fn generate_level_percentage_rebates(
     Ok(results)
 }
 
+// ── RebateDb trait ────────────────────────────────────────────────────────────
+
+/// Abstracts all DB calls needed by the generate/send rebate state machine.
+/// The real implementation delegates to `crate::db::rebate_calc`.
+/// Tests supply a `MockRebateDb` that records calls and returns canned data.
+#[async_trait::async_trait]
+pub(crate) trait RebateDb: Send + Sync {
+    async fn get_trade_rebate(&self, table: &str, id: i64) -> Result<Option<TradeRebateRow>>;
+    async fn is_account_active(&self, account_id: i64) -> Result<bool>;
+    async fn get_distribution_type(&self, account_id: i64) -> Result<Option<(i16, Option<i64>)>>;
+    async fn get_existing_rebates(&self, year: i32, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>>;
+    async fn get_target_account(&self, account_id: i64) -> Result<Option<crate::models::rebate::TargetAccount>>;
+    async fn insert_rebate(&self, year: i32, rebate: &NewRebate) -> Result<i64>;
+    async fn update_trade_rebate_status(&self, table: &str, id: i64, status: i32) -> Result<()>;
+}
+
+/// Production implementation — thin wrapper around `crate::db::rebate_calc`.
+pub(crate) struct PgRebateDb<'a>(pub &'a PgPool);
+
+#[async_trait::async_trait]
+impl RebateDb for PgRebateDb<'_> {
+    async fn get_trade_rebate(&self, table: &str, id: i64) -> Result<Option<TradeRebateRow>> {
+        db::get_trade_rebate(self.0, table, id).await
+    }
+    async fn is_account_active(&self, account_id: i64) -> Result<bool> {
+        db::is_account_active(self.0, account_id).await
+    }
+    async fn get_distribution_type(&self, account_id: i64) -> Result<Option<(i16, Option<i64>)>> {
+        db::get_distribution_type(self.0, account_id).await
+    }
+    async fn get_existing_rebates(&self, year: i32, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
+        db::get_existing_rebates(self.0, year, trade_rebate_id).await
+    }
+    async fn get_target_account(&self, account_id: i64) -> Result<Option<crate::models::rebate::TargetAccount>> {
+        db::get_target_account(self.0, account_id).await
+    }
+    async fn insert_rebate(&self, year: i32, rebate: &NewRebate) -> Result<i64> {
+        db::insert_rebate(self.0, year, rebate).await
+    }
+    async fn update_trade_rebate_status(&self, table: &str, id: i64, status: i32) -> Result<()> {
+        db::update_trade_rebate_status(self.0, table, id, status).await
+    }
+}
+
 // ── Main entry point ──────────────────────────────────────────────────────────
 
 /// Main entry: generate and persist rebates for a single TradeRebate record.
@@ -835,38 +892,71 @@ pub async fn generate_rebates(
     table: &str,
     year: i32,
 ) -> Result<()> {
-    let trade_rebate = match db::get_trade_rebate(pool, table, trade_rebate_id).await? {
+    generate_rebates_with_db(ctx, &PgRebateDb(pool), pool, trade_rebate_id, table, year).await
+}
+
+/// Outcome of the guard phase — either an early exit or the data needed for mode dispatch.
+pub(crate) enum GuardOutcome {
+    /// A status update was written and processing is done.
+    EarlyExit,
+    /// Guards passed; caller should dispatch the appropriate rebate mode.
+    Proceed { trade_rebate: TradeRebateRow, dist_type: i16 },
+}
+
+/// Guard phase only — no IO beyond the RebateDb trait.
+/// Validates trade_rebate existence, account_id, active status, and distribution type.
+/// Tests exercise this function directly to cover all early-exit branches.
+pub(crate) async fn run_generate_guards(
+    rdb: &dyn RebateDb,
+    trade_rebate_id: i64,
+    table: &str,
+) -> Result<GuardOutcome> {
+    let trade_rebate = match rdb.get_trade_rebate(table, trade_rebate_id).await? {
         Some(tr) => tr,
         None => {
             warn!("CalculateRebate: TradeRebate id={} not found in {}", trade_rebate_id, table);
-            return Ok(());
+            return Ok(GuardOutcome::EarlyExit);
         }
     };
 
     let account_id = match trade_rebate.account_id {
         Some(id) => id,
         None => {
-            db::update_trade_rebate_status(pool, table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
-            return Ok(());
+            rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
+            return Ok(GuardOutcome::EarlyExit);
         }
     };
 
-    // Check account is active
-    if !db::is_account_active(pool, account_id).await? {
-        db::update_trade_rebate_status(pool, table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
-        return Ok(());
+    if !rdb.is_account_active(account_id).await? {
+        rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
+        return Ok(GuardOutcome::EarlyExit);
     }
 
-    // Get distribution type
-    let dist_type = match db::get_distribution_type(pool, account_id).await? {
+    let dist_type = match rdb.get_distribution_type(account_id).await? {
         Some((dt, _)) => dt,
         None => {
-            db::update_trade_rebate_status(pool, table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
-            return Ok(());
+            rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
+            return Ok(GuardOutcome::EarlyExit);
         }
     };
 
-    // Generate rebates based on distribution type
+    Ok(GuardOutcome::Proceed { trade_rebate, dist_type })
+}
+
+/// Testable core: accepts a `RebateDb` trait object so tests can inject a mock.
+pub(crate) async fn generate_rebates_with_db(
+    ctx: &AppContext,
+    rdb: &dyn RebateDb,
+    pool: &PgPool,
+    trade_rebate_id: i64,
+    table: &str,
+    year: i32,
+) -> Result<()> {
+    let (trade_rebate, dist_type) = match run_generate_guards(rdb, trade_rebate_id, table).await? {
+        GuardOutcome::EarlyExit => return Ok(()),
+        GuardOutcome::Proceed { trade_rebate, dist_type } => (trade_rebate, dist_type),
+    };
+
     let rebates = match dist_type {
         DIST_DIRECT => generate_direct_rebates(ctx, pool, &trade_rebate).await?,
         DIST_ALLOCATION => generate_allocation_rebates(ctx, pool, &trade_rebate).await?,
@@ -874,14 +964,12 @@ pub async fn generate_rebates(
         _ => vec![],
     };
 
-    // Send / persist rebates (mirrors mono's SendRebates)
-    send_rebates(ctx, pool, &trade_rebate, rebates, table, year).await
+    send_rebates_with_db(rdb, &trade_rebate, rebates, table, year).await
 }
 
-/// Mirrors mono's SendRebates: handles PendingResend diff adjustment and writes to DB.
-async fn send_rebates(
-    _ctx: &AppContext,
-    pool: &PgPool,
+/// Testable core of SendRebates — accepts a `RebateDb` trait object.
+pub(crate) async fn send_rebates_with_db(
+    rdb: &dyn RebateDb,
     trade_rebate: &TradeRebateRow,
     rebates: Vec<NewRebate>,
     table: &str,
@@ -889,75 +977,61 @@ async fn send_rebates(
 ) -> Result<()> {
     let trade_rebate_id = trade_rebate.id;
 
-    // Check if no rebates generated
-    let existing = db::get_existing_rebates(pool, year, trade_rebate_id).await?;
+    let existing = rdb.get_existing_rebates(year, trade_rebate_id).await?;
 
     if rebates.is_empty() && existing.is_empty() {
-        db::update_trade_rebate_status(pool, table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
+        rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
         return Ok(());
     }
 
-    // PendingResend: diff adjustment
     if !existing.is_empty() {
-        // Build map of existing rebates by account_id
         let existing_map: HashMap<i64, Decimal> = existing.into_iter().collect();
         let new_map: HashMap<i64, Decimal> = rebates.iter().map(|r| (r.account_id, r.amount)).collect();
 
-        // For accounts in existing but not in new → insert negative adjustment
         for (account_id, existing_amount) in &existing_map {
             if !new_map.contains_key(account_id) {
-                // Find the original rebate to get party_id / currency_id / fund_type
-                // We need to re-fetch — use a simplified approach: insert compensating rebate
                 let compensating = NewRebate {
-                    party_id: 0, // will be looked up below
+                    party_id: 0,
                     account_id: *account_id,
                     trade_rebate_id,
                     currency_id: -1,
                     fund_type: 0,
-                    amount: -existing_amount,
+                    amount: -*existing_amount,
                     information: serde_json::to_string(&json!({"Note": "compensating_adjustment", "Version": "v2_scheduler"}))?,
                 };
-                // Get account info for compensation
-                if let Some(target) = db::get_target_account(pool, *account_id).await? {
+                if let Some(target) = rdb.get_target_account(*account_id).await? {
                     let comp = NewRebate {
                         party_id: target.party_id,
                         currency_id: target.currency_id,
                         fund_type: target.fund_type,
                         ..compensating
                     };
-                    db::insert_rebate(pool, year, &comp).await?;
+                    rdb.insert_rebate(year, &comp).await?;
                 }
             }
         }
 
-        // For accounts in both: insert diff if amount changed
         let mut to_insert = vec![];
         for rebate in &rebates {
             if let Some(&existing_amount) = existing_map.get(&rebate.account_id) {
                 if rebate.amount != existing_amount {
-                    let diff = NewRebate {
-                        amount: rebate.amount - existing_amount,
-                        ..rebate.clone()
-                    };
-                    to_insert.push(diff);
+                    to_insert.push(NewRebate { amount: rebate.amount - existing_amount, ..rebate.clone() });
                 }
-                // If equal, skip (no change)
             } else {
                 to_insert.push(rebate.clone());
             }
         }
 
         for rebate in to_insert {
-            db::insert_rebate(pool, year, &rebate).await?;
+            rdb.insert_rebate(year, &rebate).await?;
         }
     } else {
-        // Fresh insert
         for rebate in &rebates {
-            db::insert_rebate(pool, year, rebate).await?;
+            rdb.insert_rebate(year, rebate).await?;
         }
     }
 
-    db::update_trade_rebate_status(pool, table, trade_rebate_id, STATUS_COMPLETED).await?;
+    rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_COMPLETED).await?;
 
     info!(
         "CalculateRebate: completed trade_rebate_id={} rebates={}",
@@ -972,7 +1046,7 @@ async fn send_rebates(
 
 /// Maps CurrencyId to ISO currency code string.
 /// Based on mono's CurrencyTypes enum — extend as needed.
-fn currency_id_to_name(currency_id: i32) -> &'static str {
+pub(crate) fn currency_id_to_name(currency_id: i32) -> &'static str {
     match currency_id {
         1 => "USD",
         2 => "USC", // cents
@@ -995,5 +1069,753 @@ fn currency_id_to_name(currency_id: i32) -> &'static str {
         19 => "MYR",
         20 => "THB",
         _ => "USD", // fallback
+    }
+}
+
+// ── Unit tests ────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rust_decimal_macros::dec;
+
+    // ── get_trimmed_symbol ────────────────────────────────────────────────────
+
+    #[test]
+    fn trimmed_symbol_strips_suffix() {
+        assert_eq!(get_trimmed_symbol("EURUSD.raw"), "EURUSD");
+        assert_eq!(get_trimmed_symbol("XAUUSD.ECN"), "XAUUSD");
+        assert_eq!(get_trimmed_symbol("GBPUSD.pro"), "GBPUSD");
+    }
+
+    #[test]
+    fn trimmed_symbol_no_suffix_unchanged() {
+        assert_eq!(get_trimmed_symbol("EURUSD"), "EURUSD");
+        assert_eq!(get_trimmed_symbol("XAUUSD"), "XAUUSD");
+        assert_eq!(get_trimmed_symbol("Bitcoin"), "Bitcoin");
+    }
+
+    #[test]
+    fn trimmed_symbol_cl_prefix_normalised() {
+        // Any #CL variant (futures month codes) → "#CL"
+        assert_eq!(get_trimmed_symbol("#CLM25"), "#CL");
+        assert_eq!(get_trimmed_symbol("#CLZ24"), "#CL");
+        assert_eq!(get_trimmed_symbol("#CL"), "#CL");
+    }
+
+    #[test]
+    fn trimmed_symbol_brn_prefix_normalised() {
+        assert_eq!(get_trimmed_symbol("#BRNM25"), "#BRN");
+        assert_eq!(get_trimmed_symbol("#BRN"), "#BRN");
+    }
+
+    #[test]
+    fn trimmed_symbol_xagusdmin_uppercased() {
+        // Special case: XAGUSDmin → "XAGUSDMIN"
+        assert_eq!(get_trimmed_symbol("XAGUSDmin"), "XAGUSDMIN");
+    }
+
+    #[test]
+    fn trimmed_symbol_hash_index_unchanged() {
+        assert_eq!(get_trimmed_symbol("#US500"), "#US500");
+        assert_eq!(get_trimmed_symbol("#HKG50"), "#HKG50");
+        assert_eq!(get_trimmed_symbol("#GER40"), "#GER40");
+    }
+
+    // ── get_symbol_category_name ──────────────────────────────────────────────
+
+    #[test]
+    fn category_name_forex_variants() {
+        assert_eq!(get_symbol_category_name("Forex"), "FOREX");
+        assert_eq!(get_symbol_category_name("FOREX"), "FOREX");
+        assert_eq!(get_symbol_category_name("forex group"), "FOREX");
+        assert_eq!(get_symbol_category_name("Major Forex"), "FOREX");
+    }
+
+    #[test]
+    fn category_name_gold_variants() {
+        assert_eq!(get_symbol_category_name("Gold"), "GOLD");
+        assert_eq!(get_symbol_category_name("GOLD"), "GOLD");
+        assert_eq!(get_symbol_category_name("gold spot"), "GOLD");
+    }
+
+    #[test]
+    fn category_name_other_fallback() {
+        assert_eq!(get_symbol_category_name("Crypto"), "OTHER");
+        assert_eq!(get_symbol_category_name("Index"), "OTHER");
+        assert_eq!(get_symbol_category_name("Oil"), "OTHER");
+        assert_eq!(get_symbol_category_name(""), "OTHER");
+    }
+
+    // ── BaseRebate::total ─────────────────────────────────────────────────────
+
+    #[test]
+    fn base_rebate_total_sums_all_fields() {
+        let br = BaseRebate {
+            rate: dec!(100),
+            pip: dec!(50),
+            commission: dec!(25),
+            price: 1.23,
+        };
+        assert_eq!(br.total(), dec!(175));
+    }
+
+    #[test]
+    fn base_rebate_total_zero_when_all_zero() {
+        let br = BaseRebate::default();
+        assert_eq!(br.total(), Decimal::ZERO);
+    }
+
+    #[test]
+    fn base_rebate_total_ignores_price() {
+        // price is an f64 metadata field, not included in total
+        let br = BaseRebate { rate: dec!(10), pip: dec!(0), commission: dec!(0), price: 999.0 };
+        assert_eq!(br.total(), dec!(10));
+    }
+
+    // ── dec_round_to_zero (truncate toward zero) ──────────────────────────────
+
+    #[test]
+    fn round_to_zero_truncates_positive() {
+        assert_eq!(dec_round_to_zero(dec!(1.9)), dec!(1));
+        assert_eq!(dec_round_to_zero(dec!(99.999)), dec!(99));
+        assert_eq!(dec_round_to_zero(dec!(0.5)), dec!(0));
+    }
+
+    #[test]
+    fn round_to_zero_truncates_negative() {
+        // ToZero means toward zero, not floor — so -1.9 → -1, not -2
+        assert_eq!(dec_round_to_zero(dec!(-1.9)), dec!(-1));
+        assert_eq!(dec_round_to_zero(dec!(-0.5)), dec!(0));
+    }
+
+    #[test]
+    fn round_to_zero_integer_unchanged() {
+        assert_eq!(dec_round_to_zero(dec!(42)), dec!(42));
+        assert_eq!(dec_round_to_zero(dec!(0)), dec!(0));
+    }
+
+    // ── calculate_last_allocation_rebate ─────────────────────────────────────
+
+    #[test]
+    fn last_allocation_drains_all_remain() {
+        let mut remain = BaseRebate {
+            rate: dec!(300),
+            pip: dec!(120),
+            commission: dec!(80),
+            price: 0.0,
+        };
+        let (rate_val, combined) = calculate_last_allocation_rebate(&mut remain);
+
+        assert_eq!(rate_val, dec!(300));
+        assert_eq!(combined, dec!(200)); // pip + commission
+        // remain must be fully zeroed
+        assert_eq!(remain.rate, Decimal::ZERO);
+        assert_eq!(remain.pip, Decimal::ZERO);
+        assert_eq!(remain.commission, Decimal::ZERO);
+    }
+
+    #[test]
+    fn last_allocation_zero_pip_and_commission() {
+        let mut remain = BaseRebate { rate: dec!(50), pip: dec!(0), commission: dec!(0), price: 0.0 };
+        let (rate_val, combined) = calculate_last_allocation_rebate(&mut remain);
+        assert_eq!(rate_val, dec!(50));
+        assert_eq!(combined, dec!(0));
+    }
+
+    #[test]
+    fn last_allocation_zero_remain() {
+        let mut remain = BaseRebate::default();
+        let (rate_val, combined) = calculate_last_allocation_rebate(&mut remain);
+        assert_eq!(rate_val, dec!(0));
+        assert_eq!(combined, dec!(0));
+    }
+
+    // ── calculate_allocation_rebate ───────────────────────────────────────────
+
+    #[test]
+    fn allocation_rebate_rate_capped_by_remain() {
+        // remain.rate=100, schema_rate would compute to 200 → capped at 100
+        let mut remain = BaseRebate { rate: dec!(100), pip: dec!(0), commission: dec!(0), price: 0.0 };
+        // schema_rate=2.0, ser=1.0, volume=100 → rate = trunc(2.0 * 1.0 * 100 * 100) = 20000 > 100
+        let (rate_val, _combined) = calculate_allocation_rebate(&mut remain, 100, dec!(2), Decimal::ZERO, 1.0);
+        assert_eq!(rate_val, dec!(100)); // capped at remain.rate
+        assert_eq!(remain.rate, dec!(0));
+    }
+
+    #[test]
+    fn allocation_rebate_partial_rate_taken() {
+        // remain.rate=1000, schema computes to 500 → takes 500, leaves 500
+        let mut remain = BaseRebate { rate: dec!(1000), pip: dec!(0), commission: dec!(0), price: 0.0 };
+        // schema_rate=0.05, ser=1.0, volume=100 → rate = trunc(0.05 * 1.0 * 100 * 100) = 500
+        let (rate_val, _) = calculate_allocation_rebate(&mut remain, 100, dec!(0.05), Decimal::ZERO, 1.0);
+        assert_eq!(rate_val, dec!(500));
+        assert_eq!(remain.rate, dec!(500));
+    }
+
+    #[test]
+    fn allocation_rebate_pip_taken_by_percentage() {
+        // remain.pip=200, take_percentage=50 → pip_value = trunc(200 * 1.0 * 50 / 100 * 100) = 10000 → capped at 200
+        let mut remain = BaseRebate { rate: dec!(0), pip: dec!(200), commission: dec!(0), price: 0.0 };
+        let (_rate_val, combined) = calculate_allocation_rebate(&mut remain, 0, Decimal::ZERO, dec!(50), 1.0);
+        assert_eq!(combined, dec!(200));
+        assert_eq!(remain.pip, dec!(0));
+    }
+
+    #[test]
+    fn allocation_rebate_negative_percentage_uses_abs() {
+        // take_percentage=-30 should behave same as +30
+        let mut remain_neg = BaseRebate { rate: dec!(0), pip: dec!(100), commission: dec!(0), price: 0.0 };
+        let mut remain_pos = BaseRebate { rate: dec!(0), pip: dec!(100), commission: dec!(0), price: 0.0 };
+        let (_, combined_neg) = calculate_allocation_rebate(&mut remain_neg, 0, Decimal::ZERO, dec!(-30), 1.0);
+        let (_, combined_pos) = calculate_allocation_rebate(&mut remain_pos, 0, Decimal::ZERO, dec!(30), 1.0);
+        assert_eq!(combined_neg, combined_pos);
+    }
+
+    // ── get_schema_item_and_percentage ────────────────────────────────────────
+
+    fn make_agent_with_schema(schema_json: &str) -> AgentAccount {
+        AgentAccount {
+            id: 1,
+            uid: 1,
+            party_id: 1,
+            currency_id: 1,
+            fund_type: 0,
+            level: 1,
+            agent_account_id: None,
+            rebate_agent_rule_schema: Some(schema_json.to_string()),
+            rebate_agent_rule_level_setting: None,
+        }
+    }
+
+    #[test]
+    fn schema_item_found_for_matching_category() {
+        let json = r#"[{"Percentage": 50, "Items": [{"cid": 3, "r": 0.5}]}]"#;
+        let agent = make_agent_with_schema(json);
+        let (item, pct) = get_schema_item_and_percentage(&agent, 3);
+        assert!(item.is_some());
+        let (rate, cid) = item.unwrap();
+        assert_eq!(rate, dec!(0.5));
+        assert_eq!(cid, 3);
+        assert_eq!(pct, dec!(50));
+    }
+
+    #[test]
+    fn schema_item_not_found_for_missing_category() {
+        let json = r#"[{"Percentage": 50, "Items": [{"cid": 3, "r": 0.5}]}]"#;
+        let agent = make_agent_with_schema(json);
+        let (item, pct) = get_schema_item_and_percentage(&agent, 99);
+        assert!(item.is_none());
+        assert_eq!(pct, Decimal::ZERO);
+    }
+
+    #[test]
+    fn schema_item_no_schema_returns_none() {
+        let agent = AgentAccount {
+            id: 1, uid: 1, party_id: 1, currency_id: 1, fund_type: 0,
+            level: 1, agent_account_id: None,
+            rebate_agent_rule_schema: None,
+            rebate_agent_rule_level_setting: None,
+        };
+        let (item, pct) = get_schema_item_and_percentage(&agent, 3);
+        assert!(item.is_none());
+        assert_eq!(pct, Decimal::ZERO);
+    }
+
+    #[test]
+    fn schema_item_invalid_json_returns_none() {
+        let agent = make_agent_with_schema("not valid json {{");
+        let (item, _) = get_schema_item_and_percentage(&agent, 3);
+        assert!(item.is_none());
+    }
+
+    // ── calculate_base_rebate_pure ────────────────────────────────────────────
+    //
+    // Formula (mirrors mono):
+    //   rate       = trunc(schema.rate       * ser * 100 * (volume/100) * 100)
+    //   commission = trunc(schema.commission * ser * 100 * (volume/100) * 100)
+    //   pip        = trunc(schema.pips       * ser * 100 * (volume/100) * pip_formula * 100)
+    //
+    // where ser = source_exchange_rate, volume is in units of 1/100 lot (e.g. 100 = 1 lot).
+
+    fn make_schema(rate: &str, pips: &str, commission: &str) -> DirectSchemaItem {
+        use std::str::FromStr;
+        DirectSchemaItem {
+            rate: Decimal::from_str(rate).unwrap(),
+            pips: Decimal::from_str(pips).unwrap(),
+            commission: Decimal::from_str(commission).unwrap(),
+            symbol_code: "EURUSD".to_string(),
+        }
+    }
+
+    #[test]
+    fn base_rebate_rate_only_usd_account_1lot() {
+        // 1 lot = volume 100, USD account (ser=1.0), rate=0.5, no pips/commission
+        // rate = trunc(0.5 * 1.0 * 100 * 1.0 * 100) = trunc(5000) = 5000
+        let schema = make_schema("0.5", "0", "0");
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 0.0, 0.0);
+        assert_eq!(br.rate, dec!(5000));
+        assert_eq!(br.pip, dec!(0));
+        assert_eq!(br.commission, dec!(0));
+    }
+
+    #[test]
+    fn base_rebate_rate_only_early_exit_skips_pip_calc() {
+        // pips=0, commission=0 → pip_formula ignored even if non-zero
+        let schema = make_schema("1.0", "0", "0");
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 999.0, 1.23);
+        assert_eq!(br.rate, dec!(10000));
+        assert_eq!(br.pip, dec!(0));
+        assert_eq!(br.commission, dec!(0));
+        // price is NOT stored in early-exit path (pip_formula not consulted)
+        assert_eq!(br.price, 0.0);
+    }
+
+    #[test]
+    fn base_rebate_pip_calculation_eurusd() {
+        // EURUSD: pip_formula = 1.0 (1 pip = $1 per standard lot)
+        // 1 lot, ser=1.0, pips=0.3
+        // pip = trunc(0.3 * 1.0 * 100 * 1.0 * 1.0 * 100) = trunc(3000) = 3000
+        use std::str::FromStr;
+        let schema = DirectSchemaItem {
+            rate: Decimal::ZERO,
+            pips: Decimal::from_str("0.3").unwrap(),
+            commission: Decimal::ZERO,
+            symbol_code: "EURUSD".to_string(),
+        };
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 1.0, 1.08);
+        assert_eq!(br.pip, dec!(3000));
+        assert_eq!(br.rate, dec!(0));
+        assert_eq!(br.commission, dec!(0));
+        assert_eq!(br.price, 1.08);
+    }
+
+    #[test]
+    fn base_rebate_commission_calculation() {
+        // commission=0.5, 1 lot, ser=1.0
+        // commission = trunc(0.5 * 1.0 * 100 * 1.0 * 100) = 5000
+        use std::str::FromStr;
+        let schema = DirectSchemaItem {
+            rate: Decimal::ZERO,
+            pips: Decimal::ZERO,
+            commission: Decimal::from_str("0.5").unwrap(),
+            symbol_code: "EURUSD".to_string(),
+        };
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 0.0, 0.0);
+        assert_eq!(br.commission, dec!(5000));
+    }
+
+    #[test]
+    fn base_rebate_usc_currency_halved_by_exchange_rate() {
+        // USC account: ser=0.01 (USC→USD)
+        // rate=0.5, 1 lot → rate = trunc(0.5 * 0.01 * 100 * 1.0 * 100) = trunc(50) = 50
+        let schema = make_schema("0.5", "0", "0");
+        let br = calculate_base_rebate_pure(&schema, 100, 0.01, 0.0, 0.0);
+        assert_eq!(br.rate, dec!(50));
+    }
+
+    #[test]
+    fn base_rebate_fractional_volume_half_lot() {
+        // 0.5 lot = volume 50
+        // rate=1.0, ser=1.0 → rate = trunc(1.0 * 1.0 * 100 * 0.5 * 100) = trunc(5000) = 5000
+        let schema = make_schema("1.0", "0", "0");
+        let br = calculate_base_rebate_pure(&schema, 50, 1.0, 0.0, 0.0);
+        assert_eq!(br.rate, dec!(5000));
+    }
+
+    #[test]
+    fn base_rebate_truncates_not_rounds() {
+        // rate=0.333, 1 lot, ser=1.0
+        // rate = trunc(0.333 * 1.0 * 100 * 1.0 * 100) = trunc(3330) = 3330
+        use std::str::FromStr;
+        let schema = DirectSchemaItem {
+            rate: Decimal::from_str("0.333").unwrap(),
+            pips: Decimal::ZERO,
+            commission: Decimal::ZERO,
+            symbol_code: "EURUSD".to_string(),
+        };
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 0.0, 0.0);
+        assert_eq!(br.rate, dec!(3330));
+    }
+
+    #[test]
+    fn base_rebate_all_fields_combined() {
+        // rate=0.5, pips=0.3, commission=0.2, 1 lot, ser=1.0, pip_formula=1.0
+        use std::str::FromStr;
+        let schema = DirectSchemaItem {
+            rate: Decimal::from_str("0.5").unwrap(),
+            pips: Decimal::from_str("0.3").unwrap(),
+            commission: Decimal::from_str("0.2").unwrap(),
+            symbol_code: "EURUSD".to_string(),
+        };
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 1.0, 1.08);
+        assert_eq!(br.rate, dec!(5000));
+        assert_eq!(br.pip, dec!(3000));
+        assert_eq!(br.commission, dec!(2000));
+        assert_eq!(br.total(), dec!(10000));
+    }
+
+    #[test]
+    fn base_rebate_zero_schema_returns_all_zero() {
+        let schema = make_schema("0", "0", "0");
+        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 1.0, 1.0);
+        assert_eq!(br.rate, dec!(0));
+        assert_eq!(br.pip, dec!(0));
+        assert_eq!(br.commission, dec!(0));
+        assert_eq!(br.total(), dec!(0));
+    }
+
+    // ── currency_id_to_name ───────────────────────────────────────────────────
+
+    #[test]
+    fn currency_id_known_values() {
+        assert_eq!(currency_id_to_name(1), "USD");
+        assert_eq!(currency_id_to_name(2), "USC");
+        assert_eq!(currency_id_to_name(3), "EUR");
+        assert_eq!(currency_id_to_name(10), "HKD");
+        assert_eq!(currency_id_to_name(12), "CNY");
+    }
+
+    #[test]
+    fn currency_id_unknown_falls_back_to_usd() {
+        assert_eq!(currency_id_to_name(0), "USD");
+        assert_eq!(currency_id_to_name(999), "USD");
+    }
+
+    // ── Layer 3: generate_rebates_with_db / send_rebates_with_db (mock DB) ───
+    //
+    // These tests cover the state-machine branches in generate_rebates and the
+    // PendingResend diff logic in send_rebates without touching a real database.
+
+    use std::sync::Mutex;
+    use crate::models::rebate::{TargetAccount, TradeRebateRow, STATUS_HAS_NO_REBATE, STATUS_COMPLETED};
+    use chrono::Utc;
+
+    // ── MockRebateDb ──────────────────────────────────────────────────────────
+
+    /// Canned responses + call recorder for RebateDb.
+    struct MockRebateDb {
+        trade_rebate: Option<TradeRebateRow>,
+        account_active: bool,
+        distribution_type: Option<(i16, Option<i64>)>,
+        existing_rebates: Vec<(i64, Decimal)>,
+        target_account: Option<TargetAccount>,
+        /// Recorded (table, id, status) calls to update_trade_rebate_status
+        status_updates: Mutex<Vec<(String, i64, i32)>>,
+        /// Recorded rebates passed to insert_rebate
+        inserted_rebates: Mutex<Vec<NewRebate>>,
+        /// Auto-incrementing id counter for insert_rebate
+        next_id: Mutex<i64>,
+    }
+
+    impl MockRebateDb {
+        fn new() -> Self {
+            Self {
+                trade_rebate: None,
+                account_active: true,
+                distribution_type: None,
+                existing_rebates: vec![],
+                target_account: None,
+                status_updates: Mutex::new(vec![]),
+                inserted_rebates: Mutex::new(vec![]),
+                next_id: Mutex::new(1),
+            }
+        }
+
+        fn with_trade_rebate(mut self, tr: TradeRebateRow) -> Self {
+            self.trade_rebate = Some(tr);
+            self
+        }
+        fn with_account_active(mut self, active: bool) -> Self {
+            self.account_active = active;
+            self
+        }
+        fn with_distribution_type(mut self, dt: i16, schema_id: Option<i64>) -> Self {
+            self.distribution_type = Some((dt, schema_id));
+            self
+        }
+        fn with_existing_rebates(mut self, existing: Vec<(i64, Decimal)>) -> Self {
+            self.existing_rebates = existing;
+            self
+        }
+        fn with_target_account(mut self, ta: TargetAccount) -> Self {
+            self.target_account = Some(ta);
+            self
+        }
+
+        fn status_updates(&self) -> Vec<(String, i64, i32)> {
+            self.status_updates.lock().unwrap().clone()
+        }
+        fn inserted_rebates(&self) -> Vec<NewRebate> {
+            self.inserted_rebates.lock().unwrap().clone()
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl RebateDb for MockRebateDb {
+        async fn get_trade_rebate(&self, table: &str, _id: i64) -> Result<Option<TradeRebateRow>> {
+            Ok(self.trade_rebate.as_ref().map(|tr| {
+                let mut t = tr.clone();
+                // store the table name in refer_path for assertion convenience
+                t.refer_path = table.to_string();
+                t
+            }))
+        }
+        async fn is_account_active(&self, _account_id: i64) -> Result<bool> {
+            Ok(self.account_active)
+        }
+        async fn get_distribution_type(&self, _account_id: i64) -> Result<Option<(i16, Option<i64>)>> {
+            Ok(self.distribution_type)
+        }
+        async fn get_existing_rebates(&self, _year: i32, _trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
+            Ok(self.existing_rebates.clone())
+        }
+        async fn get_target_account(&self, _account_id: i64) -> Result<Option<TargetAccount>> {
+            Ok(self.target_account.clone())
+        }
+        async fn insert_rebate(&self, _year: i32, rebate: &NewRebate) -> Result<i64> {
+            let id = {
+                let mut n = self.next_id.lock().unwrap();
+                let id = *n;
+                *n += 1;
+                id
+            };
+            self.inserted_rebates.lock().unwrap().push(rebate.clone());
+            Ok(id)
+        }
+        async fn update_trade_rebate_status(&self, table: &str, id: i64, status: i32) -> Result<()> {
+            self.status_updates.lock().unwrap().push((table.to_string(), id, status));
+            Ok(())
+        }
+    }
+
+    fn make_trade_rebate(id: i64, account_id: Option<i64>) -> TradeRebateRow {
+        TradeRebateRow {
+            id,
+            account_id,
+            trade_service_id: 1,
+            ticket: 1000 + id,
+            account_number: 100,
+            currency_id: 1,
+            volume: 100,
+            symbol: "EURUSD".to_string(),
+            refer_path: "".to_string(),
+            closed_on: Utc::now(),
+            opened_on: Utc::now(),
+            status: 0,
+        }
+    }
+
+    fn make_target_account(id: i64) -> TargetAccount {
+        TargetAccount { id, party_id: 99, currency_id: 1, fund_type: 0, service_id: 1 }
+    }
+
+    // ── send_rebates_with_db tests ────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn send_rebates_no_rebates_no_existing_marks_has_no_rebate() {
+        let db = MockRebateDb::new();
+        let tr = make_trade_rebate(1, Some(10));
+        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebate_2025\"", 2025)
+            .await
+            .unwrap();
+
+        let updates = db.status_updates();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].2, STATUS_HAS_NO_REBATE);
+        assert!(db.inserted_rebates().is_empty());
+    }
+
+    #[tokio::test]
+    async fn send_rebates_fresh_inserts_all_rebates_and_marks_completed() {
+        let db = MockRebateDb::new();
+        let tr = make_trade_rebate(2, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 2, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
+            NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 2, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+            .await
+            .unwrap();
+
+        let inserted = db.inserted_rebates();
+        assert_eq!(inserted.len(), 2);
+        assert_eq!(inserted[0].amount, dec!(5000));
+        assert_eq!(inserted[1].amount, dec!(3000));
+
+        let updates = db.status_updates();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].2, STATUS_COMPLETED);
+    }
+
+    #[tokio::test]
+    async fn send_rebates_pending_resend_inserts_diff_for_changed_amount() {
+        // existing: account 101 had amount 5000; new calc gives 7000 → diff = +2000
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(5000))]);
+        let tr = make_trade_rebate(3, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 3, currency_id: 1, fund_type: 0, amount: dec!(7000), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+            .await
+            .unwrap();
+
+        let inserted = db.inserted_rebates();
+        assert_eq!(inserted.len(), 1);
+        assert_eq!(inserted[0].amount, dec!(2000)); // diff only
+        assert_eq!(inserted[0].account_id, 101);
+
+        let updates = db.status_updates();
+        assert_eq!(updates[0].2, STATUS_COMPLETED);
+    }
+
+    #[tokio::test]
+    async fn send_rebates_pending_resend_skips_unchanged_amount() {
+        // existing amount == new amount → no insert, still marks completed
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(5000))]);
+        let tr = make_trade_rebate(4, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 4, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+            .await
+            .unwrap();
+
+        assert!(db.inserted_rebates().is_empty());
+        assert_eq!(db.status_updates()[0].2, STATUS_COMPLETED);
+    }
+
+    #[tokio::test]
+    async fn send_rebates_pending_resend_inserts_compensating_for_removed_account() {
+        // existing: account 101 had 5000; new rebates have no entry for 101 → compensating -5000
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(5000))])
+            .with_target_account(make_target_account(101));
+        let tr = make_trade_rebate(5, Some(10));
+
+        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebate_2025\"", 2025)
+            .await
+            .unwrap();
+
+        let inserted = db.inserted_rebates();
+        assert_eq!(inserted.len(), 1);
+        assert_eq!(inserted[0].amount, dec!(-5000));
+        assert_eq!(inserted[0].account_id, 101);
+        assert_eq!(inserted[0].party_id, 99); // from target_account
+    }
+
+    #[tokio::test]
+    async fn send_rebates_pending_resend_new_account_inserted_in_full() {
+        // existing: account 101; new rebates: account 101 (same) + account 102 (new)
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(5000))]);
+        let tr = make_trade_rebate(6, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 6, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
+            NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 6, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+            .await
+            .unwrap();
+
+        let inserted = db.inserted_rebates();
+        // 101 unchanged → skipped; 102 is new → inserted in full
+        assert_eq!(inserted.len(), 1);
+        assert_eq!(inserted[0].account_id, 102);
+        assert_eq!(inserted[0].amount, dec!(3000));
+    }
+
+    // ── run_generate_guards state-machine tests ───────────────────────────────
+    //
+    // These tests cover all early-exit branches in the guard phase without
+    // needing AppContext or a real database connection.
+
+    #[tokio::test]
+    async fn guards_trade_rebate_not_found_returns_early_exit_silently() {
+        let db = MockRebateDb::new(); // trade_rebate = None
+        let outcome = run_generate_guards(&db, 999, "trd.\"_TradeRebate_2025\"")
+            .await
+            .unwrap();
+        assert!(matches!(outcome, GuardOutcome::EarlyExit));
+        assert!(db.status_updates().is_empty()); // no status written for missing record
+    }
+
+    #[tokio::test]
+    async fn guards_null_account_id_marks_has_no_rebate() {
+        let db = MockRebateDb::new()
+            .with_trade_rebate(make_trade_rebate(10, None)); // account_id = None
+        let outcome = run_generate_guards(&db, 10, "trd.\"_TradeRebate_2025\"")
+            .await
+            .unwrap();
+        assert!(matches!(outcome, GuardOutcome::EarlyExit));
+        let updates = db.status_updates();
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].1, 10);
+        assert_eq!(updates[0].2, STATUS_HAS_NO_REBATE);
+    }
+
+    #[tokio::test]
+    async fn guards_inactive_account_marks_has_no_rebate() {
+        let db = MockRebateDb::new()
+            .with_trade_rebate(make_trade_rebate(11, Some(50)))
+            .with_account_active(false);
+        let outcome = run_generate_guards(&db, 11, "trd.\"_TradeRebate_2025\"")
+            .await
+            .unwrap();
+        assert!(matches!(outcome, GuardOutcome::EarlyExit));
+        assert_eq!(db.status_updates()[0].2, STATUS_HAS_NO_REBATE);
+    }
+
+    #[tokio::test]
+    async fn guards_no_distribution_rule_marks_has_no_rebate() {
+        let db = MockRebateDb::new()
+            .with_trade_rebate(make_trade_rebate(12, Some(50)))
+            .with_account_active(true);
+        // distribution_type = None (no RebateClientRule for this account)
+        let outcome = run_generate_guards(&db, 12, "trd.\"_TradeRebate_2025\"")
+            .await
+            .unwrap();
+        assert!(matches!(outcome, GuardOutcome::EarlyExit));
+        assert_eq!(db.status_updates()[0].2, STATUS_HAS_NO_REBATE);
+    }
+
+    #[tokio::test]
+    async fn guards_active_account_with_rule_returns_proceed() {
+        let db = MockRebateDb::new()
+            .with_trade_rebate(make_trade_rebate(13, Some(50)))
+            .with_account_active(true)
+            .with_distribution_type(1, Some(7)); // DIST_DIRECT=1
+        let outcome = run_generate_guards(&db, 13, "trd.\"_TradeRebate_2025\"")
+            .await
+            .unwrap();
+        match outcome {
+            GuardOutcome::Proceed { trade_rebate, dist_type } => {
+                assert_eq!(trade_rebate.id, 13);
+                assert_eq!(dist_type, 1);
+            }
+            GuardOutcome::EarlyExit => panic!("expected Proceed"),
+        }
+        assert!(db.status_updates().is_empty()); // no early-exit status written
+    }
+
+    #[tokio::test]
+    async fn guards_unknown_dist_type_still_proceeds_dispatch_handles_it() {
+        // The guard phase does NOT reject unknown dist_type — it passes through.
+        // The mode dispatch in generate_rebates_with_db produces vec![] for unknown types,
+        // which then causes send_rebates to mark HAS_NO_REBATE.
+        let db = MockRebateDb::new()
+            .with_trade_rebate(make_trade_rebate(14, Some(50)))
+            .with_account_active(true)
+            .with_distribution_type(99, None);
+        let outcome = run_generate_guards(&db, 14, "trd.\"_TradeRebate_2025\"")
+            .await
+            .unwrap();
+        assert!(matches!(outcome, GuardOutcome::Proceed { dist_type: 99, .. }));
     }
 }

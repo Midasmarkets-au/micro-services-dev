@@ -56,5 +56,8 @@ percent-encoding = "2"
 # Enum serde
 serde_repr = "0.1"
 
+[dev-dependencies]
+rust_decimal_macros = "1"
+
 [build-dependencies]
 tonic-build = { workspace = true }
