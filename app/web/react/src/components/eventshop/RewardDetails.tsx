@@ -5,9 +5,9 @@ import { useTranslations } from 'next-intl';
 import { getRewardRebateList } from '@/actions';
 import { RewardRebateStatus } from '@/types/eventshop';
 import type { RewardRebate } from '@/types/eventshop';
-import { DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
+import {  Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
 import type { TagVariant, DataTableColumn } from '@/components/ui';
-
+import { TimeShow } from '@/components/TimeShow';
 const STATUS_TABS = [
   { key: 'all', value: undefined },
   { key: 'succeed', value: RewardRebateStatus.Succeed },
@@ -119,13 +119,13 @@ export function RewardDetails() {
       key: 'openTime',
       title: t('columns.openTime'),
       skeletonWidth: 'w-28',
-      render: (item) => <DateDisplay value={item.openAt} className="text-sm text-text-secondary" />,
+      render: (item) => <TimeShow dateIsoString={item.openAt} type="customCSS" />,
     },
     {
       key: 'closeTime',
       title: t('columns.closeTime'),
       skeletonWidth: 'w-28',
-      render: (item) => <DateDisplay value={item.closeAt} className="text-sm text-text-secondary" />,
+      render: (item) => <TimeShow dateIsoString={item.closeAt} type="customCSS" />,
     },
     {
       key: 'status',
@@ -151,7 +151,7 @@ export function RewardDetails() {
       key: 'createdOn',
       title: t('columns.createdOn'),
       skeletonWidth: 'w-28',
-      render: (item) => <DateDisplay value={item.createdOn} className="text-sm text-text-secondary" />,
+      render: (item) => <TimeShow dateIsoString={item.createdOn} type="customCSS" />,
     },
   ], [t]);
 

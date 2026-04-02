@@ -115,10 +115,6 @@ export { TransactionInfo, getAmountSign } from './TransactionInfo';
 export type { TransactionInfoProps } from './TransactionInfo';
 export { TransactionIcon } from './TransactionIcon';
 
-// DateDisplay
-export { DateDisplay, formatDateValue } from './DateDisplay';
-export type { DateDisplayProps, DateTimezone, DateFormat } from './DateDisplay';
-
 // EmptyState
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';

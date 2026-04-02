@@ -131,11 +131,7 @@ export function TimeShow({ dateIsoString, format, type, className }: TimeShowPro
   }
 
   if (type === 'eventShop') {
-    return (
-      <div className={className}>
-        <span>{date.format('YYYY-M-D')}</span>
-      </div>
-    );
+    return <span className={className}>{date.format('YYYY-M-D')}</span>;
   }
 
   if (type === 'exactTime') return <span className={className}>{getExactDateAndTime()} GMT</span>;

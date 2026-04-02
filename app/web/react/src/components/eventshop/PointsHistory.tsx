@@ -6,10 +6,10 @@ import { useTranslations } from 'next-intl';
 import { getPointsHistory, getMediaUrl } from '@/actions';
 import { PointTransactionStatus, PointTransactionSource } from '@/types/eventshop';
 import type { PointTransaction } from '@/types/eventshop';
-import { Button, Input, DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
+import { Button, Input, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
 import type { TagVariant, DataTableColumn } from '@/components/ui';
 import { ShopPoints } from './ShopPoints';
-
+import { TimeShow } from '@/components/TimeShow';
 const STATUS_TABS = [
   { key: 'all', value: undefined },
   { key: 'success', value: PointTransactionStatus.Success },
@@ -202,7 +202,7 @@ export function PointsHistoryTab() {
       key: 'time',
       title: t('columns.time'),
       skeletonWidth: 'w-28',
-      render: (item) => <DateDisplay value={item.createdOn} className="text-sm text-text-secondary" />,
+      render: (item) => <TimeShow type="customCSS" dateIsoString={item.createdOn} />,
     },
     {
       key: 'status',
