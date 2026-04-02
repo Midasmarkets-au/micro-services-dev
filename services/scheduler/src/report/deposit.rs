@@ -788,6 +788,7 @@ mod tests {
     use crate::storage::s3::S3Storage;
 
     #[tokio::test]
+    #[ignore = "requires live DB + S3 credentials, run manually with: cargo test -- --ignored"]
     async fn test_wallet_transaction_csv_and_s3_upload() {
         dotenvy::dotenv().ok();
         let config = Config::from_env().expect("config");
