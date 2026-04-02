@@ -497,9 +497,10 @@ async fn generate_direct_rebates(
             fund_type: target.fund_type,
             amount,
             information: serde_json::to_string(&json!({
-                "BaseRebate": { "Rate": base.rate, "Pip": base.pip, "Commission": base.commission, "Price": base.price },
-                "ExchangeRate": target_rate,
-                "Version": "v2_scheduler"
+                "baseRebate": { "commission": base.commission, "pip": base.pip, "rate": base.rate, "price": base.price },
+                "rebateDirectSchemaItem": { "rate": schema_item.rate, "pips": schema_item.pips, "commission": schema_item.commission, "symbolCode": schema_item.symbol_code },
+                "exchangeRate": target_rate,
+                "version": "v2"
             }))?,
         });
     }
@@ -569,6 +570,10 @@ async fn generate_allocation_rebates(
         let is_last = i == agent_accounts.len() - 1;
         let next_agent = agent_accounts.get(i + 1);
 
+        // Track schema item used (cid + raw rate r) for Information JSON
+        let mut schema_cid: i32 = 0;
+        let mut schema_r = Decimal::ZERO;
+
         let (schema_rate_val, combined_val) = if next_agent.is_none() || is_last {
             calculate_last_allocation_rebate(&mut remain)
         } else {
@@ -578,7 +583,9 @@ async fn generate_allocation_rebates(
                 get_schema_item_and_percentage(next, symbol_category_id);
             match schema_item_next {
                 None => continue,
-                Some((rate, _)) => {
+                Some((rate, cid)) => {
+                    schema_cid = cid;
+                    schema_r = rate;
                     calculate_allocation_rebate(&mut remain, trade_rebate.volume, rate, percentage, source_rate)
                 }
             }
@@ -602,6 +609,30 @@ async fn generate_allocation_rebates(
             continue;
         }
 
+        // Build Information JSON matching mono's format exactly
+        let information = if is_last {
+            serde_json::to_string(&json!({
+                "depth": i + 1,
+                "baseRebate": { "commission": base.commission, "pip": base.pip, "rate": base.rate, "price": base.price },
+                "exchangeRate": target_rate,
+                "remainRebate": { "commission": remain.commission, "pip": remain.pip, "rate": remain.rate, "price": base.price },
+                "allocationSchemaItem": { "cid": 0, "r": 0.0_f64 },
+                "allocationRebate": { "total": total },
+                "note": "remaining all rebate",
+                "version": "v2"
+            }))?
+        } else {
+            serde_json::to_string(&json!({
+                "depth": i + 1,
+                "baseRebate": { "commission": base.commission, "pip": base.pip, "rate": base.rate, "price": base.price },
+                "exchangeRate": target_rate,
+                "remainRebate": { "commission": remain.commission, "pip": remain.pip, "rate": remain.rate, "price": base.price },
+                "allocationSchemaItem": { "cid": schema_cid, "r": schema_r },
+                "allocationRebate": { "total": total },
+                "version": "v2"
+            }))?
+        };
+
         results.push(NewRebate {
             party_id: agent.party_id,
             account_id: agent.id,
@@ -609,12 +640,7 @@ async fn generate_allocation_rebates(
             currency_id: agent.currency_id,
             fund_type: agent.fund_type,
             amount,
-            information: serde_json::to_string(&json!({
-                "Depth": i + 1,
-                "BaseRebate": { "Rate": base.rate, "Pip": base.pip, "Commission": base.commission },
-                "ExchangeRate": target_rate,
-                "Version": "v2_scheduler"
-            }))?,
+            information,
         });
 
         if is_last {
@@ -795,11 +821,11 @@ async fn generate_level_percentage_rebates(
                 fund_type: agent.fund_type,
                 amount: rebate_amount,
                 information: serde_json::to_string(&json!({
-                    "Depth": i + 1,
-                    "BaseRebate": { "Rate": base.rate, "Pip": base.pip, "Commission": base.commission },
-                    "ExchangeRate": target_rate_f64,
-                    "RemainRebate": remain_amount.to_f64(),
-                    "Version": "v3_level_percentage_scheduler"
+                    "depth": i + 1,
+                    "baseRebate": { "commission": base.commission, "pip": base.pip, "rate": base.rate, "price": base.price },
+                    "exchangeRate": target_rate_f64,
+                    "remainRebate": remain_amount.to_f64(),
+                    "version": "v3_level_percentage"
                 }))?,
             });
 
@@ -824,11 +850,11 @@ async fn generate_level_percentage_rebates(
                 fund_type: top_agent.fund_type,
                 amount,
                 information: serde_json::to_string(&json!({
-                    "Depth": 1,
-                    "BaseRebate": { "Rate": base.rate, "Pip": base.pip, "Commission": base.commission },
-                    "ExchangeRate": target_rate_f64,
-                    "RemainRebate": remain_amount.to_f64(),
-                    "Version": "v3_level_percentage_mib_scheduler"
+                    "depth": 1,
+                    "baseRebate": { "commission": base.commission, "pip": base.pip, "rate": base.rate, "price": base.price },
+                    "exchangeRate": target_rate_f64,
+                    "remainRebate": remain_amount.to_f64(),
+                    "version": "v3_level_percentage_mib"
                 }))?,
             });
         }
