@@ -403,6 +403,7 @@
     "networkError": "ネットワークエラーです。接続を確認してください",
     "unknownError": "不明なエラーが発生しました",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "自分のアカウントに送金することはできません",
+    "__PENDING_TRANSFER_EXIST__": "保留中の振替があります",
     "CODE_NOT_FOUND": "認証コードが見つからないか、有効期限が切れています",
     "CODE_ALREADY_SENT": "認証コードは既に送信されました。メールをご確認ください"
   },

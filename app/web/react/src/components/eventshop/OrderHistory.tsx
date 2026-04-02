@@ -4,13 +4,13 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { getShopOrderList, getMediaUrl } from '@/actions';
-import { Button, Input, DateDisplay, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
+import { Button, Input, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
 import type { TagVariant, DataTableColumn } from '@/components/ui';
 import { OrderStatus } from '@/types/eventshop';
 import type { ShopOrder } from '@/types/eventshop';
 import { ShopPoints } from './ShopPoints';
 import { OrderDetailModal } from './OrderDetailModal';
-
+import { TimeShow } from '@/components/TimeShow';
 const STATUS_TABS = [
   { key: 'all', value: undefined },
   { key: 'pending', value: OrderStatus.Pending },
@@ -178,7 +178,7 @@ export function OrderHistory() {
       key: 'time',
       title: t('columns.time'),
       skeletonWidth: 'w-28',
-      render: (order) => <DateDisplay value={order.createdOn} className="text-sm text-text-secondary" />,
+      render: (order) =><TimeShow dateIsoString={order.createdOn} type="customCSS" />,
     },
     {
       key: 'status',

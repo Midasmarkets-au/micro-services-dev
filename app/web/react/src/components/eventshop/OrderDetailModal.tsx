@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -8,13 +8,13 @@ import { getOrderDetail, getMediaUrl, confirmDelivery } from '@/actions';
 import { OrderStatus } from '@/types/eventshop';
 import type { ShopOrder } from '@/types/eventshop';
 import { ShopPoints } from './ShopPoints';
+import { TimeShow } from '../TimeShow';
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogTitle,
   Button,
-  formatDateValue,
 } from '@/components/ui';
 
 interface OrderDetailModalProps {
@@ -197,9 +197,9 @@ export function OrderDetailModal({ open, onOpenChange, orderHashId, onRefresh }:
               {/* Order Info */}
               <div className="flex flex-col gap-5">
                 <span className="text-sm font-semibold text-[#333] dark:text-text-primary">{t('orderDetail.orderInfo')}</span>
-                <InfoRow label={t('orderDetail.shippedTime')} value={order.shippedOn ? formatDateValue(order.shippedOn) : '-'} />
-                <InfoRow label={t('orderDetail.exchangeTime')} value={order.updatedOn ? formatDateValue(order.updatedOn) : '-'} />
-                <InfoRow label={t('orderDetail.createdTime')} value={order.createdOn ? formatDateValue(order.createdOn) : '-'} />
+                <InfoRow label={t('orderDetail.shippedTime')} value={order.shippedOn ? <TimeShow dateIsoString={order.shippedOn} /> : '-'} />
+                <InfoRow label={t('orderDetail.exchangeTime')} value={order.updatedOn ? <TimeShow dateIsoString={order.updatedOn} /> : '-'} />
+                <InfoRow label={t('orderDetail.createdTime')} value={order.createdOn ? <TimeShow dateIsoString={order.createdOn} /> : '-'} />
                 <InfoRow label={t('orderDetail.orderNumber')} value={order.hashId} />
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[#666] dark:text-text-secondary w-[117px] shrink-0">{t('orderDetail.trackingNumber')}</span>
@@ -256,7 +256,7 @@ export function OrderDetailModal({ open, onOpenChange, orderHashId, onRefresh }:
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-[#666] dark:text-text-secondary w-[117px] shrink-0">{label}</span>

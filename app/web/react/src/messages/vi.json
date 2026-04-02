@@ -403,6 +403,7 @@
     "networkError": "Lỗi mạng, vui lòng kiểm tra kết nối",
     "unknownError": "Đã xảy ra lỗi không xác định",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Bạn không thể chuyển khoản cho chính mình",
+    "__PENDING_TRANSFER_EXIST__": "Có giao dịch chuyển khoản đang chờ xử lý",
     "CODE_NOT_FOUND": "Không tìm thấy mã xác nhận hoặc đã hết hạn",
     "CODE_ALREADY_SENT": "Mã xác nhận đã được gửi, vui lòng kiểm tra email của bạn"
   },

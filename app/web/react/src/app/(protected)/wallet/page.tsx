@@ -36,12 +36,12 @@ import {
   DataTable,
   BalanceShow,
   CurrencyCodeMap,
-  DateDisplay,
   TransactionInfo,
   Button,
   Pagination,
   getAmountSign,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 
 export default function WalletPage() {
@@ -276,11 +276,10 @@ export default function WalletPage() {
 
           return (
             <div className="flex items-center justify-end gap-3">
-              <DateDisplay
-                value={item.createdOn}
-                format="datetime"
-                className="text-sm text-text-secondary"
-              />
+              <TimeShow
+                  dateIsoString={item.createdOn}
+                  format="h:mm a"
+                />
               {showCancelButton && item.hashId && (
                 <Button
                   variant="outline"

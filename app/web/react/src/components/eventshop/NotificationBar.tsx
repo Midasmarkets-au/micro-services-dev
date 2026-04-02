@@ -7,10 +7,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getShopOrderList } from '@/actions';
 import type { ShopOrder } from '@/types/eventshop';
-import { DateDisplay } from '@/components/ui';
 import { ShopPoints } from './ShopPoints';
 import { OrderDetailModal } from './OrderDetailModal';
-
+import { TimeShow } from '@/components/TimeShow';
 interface NotificationBarProps {
   refreshKey?: number;
 }
@@ -69,7 +68,8 @@ export function NotificationBar({ refreshKey = 0 }: NotificationBarProps) {
           {t('notification.pointsUsed')}:<ShopPoints value={notification.totalPoint} showIcon={false} className="text-inherit! font-normal!" />,
           {t('notification.itemName')}:{notification.eventShopItemName},
           {t('notification.quantity')}:{notification.quantity},
-          {t('notification.date')}:<DateDisplay value={notification.updatedOn} format="date" className="text-inherit" />
+          {t('notification.date')}:  <TimeShow dateIsoString="notification.updatedOn" type="customCSSv2"
+        />
         </p>
       </div>
       <button

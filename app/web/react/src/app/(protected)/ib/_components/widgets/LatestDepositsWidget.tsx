@@ -16,6 +16,7 @@ export function LatestDepositsWidget() {
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const requestIdRef = useRef(0);
+  const pathnameRef = useRef(pathname);
 
   const [deposits, setDeposits] = useState<IBLatestDeposit[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -23,17 +24,25 @@ export function LatestDepositsWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
     if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
     const currentRequestId = ++requestIdRef.current;
+    const isStaleRequest = () =>
+      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
 
     const load = async () => {
       const result = await execute(getIBLatestDeposits, agentAccount.uid, 5);
-      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
+      if (isStaleRequest()) return;
       if (result.success && Array.isArray(result.data)) {
         setDeposits(result.data);
       }
-      setLoadedUid(agentAccount.uid);
+      if (!isStaleRequest()) {
+        setLoadedUid(agentAccount.uid);
+      }
     };
 
     load();

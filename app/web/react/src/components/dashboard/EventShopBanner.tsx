@@ -9,7 +9,6 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { getEventDetail } from '@/actions';
 import { TimeShow } from '@/components/TimeShow';
 import {
-  DateDisplay,
   MiniLoading,
   Icon,
   Dialog,
@@ -150,12 +149,7 @@ export function EventShopBanner() {
               {!!(eventData as Record<string, unknown>).updatedOn && (
                 <div className="flex items-center gap-1 pt-2 text-sm text-text-secondary">
                   <span>{t('eventNotice.postedOn')}:</span>
-                  {/* <DateDisplay
-                    value={
-                      (eventData as Record<string, unknown>).updatedOn as string
-                    }
-                    format="datetime"
-                  /> */}
+               
                   <TimeShow dateIsoString={(eventData as Record<string, unknown>).updatedOn as string} className="text-sm font-semibold text-text-primary" type="eventShop" />
                 </div>
               )}

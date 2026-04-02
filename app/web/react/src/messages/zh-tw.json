@@ -405,6 +405,7 @@
     "networkError": "網路錯誤，請檢查網路連接",
     "unknownError": "發生未知錯誤",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能轉賬給自己",
+    "__PENDING_TRANSFER_EXIST__": "存在待處理的轉賬",
     "CODE_NOT_FOUND": "驗證碼不存在或已失效",
     "CODE_ALREADY_SENT": "驗證碼已發送，請檢查您的郵箱"
   },
