@@ -16,6 +16,7 @@ export function TradingLotsWidget() {
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const requestIdRef = useRef(0);
+  const pathnameRef = useRef(pathname);
 
   const [trades, setTrades] = useState<IBTradeRecord[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -23,20 +24,28 @@ export function TradingLotsWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
     if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
     const currentRequestId = ++requestIdRef.current;
+    const isStaleRequest = () =>
+      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
 
     const load = async () => {
       const result = await execute(getIBTradeReports, agentAccount.uid, {
         page: 1,
         size: 5,
       });
-      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
+      if (isStaleRequest()) return;
       if (result.success && result.data?.data) {
         setTrades(Array.isArray(result.data.data) ? result.data.data : []);
       }
-      setLoadedUid(agentAccount.uid);
+      if (!isStaleRequest()) {
+        setLoadedUid(agentAccount.uid);
+      }
     };
 
     load();

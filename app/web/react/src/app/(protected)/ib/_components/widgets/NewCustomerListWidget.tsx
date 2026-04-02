@@ -16,6 +16,7 @@ export function NewCustomerListWidget() {
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const requestIdRef = useRef(0);
+  const pathnameRef = useRef(pathname);
 
   const [customers, setCustomers] = useState<IBReferralHistory[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -23,9 +24,15 @@ export function NewCustomerListWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
     if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
     const currentRequestId = ++requestIdRef.current;
+    const isStaleRequest = () =>
+      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
 
     const load = async () => {
       try {
@@ -34,14 +41,14 @@ export function NewCustomerListWidget() {
           size: 5,
           IsUnverified: true,
         });
-        if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
+        if (isStaleRequest()) return;
         if (result.success && result.data?.data) {
           setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
         }
       } catch {
         // ignore
       } finally {
-        if (!cancelled && requestIdRef.current === currentRequestId && pathname === '/ib') {
+        if (!isStaleRequest()) {
           setLoadedUid(agentAccount.uid);
         }
       }

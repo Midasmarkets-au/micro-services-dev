@@ -403,6 +403,7 @@
     "networkError": "Kesalahan jaringan, silakan periksa koneksi Anda",
     "unknownError": "Terjadi kesalahan yang tidak diketahui",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Anda tidak dapat mentransfer ke akun sendiri",
+    "__PENDING_TRANSFER_EXIST__": "Ada transfer yang masih menunggu",
     "CODE_NOT_FOUND": "Kode verifikasi tidak ditemukan atau telah kedaluwarsa",
     "CODE_ALREADY_SENT": "Kode verifikasi sudah dikirim, silakan periksa email Anda"
   },

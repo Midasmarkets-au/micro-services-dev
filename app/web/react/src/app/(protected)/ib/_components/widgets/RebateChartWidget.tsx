@@ -65,6 +65,7 @@ export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidg
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const requestIdRef = useRef(0);
+  const pathnameRef = useRef(pathname);
 
   const [period, setPeriod] = useState<Period>('hourly');
   const [data, setData] = useState<IBRebateDailySeries[]>([]);
@@ -74,22 +75,28 @@ export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidg
   const isLoading = !agentAccount || currentKey !== loadKey;
 
   useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
     if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
     const currentRequestId = ++requestIdRef.current;
+    const isStaleRequest = () =>
+      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
 
     const load = async () => {
       try {
         const tz = -(new Date().getTimezoneOffset() / 60);
         const result = await execute(fetchers[period], agentAccount.uid, tz);
-        if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
+        if (isStaleRequest()) return;
         if (result.success && Array.isArray(result.data)) {
           setData(result.data);
         }
       } catch {
         // ignore
       } finally {
-        if (!cancelled && requestIdRef.current === currentRequestId && pathname === '/ib') {
+        if (!isStaleRequest()) {
           setLoadKey(`${agentAccount.uid}-${period}`);
         }
       }
