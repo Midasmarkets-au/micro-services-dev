@@ -30,7 +30,7 @@ import type { IBClientAccount, IBClientCriteria } from '@/types/ib';
 import { useUserStore } from '@/stores';
 import { ViewRebateStatModal } from '../_components/modals/ViewRebateStatModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
-
+import { TimeShow } from '@/components/TimeShow';
 type RoleTab = 'all' | 'ib' | 'client';
 
 function getUserName(item: IBClientAccount): string {
@@ -285,9 +285,10 @@ export default function IBCustomersPage() {
         title: t('fields.createdOn'),
         skeletonWidth: 'w-28',
         render: (item) => (
-          <span className="text-sm">
-            {new Date(item.createdOn).toLocaleString('sv-SE').replace('T', ' ')}
-          </span>
+          <TimeShow
+          dateIsoString={item.createdOn}
+          type="oneLiner"
+        />
         ),
       },
       {

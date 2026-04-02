@@ -15,6 +15,7 @@ import {
   Icon,
   Button,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { IBWithdrawalRecord, IBWithdrawalListResponse } from '@/types/ib';
@@ -209,9 +210,7 @@ export default function IBWithdrawalPage() {
       title: t('withdrawal.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow type="inFields" dateIsoString={item.createdOn} />
       ),
     },
   ], [t, tAccount, isClient]);

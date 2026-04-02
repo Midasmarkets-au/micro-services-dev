@@ -15,13 +15,8 @@ import type { DataTableColumn, TagVariant } from '@/components/ui';
 import { CurrencyCodeMap } from '@/components/ui';
 import type { IBRebateRecord, IBRebateListResponse } from '@/types/ib';
 import { TradeFilter } from '@/components/TradeFilter';
+import { TimeShow } from '@/components/TimeShow';
 
-function formatTime(time: string | null | undefined) {
-  if (!time) return '-';
-  const d = new Date(time);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 
 function getRebateStateVariant(stateId: number): TagVariant {
   if (stateId >= 550) return 'success';
@@ -154,9 +149,7 @@ export default function IBRebatePage() {
       title: t('rebate.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow dateIsoString={item.createdOn} type="exactTime"/>
       ),
     },
     {
@@ -164,9 +157,7 @@ export default function IBRebatePage() {
       title: t('rebate.closeTime'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.trade?.closeAt)}
-        </span>
+        <TimeShow dateIsoString={item.trade?.closeAt} type="exactTime"/>
       ),
     },  
   ], [t]);

@@ -15,6 +15,7 @@ import {
   Icon,
   Button,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { IBDepositRecord, IBDepositListResponse } from '@/types/ib';
@@ -193,9 +194,7 @@ export default function IBDepositPage() {
       title: t('deposit.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow type="inFields" dateIsoString={item.createdOn}/>
       ),
     },
   ], [t, tAccount]);
