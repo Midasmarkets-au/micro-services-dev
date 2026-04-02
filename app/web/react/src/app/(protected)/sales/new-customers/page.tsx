@@ -8,14 +8,9 @@ import { useSalesStore } from '@/stores/salesStore';
 import { Avatar, DataTable, Tabs, Pagination } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { SalesReferralHistory } from '@/types/sales';
-
+import { TimeShow } from '@/components/TimeShow';
 type TabFilter = 'all' | 'deposited' | 'notDeposited';
 
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 
 export default function SalesNewCustomersPage() {
   const t = useTranslations('sales.newCustomers');
@@ -121,9 +116,7 @@ export default function SalesNewCustomersPage() {
       align: 'center',
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="text-sm text-text-secondary">
-          {formatDateTime(item.createdOn)}
-        </span>
+        <TimeShow type="inFields" dateIsoString={item.createdOn} />
       ),
     },
     {

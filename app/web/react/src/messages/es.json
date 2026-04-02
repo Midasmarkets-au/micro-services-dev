@@ -403,6 +403,7 @@
     "networkError": "Error de red, verifique su conexión",
     "unknownError": "Ocurrió un error desconocido",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "No puede transferir a su propia cuenta",
+    "__PENDING_TRANSFER_EXIST__": "Existe una transferencia pendiente",
     "CODE_NOT_FOUND": "Código de verificación no encontrado o ha expirado",
     "CODE_ALREADY_SENT": "El código de verificación ya ha sido enviado, por favor revise su correo electrónico"
   },

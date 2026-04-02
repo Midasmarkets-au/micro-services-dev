@@ -100,14 +100,14 @@ export function ShopBanner({ eventDetail }: ShopBannerProps) {
       {hasDateRange && (
         <p className="absolute left-5 md:left-[70px] top-[161px] z-10 text-sm font-light text-white">
           {t('eventDate')} ：
-          {/* <DateDisplay value={eventDetail.startOn} format="date" /> */}
+          
           <TimeShow dateIsoString={eventDetail.startOn} className="text-sm font-medium text-white" type="eventShop" />
           ——<TimeShow
             dateIsoString={eventDetail.endOn}
             className="text-sm  font-medium text-white"
             type="eventShop"
           />
-          {/* <DateDisplay value={eventDetail.endOn} format="date" /> */}
+          
         </p>
       )}
 

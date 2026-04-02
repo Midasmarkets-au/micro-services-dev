@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getIBDeposits } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
-import { AccountRoleTypes } from '@/types/accounts';
+import { AccountRoleTypes, CurrencyTypes } from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
@@ -15,6 +15,7 @@ import {
   Icon,
   Button,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { IBDepositRecord, IBDepositListResponse } from '@/types/ib';
@@ -193,15 +194,13 @@ export default function IBDepositPage() {
       title: t('deposit.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow type="inFields" dateIsoString={item.createdOn}/>
       ),
     },
   ], [t, tAccount]);
 
   const totalAmount = criteria?.totalAmount ?? 0;
-  const firstCurrencyId = data[0]?.currencyId;
+  const firstCurrencyId = CurrencyTypes.USD;// data[0]?.currencyId;
 
   return (
     <div className="flex min-h-full w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">

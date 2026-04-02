@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesWithdrawals } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { AccountRoleTypes, TransactionAccountType } from '@/types/accounts';
+import { AccountRoleTypes ,CurrencyTypes} from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
@@ -15,6 +15,7 @@ import {
   Icon,
   Button,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { SalesWithdrawalRecord, SalesWithdrawalListResponse } from '@/types/sales';
@@ -204,15 +205,13 @@ export default function SalesWithdrawalPage() {
       title: t('withdrawal.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow dateIsoString={item.createdOn} type="inFields"  />
       ),
     },
   ], [t, tAccount, isClient]);
 
   const totalAmount = criteria?.totalAmount ?? 0;
-  const firstCurrencyId = data[0]?.currencyId;
+  const firstCurrencyId = CurrencyTypes.USD;// data[0]?.currencyId;
 
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">

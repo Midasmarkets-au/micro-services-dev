@@ -45,6 +45,7 @@ export default function IBDashboardPage() {
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const requestIdRef = useRef(0);
+  const pathnameRef = useRef(pathname);
 
   const [todayRebate, setTodayRebate] = useState<IBReportValue[]>([]);
   const [totalRebate, setTotalRebate] = useState<IBReportValue[]>([]);
@@ -56,9 +57,15 @@ export default function IBDashboardPage() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
     if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
     const currentRequestId = ++requestIdRef.current;
+    const isStaleRequest = () =>
+      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
 
     const load = async () => {
       const tz = -(new Date().getTimezoneOffset() / 60);
@@ -71,7 +78,7 @@ export default function IBDashboardPage() {
           execute(getIBTodayAccountCreation, agentAccount.uid),
           execute(getIBDepositTodayValue, agentAccount.uid),
         ]);
-      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
+      if (isStaleRequest()) return;
 
       if (rebateToday.success) setTodayRebate(rebateToday.data || []);
       if (rebateTotal.success) setTotalRebate(rebateTotal.data || []);

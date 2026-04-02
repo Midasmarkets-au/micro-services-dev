@@ -41,6 +41,7 @@ import {
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 import { TradeReportTable } from '@/components/TradeReportTable';
 import { TradeFilter } from '@/components/TradeFilter';
+import { TimeShow } from '@/components/TimeShow';
 import type { TradeFilterType } from '@/components/TradeFilter';
 
 type DetailTab = 'deposit' | 'withdrawal' | 'transfer' | 'tradeReport' | 'commissionReport';
@@ -70,11 +71,6 @@ function getStateTagVariant(stateId: number): TagVariant {
   return 'info';
 }
 
-function formatDateTime(dateStr: string) {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return d.toLocaleString('sv-SE').replace('T', ' ');
-}
 
 function formatGroupKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -360,7 +356,7 @@ export default function IBCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn} format="h:mm a" />,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -406,7 +402,7 @@ export default function IBCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) =><TimeShow dateIsoString={item.createdOn} format="h:mm a" />,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -462,7 +458,7 @@ export default function IBCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn} format="h:mm a" />,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -473,7 +469,7 @@ export default function IBCustomerDetailPage({
     { key: 'rebateRate', title: td('columns.rebateRate'), skeletonWidth: 'w-16', render: (item) => item.rebateRate },
     { key: 'amount', title: td('columns.amount'), skeletonWidth: 'w-20', render: (item) => <BalanceShow balance={item.amount} currencyId={item.currencyId} className="text-sm" /> },
     { key: 'sourceAccount', title: td('columns.sourceAccount'), skeletonWidth: 'w-20', render: (item) => item.sourceAccountNumber },
-    { key: 'time', title: td('columns.time'), skeletonWidth: 'w-28', render: (item) => <span className="text-xs">{formatDateTime(item.createdOn)}</span> },
+    { key: 'time', title: td('columns.time'), skeletonWidth: 'w-28', render: (item) => <TimeShow dateIsoString={item.createdOn} /> },
   ], [td]);
 
   const renderTable = () => {

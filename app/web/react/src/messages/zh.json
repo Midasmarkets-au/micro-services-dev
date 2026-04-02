@@ -691,6 +691,7 @@
     "Request failed": "发生意外错误。请稍后重试或联系客户服务寻求帮助。",
     "__ALREADY_PARTICIPATED__": "您已参与该活动",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能转账给自己",
+    "__PENDING_TRANSFER_EXIST__": "存在待处理的转账",
     "CODE_NOT_FOUND": "验证码不存在或已失效",
     "CODE_ALREADY_SENT": "验证码已发送，请检查您的邮箱",
     "electronicIdentityVerificationRequired": "电子身份验证为必选项，请选择同意后继续。"

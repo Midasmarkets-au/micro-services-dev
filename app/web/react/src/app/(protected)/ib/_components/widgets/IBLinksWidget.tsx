@@ -31,6 +31,7 @@ export function IBLinksWidget() {
   const agentAccount = useIBStore((s) => s.agentAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
   const requestIdRef = useRef(0);
+  const pathnameRef = useRef(pathname);
 
   const [links, setLinks] = useState<IBLink[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
@@ -40,20 +41,28 @@ export function IBLinksWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
     if (!agentAccount || pathname !== '/ib') return;
     let cancelled = false;
     const currentRequestId = ++requestIdRef.current;
+    const isStaleRequest = () =>
+      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
 
     const load = async () => {
       const result = await execute(getIBLinks, agentAccount.uid, { page: 1, size: 20 });
-      if (cancelled || requestIdRef.current !== currentRequestId || pathname !== '/ib') return;
+      if (isStaleRequest()) return;
       if (result.success && result.data?.data) {
         const items = Array.isArray(result.data.data) ? result.data.data : [];
         setLinks(items);
         const defaultLink = items.find((l) => l.isDefault) || items[0];
         if (defaultLink) setSelectedCode(defaultLink.code);
       }
-      setLoadedUid(agentAccount.uid);
+      if (!isStaleRequest()) {
+        setLoadedUid(agentAccount.uid);
+      }
     };
 
     load();

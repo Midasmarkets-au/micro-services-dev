@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesTransactionReports } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { AccountRoleTypes } from '@/types/accounts';
+import { AccountRoleTypes, CurrencyTypes } from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
@@ -212,7 +212,7 @@ export default function SalesTransactionPage() {
   ], [t, tAccount]);
 
   const totalAmount = criteria?.totalAmount ?? 0;
-  const firstCurrencyId = data[0]?.currencyId;
+  const firstCurrencyId = CurrencyTypes.USD;// data[0]?.currencyId;
 
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 rounded bg-surface p-5">

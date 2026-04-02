@@ -44,7 +44,7 @@ import type {
   SalesWithdrawalRecord,
   SalesTransactionRecord,
 } from '@/types/sales';
-
+import { TimeShow } from '@/components/TimeShow';
 type DetailTab = 'transaction' | 'deposit' | 'withdrawal' | 'tradeReport';
 
 // ====================================================================
@@ -74,11 +74,6 @@ function getStateTagVariant(stateId: number): TagVariant {
   if (REJECTED_STATES.has(stateId)) return 'danger';
   if (PENDING_STATES.has(stateId)) return 'warning';
   return 'info';
-}
-
-function formatDateTime(dateStr: string) {
-  if (!dateStr) return '--';
-  return new Date(dateStr).toLocaleString('sv-SE').replace('T', ' ');
 }
 
 function formatGroupKey(dateStr: string) {
@@ -359,7 +354,7 @@ export default function SalesCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn}  format="h:mm a"/>,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -406,7 +401,7 @@ export default function SalesCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) =><TimeShow dateIsoString={item.createdOn}  format="h:mm a"/>,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -460,7 +455,7 @@ export default function SalesCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn}  format="h:mm a"/>,
     },
   ], [td, tState, getCurrencyName]);
 
