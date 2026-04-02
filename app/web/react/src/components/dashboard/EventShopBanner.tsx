@@ -9,7 +9,6 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { getEventDetail } from '@/actions';
 import { TimeShow } from '@/components/TimeShow';
 import {
-  DateDisplay,
   MiniLoading,
   Icon,
   Dialog,

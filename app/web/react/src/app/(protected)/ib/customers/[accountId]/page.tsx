@@ -71,11 +71,6 @@ function getStateTagVariant(stateId: number): TagVariant {
   return 'info';
 }
 
-function formatDateTime(dateStr: string) {
-  if (!dateStr) return '--';
-  const d = new Date(dateStr);
-  return d.toLocaleString('sv-SE').replace('T', ' ');
-}
 
 function formatGroupKey(dateStr: string) {
   const d = new Date(dateStr);

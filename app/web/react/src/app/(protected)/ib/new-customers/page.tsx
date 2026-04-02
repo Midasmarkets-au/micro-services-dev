@@ -8,14 +8,9 @@ import { useIBStore } from '@/stores/ibStore';
 import { Avatar, DataTable, Tabs, Pagination } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { IBReferralHistory } from '@/types/ib';
-
+import { TimeShow } from '@/components/TimeShow';
 type TabFilter = 'all' | 'deposited' | 'notDeposited';
 
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 
 export default function IBNewCustomersPage() {
   const t = useTranslations('ib.newCustomers');
@@ -120,9 +115,7 @@ export default function IBNewCustomersPage() {
       align: 'center',
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="text-sm text-text-secondary">
-          {formatDateTime(item.createdOn)}
-        </span>
+         <TimeShow type="inFields" dateIsoString={item.createdOn} />
       ),
     },
     {

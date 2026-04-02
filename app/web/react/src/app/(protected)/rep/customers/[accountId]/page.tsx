@@ -25,6 +25,7 @@ import {
   getRepWithdrawals,
 } from '@/actions';
 import { useRepStore } from '@/stores/repStore';
+import { TimeShow } from '@/components/TimeShow';
 import {
   AccountRoleTypes,
   DepositState,
@@ -72,10 +73,6 @@ function getStateTagVariant(stateId: number): TagVariant {
   return 'info';
 }
 
-function formatDateTime(dateStr: string) {
-  if (!dateStr) return '--';
-  return new Date(dateStr).toLocaleString('sv-SE').replace('T', ' ');
-}
 
 function formatGroupKey(dateStr: string) {
   const d = new Date(dateStr);
@@ -332,7 +329,7 @@ export default function RepCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow type="inFields" dateIsoString={item.createdOn} />,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -378,7 +375,7 @@ export default function RepCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <span className="text-sm"><TimeShow type="inFields" dateIsoString={item.createdOn} />,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -424,7 +421,7 @@ export default function RepCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow type="inFields" dateIsoString={item.createdOn} />,
     },
   ], [td, tState, getCurrencyName]);
 
