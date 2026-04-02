@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesDeposits } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { AccountRoleTypes, CurrencyTypes,TransactionAccountType } from '@/types/accounts';
+import { AccountRoleTypes, CurrencyTypes } from '@/types/accounts';
 import {
   Avatar,
   BalanceShow,
@@ -13,6 +13,7 @@ import {
   DataTable,
   Tag,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { SalesDepositRecord, SalesDepositListResponse } from '@/types/sales';
@@ -181,9 +182,7 @@ export default function SalesDepositPage() {
       title: t('deposit.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow dateIsoString={item.createdOn} type="inFields"  />
       ),
     },
   ], [t, tAccount]);

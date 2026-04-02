@@ -15,6 +15,7 @@ import {
   Icon,
   Button,
 } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
 import type { DataTableColumn } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
 import type { SalesWithdrawalRecord, SalesWithdrawalListResponse } from '@/types/sales';
@@ -204,9 +205,7 @@ export default function SalesWithdrawalPage() {
       title: t('withdrawal.createdOn'),
       skeletonWidth: 'w-32',
       render: (item) => (
-        <span className="whitespace-nowrap text-sm">
-          {formatTime(item.createdOn)}
-        </span>
+        <TimeShow dateIsoString={item.createdOn} type="inFields"  />
       ),
     },
   ], [t, tAccount, isClient]);

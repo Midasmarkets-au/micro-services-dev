@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesLeads, getSalesLeadDetail, addSalesLeadComment } from '@/actions';
 import { useSalesStore } from '@/stores/salesStore';
-import { Avatar, Button, Input, Pagination } from '@/components/ui';
+import { Avatar, Button, Input, Pagination, DataTable } from '@/components/ui';
+import { TimeShow } from '@/components/TimeShow';
+import type { DataTableColumn } from '@/components/ui';
 import type { SalesLead, SalesLeadDetail } from '@/types/sales';
 
 export default function SalesLeadPage() {
@@ -41,14 +43,14 @@ export default function SalesLeadPage() {
     fetchData(1);
   }, [fetchData]);
 
-  const handleViewDetail = async (leadId: number) => {
+  const handleViewDetail = useCallback(async (leadId: number) => {
     if (!salesAccount) return;
     const result = await execute(getSalesLeadDetail, salesAccount.uid, leadId);
     if (result.success && result.data) {
       setSelectedLead(result.data);
       setShowDetail(true);
     }
-  };
+  }, [salesAccount, execute]);
 
   const handleAddComment = async () => {
     if (!salesAccount || !selectedLead || !comment.trim()) return;
@@ -68,6 +70,76 @@ export default function SalesLeadPage() {
 
   const getLeadName = (lead: SalesLead) =>
     lead.user?.nativeName || lead.user?.displayName || lead.name || '--';
+
+  const columns = useMemo<DataTableColumn<SalesLead>[]>(() => [
+    {
+      key: 'name',
+      title: t('fields.name'),
+      skeletonWidth: 'w-28',
+      skeletonRender: () => (
+        <div className="flex items-center gap-2">
+          <div className="size-8 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+        </div>
+      ),
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <Avatar src={item.user?.avatar} alt={getLeadName(item)} size="xs" />
+          <span className="text-sm text-text-primary">{getLeadName(item)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'email',
+      title: t('fields.email'),
+      skeletonWidth: 'w-36',
+      render: (item) => item.email || '-',
+    },
+    {
+      key: 'phone',
+      title: t('fields.phone'),
+      skeletonWidth: 'w-28',
+      render: (item) => item.phoneNumber || '-',
+    },
+    {
+      key: 'status',
+      title: t('fields.status'),
+      skeletonWidth: 'w-16',
+      render: (item) => item.status ?? '-',
+    },
+    {
+      key: 'assigned',
+      title: t('fields.assigned'),
+      skeletonWidth: 'w-12',
+      render: (item) => item.hasAssignedToSales ? 'Yes' : 'No',
+    },
+    {
+      key: 'createdOn',
+      title: t('fields.createdOn'),
+      skeletonWidth: 'w-28',
+      render: (item) => <TimeShow type="inFields" dateIsoString={item.createdOn} />,
+    },
+    {
+      key: 'createdOn',
+      title: t('fields.updatedOn'),
+      skeletonWidth: 'w-28',
+      render: (item) => <TimeShow type="inFields" dateIsoString={item.updatedOn} />,
+    },
+    {
+      key: 'actions',
+      title: t('fields.actions'),
+      skeletonWidth: 'w-20',
+      render: (item) => (
+        <button
+          type="button"
+          onClick={() => handleViewDetail(item.id)}
+          className="text-sm text-primary hover:underline"
+        >
+          {t('action.viewDetails')}
+        </button>
+      ),
+    },
+  ], [t, handleViewDetail]);
 
   return (
     <div className="flex w-full flex-col gap-5">
@@ -147,60 +219,15 @@ export default function SalesLeadPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-surface">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-xs text-text-secondary">
-                      <th className="px-4 py-3">{t('fields.name')}</th>
-                      <th className="px-4 py-3">{t('fields.email')}</th>
-                      <th className="px-4 py-3">{t('fields.phone')}</th>
-                      <th className="px-4 py-3">{t('fields.status')}</th>
-                      <th className="px-4 py-3">{t('fields.assigned')}</th>
-                      <th className="px-4 py-3">{t('fields.createdOn')}</th>
-                      <th className="px-4 py-3">{t('fields.actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr><td colSpan={7} className="py-12 text-center">
-                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      </td></tr>
-                    ) : data.length === 0 ? (
-                      <tr><td colSpan={7} className="py-12 text-center text-text-secondary">{t('lead.noLeads')}</td></tr>
-                    ) : (
-                      data.map((item, idx) => (
-                        <tr key={item.id ?? idx} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <Avatar src={item.user?.avatar} alt={getLeadName(item)} size="xs" />
-                              <span className="text-sm text-text-primary">{getLeadName(item)}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-text-secondary">{item.email || '-'}</td>
-                          <td className="px-4 py-3 text-text-secondary">{item.phoneNumber || '-'}</td>
-                          <td className="px-4 py-3 text-text-secondary">{item.status ?? '-'}</td>
-                          <td className="px-4 py-3 text-text-secondary">{item.hasAssignedToSales ? 'Yes' : 'No'}</td>
-                          <td className="px-4 py-3 text-xs text-text-secondary">{new Date(item.createdOn).toLocaleDateString()}</td>
-                          <td className="px-4 py-3">
-                            <button
-                              type="button"
-                              onClick={() => handleViewDetail(item.id)}
-                              className="text-sm text-primary hover:underline"
-                            >
-                              {t('action.viewDetails')}
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="px-4 pb-4">
-                <Pagination page={page} total={total} size={size} onPageChange={(p) => { setPage(p); fetchData(p); }} />
-              </div>
-            </div>
+            <>
+              <DataTable<SalesLead>
+                columns={columns}
+                data={data}
+                rowKey={(item, idx) => item.id ?? idx}
+                loading={isLoading}
+              />
+              <Pagination page={page} total={total} size={size} onPageChange={(p) => { setPage(p); fetchData(p); }} />
+            </>
           )}
         </>
       )}

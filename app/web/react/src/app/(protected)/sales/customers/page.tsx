@@ -31,7 +31,7 @@ import { IbLinksModal } from '../_components/modals/IbLinksModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
 import { AddSalesLinkDialog } from '../_components/modals/AddSalesLinkDialog';
 import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
-
+import { TimeShow } from '@/components/TimeShow';
 type RoleTab = 'all' | 'ib' | 'client' | 'sales';
 
 function getUserName(item: SalesClientAccount): string {
@@ -351,9 +351,7 @@ export default function SalesCustomersPage() {
         title: t('fields.createdOn'),
         skeletonWidth: 'w-28',
         render: (item) => (
-          <span className="text-sm">
-            {new Date(item.createdOn).toLocaleString('sv-SE').replace('T', ' ')}
-          </span>
+          <TimeShow dateIsoString={item.createdOn} type="inFields" />
         ),
       },
       {

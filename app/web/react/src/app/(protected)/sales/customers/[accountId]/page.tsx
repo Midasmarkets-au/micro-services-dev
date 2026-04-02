@@ -44,7 +44,7 @@ import type {
   SalesWithdrawalRecord,
   SalesTransactionRecord,
 } from '@/types/sales';
-
+import { TimeShow } from '@/components/TimeShow';
 type DetailTab = 'transaction' | 'deposit' | 'withdrawal' | 'tradeReport';
 
 // ====================================================================
@@ -359,7 +359,7 @@ export default function SalesCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn}  format="h:mm a"/>,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -406,7 +406,7 @@ export default function SalesCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) =><TimeShow dateIsoString={item.createdOn}  format="h:mm a"/>,
     },
   ], [td, tState, getCurrencyName]);
 
@@ -460,7 +460,7 @@ export default function SalesCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm">{formatDateTime(item.createdOn)}</span>,
+      render: (item) => <TimeShow dateIsoString={item.createdOn}  format="h:mm a"/>,
     },
   ], [td, tState, getCurrencyName]);
 
