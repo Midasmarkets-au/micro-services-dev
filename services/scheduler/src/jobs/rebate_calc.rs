@@ -880,30 +880,33 @@ pub(crate) trait RebateDb: Send + Sync {
 }
 
 /// Production implementation — thin wrapper around `crate::db::rebate_calc`.
-pub(crate) struct PgRebateDb<'a>(pub &'a PgPool);
+pub(crate) struct PgRebateDb<'a> {
+    pub pool: &'a PgPool,
+    pub idgen: &'a crate::grpc::idgen_client::IdgenClient,
+}
 
 #[async_trait::async_trait]
 impl RebateDb for PgRebateDb<'_> {
     async fn get_trade_rebate(&self, table: &str, id: i64) -> Result<Option<TradeRebateRow>> {
-        db::get_trade_rebate(self.0, table, id).await
+        db::get_trade_rebate(self.pool, table, id).await
     }
     async fn is_account_active(&self, account_id: i64) -> Result<bool> {
-        db::is_account_active(self.0, account_id).await
+        db::is_account_active(self.pool, account_id).await
     }
     async fn get_distribution_type(&self, account_id: i64) -> Result<Option<(i16, Option<i64>)>> {
-        db::get_distribution_type(self.0, account_id).await
+        db::get_distribution_type(self.pool, account_id).await
     }
     async fn get_existing_rebates(&self, year: i32, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
-        db::get_existing_rebates(self.0, year, trade_rebate_id).await
+        db::get_existing_rebates(self.pool, year, trade_rebate_id).await
     }
     async fn get_target_account(&self, account_id: i64) -> Result<Option<crate::models::rebate::TargetAccount>> {
-        db::get_target_account(self.0, account_id).await
+        db::get_target_account(self.pool, account_id).await
     }
     async fn insert_rebate(&self, year: i32, rebate: &NewRebate) -> Result<i64> {
-        db::insert_rebate(self.0, year, rebate).await
+        db::insert_rebate(self.pool, self.idgen, year, rebate).await
     }
     async fn update_trade_rebate_status(&self, table: &str, id: i64, status: i32) -> Result<()> {
-        db::update_trade_rebate_status(self.0, table, id, status).await
+        db::update_trade_rebate_status(self.pool, table, id, status).await
     }
 }
 
@@ -918,7 +921,7 @@ pub async fn generate_rebates(
     table: &str,
     year: i32,
 ) -> Result<()> {
-    generate_rebates_with_db(ctx, &PgRebateDb(pool), pool, trade_rebate_id, table, year).await
+    generate_rebates_with_db(ctx, &PgRebateDb { pool, idgen: &ctx.idgen }, pool, trade_rebate_id, table, year).await
 }
 
 /// Outcome of the guard phase — either an early exit or the data needed for mode dispatch.

@@ -29,10 +29,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .out_dir(&generated_dir)
         .file_descriptor_set_path(&descriptor_path)
         .compile(
-            &[proto_root.join("api/v1/scheduler.proto")],
+            &[
+                proto_root.join("api/v1/scheduler.proto"),
+                proto_root.join("api/v1/service.proto"),
+            ],
             &[proto_root.clone()],
         )?;
 
     println!("cargo:rerun-if-changed=../../proto/api/v1/scheduler.proto");
+    println!("cargo:rerun-if-changed=../../proto/api/v1/service.proto");
     Ok(())
 }

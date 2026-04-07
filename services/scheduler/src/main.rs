@@ -41,7 +41,10 @@ use generated::api::v1::scheduler_service_server::SchedulerServiceServer;
 
 const FILE_DESCRIPTOR_SET: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/reflection_descriptor.bin"));
-use grpc::{mono_client::MonoCallbackClient, scheduler_server::SchedulerGrpcServer};
+use grpc::{
+    idgen_client::IdgenClient, mono_client::MonoCallbackClient,
+    scheduler_server::SchedulerGrpcServer,
+};
 use jobs::process_request::ProcessReportRequestJob;
 use mail::sender::MailSender;
 use storage::s3::S3Storage;
@@ -58,6 +61,8 @@ pub struct AppContext {
     pub cache: Arc<RedisCache>,
     /// gRPC client for calling mono's MonoCallbackService
     pub mono_callback: Arc<MonoCallbackClient>,
+    /// gRPC client for generating Snowflake IDs from idgen
+    pub idgen: Arc<IdgenClient>,
     /// NATS JetStream context for publishing/consuming trade events
     pub jetstream: Arc<jetstream::Context>,
     // Per-tenant pool cache: tenant_id → PgPool
@@ -77,6 +82,7 @@ impl AppContext {
         let mail = Arc::new(MailSender::new(&config).await?);
         let cache = Arc::new(RedisCache::new(&config).await?);
         let mono_callback = Arc::new(MonoCallbackClient::new(&config.mono_grpc_url));
+        let idgen = Arc::new(IdgenClient::new(&config.idgen_grpc_url));
 
         let nats_client = async_nats::connect(&config.nats_url)
             .await
@@ -94,6 +100,7 @@ impl AppContext {
             mail,
             cache,
             mono_callback,
+            idgen,
             jetstream,
             tenant_pools: Arc::new(RwLock::new(HashMap::new())),
             mt5_pools: Arc::new(RwLock::new(HashMap::new())),
