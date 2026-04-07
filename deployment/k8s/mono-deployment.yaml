@@ -47,15 +47,18 @@ spec:
               port: 9005
             failureThreshold: 30
             periodSeconds: 5
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /api/v1/health
               port: 9005
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /api/v1/health
               port: 9005
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 5
