@@ -375,7 +375,7 @@ export default function RepCustomerDetailPage({
       title: td('columns.time'),
       align: 'right',
       skeletonWidth: 'w-28',
-      render: (item) => <span className="text-sm"><TimeShow type="inFields" dateIsoString={item.createdOn} />,
+      render: (item) => <TimeShow type="inFields" dateIsoString={item.createdOn} />,
     },
   ], [td, tState, getCurrencyName]);
 

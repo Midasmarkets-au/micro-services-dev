@@ -650,7 +650,6 @@ input:-webkit-autofill:active {
   flex-direction: column;
   flex-grow: 1;
   min-height: 0;
-  height: 100%;
   width: 100%;
   gap: 1.25rem;  /* 20px */
 }
