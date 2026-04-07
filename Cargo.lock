@@ -465,6 +465,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-sesv2"
+version = "1.117.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e781e767ea1b8d404c99f5f641284e3afb928e909f04921ffcd8a84d5b969a86"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-observability",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "http 1.4.0",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-sso"
 version = "1.96.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2497,13 +2521,11 @@ version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e13e10e8818f8b2a60f52cb127041d388b89f3a96a62be9ceaffa22262fef7f"
 dependencies = [
- "async-trait",
  "base64 0.22.1",
  "chumsky",
  "email-encoding",
  "email_address",
  "fastrand",
- "futures-io",
  "futures-util",
  "hostname",
  "httpdate",
@@ -2515,7 +2537,6 @@ dependencies = [
  "quoted_printable",
  "socket2 0.6.2",
  "tokio",
- "tokio-native-tls",
  "url",
 ]
 
@@ -3641,6 +3662,7 @@ dependencies = [
  "async-trait",
  "aws-config",
  "aws-sdk-s3",
+ "aws-sdk-sesv2",
  "axum 0.8.8",
  "chrono",
  "csv",

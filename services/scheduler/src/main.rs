@@ -74,7 +74,7 @@ impl AppContext {
         let central_pool = db::pg_pool(&config.central_db_url()).await?;
         let apalis_conn = redis_connect(config.redis_url.clone()).await?;
         let s3 = Arc::new(S3Storage::new(&config).await?);
-        let mail = Arc::new(MailSender::new(&config)?);
+        let mail = Arc::new(MailSender::new(&config).await?);
         let cache = Arc::new(RedisCache::new(&config).await?);
         let mono_callback = Arc::new(MonoCallbackClient::new(&config.mono_grpc_url));
 
