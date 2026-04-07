@@ -139,3 +139,4 @@ __pycache__/
 # Visual Studio cache files
 *.[Cc]ache
 !?*.[Cc]ache/
+app/web/react/next-env.d.ts
