@@ -3,11 +3,7 @@ name: Test Scheduler
 on:
   push:
     branches:
-      - main
       - staging
-      - "test/**"
-      - "feat/**"
-      - "fix/**"
     paths:
       - "services/scheduler/**"
       - "Cargo.toml"
