@@ -222,6 +222,12 @@ async fn main() -> Result<()> {
     let grpc_port = config.grpc_port;
     let ctx = AppContext::new(config).await?;
 
+    // ── Fail-fast: ensure partition tables exist for all tenants before serving ──
+    info!("Startup: ensuring partition tables for all tenants...");
+    jobs::partition_maintenance::execute(ctx.clone()).await
+        .map_err(|e| anyhow::anyhow!("Startup partition check failed: {:#}", e))?;
+    info!("Startup: partition tables OK");
+
     // ── Build apalis storage (for dashboard) and monitor (for worker lifecycle) ──
     let dashboard_storage =
         RedisStorage::<ProcessReportRequestJob>::new(ctx.apalis_conn.clone());
