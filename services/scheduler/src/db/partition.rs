@@ -21,8 +21,10 @@ pub async fn ensure_parent_tables(pool: &PgPool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // Snowflake IDs are globally unique by construction; a regular index suffices.
+    // PG partitioned tables cannot have UNIQUE indexes that exclude the partition key.
     sqlx::query(
-        r#"CREATE UNIQUE INDEX IF NOT EXISTS "UX__MatterK8s_Id"
+        r#"CREATE INDEX IF NOT EXISTS "IX__MatterK8s_Id"
            ON core."_MatterK8s" ("Id")"#,
     )
     .execute(pool)
@@ -75,8 +77,9 @@ pub async fn ensure_parent_tables(pool: &PgPool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // Snowflake IDs are globally unique by construction; a regular index suffices.
     sqlx::query(
-        r#"CREATE UNIQUE INDEX IF NOT EXISTS "UX__TradeRebateK8s_Id"
+        r#"CREATE INDEX IF NOT EXISTS "IX__TradeRebateK8s_Id"
            ON trd."_TradeRebateK8s" ("Id")"#,
     )
     .execute(pool)
@@ -114,8 +117,9 @@ pub async fn ensure_parent_tables(pool: &PgPool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // GENERATED IDENTITY IDs are globally unique; a regular index suffices.
     sqlx::query(
-        r#"CREATE UNIQUE INDEX IF NOT EXISTS "UX__WalletTransactionK8s_Id"
+        r#"CREATE INDEX IF NOT EXISTS "IX__WalletTransactionK8s_Id"
            ON acct."_WalletTransactionK8s" ("Id")"#,
     )
     .execute(pool)
