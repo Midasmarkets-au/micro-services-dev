@@ -136,7 +136,8 @@ pub async fn is_rebate_enabled(pool: &PgPool) -> Result<bool> {
 pub async fn get_min_max_id(pool: &PgPool, table: &str) -> Result<(i64, i64)> {
     let row: Option<(Option<i64>, Option<i64>)> = sqlx::query_as(&format!(
         r#"SELECT MIN("Id"), MAX("Id") FROM {table}
-           WHERE "Status" = 0 OR "Status" = 5"#
+           WHERE ("Status" = 0 OR "Status" = 5)
+             AND "CreatedOn" >= NOW() - INTERVAL '1 year'"#
     ))
     .fetch_optional(pool)
     .await?;
@@ -161,6 +162,7 @@ pub async fn get_pending_ids(
         r#"SELECT "Id" FROM {table}
            WHERE "Id" >= $1 AND "Id" <= $2
              AND ("Status" = 0 OR "Status" = 5)
+             AND "CreatedOn" >= NOW() - INTERVAL '1 year'
            ORDER BY "Id"
            LIMIT $3 OFFSET $4"#
     ))
