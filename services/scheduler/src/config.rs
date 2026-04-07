@@ -36,6 +36,9 @@ pub struct Config {
     // mono gRPC URL (for NotifyReportDone callback)
     pub mono_grpc_url: String,
 
+    // idgen gRPC URL (for Snowflake ID generation)
+    pub idgen_grpc_url: String,
+
     // NATS JetStream URL
     pub nats_url: String,
 
@@ -81,6 +84,7 @@ impl Config {
             ses_from: env_str("SES_FROM", "noreply@example.com"),
 
             mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:50005"),
+            idgen_grpc_url: env_str("IDGEN_GRPC_URL", "http://idgen:50001"),
 
             nats_url: env_str("NATS_URL", "nats://nats:4222"),
 

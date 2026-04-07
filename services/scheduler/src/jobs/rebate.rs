@@ -73,47 +73,59 @@ async fn run_for_tenant(
     pool: &sqlx::PgPool,
     tenant_id: i64,
 ) -> Result<()> {
-    let year = chrono::Utc::now().year();
-    let table = db::trade_rebate_table(year);
-
-    // Ensure _Matter_{year} and _Rebate_{year} tables exist
-    db::ensure_rebate_tables(pool, year).await?;
-
-    let (min_id, max_id) = db::get_min_max_id(pool, &table).await?;
-    if min_id == 0 && max_id == 0 {
-        info!("CalculateRebate: no pending records for tenant {}", tenant_id);
-        return Ok(());
-    }
-
-    let mut page = 1i64;
-    let size = 30i64;
+    let current_year = chrono::Utc::now().year();
     let mut total_processed = 0usize;
 
-    loop {
-        let ids = db::get_pending_ids(pool, &table, min_id, max_id, page, size).await?;
-        let count = ids.len();
+    // Process previous year and current year — mirrors get_pending_rebate_ids behaviour.
+    // Previous-year records can remain pending if they were not fully processed before rollover.
+    for year in [current_year - 1, current_year] {
+        let table = db::trade_rebate_table(year);
 
-        for id in &ids {
-            if let Err(e) = rebate_calc::generate_rebates(ctx, pool, *id, &table, year).await {
-                error!(
-                    "CalculateRebate: failed for trade_rebate_id={} tenant={}: {:#}",
-                    id, tenant_id, e
-                );
-            } else {
-                total_processed += 1;
+        // Ensure _Matter_{year} and _Rebate_{year} tables exist for this year
+        db::ensure_rebate_tables(pool, year).await?;
+
+        let (min_id, max_id) = match db::get_min_max_id(pool, &table).await {
+            Ok(ids) => ids,
+            // Table may not exist for previous year — skip silently
+            Err(_) => continue,
+        };
+        if min_id == 0 && max_id == 0 {
+            continue;
+        }
+
+        let mut page = 1i64;
+        let size = 30i64;
+
+        loop {
+            let ids = db::get_pending_ids(pool, &table, min_id, max_id, page, size).await?;
+            let count = ids.len();
+
+            for id in &ids {
+                if let Err(e) = rebate_calc::generate_rebates(ctx, pool, *id, &table, year).await {
+                    error!(
+                        "CalculateRebate: failed for trade_rebate_id={} year={} tenant={}: {:#}",
+                        id, year, tenant_id, e
+                    );
+                } else {
+                    total_processed += 1;
+                }
             }
-        }
 
-        if count < size as usize {
-            break;
+            if count < size as usize {
+                break;
+            }
+            page += 1;
         }
-        page += 1;
     }
 
-    info!(
-        "CalculateRebate: tenant={} year={} processed={}",
-        tenant_id, year, total_processed
-    );
+    if total_processed > 0 {
+        info!(
+            "CalculateRebate: tenant={} processed={}",
+            tenant_id, total_processed
+        );
+    } else {
+        info!("CalculateRebate: no pending records for tenant {}", tenant_id);
+    }
     Ok(())
 }
 

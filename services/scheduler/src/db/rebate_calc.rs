@@ -1,6 +1,7 @@
 use anyhow::Result;
 use sqlx::{MySqlPool, PgPool};
 
+use crate::grpc::idgen_client::IdgenClient;
 use crate::models::rebate::{
     AgentAccount, DirectRule, DirectSchemaItem, MtPrice, NewRebate, TargetAccount, TradeRebateRow,
     MATTER_TYPE_REBATE, STATE_REBATE_ON_HOLD,
@@ -412,23 +413,31 @@ pub async fn get_mt5_price(mt5_pool: &MySqlPool, symbol_code: &str) -> Result<Op
 // ── Write ─────────────────────────────────────────────────────────────────────
 
 /// Insert a rebate record in a transaction:
-///   1. INSERT INTO core."_Matter_{year}" → get matter_id
-///   2. INSERT INTO trd."_Rebate_{year}" with Id = matter_id
+///   1. Generate a Snowflake ID from idgen (encodes timestamp → year derivable via year_from_snowflake)
+///   2. INSERT INTO core."_Matter_{year}" with the Snowflake ID as the primary key
+///   3. INSERT INTO trd."_Rebate_{year}" with Id = matter_id
 /// Returns the new matter/rebate Id.
-pub async fn insert_rebate(pool: &PgPool, year: i32, rebate: &NewRebate) -> Result<i64> {
-    let m = matter_table(year);
-    let r = rebate_table(year);
+pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, _year: i32, rebate: &NewRebate) -> Result<i64> {
+    let matter_id = idgen.generate_id().await?;
+
+    // Always derive the table year from the Snowflake ID's embedded timestamp,
+    // not from the caller's clock-based `year` parameter. This guarantees the ID
+    // and its target table are always consistent, even across year boundaries.
+    let table_year = crate::utils::year_from_snowflake(matter_id);
+
+    let m = matter_table(table_year);
+    let r = rebate_table(table_year);
 
     let mut tx = pool.begin().await?;
 
-    let (matter_id,): (i64,) = sqlx::query_as(&format!(
-        r#"INSERT INTO {m} ("Type", "StateId", "PostedOn", "StatedOn")
-           VALUES ($1, $2, NOW(), NOW())
-           RETURNING "Id""#
+    sqlx::query(&format!(
+        r#"INSERT INTO {m} ("Id", "Type", "StateId", "PostedOn", "StatedOn")
+           VALUES ($1, $2, $3, NOW(), NOW())"#
     ))
+    .bind(matter_id)
     .bind(MATTER_TYPE_REBATE)
     .bind(STATE_REBATE_ON_HOLD)
-    .fetch_one(&mut *tx)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(&format!(
