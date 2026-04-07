@@ -9,100 +9,11 @@ use crate::models::rebate::{
 
 // ── Table name helpers ────────────────────────────────────────────────────────
 
-pub fn trade_rebate_table(year: i32) -> String {
-    format!(r#"trd."_TradeRebate_{}""#, year)
-}
+/// K8s partitioned table for trade rebate records.
+pub const TRADE_REBATE_TABLE: &str = r#"trd."_TradeRebateK8s""#;
 
 pub fn rebate_table(year: i32) -> String {
     format!(r#"trd."_Rebate_{}""#, year)
-}
-
-pub fn matter_table(year: i32) -> String {
-    format!(r#"core."_Matter_{}""#, year)
-}
-
-// ── DDL ───────────────────────────────────────────────────────────────────────
-
-/// Ensure core."_Matter_{year}" and trd."_Rebate_{year}" exist.
-/// Called on tenant pool init (current + next year) and before each CalculateRebate run.
-pub async fn ensure_rebate_tables(pool: &PgPool, year: i32) -> Result<()> {
-    let m = matter_table(year);
-    let r = rebate_table(year);
-    let ix_state = format!("IX__Matter_{}_StateId", year);
-    let ix_type = format!("IX__Matter_{}_Type", year);
-    let ix_account = format!("IX__Rebate_{}_AccountId", year);
-    let ix_party = format!("IX__Rebate_{}_PartyId", year);
-    let ix_trade_rebate = format!("IX__Rebate_{}_TradeRebateId", year);
-
-    // _Matter_{year}
-    sqlx::query(&format!(
-        r#"CREATE TABLE IF NOT EXISTS {m} (
-            "Id"       BIGSERIAL    PRIMARY KEY,
-            "Pid"      BIGINT,
-            "Type"     INT          NOT NULL,
-            "StateId"  INT          NOT NULL,
-            "PostedOn" TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-            "StatedOn" TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-        )"#
-    ))
-    .execute(pool)
-    .await?;
-
-    sqlx::query(&format!(
-        r#"ALTER SEQUENCE IF EXISTS {m}_"Id_seq" START WITH 10000 RESTART WITH 10000"#
-    ))
-    .execute(pool)
-    .await
-    .ok(); // ignore if sequence already past 10000
-
-    sqlx::query(&format!(
-        r#"CREATE INDEX IF NOT EXISTS "{ix_state}" ON {m} ("StateId")"#
-    ))
-    .execute(pool)
-    .await?;
-
-    sqlx::query(&format!(
-        r#"CREATE INDEX IF NOT EXISTS "{ix_type}" ON {m} ("Type")"#
-    ))
-    .execute(pool)
-    .await?;
-
-    // _Rebate_{year}
-    sqlx::query(&format!(
-        r#"CREATE TABLE IF NOT EXISTS {r} (
-            "Id"            BIGINT       PRIMARY KEY,
-            "PartyId"       BIGINT       NOT NULL,
-            "AccountId"     BIGINT       NOT NULL,
-            "FundType"      INT          NOT NULL DEFAULT 0,
-            "CurrencyId"    INT          NOT NULL DEFAULT -1,
-            "Amount"        NUMERIC(20,8) NOT NULL DEFAULT 0,
-            "TradeRebateId" BIGINT,
-            "HoldUntilOn"   TIMESTAMPTZ,
-            "Information"   TEXT         NOT NULL DEFAULT ''
-        )"#
-    ))
-    .execute(pool)
-    .await?;
-
-    sqlx::query(&format!(
-        r#"CREATE INDEX IF NOT EXISTS "{ix_account}" ON {r} ("AccountId")"#
-    ))
-    .execute(pool)
-    .await?;
-
-    sqlx::query(&format!(
-        r#"CREATE INDEX IF NOT EXISTS "{ix_party}" ON {r} ("PartyId")"#
-    ))
-    .execute(pool)
-    .await?;
-
-    sqlx::query(&format!(
-        r#"CREATE INDEX IF NOT EXISTS "{ix_trade_rebate}" ON {r} ("TradeRebateId")"#
-    ))
-    .execute(pool)
-    .await?;
-
-    Ok(())
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -419,23 +330,18 @@ pub async fn get_mt5_price(mt5_pool: &MySqlPool, symbol_code: &str) -> Result<Op
 ///   2. INSERT INTO core."_Matter_{year}" with the Snowflake ID as the primary key
 ///   3. INSERT INTO trd."_Rebate_{year}" with Id = matter_id
 /// Returns the new matter/rebate Id.
-pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, _year: i32, rebate: &NewRebate) -> Result<i64> {
+pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, year: i32, rebate: &NewRebate) -> Result<i64> {
     let matter_id = idgen.generate_id().await?;
-
-    // Always derive the table year from the Snowflake ID's embedded timestamp,
-    // not from the caller's clock-based `year` parameter. This guarantees the ID
-    // and its target table are always consistent, even across year boundaries.
-    let table_year = crate::utils::year_from_snowflake(matter_id);
-
-    let m = matter_table(table_year);
-    let r = rebate_table(table_year);
+    let r = rebate_table(year);
 
     let mut tx = pool.begin().await?;
 
-    sqlx::query(&format!(
-        r#"INSERT INTO {m} ("Id", "Type", "StateId", "PostedOn", "StatedOn")
+    // Write to the native-partitioned _MatterK8s table; PostgreSQL routes to the
+    // correct year partition based on PostedOn automatically.
+    sqlx::query(
+        r#"INSERT INTO core."_MatterK8s" ("Id", "Type", "StateId", "PostedOn", "StatedOn")
            VALUES ($1, $2, $3, NOW(), NOW())"#
-    ))
+    )
     .bind(matter_id)
     .bind(MATTER_TYPE_REBATE)
     .bind(STATE_REBATE_ON_HOLD)

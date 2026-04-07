@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use anyhow::Result;
+use chrono::Datelike;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use rust_decimal::Decimal;
 use serde_json::json;
@@ -919,9 +920,8 @@ pub async fn generate_rebates(
     pool: &PgPool,
     trade_rebate_id: i64,
     table: &str,
-    year: i32,
 ) -> Result<()> {
-    generate_rebates_with_db(ctx, &PgRebateDb { pool, idgen: &ctx.idgen }, pool, trade_rebate_id, table, year).await
+    generate_rebates_with_db(ctx, &PgRebateDb { pool, idgen: &ctx.idgen }, pool, trade_rebate_id, table).await
 }
 
 /// Outcome of the guard phase — either an early exit or the data needed for mode dispatch.
@@ -979,7 +979,6 @@ pub(crate) async fn generate_rebates_with_db(
     pool: &PgPool,
     trade_rebate_id: i64,
     table: &str,
-    year: i32,
 ) -> Result<()> {
     let (trade_rebate, dist_type) = match run_generate_guards(rdb, trade_rebate_id, table).await? {
         GuardOutcome::EarlyExit => return Ok(()),
@@ -993,7 +992,7 @@ pub(crate) async fn generate_rebates_with_db(
         _ => vec![],
     };
 
-    send_rebates_with_db(rdb, &trade_rebate, rebates, table, year).await
+    send_rebates_with_db(rdb, &trade_rebate, rebates, table).await
 }
 
 /// Testable core of SendRebates — accepts a `RebateDb` trait object.
@@ -1002,9 +1001,9 @@ pub(crate) async fn send_rebates_with_db(
     trade_rebate: &TradeRebateRow,
     rebates: Vec<NewRebate>,
     table: &str,
-    year: i32,
 ) -> Result<()> {
     let trade_rebate_id = trade_rebate.id;
+    let year = trade_rebate.closed_on.year();
 
     let existing = rdb.get_existing_rebates(year, trade_rebate_id).await?;
 
@@ -1645,7 +1644,7 @@ mod tests {
     async fn send_rebates_no_rebates_no_existing_marks_has_no_rebate() {
         let db = MockRebateDb::new();
         let tr = make_trade_rebate(1, Some(10));
-        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebate_2025\"", 2025)
+        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebateK8s\"")
             .await
             .unwrap();
 
@@ -1664,7 +1663,7 @@ mod tests {
             NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 2, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
             .await
             .unwrap();
 
@@ -1688,7 +1687,7 @@ mod tests {
             NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 3, currency_id: 1, fund_type: 0, amount: dec!(7000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
             .await
             .unwrap();
 
@@ -1711,7 +1710,7 @@ mod tests {
             NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 4, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
             .await
             .unwrap();
 
@@ -1727,7 +1726,7 @@ mod tests {
             .with_target_account(make_target_account(101));
         let tr = make_trade_rebate(5, Some(10));
 
-        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebate_2025\"", 2025)
+        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebateK8s\"")
             .await
             .unwrap();
 
@@ -1749,7 +1748,7 @@ mod tests {
             NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 6, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebate_2025\"", 2025)
+        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
             .await
             .unwrap();
 

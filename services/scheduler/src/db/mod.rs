@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod mt4;
 pub mod mt5;
+pub mod partition;
 pub mod rebate;
 pub mod rebate_calc;
 pub mod tenant;
