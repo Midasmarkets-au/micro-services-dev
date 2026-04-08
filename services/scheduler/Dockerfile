@@ -63,8 +63,8 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 WORKDIR /app
 COPY --from=builder /app/target/release/scheduler /app/scheduler
 
-ENV SCHEDULER_PORT=8090
-ENV SCHEDULER_GRPC_PORT=50053
-EXPOSE 8090 50053
+ENV SCHEDULER_PORT=9004
+ENV SCHEDULER_GRPC_PORT=50004
+EXPOSE 9004 50004
 
 ENTRYPOINT ["/app/scheduler"]

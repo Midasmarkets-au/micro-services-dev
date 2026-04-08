@@ -8,9 +8,9 @@ Monorepo backend for a multi-tenant trading/finance platform. Services are split
 
 - `services/mono` — .NET 8 ASP.NET Core gateway (main API, port 5000/9000 in Docker)
 - `services/auth` — Rust (Axum) OAuth2/JWT token endpoint (port 8081)
-- `services/idgen` — Rust gRPC + HTTP Snowflake ID generator (gRPC :50051, HTTP :8080)
-- `services/boardcast` — Rust SSE push + gRPC broadcast service (gRPC :50052, HTTP :8081)
-- `services/scheduler` — Rust background job processor using Apalis (gRPC :50053)
+- `services/idgen` — Rust gRPC + HTTP Snowflake ID generator (gRPC :50001, HTTP :8080)
+- `services/boardcast` — Rust SSE push + gRPC broadcast service (gRPC :50003, HTTP :9003)
+- `services/scheduler` — Rust background job processor using Apalis (HTTP :9004, gRPC :50004)
 - `services/auth_rust` — **Separate** Rust Cargo workspace (not part of root workspace)
 - `app/web/vue` — Vue 3 frontend (client, tenant, and backend-admin portals)
 - `proto/api/v1/` — Shared Protobuf definitions consumed by both .NET and Rust
@@ -120,9 +120,9 @@ docker compose -f deployment/docker-compose.local.yml up -d   # Full stack
 ### Service Communication
 
 ```
-Internet → NGINX Ingress → mono (.NET) ──gRPC──► idgen (Rust, :50051)
-                                        ──gRPC──► boardcast (Rust, :50052)
-                                        ──gRPC──► scheduler (Rust, :50053)
+Internet → NGINX Ingress → mono (.NET) ──gRPC──► idgen (Rust, :50001)
+ ──gRPC──► boardcast (Rust, :50003)
+ ──gRPC──► scheduler (Rust, :50004)
                            scheduler ──gRPC──► mono (MonoCallbackService, for WS notifications)
 ```
 
@@ -164,9 +164,9 @@ Both .NET and Rust services auto-load a `.env` file by walking up the directory 
 | `REDIS_PASSWORD` | mono | Redis auth |
 | `REDIS_CLUSTER_MODE` | mono | Enable cluster mode (disables admin commands) |
 | `JWT_SECRET` | auth | JWT signing key |
-| `IDGEN_GRPC_ADDR` | mono | idgen gRPC URL (default `http://idgen:50051`) |
-| `BOARDCAST_GRPC_ADDR` | mono | boardcast gRPC URL (default `http://boardcast:50052`) |
-| `SCHEDULER_GRPC_URL` | mono | scheduler gRPC URL (default `http://scheduler:50053`) |
+| `IDGEN_GRPC_ADDR` | mono | idgen gRPC URL (default `http://idgen:50001`) |
+| `BOARDCAST_GRPC_ADDR` | mono | boardcast gRPC URL (default `http://boardcast:50003`) |
+| `SCHEDULER_GRPC_URL` | mono | scheduler gRPC URL (default `http://scheduler:50004`) |
 | `CORS_ALLOWED_ORIGINS` | mono | Comma-separated origins (production) |
 | `API_LOG_ENABLE` | mono | Enable `ApiLogMiddleware` (`true`/`false`) |
 | `ASPNETCORE_ENVIRONMENT` | mono | `Development` / `Staging` / `Production` |
