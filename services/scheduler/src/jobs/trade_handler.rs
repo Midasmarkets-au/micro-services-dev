@@ -1,6 +1,4 @@
 use anyhow::Result;
-use chrono::Utc;
-use chrono::Datelike;
 use futures::StreamExt;
 use tracing::{error, info, warn};
 
@@ -72,15 +70,8 @@ async fn process_message(
 
     let pool = ctx.tenant_pool(tenant_id).await?;
 
-    // Determine year from close_at for table routing
-    let year = trade.close_at.unwrap_or_else(Utc::now).year();
-
-    // Ensure the year's table exists (handles year rollover; cached after first call).
-    // Propagates error so NATS retries the message if DDL fails.
-    ctx.ensure_rebate_table(tenant_id, &pool, year).await?;
-
-    // Dedup check against the year-partitioned table
-    if trade_rebate::exists(&pool, trade.ticket, trade.service_id, year).await? {
+    // Dedup check across all partitions of _TradeRebateK8s
+    if trade_rebate::exists(&pool, trade.ticket, trade.service_id).await? {
         msg.ack().await.ok();
         return Ok(());
     }
@@ -95,13 +86,11 @@ async fn process_message(
         rebate.refer_path = refer_path;
     }
 
-    // insert lazily creates the year table if it doesn't exist yet
-    trade_rebate::insert(&pool, &rebate, year).await?;
+    trade_rebate::insert(&pool, &rebate).await?;
     msg.ack().await.ok();
 
     info!(
-        "TradeHandler: saved TradeRebate_{} ticket={} service={} tenant={}",
-        year,
+        "TradeHandler: saved TradeRebateK8s ticket={} service={} tenant={}",
         trade.ticket, trade.service_id, tenant_id
     );
     Ok(())
