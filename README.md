@@ -1,6 +1,6 @@
 # MM-Back
 
-Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth** (.NET 8 auth), **idgen** (Rust gRPC/HTTP ID generator), **auth_rust** (Rust auth), **boardcast** (broadcast), and **app/web/vue** (Vue 3 frontend — client & tenant portals).
+Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth** (Rust OAuth2/JWT), **idgen** (Rust gRPC/HTTP ID generator), **boardcast** (Rust SSE + gRPC broadcast), **scheduler** (Rust background jobs), and **app/web/vue** (Vue 3 frontend — client & tenant portals).
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth
 │   ├── grpc_csharp_plugin_rosetta.sh
 │   └── run-with-local-protoc.sh
 ├── services/
-│   ├── idgen/                  # Rust — ID generator (gRPC :50051 + HTTP :8080)
+│   ├── idgen/                  # Rust — ID generator (gRPC :50001 + HTTP :8080)
 │   │   ├── Cargo.toml
 │   │   ├── build.rs
 │   │   └── src/
@@ -38,9 +38,10 @@ Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth
 │   │   ├── Bacera.Gateway.TradingData/
 │   │   ├── Bacera.Gateway.Web/          # ASP.NET entry point
 │   │   └── proto/                       # Generated C# gRPC stubs
-│   ├── auth/                   # .NET 8 — Auth service (OAuth2 / JWT)
+│   ├── auth/                   # Rust — Auth service (Axum, HTTP :9001)
 │   ├── auth_rust/              # Rust — Auth service (Axum, separate workspace)
-│   └── boardcast/              # Broadcast service (placeholder)
+│   ├── boardcast/              # Rust — SSE push + gRPC broadcast (HTTP :9003, gRPC :50003)
+│   └── scheduler/              # Rust — Background job processor (HTTP :9004, gRPC :50004)
 ├── tests/                      # .NET test projects
 ├── tools/                      # CLI utilities (Poster, Cleaner, Register, etc.)
 ├── deployment/
@@ -99,7 +100,7 @@ dotnet run --project services/auth/Bacera.Gateway.Auth.csproj
 cargo run -p idgen
 ```
 
-Exposes gRPC on `:50051` and HTTP on `:8080`.
+Exposes gRPC on `:50001` and HTTP on `:8080`.
 
 #### auth_rust — Rust Auth Service
 
@@ -110,9 +111,21 @@ cd services/auth_rust
 cargo run
 ```
 
-#### boardcast — Broadcast Service
+#### boardcast — Rust SSE + gRPC Broadcast Service
 
-> Note: `boardcast` is a placeholder service directory (no source yet).
+```bash
+cargo run -p boardcast
+```
+
+Exposes gRPC on `:50003` and HTTP/SSE on `:9003`.
+
+#### scheduler — Rust Background Job Processor
+
+```bash
+cargo run -p scheduler
+```
+
+Exposes HTTP (Apalis dashboard) on `:9004` and gRPC on `:50004`.
 
 ### 4. Run Vue Web App (app/web/vue)
 
@@ -171,8 +184,10 @@ This starts the full stack:
 
 | Container | Image | Port(s) | Description |
 |---|---|---|---|
-| `gateway-web` | `bacera-gateway-web:local` | `9000:80` | .NET 8 gateway (mono) |
-| `idgen` | `bacera-idgen:local` | `50051`, `8080` | Rust gRPC + HTTP ID generator |
+| `gateway-web` | `bacera-gateway-web:local` | `9005`, `50005` | .NET 8 gateway (mono) |
+| `idgen` | `bacera-idgen:local` | `50001`, `8080` | Rust gRPC + HTTP ID generator |
+| `boardcast` | `bacera-boardcast:local` | `50003`, `9003` | Rust SSE push + gRPC broadcast |
+| `scheduler` | `bacera-scheduler:local` | `50004`, `9004` | Rust background job processor |
 | `postgres` | `postgres:15-alpine` | `5432` | Primary PostgreSQL database |
 | `pgbouncer` | `pgbouncer/pgbouncer:latest` | `6432` | Connection pooler (transaction mode) |
 | `redis` | `redis:7-alpine` | `6379` | Cache & session store |
@@ -183,9 +198,15 @@ This starts the full stack:
 
 | Service | Container | Port | Protocol |
 |---|---|---|---|
-| mono (gateway-web) | `gateway-web` | 9000 | HTTP |
-| idgen | `idgen` | 50051 | gRPC |
+| mono (gateway-web) | `gateway-web` | 9005 | HTTP |
+| mono (gRPC callback) | `gateway-web` | 50005 | gRPC |
+| idgen | `idgen` | 50001 | gRPC |
 | idgen | `idgen` | 8080 | HTTP |
+| boardcast | `boardcast` | 50003 | gRPC |
+| boardcast | `boardcast` | 9003 | HTTP/SSE |
+| scheduler | `scheduler` | 50004 | gRPC |
+| scheduler | `scheduler` | 9004 | HTTP |
+| auth | `auth` | 9001 | HTTP |
 | PostgreSQL | `postgres` | 5432 | TCP |
 | PgBouncer | `pgbouncer` | 6432 | TCP |
 | Redis | `redis` | 6379 | TCP |
