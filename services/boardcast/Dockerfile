@@ -58,8 +58,8 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 WORKDIR /app
 COPY --from=builder /app/target/release/boardcast /app/boardcast
 
-ENV GRPC_ADDR=[::]:50052
-ENV HTTP_ADDR=[::]:8081
-EXPOSE 50052 8081
+ENV GRPC_ADDR=[::]:50003
+ENV HTTP_ADDR=[::]:9003
+EXPOSE 50003 9003
 
 ENTRYPOINT ["/app/boardcast"]
