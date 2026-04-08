@@ -135,7 +135,9 @@ async fn poll_once(ctx: &AppContext, service_id: i32, tenant_pool: &sqlx::PgPool
         ctx.jetstream
             .publish(SUBJECT_TRADE, payload.into())
             .await
-            .map_err(|e| anyhow::anyhow!("NATS publish error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("NATS publish error: {}", e))?
+            .await
+            .map_err(|e| anyhow::anyhow!("NATS publish ack error: {}", e))?;
 
         ctx.cache.hset(DEDUP_HASH_KEY, &field, "1").await?;
 

@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Result};
-use chrono::{Datelike, Utc};
+use chrono::Utc;
 use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 
-use crate::db::rebate_calc::rebate_table;
+use crate::db::rebate_calc::REBATE_TABLE;
 
 // ── State constants ───────────────────────────────────────────────────────────
 
@@ -47,48 +47,33 @@ struct AccountRow {
 
 // ── Pending rebate query ──────────────────────────────────────────────────────
 
-/// Return (year, rebate_id) pairs for rebates pending release (StateId IN 510, 520).
-/// Queries current year and previous year to handle year-boundary holdovers.
-pub async fn get_pending_rebate_ids(pool: &PgPool) -> Result<Vec<(i32, i64)>> {
-    let current_year = Utc::now().year();
-    let mut results = Vec::new();
+/// Return rebate IDs pending release (StateId IN 510, 520) from trd.rebate_k8s.
+/// PG partition pruning handles the date range automatically.
+pub async fn get_pending_rebate_ids(pool: &PgPool) -> Result<Vec<i64>> {
+    let rows: Vec<(i64,)> = sqlx::query_as(&format!(
+        r#"SELECT r."Id"
+           FROM {REBATE_TABLE} r
+           INNER JOIN core."_MatterK8s" m ON r."Id" = m."Id"
+           WHERE m."StateId" IN ($1, $2)
+           ORDER BY r."Id""#
+    ))
+    .bind(STATE_REBATE_ON_HOLD)
+    .bind(STATE_REBATE_RELEASED)
+    .fetch_all(pool)
+    .await?;
 
-    for year in [current_year - 1, current_year] {
-        let r = rebate_table(year);
-        let sql = format!(
-            r#"SELECT r."Id"
-               FROM {r} r
-               INNER JOIN core."_MatterK8s" m ON r."Id" = m."Id"
-               WHERE m."StateId" IN ($1, $2)
-               ORDER BY r."Id""#
-        );
-        let rows: Vec<(i64,)> = match sqlx::query_as(&sql)
-            .bind(STATE_REBATE_ON_HOLD)
-            .bind(STATE_REBATE_RELEASED)
-            .fetch_all(pool)
-            .await
-        {
-            Ok(r) => r,
-            // Table may not exist for older years — skip silently
-            Err(_) => continue,
-        };
-        results.extend(rows.into_iter().map(|(id,)| (year, id)));
-    }
-
-    Ok(results)
+    Ok(rows.into_iter().map(|(id,)| id).collect())
 }
 
 // ── Inner helpers ─────────────────────────────────────────────────────────────
 
 async fn get_rebate(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    year: i32,
     rebate_id: i64,
 ) -> Result<Option<RebateRow>> {
-    let r = rebate_table(year);
     let row = sqlx::query_as::<_, RebateRow>(&format!(
         r#"SELECT r."AccountId", r."Amount", m."StateId"
-           FROM {r} r
+           FROM {REBATE_TABLE} r
            INNER JOIN core."_MatterK8s" m ON r."Id" = m."Id"
            WHERE r."Id" = $1"#
     ))
@@ -119,7 +104,7 @@ async fn get_account(
     Ok(row)
 }
 
-/// Update matter state in _MatterK8s and append activity to core._Activity.
+/// Update matter state in _MatterK8s and append activity to core.activity_k8s.
 async fn transit_state(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     matter_id: i64,
@@ -130,7 +115,7 @@ async fn transit_state(
     let now = Utc::now();
 
     sqlx::query(
-        r#"INSERT INTO core."_Activity"
+        r#"INSERT INTO core.activity_k8s
            ("MatterId", "PartyId", "PerformedOn", "OnStateId", "ActionId", "ToStateId", "Data")
            VALUES ($1, $2, $3, $4, 0, $5, $6)"#,
     )
@@ -158,13 +143,13 @@ async fn transit_state(
 // ── Main process ──────────────────────────────────────────────────────────────
 
 /// Process a single rebate atomically: validate, update wallet, transit state.
-pub async fn process_rebate(pool: &PgPool, year: i32, rebate_id: i64) -> Result<()> {
+pub async fn process_rebate(pool: &PgPool, rebate_id: i64) -> Result<()> {
     let mut tx = pool.begin().await?;
 
-    // 1. Load rebate from year-partitioned table
-    let rebate = match get_rebate(&mut tx, year, rebate_id).await? {
+    // 1. Load rebate from partitioned table (PG routes via CreatedOn partition key)
+    let rebate = match get_rebate(&mut tx, rebate_id).await? {
         Some(r) => r,
-        None => return Err(anyhow!("Rebate {} (year {}) not found", rebate_id, year)),
+        None => return Err(anyhow!("Rebate {} not found", rebate_id)),
     };
 
     // 2. Load account with pause-tag check
@@ -227,7 +212,7 @@ pub async fn process_rebate(pool: &PgPool, year: i32, rebate_id: i64) -> Result<
 
     // 7. Idempotency check — if WalletTransaction already exists, just complete
     let already_released: (bool,) = sqlx::query_as(
-        r#"SELECT EXISTS(SELECT 1 FROM acct."_WalletTransactionK8s" WHERE "MatterId" = $1)"#,
+        r#"SELECT EXISTS(SELECT 1 FROM acct.wallet_transaction_k8s WHERE "MatterId" = $1)"#,
     )
     .bind(rebate_id)
     .fetch_one(&mut *tx)
@@ -256,7 +241,7 @@ pub async fn process_rebate(pool: &PgPool, year: i32, rebate_id: i64) -> Result<
         .await?;
 
     sqlx::query(
-        r#"INSERT INTO acct."_WalletTransactionK8s"
+        r#"INSERT INTO acct.wallet_transaction_k8s
            ("WalletId", "MatterId", "PrevBalance", "Amount", "CreatedOn", "UpdatedOn")
            VALUES ($1, $2, $3, $4, $5, $5)"#,
     )

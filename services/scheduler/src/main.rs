@@ -134,12 +134,14 @@ impl AppContext {
         for year in [current_year, current_year + 1] {
             db::partition::ensure_year_partition(&pool, "core", "_MatterK8s", year).await
                 .map_err(|e| anyhow::anyhow!("Failed to ensure _MatterK8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
-            db::partition::ensure_year_partition(&pool, "trd", "_TradeRebateK8s", year).await
-                .map_err(|e| anyhow::anyhow!("Failed to ensure _TradeRebateK8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
-            db::partition::ensure_year_partition(&pool, "acct", "_WalletTransactionK8s", year).await
-                .map_err(|e| anyhow::anyhow!("Failed to ensure _WalletTransactionK8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
-            db::partition::ensure_rebate_year_table(&pool, year).await
-                .map_err(|e| anyhow::anyhow!("Failed to ensure _Rebate_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "core", "activity_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure activity_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "acct", "wallet_transaction_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure wallet_transaction_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "trd", "trade_rebate_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure trade_rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "trd", "rebate_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
         }
 
         Ok(pool)

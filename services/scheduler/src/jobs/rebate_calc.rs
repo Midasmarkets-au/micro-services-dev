@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 use anyhow::Result;
-use chrono::Datelike;
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use rust_decimal::Decimal;
 use serde_json::json;
@@ -874,9 +873,9 @@ pub(crate) trait RebateDb: Send + Sync {
     async fn get_trade_rebate(&self, table: &str, id: i64) -> Result<Option<TradeRebateRow>>;
     async fn is_account_active(&self, account_id: i64) -> Result<bool>;
     async fn get_distribution_type(&self, account_id: i64) -> Result<Option<(i16, Option<i64>)>>;
-    async fn get_existing_rebates(&self, year: i32, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>>;
+    async fn get_existing_rebates(&self, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>>;
     async fn get_target_account(&self, account_id: i64) -> Result<Option<crate::models::rebate::TargetAccount>>;
-    async fn insert_rebate(&self, year: i32, rebate: &NewRebate) -> Result<i64>;
+    async fn insert_rebate(&self, rebate: &NewRebate) -> Result<i64>;
     async fn update_trade_rebate_status(&self, table: &str, id: i64, status: i32) -> Result<()>;
 }
 
@@ -897,14 +896,14 @@ impl RebateDb for PgRebateDb<'_> {
     async fn get_distribution_type(&self, account_id: i64) -> Result<Option<(i16, Option<i64>)>> {
         db::get_distribution_type(self.pool, account_id).await
     }
-    async fn get_existing_rebates(&self, year: i32, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
-        db::get_existing_rebates(self.pool, year, trade_rebate_id).await
+    async fn get_existing_rebates(&self, trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
+        db::get_existing_rebates(self.pool, trade_rebate_id).await
     }
     async fn get_target_account(&self, account_id: i64) -> Result<Option<crate::models::rebate::TargetAccount>> {
         db::get_target_account(self.pool, account_id).await
     }
-    async fn insert_rebate(&self, year: i32, rebate: &NewRebate) -> Result<i64> {
-        db::insert_rebate(self.pool, self.idgen, year, rebate).await
+    async fn insert_rebate(&self, rebate: &NewRebate) -> Result<i64> {
+        db::insert_rebate(self.pool, self.idgen, rebate).await
     }
     async fn update_trade_rebate_status(&self, table: &str, id: i64, status: i32) -> Result<()> {
         db::update_trade_rebate_status(self.pool, table, id, status).await
@@ -1003,9 +1002,8 @@ pub(crate) async fn send_rebates_with_db(
     table: &str,
 ) -> Result<()> {
     let trade_rebate_id = trade_rebate.id;
-    let year = trade_rebate.closed_on.year();
 
-    let existing = rdb.get_existing_rebates(year, trade_rebate_id).await?;
+    let existing = rdb.get_existing_rebates(trade_rebate_id).await?;
 
     if rebates.is_empty() && existing.is_empty() {
         rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
@@ -1034,7 +1032,7 @@ pub(crate) async fn send_rebates_with_db(
                         fund_type: target.fund_type,
                         ..compensating
                     };
-                    rdb.insert_rebate(year, &comp).await?;
+                    rdb.insert_rebate(&comp).await?;
                 }
             }
         }
@@ -1051,11 +1049,11 @@ pub(crate) async fn send_rebates_with_db(
         }
 
         for rebate in to_insert {
-            rdb.insert_rebate(year, &rebate).await?;
+            rdb.insert_rebate(&rebate).await?;
         }
     } else {
         for rebate in &rebates {
-            rdb.insert_rebate(year, rebate).await?;
+            rdb.insert_rebate(rebate).await?;
         }
     }
 
@@ -1595,13 +1593,13 @@ mod tests {
         async fn get_distribution_type(&self, _account_id: i64) -> Result<Option<(i16, Option<i64>)>> {
             Ok(self.distribution_type)
         }
-        async fn get_existing_rebates(&self, _year: i32, _trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
+        async fn get_existing_rebates(&self, _trade_rebate_id: i64) -> Result<Vec<(i64, Decimal)>> {
             Ok(self.existing_rebates.clone())
         }
         async fn get_target_account(&self, _account_id: i64) -> Result<Option<TargetAccount>> {
             Ok(self.target_account.clone())
         }
-        async fn insert_rebate(&self, _year: i32, rebate: &NewRebate) -> Result<i64> {
+        async fn insert_rebate(&self, rebate: &NewRebate) -> Result<i64> {
             let id = {
                 let mut n = self.next_id.lock().unwrap();
                 let id = *n;

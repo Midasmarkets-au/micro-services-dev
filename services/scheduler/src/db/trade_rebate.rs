@@ -3,7 +3,7 @@ use sqlx::PgPool;
 
 use crate::models::meta_trade::NewTradeRebate;
 
-const TABLE: &str = r#"trd."_TradeRebateK8s""#;
+const TABLE: &str = "trd.trade_rebate_k8s";
 
 /// Check if a ticket+service already exists across all partitions.
 pub async fn exists(pool: &PgPool, ticket: i64, service_id: i32) -> Result<bool> {

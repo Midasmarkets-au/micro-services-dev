@@ -9,12 +9,12 @@ use crate::models::rebate::{
 
 // ── Table name helpers ────────────────────────────────────────────────────────
 
-/// K8s partitioned table for trade rebate records.
-pub const TRADE_REBATE_TABLE: &str = r#"trd."_TradeRebateK8s""#;
+/// snake_case partitioned table for trade rebate records (scheduler-only).
+pub const TRADE_REBATE_TABLE: &str = "trd.trade_rebate_k8s";
 
-pub fn rebate_table(year: i32) -> String {
-    format!(r#"trd."_Rebate_{}""#, year)
-}
+/// snake_case partitioned table for rebate records (scheduler-only).
+/// Replaces the application-level year tables trd."_Rebate_{year}".
+pub const REBATE_TABLE: &str = "trd.rebate_k8s";
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -294,12 +294,10 @@ pub async fn get_symbol_category_id(pool: &PgPool, symbol_code: &str) -> Result<
 /// Returns (account_id, amount) pairs.
 pub async fn get_existing_rebates(
     pool: &PgPool,
-    year: i32,
     trade_rebate_id: i64,
 ) -> Result<Vec<(i64, rust_decimal::Decimal)>> {
-    let r = rebate_table(year);
     let rows: Vec<(i64, rust_decimal::Decimal)> = sqlx::query_as(&format!(
-        r#"SELECT "AccountId", "Amount" FROM {r} WHERE "TradeRebateId" = $1"#
+        r#"SELECT "AccountId", "Amount" FROM {REBATE_TABLE} WHERE "TradeRebateId" = $1"#
     ))
     .bind(trade_rebate_id)
     .fetch_all(pool)
@@ -326,13 +324,12 @@ pub async fn get_mt5_price(mt5_pool: &MySqlPool, symbol_code: &str) -> Result<Op
 // ── Write ─────────────────────────────────────────────────────────────────────
 
 /// Insert a rebate record in a transaction:
-///   1. Generate a Snowflake ID from idgen (encodes timestamp → year derivable via year_from_snowflake)
-///   2. INSERT INTO core."_Matter_{year}" with the Snowflake ID as the primary key
-///   3. INSERT INTO trd."_Rebate_{year}" with Id = matter_id
+///   1. Generate a Snowflake ID from idgen
+///   2. INSERT INTO core."_MatterK8s" with the Snowflake ID
+///   3. INSERT INTO trd.rebate_k8s with Id = matter_id (PG routes to correct year partition via CreatedOn)
 /// Returns the new matter/rebate Id.
-pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, year: i32, rebate: &NewRebate) -> Result<i64> {
+pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebate) -> Result<i64> {
     let matter_id = idgen.generate_id().await?;
-    let r = rebate_table(year);
 
     let mut tx = pool.begin().await?;
 
@@ -348,12 +345,12 @@ pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, year: i32, rebate
     .execute(&mut *tx)
     .await?;
 
-    sqlx::query(&format!(
-        r#"INSERT INTO {r}
+    sqlx::query(
+        r#"INSERT INTO trd.rebate_k8s
            ("Id", "PartyId", "AccountId", "FundType", "CurrencyId",
-            "Amount", "TradeRebateId", "HoldUntilOn", "Information")
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)"#
-    ))
+            "Amount", "TradeRebateId", "HoldUntilOn", "Information", "CreatedOn")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, NOW())"#
+    )
     .bind(matter_id)
     .bind(rebate.party_id)
     .bind(rebate.account_id)

@@ -42,9 +42,9 @@ async fn process_tenant(ctx: AppContext, tenant_id: i64) -> Result<()> {
 
     info!(tenant_id, count = items.len(), "ReleaseRebate: processing rebates");
 
-    for (year, rebate_id) in items {
-        if let Err(e) = db::rebate::process_rebate(&pool, year, rebate_id).await {
-            error!(tenant_id, rebate_id, year, error = %e, "ReleaseRebate: failed to process rebate");
+    for rebate_id in items {
+        if let Err(e) = db::rebate::process_rebate(&pool, rebate_id).await {
+            error!(tenant_id, rebate_id, error = %e, "ReleaseRebate: failed to process rebate");
         }
     }
 
