@@ -58,8 +58,8 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 WORKDIR /app
 COPY --from=builder /app/target/release/idgen /app/idgen
 
-ENV GRPC_ADDR=[::1]:50051
+ENV GRPC_ADDR=[::]:50001
 ENV HTTP_ADDR=[::]:8080
-EXPOSE 50051 8080
+EXPOSE 50001 8080
 
 ENTRYPOINT ["/app/idgen"]

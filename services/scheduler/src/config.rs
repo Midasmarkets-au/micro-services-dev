@@ -27,15 +27,17 @@ pub struct Config {
     pub s3_access_key: String,
     pub s3_secret_key: String,
 
-    // Email (SMTP)
-    pub smtp_host: String,
-    pub smtp_port: u16,
-    pub smtp_user: String,
-    pub smtp_password: String,
-    pub smtp_from: String,
+    // Email (AWS SES)
+    pub ses_region: String,
+    pub ses_access_key: String,
+    pub ses_secret_key: String,
+    pub ses_from: String,
 
     // mono gRPC URL (for NotifyReportDone callback)
     pub mono_grpc_url: String,
+
+    // idgen gRPC URL (for Snowflake ID generation)
+    pub idgen_grpc_url: String,
 
     // NATS JetStream URL
     pub nats_url: String,
@@ -76,13 +78,13 @@ impl Config {
             s3_access_key: env_str("AWS_S3_ACCESS_KEY", ""),
             s3_secret_key: env_str("AWS_S3_ACCESS_SECRET", ""),
 
-            smtp_host: env_str("SMTP_HOST", "localhost"),
-            smtp_port: env_u16("SMTP_PORT", 587),
-            smtp_user: env_str("SMTP_USER", ""),
-            smtp_password: env_str("SMTP_PASSWORD", ""),
-            smtp_from: env_str("SMTP_FROM", "noreply@example.com"),
+            ses_region: env_str("AWS_SES_REGION", "ap-southeast-1"),
+            ses_access_key: env_str("AWS_SES_ACCESS_KEY", ""),
+            ses_secret_key: env_str("AWS_SES_SECRET_KEY", ""),
+            ses_from: env_str("SES_FROM", "noreply@example.com"),
 
             mono_grpc_url: env_str("MONO_GRPC_URL", "http://mono:50005"),
+            idgen_grpc_url: env_str("IDGEN_GRPC_URL", "http://idgen:50001"),
 
             nats_url: env_str("NATS_URL", "nats://nats:4222"),
 

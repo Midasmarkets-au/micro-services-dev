@@ -3,8 +3,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::Datelike;
-
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
 use anyhow::Result;
@@ -41,7 +39,10 @@ use generated::api::v1::scheduler_service_server::SchedulerServiceServer;
 
 const FILE_DESCRIPTOR_SET: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/reflection_descriptor.bin"));
-use grpc::{mono_client::MonoCallbackClient, scheduler_server::SchedulerGrpcServer};
+use grpc::{
+    idgen_client::IdgenClient, mono_client::MonoCallbackClient,
+    scheduler_server::SchedulerGrpcServer,
+};
 use jobs::process_request::ProcessReportRequestJob;
 use mail::sender::MailSender;
 use storage::s3::S3Storage;
@@ -58,14 +59,14 @@ pub struct AppContext {
     pub cache: Arc<RedisCache>,
     /// gRPC client for calling mono's MonoCallbackService
     pub mono_callback: Arc<MonoCallbackClient>,
+    /// gRPC client for generating Snowflake IDs from idgen
+    pub idgen: Arc<IdgenClient>,
     /// NATS JetStream context for publishing/consuming trade events
     pub jetstream: Arc<jetstream::Context>,
     // Per-tenant pool cache: tenant_id → PgPool
     tenant_pools: Arc<RwLock<HashMap<i64, PgPool>>>,
     // Per-MT5-service MySQL pool cache: service_id → MySqlPool
     mt5_pools: Arc<RwLock<HashMap<i32, MySqlPool>>>,
-    // Tracks which (tenant_id, year) rebate tables have already been ensured this process lifetime
-    ensured_rebate_tables: Arc<RwLock<std::collections::HashSet<(i64, i32)>>>,
 }
 
 impl AppContext {
@@ -74,9 +75,10 @@ impl AppContext {
         let central_pool = db::pg_pool(&config.central_db_url()).await?;
         let apalis_conn = redis_connect(config.redis_url.clone()).await?;
         let s3 = Arc::new(S3Storage::new(&config).await?);
-        let mail = Arc::new(MailSender::new(&config)?);
+        let mail = Arc::new(MailSender::new(&config).await?);
         let cache = Arc::new(RedisCache::new(&config).await?);
         let mono_callback = Arc::new(MonoCallbackClient::new(&config.mono_grpc_url));
+        let idgen = Arc::new(IdgenClient::new(&config.idgen_grpc_url));
 
         let nats_client = async_nats::connect(&config.nats_url)
             .await
@@ -94,10 +96,10 @@ impl AppContext {
             mail,
             cache,
             mono_callback,
+            idgen,
             jetstream,
             tenant_pools: Arc::new(RwLock::new(HashMap::new())),
             mt5_pools: Arc::new(RwLock::new(HashMap::new())),
-            ensured_rebate_tables: Arc::new(RwLock::new(std::collections::HashSet::new())),
         })
     }
 
@@ -122,34 +124,27 @@ impl AppContext {
             pools.insert(tenant_id, pool.clone());
         }
 
-        // Ensure current year and next year's tables exist on first connection.
-        let current_year = chrono::Utc::now().year();
-        self.ensure_rebate_table(tenant_id, &pool, current_year).await?;
-        self.ensure_rebate_table(tenant_id, &pool, current_year + 1).await?;
-        // Also ensure _Matter_{year} and _Rebate_{year} partitioned tables.
-        db::rebate_calc::ensure_rebate_tables(&pool, current_year).await
-            .map_err(|e| anyhow::anyhow!("Failed to ensure rebate tables for year {} tenant {}: {:#}", current_year, tenant_id, e))?;
-        db::rebate_calc::ensure_rebate_tables(&pool, current_year + 1).await
-            .map_err(|e| anyhow::anyhow!("Failed to ensure rebate tables for year {} tenant {}: {:#}", current_year + 1, tenant_id, e))?;
+        // Ensure PG native partition parent tables and pre-create current + next year sub-partitions.
+        db::partition::ensure_parent_tables(&pool).await
+            .map_err(|e| anyhow::anyhow!("Failed to ensure partition parent tables for tenant {}: {:#}", tenant_id, e))?;
+        let current_year = {
+            use chrono::Datelike;
+            chrono::Utc::now().year()
+        };
+        for year in [current_year, current_year + 1] {
+            db::partition::ensure_year_partition(&pool, "core", "_MatterK8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure _MatterK8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "core", "activity_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure activity_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "acct", "wallet_transaction_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure wallet_transaction_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "trd", "trade_rebate_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure trade_rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "trd", "rebate_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+        }
 
         Ok(pool)
-    }
-
-    /// Ensure trd._TradeRebate_{year} exists for the given tenant.
-    /// Uses an in-memory set to avoid redundant DDL calls within the same process lifetime.
-    /// Returns Err if table creation fails — callers should propagate the error so NATS retries.
-    pub async fn ensure_rebate_table(&self, tenant_id: i64, pool: &PgPool, year: i32) -> Result<()> {
-        {
-            let seen = self.ensured_rebate_tables.read().await;
-            if seen.contains(&(tenant_id, year)) {
-                return Ok(());
-            }
-        }
-        db::trade_rebate::ensure_table(pool, year).await
-            .map_err(|e| anyhow::anyhow!("Failed to ensure trd._TradeRebate_{} for tenant {}: {:#}", year, tenant_id, e))?;
-        let mut seen = self.ensured_rebate_tables.write().await;
-        seen.insert((tenant_id, year));
-        Ok(())
     }
 
     /// Get or create a MySQL connection pool for an MT5 service.
@@ -228,6 +223,12 @@ async fn main() -> Result<()> {
     let http_port = config.port;
     let grpc_port = config.grpc_port;
     let ctx = AppContext::new(config).await?;
+
+    // ── Fail-fast: ensure partition tables exist for all tenants before serving ──
+    info!("Startup: ensuring partition tables for all tenants...");
+    jobs::partition_maintenance::execute(ctx.clone()).await
+        .map_err(|e| anyhow::anyhow!("Startup partition check failed: {:#}", e))?;
+    info!("Startup: partition tables OK");
 
     // ── Build apalis storage (for dashboard) and monitor (for worker lifecycle) ──
     let dashboard_storage =
@@ -380,6 +381,16 @@ async fn run_cron_scheduler(ctx: AppContext) {
             tokio::spawn(async move {
                 if let Err(e) = jobs::crypto::execute(ctx).await {
                     error!("Scheduled CryptoMonitorJob error: {:#}", e);
+                }
+            });
+        }
+
+        // Partition Maintenance: day 1 of month at 02:00 UTC
+        if now.day() == 1 && hour == 2 && minute == 0 {
+            let ctx = ctx.clone();
+            tokio::spawn(async move {
+                if let Err(e) = jobs::partition_maintenance::execute(ctx).await {
+                    error!("Scheduled PartitionMaintenanceJob error: {:#}", e);
                 }
             });
         }

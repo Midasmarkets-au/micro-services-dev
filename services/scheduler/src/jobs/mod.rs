@@ -1,6 +1,7 @@
 pub mod account_daily;
 pub mod close_trade;
 pub mod crypto;
+pub mod partition_maintenance;
 pub mod process_request;
 pub mod rebate;
 pub mod release_rebate;

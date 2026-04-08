@@ -2,6 +2,7 @@ using Bacera.Gateway.Auth;
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Services.Permission;
 using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
@@ -193,7 +194,7 @@ public class TenantIpBlacklistGrpcService(
         if (await centralDb.IpBlackLists.AnyAsync(x => x.Ip == request.Ip))
             throw new RpcException(new Status(StatusCode.AlreadyExists, "__IP_ALREADY_EXISTS__"));
 
-        var spec = new IpBlackList.CreateSpec { Ip = request.Ip, Note = request.Reason };
+        var spec = new IpBlackList.CreateSpec { Ip = request.Ip, Note = request.Note };
         var entity = spec.ToEntity(await GetOperatorNameAsync(context));
         centralDb.IpBlackLists.Add(entity);
         await centralDb.SaveChangesAsync();
@@ -211,7 +212,12 @@ public class TenantIpBlacklistGrpcService(
         var entity = await centralDb.IpBlackLists.FindAsync(request.Id)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
         await myCache.HSetDeleteByKeyFieldAsync(_ipKey, entity.Ip);
-        var spec = new IpBlackList.UpdateSpec { Ip = request.Spec?.Ip ?? entity.Ip, Note = request.Spec?.Reason ?? entity.Note };
+        var spec = new IpBlackList.UpdateSpec
+        {
+            Ip      = request.Spec?.Ip ?? entity.Ip,
+            Note    = !string.IsNullOrEmpty(request.Spec?.Note) ? request.Spec.Note : entity.Note,
+            Enabled = request.HasEnabled ? request.Enabled : entity.Enabled,
+        };
         spec.ApplyTo(entity, await GetOperatorNameAsync(context));
         await centralDb.SaveChangesAsync();
         await myCache.HSetStringAsync(_ipKey, entity.Ip, "1");
@@ -243,23 +249,24 @@ public class TenantIpBlacklistGrpcService(
 
     private static IpBlacklistItem MapToProto(IpBlackList.TenantPageModel m) => new()
     {
-        Id        = m.Id,
-        Ip        = m.Ip,
-        Reason    = m.Note,
-        Status    = m.Enabled ? 1 : 0,
-        CreatedAt = m.CreatedOn.ToString("O"),
+        Id           = m.Id,
+        Ip           = m.Ip,
+        Note         = m.Note,
+        Enabled      = m.Enabled,
+        CreatedOn    = m.CreatedOn.ToString("O"),
+        OperatorName = m.OperatorName ?? "",
     };
 
     private async Task<string> GetOperatorNameAsync(ServerCallContext ctx)
     {
-        var httpCtx = ctx.GetHttpContext();
-        var tenantId = httpCtx.Items.TryGetValue("TenantId", out var t) && t is long tid ? tid : 0L;
-        var partyId  = httpCtx.Items.TryGetValue("PartyId",  out var p) && p is long pid ? pid : 0L;
-        var user = await authDb.Users
+        var user = ctx.GetHttpContext().User;
+        var tenantId = user.GetTenantId();
+        var partyId  = user.GetPartyId();
+        var u = await authDb.Users
             .Where(x => x.TenantId == tenantId && x.PartyId == partyId)
             .ToUserNameModel()
             .SingleAsync();
-        return user.GuessNativeName();
+        return u.GuessNativeName();
     }
 
     private static PaginationMeta BuildMeta(int page, int size, int total) => new()
@@ -407,14 +414,14 @@ public class TenantUserBlacklistGrpcService(
 
     private async Task<string> GetOperatorNameAsync(ServerCallContext ctx)
     {
-        var httpCtx = ctx.GetHttpContext();
-        var tenantId = httpCtx.Items.TryGetValue("TenantId", out var t) && t is long tid ? tid : 0L;
-        var partyId  = httpCtx.Items.TryGetValue("PartyId",  out var p) && p is long pid ? pid : 0L;
-        var user = await authDb.Users
+        var user = ctx.GetHttpContext().User;
+        var tenantId = user.GetTenantId();
+        var partyId  = user.GetPartyId();
+        var u = await authDb.Users
             .Where(x => x.TenantId == tenantId && x.PartyId == partyId)
             .ToUserNameModel()
             .SingleAsync();
-        return user.GuessNativeName();
+        return u.GuessNativeName();
     }
 
     private static PaginationMeta BuildMeta(int page, int size, int total) => new()

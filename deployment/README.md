@@ -10,7 +10,7 @@ Internet ──► Ingress ──►│  mono (.NET)  ──gRPC──► idgen 
              (NGINX)    │      │                                   │
                         │      └──gRPC──► boardcast (Rust)        │
                         │                    │                     │
-             /event ───►│              boardcast:8081              │
+             /event ───►│              boardcast:9003              │
              (SSE)      │                                          │
                         │  Redis   PostgreSQL   MySQL              │
                         └─────────────────────────────────────────┘
@@ -18,9 +18,9 @@ Internet ──► Ingress ──►│  mono (.NET)  ──gRPC──► idgen 
 
 | Service | Container | Image | Port(s) | Description |
 |---|---|---|---|---|
-| Gateway Web | `bacera-gateway-web` | `bacera-gateway-web:local` | `9000:80` | .NET 8 gateway monolith |
-| ID Generator | `bacera-idgen` | `bacera-idgen:local` | `50051` (gRPC), `8080` (HTTP) | Rust Snowflake ID generator |
-| Boardcast | `bacera-boardcast` | `bacera-boardcast:local` | `50052` (gRPC), `8081` (HTTP/SSE) | Rust SSE push + gRPC broadcast |
+| Gateway Web | `bacera-gateway-web` | `bacera-gateway-web:local` | `9005` (HTTP), `50005` (gRPC) | .NET 8 gateway monolith |
+| ID Generator | `bacera-idgen` | `bacera-idgen:local` | `50001` (gRPC), `8080` (HTTP) | Rust Snowflake ID generator |
+| Boardcast | `bacera-boardcast` | `bacera-boardcast:local` | `50003` (gRPC), `9003` (HTTP/SSE) | Rust SSE push + gRPC broadcast |
 | PostgreSQL | `bacera-postgres` | `postgres:15-alpine` | `5432` | Primary relational database |
 | PgBouncer | `bacera-pgbouncer` | `pgbouncer/pgbouncer:latest` | `6432` | PostgreSQL connection pooler |
 | Redis | `bacera-redis` | `redis:7-alpine` | `6379` | Cache & session store |
@@ -68,8 +68,8 @@ Key environment variables:
 | `DB_PASSWORD` | — | PostgreSQL password |
 | `REDIS_CONNECTION` | `localhost:6379` | Redis connection string |
 | `REDIS_PASSWORD` | — | Redis password |
-| `IDGEN_GRPC_ADDR` | `http://idgen:50051` | idgen gRPC address (mono uses this) |
-| `BOARDCAST_GRPC_ADDR` | `http://boardcast:50052` | boardcast gRPC address (mono uses this) |
+| `IDGEN_GRPC_ADDR` | `http://idgen:50001` | idgen gRPC address (mono uses this) |
+| `BOARDCAST_GRPC_ADDR` | `http://boardcast:50003` | boardcast gRPC address (mono uses this) |
 
 ---
 
@@ -78,7 +78,7 @@ Key environment variables:
 ### Gateway Web (`bacera-gateway-web`)
 
 - **Dockerfile:** `services/mono/Dockerfile`
-- **Port:** `9000` → internal `80`
+- **Port:** `9005` (HTTP), `50005` (gRPC)
 - Depends on: `postgres` (healthy), `redis` (healthy), `idgen`, `boardcast`
 
 Key environment variables:
@@ -88,27 +88,27 @@ Key environment variables:
 | `ASPNETCORE_URLS` | `http://+:80` |
 | `ASPNETCORE_ENVIRONMENT` | `Development` |
 | `REDIS_CONNECTION` | `redis:6379` |
-| `IDGEN_GRPC_ADDR` | `http://idgen:50051` |
-| `BOARDCAST_GRPC_ADDR` | `http://boardcast:50052` |
+| `IDGEN_GRPC_ADDR` | `http://idgen:50001` |
+| `BOARDCAST_GRPC_ADDR` | `http://boardcast:50003` |
 
 ### ID Generator (`bacera-idgen`)
 
 - **Dockerfile:** `services/idgen/Dockerfile`
-- **gRPC port:** `50051`, **HTTP port:** `8080`
+- **gRPC port:** `50001`, **HTTP port:** `8080`
 
 ### Boardcast (`bacera-boardcast`)
 
 - **Dockerfile:** `services/boardcast/Dockerfile`
-- **gRPC port:** `50052`, **HTTP port:** `8081`
-- **SSE 订阅:** `GET http://localhost:8081/event?channel=<name>`
-- **消息发布:** `POST http://localhost:8081/publish`  `{"channel":"...","message":"..."}`
+- **gRPC port:** `50003`, **HTTP port:** `9003`
+- **SSE 订阅:** `GET http://localhost:9003/event?channel=<name>`
+- **消息发布:** `POST http://localhost:9003/publish`  `{"channel":"...","message":"..."}`
 
 ```bash
 # 订阅频道
-curl -N http://localhost:8081/event?channel=test
+curl -N http://localhost:9003/event?channel=test
 
 # 发布消息
-curl -X POST http://localhost:8081/publish \
+curl -X POST http://localhost:9003/publish \
   -H "Content-Type: application/json" \
   -d '{"channel":"test","message":"Hello!"}'
 
@@ -194,7 +194,7 @@ docker exec bacera-redis redis-cli -a <password> ping
 curl http://localhost:8080/api/v1/health
 
 # boardcast SSE (连接即健康)
-curl -N http://localhost:8081/event?channel=health-check
+curl -N http://localhost:9003/event?channel=health-check
 
 # Seq
 curl -f http://localhost:5341/health
