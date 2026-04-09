@@ -152,7 +152,7 @@ pub async fn generate_withdrawal_csv(
         WHEN 425 THEN 'WithdrawalTenantRejected'
         WHEN 430 THEN 'WithdrawalPaymentCompleted'
         WHEN 450 THEN 'WithdrawalCompleted'
-        ELSE m."StateId"::text
+        ELSE m.state_id::text
     END"#;
 
     let payment_status_case = r#"CASE wp."Status"
@@ -362,7 +362,7 @@ pub async fn generate_wallet_transaction_csv(
         WHEN 650 THEN 'RefundCompleted'
         WHEN 700 THEN 'WalletAdjustCreated'
         WHEN 750 THEN 'WalletAdjustCompleted'
-        ELSE m."StateId"::text
+        ELSE m.state_id::text
     END"#;
 
     let base_sql = format!(r#"
@@ -417,26 +417,26 @@ withdrawals AS (
 ),
 rebates AS (
     SELECT
-        r."Id",
-        COALESCE(ta."CurrencyId", r."CurrencyId") as source_currency_id,
-        r."CurrencyId" as currency_id,
-        r."Amount"     as source_amount,
-        r."Amount"     as amount,
-        COALESCE(tr."Ticket", 0) as source_val,
+        r.id,
+        COALESCE(ta."CurrencyId", r.currency_id) as source_currency_id,
+        r.currency_id as currency_id,
+        r.amount      as source_amount,
+        r.amount      as amount,
+        COALESCE(tr.ticket, 0) as source_val,
         0::bigint      as target_val,
         a."Uid"        as rebate_uid,
         -- SourceAmount adjusted by exchangeRate from Information JSON (if cross-currency)
         CASE
-            WHEN r."Information"::jsonb ? 'exchangeRate'
-                AND COALESCE(ta."CurrencyId", r."CurrencyId") != r."CurrencyId"
-                AND (r."Information"::jsonb->>'exchangeRate')::float8 > 0
-            THEN ROUND(r."Amount"::numeric / (r."Information"::jsonb->>'exchangeRate')::numeric, 0)::bigint
-            ELSE r."Amount"
+            WHEN r.information::jsonb ? 'exchangeRate'
+                AND COALESCE(ta."CurrencyId", r.currency_id) != r.currency_id
+                AND (r.information::jsonb->>'exchangeRate')::float8 > 0
+            THEN ROUND(r.amount::numeric / (r.information::jsonb->>'exchangeRate')::numeric, 0)::bigint
+            ELSE r.amount
         END as adj_source_amount
-    FROM trd."_Rebate" r
-    LEFT JOIN trd."_TradeRebate" tr ON tr."Id" = r."TradeRebateId"
-    JOIN  trd."_Account" a  ON a."Id"  = r."AccountId"
-    LEFT JOIN trd."_Account" ta ON ta."Id" = tr."AccountId"
+    FROM trd.rebate_k8s r
+    LEFT JOIN trd.trade_rebate_k8s tr ON tr.id = r.trade_rebate_id
+    JOIN  trd."_Account" a  ON a."Id"  = r.account_id
+    LEFT JOIN trd."_Account" ta ON ta."Id" = tr.account_id
 ),
 transactions AS (
     SELECT
@@ -493,8 +493,8 @@ all_matters AS (
     SELECT "Id", source_currency_id, currency_id, source_amount, amount, source_val, target_val, rebate_uid, adj_source_amount FROM refunds
 )
 SELECT
-    wt."WalletId"  as wallet_id,
-    wt."MatterId"  as transaction_id,
+    wt.wallet_id   as wallet_id,
+    wt.matter_id   as transaction_id,
     p."NativeName" as client_name,
     CASE w."FundType"
         WHEN 1 THEN 'Wire'
@@ -504,7 +504,7 @@ SELECT
         WHEN 5 THEN 'FundType5'
         ELSE w."FundType"::text
     END as fund_type,
-    CASE m."Type"
+    CASE m.type
         WHEN 0   THEN 'System'
         WHEN 200 THEN 'InternalTransfer'
         WHEN 300 THEN 'Deposit'
@@ -512,10 +512,10 @@ SELECT
         WHEN 500 THEN 'Rebate'
         WHEN 600 THEN 'Refund'
         WHEN 700 THEN 'WalletAdjust'
-        ELSE m."Type"::text
+        ELSE m.type::text
     END as transaction_type,
     COALESCE(sc."Code", '') as source_currency,
-    CASE m."Type"
+    CASE m.type
         WHEN 200 THEN CASE WHEN md.source_val != 0 THEN 'Account No. ' || md.source_val::text ELSE 'Wallet' END
         WHEN 500 THEN 'Ticket No. ' || md.source_val::text
         WHEN 300 THEN 'Deposit Source'
@@ -527,7 +527,7 @@ SELECT
         ELSE ''
     END as source,
     COALESCE(c."Code", '') as currency,
-    CASE m."Type"
+    CASE m.type
         WHEN 200 THEN CASE WHEN md.target_val != 0 THEN 'Account No. ' || md.target_val::text ELSE 'Wallet' END
         WHEN 400 THEN 'Withdrawal Target'
         WHEN 600 THEN 'Wallet'
@@ -538,38 +538,38 @@ SELECT
     {state_case} as state,
     -- SourceAmount: for InternalTransfer with wallet source, use abs(wt.Amount); else adj_source_amount
     CASE
-        WHEN m."Type" = 200 AND t_join."SourceAccountType" = 1
-            THEN ABS(wt."Amount")::float8 / 1000000.0
+        WHEN m.type = 200 AND t_join."SourceAccountType" = 1
+            THEN ABS(wt.amount)::float8 / 1000000.0
         ELSE md.adj_source_amount::float8 / 1000000.0
     END as source_amount,
     -- Amount: for InternalTransfer with wallet target, use abs(wt.Amount); else amount
     CASE
-        WHEN m."Type" = 200 AND t_join."TargetAccountType" = 1
-            THEN ABS(wt."Amount")::float8 / 1000000.0
+        WHEN m.type = 200 AND t_join."TargetAccountType" = 1
+            THEN ABS(wt.amount)::float8 / 1000000.0
         ELSE md.amount::float8 / 1000000.0
     END as amount,
-    CASE WHEN m."Type" = 500 AND md.rebate_uid != 0 THEN md.rebate_uid::text ELSE '' END as rebate_target_account_uid,
-    TO_CHAR(m."PostedOn" + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS') as created_on,
+    CASE WHEN m.type = 500 AND md.rebate_uid != 0 THEN md.rebate_uid::text ELSE '' END as rebate_target_account_uid,
+    TO_CHAR(m.posted_on + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS') as created_on,
     CASE
-        WHEN m."Type" != 400
-            THEN TO_CHAR(m."StatedOn" + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS')
+        WHEN m.type != 400
+            THEN TO_CHAR(m.stated_on + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS')
         ELSE TO_CHAR(wd."ApprovedOn" + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS')
     END as released_on
-FROM acct."_WalletTransaction" wt
-JOIN acct."_Wallet" w ON w."Id" = wt."WalletId"
-JOIN core."_Matter" m ON m."Id" = wt."MatterId"
+FROM acct.wallet_transaction_k8s wt
+JOIN acct."_Wallet" w ON w."Id" = wt.wallet_id
+JOIN core.matter_k8s m ON m.id = wt.matter_id
 LEFT JOIN core."_Party" p ON p."Id" = w."PartyId"
-JOIN all_matters md ON md."Id" = m."Id"
+JOIN all_matters md ON md."Id" = m.id
 LEFT JOIN acct."_Currency" c  ON c."Id"  = md.currency_id
 LEFT JOIN acct."_Currency" sc ON sc."Id" = md.source_currency_id
-LEFT JOIN acct."_Transaction" t_join ON t_join."Id" = m."Id"
-LEFT JOIN acct."_Withdrawal"  wd      ON wd."Id"     = m."Id"
+LEFT JOIN acct."_Transaction" t_join ON t_join."Id" = m.id
+LEFT JOIN acct."_Withdrawal"  wd      ON wd."Id"     = m.id
 "#, state_case = state_case);
 
     let records = if is_from_api {
         // API mode: filter by wt."UpdatedOn" (dates already in MT5 time, subtract HOURS_GAP)
         let sql = format!(
-            r#"{} WHERE wt."UpdatedOn" >= $1 AND wt."UpdatedOn" <= $2 ORDER BY wt."Id""#,
+            r#"{} WHERE wt.updated_on >= $1 AND wt.updated_on <= $2 ORDER BY wt.id"#,
             base_sql
         );
         sqlx::query_as::<_, WalletTransactionRecord>(&sql)
@@ -582,16 +582,16 @@ LEFT JOIN acct."_Withdrawal"  wd      ON wd."Id"     = m."Id"
         let sql = format!(
             r#"{}
 LEFT JOIN (
-    SELECT r2."Id", tr2."ClosedOn"
-    FROM trd."_Rebate" r2
-    LEFT JOIN trd."_TradeRebate" tr2 ON tr2."Id" = r2."TradeRebateId"
-) rebate_cl ON rebate_cl."Id" = m."Id"
-WHERE m."StatedOn" >= $3 AND m."StatedOn" < $4
+    SELECT r2.id, tr2.closed_on
+    FROM trd.rebate_k8s r2
+    LEFT JOIN trd.trade_rebate_k8s tr2 ON tr2.id = r2.trade_rebate_id
+) rebate_cl ON rebate_cl.id = m.id
+WHERE m.stated_on >= $3 AND m.stated_on < $4
   AND (
-    rebate_cl."ClosedOn" IS NULL
-    OR (rebate_cl."ClosedOn" >= $1 AND rebate_cl."ClosedOn" <= $2)
+    rebate_cl.closed_on IS NULL
+    OR (rebate_cl.closed_on >= $1 AND rebate_cl.closed_on <= $2)
   )
-ORDER BY wt."Id""#,
+ORDER BY wt.id"#,
             base_sql
         );
         sqlx::query_as::<_, WalletTransactionRecord>(&sql)

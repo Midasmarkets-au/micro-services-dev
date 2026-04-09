@@ -283,17 +283,18 @@ pub async fn generate_ib_report_csv(
 
     let records = sqlx::query_as::<_, IbReportRecord>(
         r#"SELECT
-            r."AccountId" as agent_account_id,
+            r.account_id as agent_account_id,
             a."AccountNumber" as agent_account_number,
-            r."SourceAccountId" as client_account_id,
+            tr.account_id as client_account_id,
             sa."AccountNumber" as client_account_number,
-            SUM(r."Amount") as total_rebate,
-            COUNT(r."Id") as trade_count
-           FROM trd."_TradeRebate" r
-           LEFT JOIN trd."_Account" a ON a."Id" = r."AccountId"
-           LEFT JOIN trd."_Account" sa ON sa."Id" = r."SourceAccountId"
-           WHERE r."CreatedOn" >= $1 AND r."CreatedOn" < $2
-           GROUP BY r."AccountId", a."AccountNumber", r."SourceAccountId", sa."AccountNumber"
+            SUM(r.amount)::float8 / 1000000.0 as total_rebate,
+            COUNT(r.id) as trade_count
+           FROM trd.rebate_k8s r
+           LEFT JOIN trd.trade_rebate_k8s tr ON tr.id = r.trade_rebate_id
+           LEFT JOIN trd."_Account" a  ON a."Id" = r.account_id
+           LEFT JOIN trd."_Account" sa ON sa."Id" = tr.account_id
+           WHERE r.created_on >= $1 AND r.created_on < $2
+           GROUP BY r.account_id, a."AccountNumber", tr.account_id, sa."AccountNumber"
            ORDER BY total_rebate DESC NULLS LAST"#,
     )
     .bind(from)
