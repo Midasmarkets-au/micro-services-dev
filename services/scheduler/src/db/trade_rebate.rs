@@ -25,18 +25,19 @@ pub async fn exists(pool: &PgPool, ticket: i64, service_id: i32) -> Result<bool>
 pub async fn insert(pool: &PgPool, rebate: &NewTradeRebate) -> Result<Option<i64>> {
     let row: Option<(i64,)> = sqlx::query_as(&format!(
         r#"INSERT INTO {TABLE} (
-            "AccountId", "TradeServiceId", "Ticket", "AccountNumber",
+            "Id", "AccountId", "TradeServiceId", "Ticket", "AccountNumber",
             "CurrencyId", "Volume", "Status", "RuleType",
             "CreatedOn", "UpdatedOn", "ClosedOn", "OpenedOn",
             "TimeStamp", "Action", "DealId", "Symbol", "ReferPath",
             "Commission", "Swaps", "OpenPrice", "ClosePrice", "Profit", "Reason"
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8,
-            NOW(), NOW(), $9, $10, $11, $12, $13, $14, $15,
-            $16, $17, $18, $19, $20, $21
+            $1, $2, $3, $4, $5, $6, $7, $8, $9,
+            NOW(), NOW(), $10, $11, $12, $13, $14, $15, $16,
+            $17, $18, $19, $20, $21, $22
         )
         RETURNING "Id""#,
     ))
+    .bind(rebate.id)
     .bind(rebate.account_id)
     .bind(rebate.trade_service_id)
     .bind(rebate.ticket)
