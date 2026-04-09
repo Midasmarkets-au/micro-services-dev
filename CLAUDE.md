@@ -152,6 +152,26 @@ SignalR hubs (`/hub/client`, `/hub/tenant`, `/live/trade/symbol-group-hub`) back
 
 `mono` uses **Hangfire** for scheduled/recurring jobs (e.g. `ReportJob`, `RebateJob`, `TradeJob`). The `scheduler` Rust service uses **Apalis** with a PostgreSQL backend for durable job queues; it calls back into mono via gRPC (`MonoCallbackGrpcService`) when jobs complete. The scheduler also runs an in-process cron loop for time-based triggers (e.g. CloseTradeJob at 22:30 UTC, AccountDailyJob at ~21:29–22:29 UTC Mon–Fri with DST adjustment).
 
+### Multi-Tenancy Resolution
+
+`MultiTenantServiceMiddleware` resolves tenant in order:
+1. JWT claim `TenantId`
+2. Host header → `core.Domains` table lookup
+3. Request path `/api/v1/{controller}/{tenantId}/` (contact/lead routes only)
+4. IP geolocation → country-to-tenant mapping (AU, BVI, SEA)
+
+`MyDbContextPool` manages per-tenant connections with semaphore-based borrowing (TenantPoolSize=30, CentralPoolSize=5). Connection strings are resolved lazily from `core."_Tenant"` table.
+
+### Rust Service Architecture
+
+Each Rust service runs **dual HTTP + gRPC** servers concurrently via `tokio::select!`. The HTTP port (e.g., `:8080` for idgen) and gRPC port are separate. `idgen/build.rs` parses `google.api.http` proto options to generate `http_routes.rs` at build time—this is why it strips those options before calling `tonic_build` (avoids google/api/http.proto dependency).
+
+### Observability
+
+All Rust services use the shared `otel` crate (`services/otel/`): call `init_tracing(service_name)` and keep the returned `TracingGuard` alive. Outputs: pretty stdout, daily rolling JSON logs to `$LOG_DIR/<service>-.log`, and `<service>-error-.log`.
+
+mono uses Serilog with sinks for Seq (centralized log UI at `:5342`), Slack (`LOG_SLACK_WEBHOOK_URL`), and file. `API_LOG_ENABLE` / `SQL_LOG_ENABLE` env vars toggle debug logging.
+
 ### Key Environment Variables
 
 | Variable | Used by | Purpose |
@@ -162,8 +182,15 @@ SignalR hubs (`/hub/client`, `/hub/tenant`, `/live/trade/symbol-group-hub`) back
 | `IDGEN_GRPC_ADDR` | mono | idgen gRPC URL (default `http://idgen:50001`) |
 | `BOARDCAST_GRPC_ADDR` | mono | boardcast gRPC URL (default `http://boardcast:50003`) |
 | `SCHEDULER_GRPC_URL` | mono | scheduler gRPC URL (default `http://scheduler:50004`) |
+| `MONO_GRPC_URL` / `IDGEN_GRPC_URL` | scheduler | Callback URLs into mono and idgen |
+| `NATS_URL` | scheduler | NATS JetStream for TradeRebate events |
 | `CORS_ALLOWED_ORIGINS` | mono | Comma-separated origins (production) |
 | `ASPNETCORE_ENVIRONMENT` | mono | `Development` / `Staging` / `Production` |
+| `LOG_DIR` | Rust services | Log file output directory (default `./logs`) |
+| `RUST_LOG` | Rust services | Tracing filter (default `info`) |
+| `SEQ_SERVER_URL` / `SEQ_API_KEY` | mono | Seq centralized logging |
+| `LOG_SLACK_WEBHOOK_URL` | mono | Serilog Slack sink |
+| `AWS_SES_SECRET_KEY` / `SES_FROM` | mono, scheduler | Email via SES / SMTP |
 
 `ASPNETCORE_ENVIRONMENT=Development` enables Swagger UI and permissive CORS. Production/Staging enforce `AllowSpecificOrigins`.
 
