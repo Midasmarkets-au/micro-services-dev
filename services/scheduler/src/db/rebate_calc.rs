@@ -46,9 +46,9 @@ pub async fn is_rebate_enabled(pool: &PgPool) -> Result<bool> {
 /// Returns (0, 0) if no pending records.
 pub async fn get_min_max_id(pool: &PgPool, table: &str) -> Result<(i64, i64)> {
     let row: Option<(Option<i64>, Option<i64>)> = sqlx::query_as(&format!(
-        r#"SELECT MIN("Id"), MAX("Id") FROM {table}
-           WHERE ("Status" = 0 OR "Status" = 5)
-             AND "CreatedOn" >= NOW() - INTERVAL '1 year'"#
+        r#"SELECT MIN(id), MAX(id) FROM {table}
+           WHERE (status = 0 OR status = 5)
+             AND created_on >= NOW() - INTERVAL '1 year'"#
     ))
     .fetch_optional(pool)
     .await?;
@@ -70,11 +70,11 @@ pub async fn get_pending_ids(
 ) -> Result<Vec<i64>> {
     let offset = (page - 1) * size;
     let rows: Vec<(i64,)> = sqlx::query_as(&format!(
-        r#"SELECT "Id" FROM {table}
-           WHERE "Id" >= $1 AND "Id" <= $2
-             AND ("Status" = 0 OR "Status" = 5)
-             AND "CreatedOn" >= NOW() - INTERVAL '1 year'
-           ORDER BY "Id"
+        r#"SELECT id FROM {table}
+           WHERE id >= $1 AND id <= $2
+             AND (status = 0 OR status = 5)
+             AND created_on >= NOW() - INTERVAL '1 year'
+           ORDER BY id
            LIMIT $3 OFFSET $4"#
     ))
     .bind(min_id)
@@ -95,11 +95,11 @@ pub async fn get_trade_rebate(
     id: i64,
 ) -> Result<Option<TradeRebateRow>> {
     let row = sqlx::query_as::<_, TradeRebateRow>(&format!(
-        r#"SELECT "Id", "AccountId", "TradeServiceId", "Ticket", "AccountNumber",
-                  "CurrencyId", "Volume", "Symbol", "ReferPath",
-                  "ClosedOn", "OpenedOn", "Status"
+        r#"SELECT id, account_id, trade_service_id, ticket, account_number,
+                  currency_id, volume, symbol, refer_path,
+                  closed_on, opened_on, status
            FROM {table}
-           WHERE "Id" = $1"#
+           WHERE id = $1"#
     ))
     .bind(id)
     .fetch_optional(pool)
@@ -115,7 +115,7 @@ pub async fn update_trade_rebate_status(
     status: i32,
 ) -> Result<()> {
     sqlx::query(&format!(
-        r#"UPDATE {table} SET "Status" = $1, "UpdatedOn" = NOW() WHERE "Id" = $2"#
+        r#"UPDATE {table} SET status = $1, updated_on = NOW() WHERE id = $2"#
     ))
     .bind(status)
     .bind(id)
@@ -297,7 +297,7 @@ pub async fn get_existing_rebates(
     trade_rebate_id: i64,
 ) -> Result<Vec<(i64, rust_decimal::Decimal)>> {
     let rows: Vec<(i64, rust_decimal::Decimal)> = sqlx::query_as(&format!(
-        r#"SELECT "AccountId", "Amount" FROM {REBATE_TABLE} WHERE "TradeRebateId" = $1"#
+        r#"SELECT account_id, amount FROM {REBATE_TABLE} WHERE trade_rebate_id = $1"#
     ))
     .bind(trade_rebate_id)
     .fetch_all(pool)
@@ -336,7 +336,7 @@ pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebat
     // Write to the native-partitioned matter_k8s table; PostgreSQL routes to the
     // correct year partition based on PostedOn automatically.
     sqlx::query(
-        r#"INSERT INTO core.matter_k8s ("Id", "Type", "StateId", "PostedOn", "StatedOn")
+        r#"INSERT INTO core.matter_k8s (id, type, state_id, posted_on, stated_on)
            VALUES ($1, $2, $3, NOW(), NOW())"#
     )
     .bind(matter_id)
@@ -347,8 +347,8 @@ pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebat
 
     sqlx::query(
         r#"INSERT INTO trd.rebate_k8s
-           ("Id", "PartyId", "AccountId", "FundType", "CurrencyId",
-            "Amount", "TradeRebateId", "HoldUntilOn", "Information", "CreatedOn")
+           (id, party_id, account_id, fund_type, currency_id,
+            amount, trade_rebate_id, hold_until_on, information, created_on)
            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, NOW())"#
     )
     .bind(matter_id)

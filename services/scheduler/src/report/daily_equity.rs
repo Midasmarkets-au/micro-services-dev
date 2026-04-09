@@ -488,21 +488,21 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 840 THEN wt."Amount"
-                WHEN w."CurrencyId" = 841 THEN wt."Amount" / 100
-                ELSE wt."Amount"
+                WHEN w."CurrencyId" = 840 THEN wt.amount
+                WHEN w."CurrencyId" = 841 THEN wt.amount / 100
+                ELSE wt.amount
             END) AS total_amount
-        FROM acct."_WalletTransaction" wt
-        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
-        JOIN trd."_Rebate" r ON r."Id" = m."Id"
-        JOIN trd."_TradeRebate" tr ON r."TradeRebateId" = tr."Id"
-        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
-        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
+        FROM acct.wallet_transaction_k8s wt
+        JOIN core.matter_k8s m ON wt.matter_id = m.id
+        JOIN trd.rebate_k8s r ON r.id = m.id
+        JOIN trd.trade_rebate_k8s tr ON r.trade_rebate_id = tr.id
+        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
+        JOIN trd."_Account" aa ON r.account_id = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."Type" = 500 AND m."StateId" = 550
-          AND tr."CurrencyId" = 840
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+        WHERE m.type = 500 AND m.state_id = 550
+          AND tr.currency_id = 840
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
           {closing_filter}
         GROUP BY sa."Code"
     ),
@@ -510,21 +510,21 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 841 THEN wt."Amount"
-                WHEN w."CurrencyId" = 840 THEN wt."Amount" * 100
-                ELSE wt."Amount"
+                WHEN w."CurrencyId" = 841 THEN wt.amount
+                WHEN w."CurrencyId" = 840 THEN wt.amount * 100
+                ELSE wt.amount
             END) AS total_amount
-        FROM acct."_WalletTransaction" wt
-        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
-        JOIN trd."_Rebate" r ON r."Id" = m."Id"
-        JOIN trd."_TradeRebate" tr ON r."TradeRebateId" = tr."Id"
-        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
-        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
+        FROM acct.wallet_transaction_k8s wt
+        JOIN core.matter_k8s m ON wt.matter_id = m.id
+        JOIN trd.rebate_k8s r ON r.id = m.id
+        JOIN trd.trade_rebate_k8s tr ON r.trade_rebate_id = tr.id
+        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
+        JOIN trd."_Account" aa ON r.account_id = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."Type" = 500 AND m."StateId" = 550
-          AND tr."CurrencyId" = 841
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+        WHERE m.type = 500 AND m.state_id = 550
+          AND tr.currency_id = 841
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
           {closing_filter}
         GROUP BY sa."Code"
     ),
@@ -532,20 +532,20 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 840 THEN wt."Amount"
-                WHEN w."CurrencyId" = 841 THEN wt."Amount" / 100
-                ELSE wt."Amount"
+                WHEN w."CurrencyId" = 840 THEN wt.amount
+                WHEN w."CurrencyId" = 841 THEN wt.amount / 100
+                ELSE wt.amount
             END) AS total_amount
-        FROM acct."_WalletTransaction" wt
-        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
-        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
-        JOIN trd."_Rebate" r ON r."Id" = m."Id"
-        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
+        FROM acct.wallet_transaction_k8s wt
+        JOIN core.matter_k8s m ON wt.matter_id = m.id
+        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
+        JOIN trd.rebate_k8s r ON r.id = m.id
+        JOIN trd."_Account" aa ON r.account_id = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."Type" = 500
-          AND m."StateId" = 550
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+        WHERE m.type = 500
+          AND m.state_id = 550
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY sa."Code"
     ),
     all_sales_codes AS (

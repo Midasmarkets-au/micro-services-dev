@@ -23,33 +23,21 @@ pub const DIST_LEVEL_PERCENTAGE: i16 = 3;
 #[allow(dead_code)]
 pub const ACCOUNT_STATUS_ACTIVATE: i16 = 0;
 
-/// Mirrors trd."_TradeRebate_{year}" — fields needed for rebate calculation.
+/// Mirrors trd.trade_rebate_k8s — fields needed for rebate calculation.
 #[derive(Debug, Clone, sqlx::FromRow)]
 #[allow(dead_code)]
 pub struct TradeRebateRow {
-    #[sqlx(rename = "Id")]
     pub id: i64,
-    #[sqlx(rename = "AccountId")]
     pub account_id: Option<i64>,
-    #[sqlx(rename = "TradeServiceId")]
     pub trade_service_id: i32,
-    #[sqlx(rename = "Ticket")]
     pub ticket: i64,
-    #[sqlx(rename = "AccountNumber")]
     pub account_number: i64,
-    #[sqlx(rename = "CurrencyId")]
     pub currency_id: i32,
-    #[sqlx(rename = "Volume")]
     pub volume: i32,
-    #[sqlx(rename = "Symbol")]
     pub symbol: String,
-    #[sqlx(rename = "ReferPath")]
     pub refer_path: String,
-    #[sqlx(rename = "ClosedOn")]
     pub closed_on: DateTime<Utc>,
-    #[sqlx(rename = "OpenedOn")]
     pub opened_on: DateTime<Utc>,
-    #[sqlx(rename = "Status")]
     pub status: i32,
 }
 
