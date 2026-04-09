@@ -45,9 +45,17 @@ if [[ -z "$REDIS_POD" ]]; then
 fi
 [[ -n "$REDIS_POD" ]] || warn "No Redis pod found in k8s — Redis keys will not be cleared"
 
+# Read Redis password from the k8s deployment startup args
+K8S_REDIS_PASS=$(kubectl get deployment redis -n default -o jsonpath='{.spec.template.spec.containers[0].args}' 2>/dev/null \
+  | grep -o '"--requirepass","[^"]*"' | cut -d'"' -f4 || true)
+
 redis_k8s() {
   [[ -z "$REDIS_POD" ]] && return 0
-  kubectl exec -n default "$REDIS_POD" -- redis-cli "$@" 2>/dev/null
+  if [[ -n "$K8S_REDIS_PASS" ]]; then
+    kubectl exec -n default "$REDIS_POD" -- redis-cli -a "$K8S_REDIS_PASS" --no-auth-warning "$@" 2>/dev/null
+  else
+    kubectl exec -n default "$REDIS_POD" -- redis-cli "$@" 2>/dev/null
+  fi
 }
 
 # ── Discover tenant DBs that have trade_rebate_k8s ───────────────────────────
@@ -71,7 +79,7 @@ done < <($PSQL -d postgres -tA --field-separator $'\x01' -c \
 
 # ── Confirm ───────────────────────────────────────────────────────────────────
 printf "\n${YELLOW}This will:${RESET}\n"
-printf "  1. TRUNCATE  trd.trade_rebate_k8s  trd.rebate_k8s  core.activity_k8s  acct.wallet_transaction_k8s  core.\"_MatterK8s\"\n"
+printf "  1. TRUNCATE  trd.trade_rebate_k8s  trd.rebate_k8s  core.activity_k8s  acct.wallet_transaction_k8s  core.matter_k8s\n"
 printf "  2. DELETE Redis keys (k8s): scheduler lock  +  account:tenant:map  +  trade monitor cursors  +  dedup hash\n"
 printf "  3. RESTART  kubectl deployment/scheduler\n"
 printf "\nTenant DBs: %s\n" "${TENANT_DBS[*]}"
@@ -86,13 +94,10 @@ for db in "${TENANT_DBS[@]}"; do
   info "Processing $db..."
 
   $PSQL -d "$db" -c "
-    BEGIN;
-    TRUNCATE trd.trade_rebate_k8s;
-    TRUNCATE trd.rebate_k8s;
-    TRUNCATE core.activity_k8s;
-    TRUNCATE acct.wallet_transaction_k8s;
-    TRUNCATE core.\"_MatterK8s\";
-    COMMIT;
+    TRUNCATE core.matter_k8s, core.activity_k8s,
+             trd.trade_rebate_k8s, trd.rebate_k8s,
+             acct.wallet_transaction_k8s
+    CASCADE;
   " > /dev/null
 
   ok "  Truncated all k8s rebate tables in $db"

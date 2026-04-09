@@ -40,7 +40,6 @@ async fn run_for_tenant(pool: &sqlx::PgPool, tenant_id: i64, current_year: i32) 
 
     // Pre-create year sub-partitions for current year and next year
     for year in [current_year, current_year + 1] {
-        partition::ensure_year_partition(pool, "core", "_MatterK8s", year).await?;
         partition::ensure_year_partition_snake(pool, "core", "activity_k8s", year).await?;
         partition::ensure_year_partition_snake(pool, "acct", "wallet_transaction_k8s", year).await?;
         partition::ensure_year_partition_snake(pool, "trd", "trade_rebate_k8s", year).await?;

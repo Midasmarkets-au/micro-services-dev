@@ -132,8 +132,6 @@ impl AppContext {
             chrono::Utc::now().year()
         };
         for year in [current_year, current_year + 1] {
-            db::partition::ensure_year_partition(&pool, "core", "_MatterK8s", year).await
-                .map_err(|e| anyhow::anyhow!("Failed to ensure _MatterK8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
             db::partition::ensure_year_partition_snake(&pool, "core", "activity_k8s", year).await
                 .map_err(|e| anyhow::anyhow!("Failed to ensure activity_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
             db::partition::ensure_year_partition_snake(&pool, "acct", "wallet_transaction_k8s", year).await
