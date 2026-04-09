@@ -65,7 +65,7 @@ TENANT_DB=""
 while IFS=$'\x01' read -r db _; do
   db="$(trim "$db")"
   [[ -z "$db" ]] && continue
-  found=$(psql1 "$db" "SELECT 1 FROM trd.trade_rebate_k8s WHERE \"Id\" = ${NEW_ID} LIMIT 1")
+  found=$(psql1 "$db" "SELECT 1 FROM trd.trade_rebate_k8s WHERE id = ${NEW_ID} LIMIT 1")
   if [[ "$(trim "$found")" == "1" ]]; then
     TENANT_DB="$db"; break
   fi
@@ -78,9 +78,9 @@ q()  { psql_q  "$TENANT_DB" "$1"; }
 q1() { psql1   "$TENANT_DB" "$1"; }
 
 # ── Fetch new TradeRebate (k8s table) ─────────────────────────────────────────
-NEW_TR=$(q1 "SELECT \"Id\",\"AccountId\",\"Ticket\",\"AccountNumber\",\"Symbol\",\"Volume\",
-                    \"Status\",\"ClosedOn\",\"OpenedOn\",\"TradeServiceId\",\"ReferPath\"
-             FROM trd.trade_rebate_k8s WHERE \"Id\" = ${NEW_ID}")
+NEW_TR=$(q1 "SELECT id,account_id,ticket,account_number,symbol,volume,
+                    status,closed_on,opened_on,trade_service_id,refer_path
+             FROM trd.trade_rebate_k8s WHERE id = ${NEW_ID}")
 [[ -n "$NEW_TR" ]] || { echo "Error: record not found." >&2; exit 1; }
 
 N_ID=$(field "$NEW_TR" 1); N_ACCT=$(field "$NEW_TR" 2); N_TICKET=$(field "$NEW_TR" 3)
@@ -138,10 +138,10 @@ cmp_row "TradeServiceId" "$N_SVC"    "$O_SVC"
 NEW_REBATES=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && NEW_REBATES+=("$line")
-done < <(q "SELECT r.\"Id\",r.\"AccountId\",r.\"Amount\",m.\"StateId\",r.\"Information\"
+done < <(q "SELECT r.id,r.account_id,r.amount,m.state_id,r.information
   FROM trd.rebate_k8s r
-  JOIN core.matter_k8s m ON r.\"Id\" = m.\"Id\"
-  WHERE r.\"TradeRebateId\" = ${NEW_ID} ORDER BY r.\"Id\"" 2>/dev/null)
+  JOIN core.matter_k8s m ON r.id = m.id
+  WHERE r.trade_rebate_id = ${NEW_ID} ORDER BY r.id" 2>/dev/null)
 
 OLD_REBATES=()
 if [[ -n "$O_ID" ]]; then
