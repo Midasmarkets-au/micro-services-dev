@@ -53,7 +53,7 @@ pub async fn get_pending_rebate_ids(pool: &PgPool) -> Result<Vec<i64>> {
     let rows: Vec<(i64,)> = sqlx::query_as(&format!(
         r#"SELECT r."Id"
            FROM {REBATE_TABLE} r
-           INNER JOIN core."_MatterK8s" m ON r."Id" = m."Id"
+           INNER JOIN core.matter_k8s m ON r."Id" = m."Id"
            WHERE m."StateId" IN ($1, $2)
            ORDER BY r."Id""#
     ))
@@ -74,7 +74,7 @@ async fn get_rebate(
     let row = sqlx::query_as::<_, RebateRow>(&format!(
         r#"SELECT r."AccountId", r."Amount", m."StateId"
            FROM {REBATE_TABLE} r
-           INNER JOIN core."_MatterK8s" m ON r."Id" = m."Id"
+           INNER JOIN core.matter_k8s m ON r."Id" = m."Id"
            WHERE r."Id" = $1"#
     ))
     .bind(rebate_id)
@@ -104,7 +104,7 @@ async fn get_account(
     Ok(row)
 }
 
-/// Update matter state in _MatterK8s and append activity to core.activity_k8s.
+/// Update matter state in matter_k8s and append activity to core.activity_k8s.
 async fn transit_state(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     matter_id: i64,
@@ -129,7 +129,7 @@ async fn transit_state(
     .await?;
 
     sqlx::query(
-        r#"UPDATE core."_MatterK8s" SET "StateId" = $1, "StatedOn" = $2 WHERE "Id" = $3"#
+        r#"UPDATE core.matter_k8s SET "StateId" = $1, "StatedOn" = $2 WHERE "Id" = $3"#
     )
     .bind(to_state)
     .bind(now)

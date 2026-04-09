@@ -28,6 +28,7 @@ pub struct MetaTrade {
 
 #[derive(Debug)]
 pub struct NewTradeRebate {
+    pub id: i64,
     pub account_id: Option<i64>,
     pub trade_service_id: i32,
     pub ticket: i64,
@@ -55,6 +56,7 @@ impl MetaTrade {
     /// 转换为 NewTradeRebate（初始值，handler 后续填充 account_id/currency_id/refer_path）
     pub fn to_new_trade_rebate(&self) -> NewTradeRebate {
         NewTradeRebate {
+            id: 0,
             account_id: None,
             trade_service_id: self.service_id,
             ticket: self.ticket,

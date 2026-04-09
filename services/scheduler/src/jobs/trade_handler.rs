@@ -78,6 +78,7 @@ async fn process_message(
 
     // Build rebate with account info
     let mut rebate = trade.to_new_trade_rebate();
+    rebate.id = ctx.idgen.generate_id().await?;
     if let Some((account_id, currency_id, refer_path)) =
         tenant::find_account_by_number(&pool, trade.account_number, trade.service_id).await?
     {

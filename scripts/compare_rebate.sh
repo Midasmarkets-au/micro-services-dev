@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# compare_rebate.sh — Compare scheduler (year-partitioned) vs mono rebate for a given TradeRebate ID.
+# compare_rebate.sh — Compare scheduler (k8s tables) vs mono rebate for a given trade_rebate_k8s Id.
 #
 # Usage:
-#   ./scripts/compare_rebate.sh <new_trade_rebate_id> [year]
+#   ./scripts/compare_rebate.sh <trade_rebate_k8s_id>
 #   ./scripts/compare_rebate.sh 23
-#   ./scripts/compare_rebate.sh 23 2026
 #
 # Requirements: psql, jq
 
 set -euo pipefail
 
-NEW_ID="${1:?Usage: $0 <new_trade_rebate_id> [year]}"
-YEAR="${2:-$(date +%Y)}"
+NEW_ID="${1:?Usage: $0 <trade_rebate_k8s_id>}"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 GREEN="\033[32m"; RED="\033[31m"; YELLOW="\033[33m"
@@ -46,7 +44,6 @@ TENANT_PREFIX="${TENANT_DB_NAME_PREFIX:-portal_tenant_}"
 export PGPASSWORD="$DB_PASSWORD"
 
 # ── psql helpers ──────────────────────────────────────────────────────────────
-# Trim leading/trailing whitespace (preserves internal spaces)
 trim() { local s="$1"; s="${s#"${s%%[! ]*}"}"; s="${s%"${s##*[! ]}"}"; printf '%s' "$s"; }
 
 psql_q() {
@@ -55,22 +52,20 @@ psql_q() {
 }
 psql1() { psql_q "$1" "$2" | head -1; }
 
-# Read psql output (SOH-delimited) into an array of lines
 read_rows() {
   local db="$1" sql="$2"
   psql_q "$db" "$sql"
 }
 
-# Extract a single field (1-indexed) from a SOH-delimited row
 field() { printf '%s' "$1" | cut -d$'\x01' -f"$2"; }
 
 # ── Find tenant DB ────────────────────────────────────────────────────────────
-echo "Searching _TradeRebate_${YEAR} id=${NEW_ID} across tenant databases..."
+echo "Searching trade_rebate_k8s id=${NEW_ID} across tenant databases..."
 TENANT_DB=""
 while IFS=$'\x01' read -r db _; do
   db="$(trim "$db")"
   [[ -z "$db" ]] && continue
-  found=$(psql1 "$db" "SELECT 1 FROM trd.\"_TradeRebate_${YEAR}\" WHERE \"Id\" = ${NEW_ID} LIMIT 1")
+  found=$(psql1 "$db" "SELECT 1 FROM trd.trade_rebate_k8s WHERE \"Id\" = ${NEW_ID} LIMIT 1")
   if [[ "$(trim "$found")" == "1" ]]; then
     TENANT_DB="$db"; break
   fi
@@ -82,10 +77,10 @@ printf "Found in: ${BOLD}%s${RESET}\n" "$TENANT_DB"
 q()  { psql_q  "$TENANT_DB" "$1"; }
 q1() { psql1   "$TENANT_DB" "$1"; }
 
-# ── Fetch new TradeRebate ─────────────────────────────────────────────────────
+# ── Fetch new TradeRebate (k8s table) ─────────────────────────────────────────
 NEW_TR=$(q1 "SELECT \"Id\",\"AccountId\",\"Ticket\",\"AccountNumber\",\"Symbol\",\"Volume\",
                     \"Status\",\"ClosedOn\",\"OpenedOn\",\"TradeServiceId\",\"ReferPath\"
-             FROM trd.\"_TradeRebate_${YEAR}\" WHERE \"Id\" = ${NEW_ID}")
+             FROM trd.trade_rebate_k8s WHERE \"Id\" = ${NEW_ID}")
 [[ -n "$NEW_TR" ]] || { echo "Error: record not found." >&2; exit 1; }
 
 N_ID=$(field "$NEW_TR" 1); N_ACCT=$(field "$NEW_TR" 2); N_TICKET=$(field "$NEW_TR" 3)
@@ -126,7 +121,7 @@ cmp_row() {
 
 # ── Section 1: TradeRebate source comparison ──────────────────────────────────
 header "TradeRebate 源数据对比  (新 id=${NEW_ID}, Ticket=$(trim "$N_TICKET"))"
-printf "  %-20s %-36s %-36s %s\n" "字段" "新表 _TradeRebate_${YEAR}" "旧表 _TradeRebate" "一致"
+printf "  %-20s %-36s %-36s %s\n" "字段" "新表 trade_rebate_k8s" "旧表 _TradeRebate" "一致"
 printf "  %s\n" "$(printf '─%.0s' $(seq 1 100))"
 cmp_row "Id"             "$N_ID"     "$O_ID"     "IDs 不同（设计如此）"
 cmp_row "AccountId"      "$N_ACCT"   "$O_ACCT"
@@ -139,13 +134,13 @@ cmp_row "ClosedOn"       "$N_CLOSED" "$O_CLOSED"
 cmp_row "OpenedOn"       "$N_OPENED" "$O_OPENED"
 cmp_row "TradeServiceId" "$N_SVC"    "$O_SVC"
 
-# ── Fetch Rebate records (store as indexed arrays) ────────────────────────────
+# ── Fetch Rebate records ───────────────────────────────────────────────────────
 NEW_REBATES=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && NEW_REBATES+=("$line")
 done < <(q "SELECT r.\"Id\",r.\"AccountId\",r.\"Amount\",m.\"StateId\",r.\"Information\"
-  FROM trd.\"_Rebate_${YEAR}\" r
-  JOIN core.\"_Matter_${YEAR}\" m ON r.\"Id\" = m.\"Id\"
+  FROM trd.rebate_k8s r
+  JOIN core.matter_k8s m ON r.\"Id\" = m.\"Id\"
   WHERE r.\"TradeRebateId\" = ${NEW_ID} ORDER BY r.\"Id\"" 2>/dev/null)
 
 OLD_REBATES=()
@@ -179,7 +174,6 @@ for (( i=0; i<MAX_ROWS; i++ )); do
   N_RACCT="$(trim "${N_RACCT:--}")"; N_AMT="$(trim "${N_AMT:--}")"; N_STATE="$(trim "${N_STATE:--}")"
   O_RACCT="$(trim "${O_RACCT:--}")"; O_AMT="$(trim "${O_AMT:--}")"; O_STATE="$(trim "${O_STATE:--}")"
 
-  # Numeric compare (strip trailing zeros after decimal)
   strip_zeros() { echo "$1" | sed 's/\.\([0-9]*[1-9]\)0*$/.\1/;s/\.0*$//'; }
   N_AMT_N="$(strip_zeros "$N_AMT")"; O_AMT_N="$(strip_zeros "$O_AMT")"
 
@@ -201,7 +195,6 @@ jqv() { printf '%s' "$1" | jq -r "$2" 2>/dev/null || echo ""; }
 
 cmp_json() {
   local label="$1" nv="$2" ov="$3" is_price="${4:-}"
-  # Numeric strip trailing .0 / .00 etc
   local nv_n ov_n
   nv_n=$(echo "$nv" | sed 's/\.\([0-9]*[1-9]\)0*$/.\1/;s/\.0*$//')
   ov_n=$(echo "$ov" | sed 's/\.\([0-9]*[1-9]\)0*$/.\1/;s/\.0*$//')
@@ -220,7 +213,6 @@ for (( i=0; i<MAX_ROWS; i++ )); do
   NR="${NEW_REBATES[$i]:-}"
   OR="${OLD_REBATES[$i]:-}"
 
-  # Information is the 5th field (index 4); may contain SOH inside JSON — use cut
   N_INFO=$(printf '%s' "$NR" | cut -d$'\x01' -f5)
   O_INFO=$(printf '%s' "$OR" | cut -d$'\x01' -f5)
 
@@ -239,7 +231,6 @@ for (( i=0; i<MAX_ROWS; i++ )); do
   cmp_json "  .commission" "$(jqv "$N_INFO" '.baseRebate.commission')" "$(jqv "$O_INFO" '.baseRebate.commission')"
   cmp_json "  .price"      "$(jqv "$N_INFO" '.baseRebate.price')"      "$(jqv "$O_INFO" '.baseRebate.price')" "price"
 
-  # remainRebate
   RN_TYPE=$(jqv "$N_INFO" '.remainRebate | type')
   RO_TYPE=$(jqv "$O_INFO" '.remainRebate | type')
   if [[ "$RN_TYPE" == "object" || "$RO_TYPE" == "object" ]]; then
@@ -252,7 +243,6 @@ for (( i=0; i<MAX_ROWS; i++ )); do
     cmp_json "  (scalar)" "$(jqv "$N_INFO" '.remainRebate')" "$(jqv "$O_INFO" '.remainRebate')"
   fi
 
-  # allocationSchemaItem
   if [[ "$(jqv "$N_INFO" '.allocationSchemaItem | type')" == "object" ]] || \
      [[ "$(jqv "$O_INFO" '.allocationSchemaItem | type')" == "object" ]]; then
     printf "  ${BOLD}allocationSchemaItem:${RESET}\n"
@@ -260,14 +250,12 @@ for (( i=0; i<MAX_ROWS; i++ )); do
     cmp_json "  .r"   "$(jqv "$N_INFO" '.allocationSchemaItem.r')"   "$(jqv "$O_INFO" '.allocationSchemaItem.r')"
   fi
 
-  # allocationRebate
   if [[ "$(jqv "$N_INFO" '.allocationRebate | type')" == "object" ]] || \
      [[ "$(jqv "$O_INFO" '.allocationRebate | type')" == "object" ]]; then
     printf "  ${BOLD}allocationRebate:${RESET}\n"
     cmp_json "  .total" "$(jqv "$N_INFO" '.allocationRebate.total')" "$(jqv "$O_INFO" '.allocationRebate.total')"
   fi
 
-  # rebateDirectSchemaItem (Direct mode)
   if [[ "$(jqv "$N_INFO" '.rebateDirectSchemaItem | type')" == "object" ]] || \
      [[ "$(jqv "$O_INFO" '.rebateDirectSchemaItem | type')" == "object" ]]; then
     printf "  ${BOLD}rebateDirectSchemaItem:${RESET}\n"
@@ -277,7 +265,6 @@ for (( i=0; i<MAX_ROWS; i++ )); do
     cmp_json "  .symbolCode" "$(jqv "$N_INFO" '.rebateDirectSchemaItem.symbolCode')" "$(jqv "$O_INFO" '.rebateDirectSchemaItem.symbolCode')"
   fi
 
-  # note (last allocation depth)
   N_NOTE=$(jqv "$N_INFO" '.note // empty')
   O_NOTE=$(jqv "$O_INFO" '.note // empty')
   if [[ -n "$N_NOTE" || -n "$O_NOTE" ]]; then

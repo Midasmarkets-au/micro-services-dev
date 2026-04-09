@@ -325,7 +325,7 @@ pub async fn get_mt5_price(mt5_pool: &MySqlPool, symbol_code: &str) -> Result<Op
 
 /// Insert a rebate record in a transaction:
 ///   1. Generate a Snowflake ID from idgen
-///   2. INSERT INTO core."_MatterK8s" with the Snowflake ID
+///   2. INSERT INTO core.matter_k8s with the Snowflake ID
 ///   3. INSERT INTO trd.rebate_k8s with Id = matter_id (PG routes to correct year partition via CreatedOn)
 /// Returns the new matter/rebate Id.
 pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebate) -> Result<i64> {
@@ -333,10 +333,10 @@ pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebat
 
     let mut tx = pool.begin().await?;
 
-    // Write to the native-partitioned _MatterK8s table; PostgreSQL routes to the
+    // Write to the native-partitioned matter_k8s table; PostgreSQL routes to the
     // correct year partition based on PostedOn automatically.
     sqlx::query(
-        r#"INSERT INTO core."_MatterK8s" ("Id", "Type", "StateId", "PostedOn", "StatedOn")
+        r#"INSERT INTO core.matter_k8s ("Id", "Type", "StateId", "PostedOn", "StatedOn")
            VALUES ($1, $2, $3, NOW(), NOW())"#
     )
     .bind(matter_id)
