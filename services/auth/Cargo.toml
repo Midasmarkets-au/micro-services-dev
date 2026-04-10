@@ -1,8 +1,16 @@
 [package]
 name = "auth"
 version = "0.1.0"
-edition = "2024"
-description = "Auth Service - OAuth2 token endpoint (port of mono's IdentityServer4 logic)"
+edition = "2021"
+description = "Auth Service - OAuth2 token endpoint, Rust replacement for mono's OpenIddict"
+
+[[bin]]
+name = "auth"
+path = "src/main.rs"
+
+[lib]
+name = "auth"
+path = "src/lib.rs"
 
 [dependencies]
 tokio = { workspace = true }
@@ -22,5 +30,15 @@ base64 = { workspace = true }
 harsh = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-dotenvy = { workspace = true }
+tracing-appender = { workspace = true }
 otel = { path = "../otel" }
+rsa = { version = "0.9.10", features = ["pem"] }
+axum-extra = { version = "0.12.5", features = ["cookie"] }
+md5 = "0.8.0"
+hex = "0.4.3"
+deadpool-redis = { version = "0.23.0", features = ["rt_tokio_1"] }
+tonic.workspace = true
+prost.workspace = true
+
+[build-dependencies]
+tonic-build.workspace = true
