@@ -42,30 +42,30 @@ public class MonoCallbackGrpcService(
         return Task.FromResult(new NotifyReportDoneResponse { Success = true });
     }
 
-    public override Task<TriggerJobResponse> TriggerCalculateRebate(
-        TriggerJobRequest request,
+    public override Task<TriggerCalculateRebateResponse> TriggerCalculateRebate(
+        TriggerCalculateRebateRequest request,
         ServerCallContext context)
     {
         logger.LogInformation("gRPC TriggerCalculateRebate");
         hangfire.BackgroundJobClient.Enqueue<IRebateJob>(x => x.CalculateRebate());
-        return Task.FromResult(new TriggerJobResponse { Success = true });
+        return Task.FromResult(new TriggerCalculateRebateResponse { Success = true });
     }
 
-    public override Task<TriggerJobResponse> TriggerReleaseRebate(
-        TriggerJobRequest request,
+    public override Task<TriggerReleaseRebateResponse> TriggerReleaseRebate(
+        TriggerReleaseRebateRequest request,
         ServerCallContext context)
     {
         logger.LogInformation("gRPC TriggerReleaseRebate");
         hangfire.BackgroundJobClient.Enqueue<IRebateJob>(x => x.ReleaseRebateAsync());
-        return Task.FromResult(new TriggerJobResponse { Success = true });
+        return Task.FromResult(new TriggerReleaseRebateResponse { Success = true });
     }
 
-    public override Task<TriggerJobResponse> TriggerCryptoMonitor(
-        TriggerJobRequest request,
+    public override Task<TriggerCryptoMonitorResponse> TriggerCryptoMonitor(
+        TriggerCryptoMonitorRequest request,
         ServerCallContext context)
     {
         logger.LogInformation("gRPC TriggerCryptoMonitor");
         hangfire.BackgroundJobClient.Enqueue<CryptoJob>(x => x.MonitorAsync());
-        return Task.FromResult(new TriggerJobResponse { Success = true });
+        return Task.FromResult(new TriggerCryptoMonitorResponse { Success = true });
     }
 }

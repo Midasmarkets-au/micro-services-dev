@@ -15,81 +15,81 @@ import "http/v1/payment.proto";
 
 // HTTP 路由全部由 MVC AccountController 处理，gRPC 仅保留内部调用定义
 service TenantAccountService {
-  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {}
-  rpc GetAccount(GetAccountRequest) returns (Account) {}
-  rpc RefreshAccount(GetAccountRequest) returns (Account) {}
+  rpc ListAccounts(TenantAccountServiceListAccountsRequest) returns (TenantAccountServiceListAccountsResponse) {}
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {}
+  rpc RefreshAccount(RefreshAccountRequest) returns (RefreshAccountResponse) {}
   rpc ListAccountLogs(ListAccountLogsRequest) returns (ListAccountLogsResponse) {}
-  rpc GetLogActions(EmptyRequest) returns (LogActionsResponse) {}
-  rpc UpdateAccountType(UpdateAccountTypeRequest) returns (Account) {}
-  rpc UpdateAccountSite(UpdateAccountSiteRequest) returns (Account) {}
-  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (Account) {}
-  rpc UpdateAccountTags(UpdateAccountTagsRequest) returns (Account) {}
-  rpc UpdateHasLevelRule(UpdateHasLevelRuleRequest) returns (Account) {}
-  rpc UpdateFundType(UpdateFundTypeRequest) returns (Account) {}
-  rpc GetLevelSetting(GetAccountRequest) returns (LevelSettingResponse) {}
-  rpc GetReferralCodes(GetAccountRequest) returns (ReferralCodesResponse) {}
-  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {}
-  rpc GetMtGroupSymbol(GetMtGroupSymbolRequest) returns (MtGroupSymbolResponse) {}
+  rpc GetLogActions(GetLogActionsRequest) returns (GetLogActionsResponse) {}
+  rpc UpdateAccountType(UpdateAccountTypeRequest) returns (UpdateAccountTypeResponse) {}
+  rpc UpdateAccountSite(UpdateAccountSiteRequest) returns (UpdateAccountSiteResponse) {}
+  rpc UpdateAccountStatus(UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse) {}
+  rpc UpdateAccountTags(UpdateAccountTagsRequest) returns (UpdateAccountTagsResponse) {}
+  rpc UpdateHasLevelRule(UpdateHasLevelRuleRequest) returns (UpdateHasLevelRuleResponse) {}
+  rpc UpdateFundType(UpdateFundTypeRequest) returns (UpdateFundTypeResponse) {}
+  rpc GetLevelSetting(GetLevelSettingRequest) returns (GetLevelSettingResponse) {}
+  rpc GetReferralCodes(GetReferralCodesRequest) returns (GetReferralCodesResponse) {}
+  rpc GetAccountWizard(GetAccountWizardRequest) returns (GetAccountWizardResponse) {}
+  rpc GetMtGroupSymbol(GetMtGroupSymbolRequest) returns (GetMtGroupSymbolResponse) {}
   rpc CheckAccountNumber(CheckAccountNumberRequest) returns (CheckAccountNumberResponse) {}
-  rpc ChangeAccountNumber(ChangeAccountNumberRequest) returns (Account) {}
-  rpc IbToSales(IbToSalesRequest) returns (Account) {}
-  rpc GetParentAccounts(GetAccountRequest) returns (ParentAccountsResponse) {}
-  rpc GetActivityReport(GetActivityReportRequest) returns (OperationResponse) {}
-  rpc GetFullAccountGroupNames(GetAccountGroupNamesRequest) returns (GroupNameListResponse) {}
-  rpc AssignAccountToSales(AssignAccountRequest) returns (Account) {}
-  rpc AssignAccountToAgent(AssignAccountRequest) returns (Account) {}
-  rpc RemoveAccountFromAgent(AssignAccountRequest) returns (Account) {}
-  rpc ChangeAgentGroup(AssignAccountRequest) returns (Account) {}
-  rpc ChangeSalesGroup(AssignAccountRequest) returns (Account) {}
-  rpc ChangeAgentGroupName(ChangeAgentGroupNameRequest) returns (Account) {}
-  rpc RenameGroup(RenameGroupRequest) returns (OperationResponse) {}
+  rpc ChangeAccountNumber(ChangeAccountNumberRequest) returns (ChangeAccountNumberResponse) {}
+  rpc IbToSales(IbToSalesRequest) returns (IbToSalesResponse) {}
+  rpc GetParentAccounts(GetParentAccountsRequest) returns (GetParentAccountsResponse) {}
+  rpc GetActivityReport(GetActivityReportRequest) returns (GetActivityReportResponse) {}
+  rpc GetFullAccountGroupNames(GetFullAccountGroupNamesRequest) returns (GetFullAccountGroupNamesResponse) {}
+  rpc AssignAccountToSales(AssignAccountToSalesRequest) returns (AssignAccountToSalesResponse) {}
+  rpc AssignAccountToAgent(AssignAccountToAgentRequest) returns (AssignAccountToAgentResponse) {}
+  rpc RemoveAccountFromAgent(RemoveAccountFromAgentRequest) returns (RemoveAccountFromAgentResponse) {}
+  rpc ChangeAgentGroup(ChangeAgentGroupRequest) returns (ChangeAgentGroupResponse) {}
+  rpc ChangeSalesGroup(ChangeSalesGroupRequest) returns (ChangeSalesGroupResponse) {}
+  rpc ChangeAgentGroupName(ChangeAgentGroupNameRequest) returns (ChangeAgentGroupNameResponse) {}
+  rpc RenameGroup(RenameGroupRequest) returns (RenameGroupResponse) {}
   rpc ListReferrals(ListReferralsRequest) returns (ListReferralsResponse) {}
   // HTTP 路由由 MVC ReferralController 处理
-  rpc GetReferralByCode(GetReferralByCodeRequest) returns (ReferralDetailResponse) {}
-  rpc GetReferralHistory(ListReferralHistoryRequest) returns (ListReferralHistoryResponse) {}
-  rpc AddReferralCode(AddReferralCodeRequest) returns (ReferralCode) {}
-  rpc UpdateReferralDefaultPaymentMethods(UpdateReferralPaymentMethodsRequest) returns (OperationResponse) {}
+  rpc GetReferralByCode(GetReferralByCodeRequest) returns (GetReferralByCodeResponse) {}
+  rpc GetReferralHistory(GetReferralHistoryRequest) returns (GetReferralHistoryResponse) {}
+  rpc AddReferralCode(AddReferralCodeRequest) returns (AddReferralCodeResponse) {}
+  rpc UpdateReferralDefaultPaymentMethods(UpdateReferralDefaultPaymentMethodsRequest) returns (UpdateReferralDefaultPaymentMethodsResponse) {}
   // HTTP 路由由 MVC CommunicateController 处理
   rpc ListCommunications(ListCommunicationsRequest) returns (ListCommunicationsResponse) {}
   rpc ListAccountBalanceAudits(ListAccountBalanceAuditsRequest) returns (ListAccountBalanceAuditsResponse) {}
-  rpc GetChildNetStat(GetTenantChildNetStatRequest) returns (ChildNetStatResponse) {}
-  rpc GetChildRebateBySymbol(GetTenantChildStatByRangeRequest) returns (SymbolGroupStatResponse) {}
+  rpc GetChildNetStat(TenantAccountServiceGetChildNetStatRequest) returns (TenantAccountServiceGetChildNetStatResponse) {}
+  rpc GetChildRebateBySymbol(TenantAccountServiceGetChildRebateBySymbolRequest) returns (TenantAccountServiceGetChildRebateBySymbolResponse) {}
 }
 
 // ─── Tenant Account V2 API (api/v2/tenant/account) ──────────────────────────
 // 账户管理增强接口，包括自动创建确认、钱包分配、交易统计、日报和顶部排行。
 
-service TenantAccountServiceV2 {
+service TenantAccountV2Service {
   // 确认系统自动创建的账户（将待确认状态改为正常激活）
-  rpc ConfirmAutoCreate(ConfirmAutoCreateRequest) returns (Account) {
+  rpc ConfirmAutoCreate(ConfirmAutoCreateRequest) returns (ConfirmAutoCreateResponse) {
     option (google.api.http) = { post: "/api/v2/tenant/account/{id}/confirm-auto-create" };
   }
   // 将指定钱包（wallet_id）分配给账户，用于出入金资金归集
-  rpc AssignWallet(AssignWalletRequest) returns (Account) {
+  rpc AssignWallet(AssignWalletRequest) returns (AssignWalletResponse) {
     option (google.api.http) = { put: "/api/v2/tenant/account/{id}/assign-wallet/{wallet_id}" };
   }
   // 获取单账户在指定日期范围内的交易统计（总手数、总盈亏、交易笔数）
-  rpc GetAccountTradeStat(GetAccountTradeStatRequest) returns (TradeStatResponse) {
+  rpc GetAccountTradeStat(GetAccountTradeStatRequest) returns (GetAccountTradeStatResponse) {
     option (google.api.http) = { get: "/api/v2/tenant/account/{id}/trade/stat" };
   }
   // 批量获取多账户（按 MT 账户号列表）在指定日期范围内的聚合交易统计
-  rpc GetMultiAccountTradeStat(GetMultiAccountTradeStatRequest) returns (TradeStatResponse) {
+  rpc GetMultiAccountTradeStat(GetMultiAccountTradeStatRequest) returns (GetMultiAccountTradeStatResponse) {
     option (google.api.http) = { get: "/api/v2/tenant/account/trade/stat" };
   }
   // 获取指定 MT 账户号在某日期（格式 YYYY-MM-DD）的日报（日末余额、净值）
-  rpc GetDailyReport(GetDailyReportRequest) returns (DailyReportResponse) {
+  rpc GetDailyReport(GetDailyReportRequest) returns (GetDailyReportResponse) {
     option (google.api.http) = { get: "/api/v2/tenant/account/daily-report/{account_number}" };
   }
   // 为账户开启账户间资金转账权限
-  rpc EnableTransfer(GetAccountRequest) returns (Account) {
+  rpc EnableTransfer(EnableTransferRequest) returns (EnableTransferResponse) {
     option (google.api.http) = { put: "/api/v2/tenant/account/{id}/enable-transfer" };
   }
   // 禁用账户间资金转账权限
-  rpc DisableTransfer(GetAccountRequest) returns (Account) {
+  rpc DisableTransfer(DisableTransferRequest) returns (DisableTransferResponse) {
     option (google.api.http) = { put: "/api/v2/tenant/account/{id}/disable-transfer" };
   }
   // HTTP 路由由 MVC AccountControllerV2.TopAccountStat 处理
-  rpc GetStatTop(GetStatTopRequest) returns (StatTopResponse) {}
+  rpc GetStatTop(GetStatTopRequest) returns (GetStatTopResponse) {}
 }
 
 // ─── Client Account API (api/v1/client/account) ─────────────────────────────
@@ -97,10 +97,10 @@ service TenantAccountServiceV2 {
 
 // HTTP 路由由 MVC Areas/Client/Controllers/AccountController 处理
 service ClientAccountService {
-  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {}
-  rpc GetAccount(GetAccountRequest) returns (Account) {}
-  rpc GetAccountWizard(GetAccountRequest) returns (AccountWizardResponse) {}
-  rpc RefreshAccount(GetAccountRequest) returns (Account) {}
+  rpc ListAccounts(ClientAccountServiceListAccountsRequest) returns (ClientAccountServiceListAccountsResponse) {}
+  rpc GetAccount(ClientAccountServiceGetAccountRequest) returns (ClientAccountServiceGetAccountResponse) {}
+  rpc GetAccountWizard(ClientAccountServiceGetAccountWizardRequest) returns (ClientAccountServiceGetAccountWizardResponse) {}
+  rpc RefreshAccount(ClientAccountServiceRefreshAccountRequest) returns (ClientAccountServiceRefreshAccountResponse) {}
 }
 
 // ─── Client Account V2 API (api/v2/client/account) ──────────────────────────
@@ -108,24 +108,24 @@ service ClientAccountService {
 // 支付状态查询，以及账户级别的出入金和转账记录查询。
 
 // HTTP 路由由 MVC Areas/Client/Controllers/V2/AccountControllerV2 处理
-service ClientAccountServiceV2 {
-  rpc ListAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {}
-  rpc ListDemoAccounts(ListClientAccountsRequest) returns (ListAccountsResponse) {}
-  rpc CreateDemoAccount(CreateDemoAccountRequest) returns (Account) {}
-  rpc GetApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {}
-  rpc GetDemoApplicationConfig(EmptyRequest) returns (ApplicationConfigResponse) {}
-  rpc GetAccountTypeByReferral(GetAccountTypeByReferralRequest) returns (AccountTypesResponse) {}
-  rpc GetAccountConfig(GetAccountRequest) returns (AccountConfigResponse) {}
-  rpc SetDefaultParent(GetAccountRequest) returns (Account) {}
-  rpc ChangeLeverage(ChangeLeverageRequest) returns (Account) {}
-  rpc ChangePassword(AccountChangePasswordRequest) returns (Account) {}
-  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (PaymentStatusResponse) {}
-  rpc ListDeposits(ListDepositsRequest) returns (ListDepositsResponse) {}
-  rpc CreateDeposit(CreateDepositRequest) returns (Deposit) {}
-  rpc GetDepositGuide(GetDepositGuideRequest) returns (DepositGuideResponse) {}
-  rpc GetDepositReceipt(GetDepositReceiptRequest) returns (DepositReceiptResponse) {}
-  rpc ListWithdrawals(ListWithdrawalsRequest) returns (ListWithdrawalsResponse) {}
-  rpc CreateWithdrawal(CreateWithdrawalRequest) returns (Withdrawal) {}
+service ClientAccountV2Service {
+  rpc ListAccounts(ClientAccountV2ServiceListAccountsRequest) returns (ClientAccountV2ServiceListAccountsResponse) {}
+  rpc ListDemoAccounts(ListDemoAccountsRequest) returns (ListDemoAccountsResponse) {}
+  rpc CreateDemoAccount(CreateDemoAccountRequest) returns (CreateDemoAccountResponse) {}
+  rpc GetApplicationConfig(GetApplicationConfigRequest) returns (GetApplicationConfigResponse) {}
+  rpc GetDemoApplicationConfig(GetDemoApplicationConfigRequest) returns (GetDemoApplicationConfigResponse) {}
+  rpc GetAccountTypeByReferral(GetAccountTypeByReferralRequest) returns (GetAccountTypeByReferralResponse) {}
+  rpc GetAccountConfig(GetAccountConfigRequest) returns (GetAccountConfigResponse) {}
+  rpc SetDefaultParent(SetDefaultParentRequest) returns (SetDefaultParentResponse) {}
+  rpc ChangeLeverage(ChangeLeverageRequest) returns (ChangeLeverageResponse) {}
+  rpc ChangePassword(ClientAccountV2ServiceChangePasswordRequest) returns (ClientAccountV2ServiceChangePasswordResponse) {}
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse) {}
+  rpc ListDeposits(ClientAccountV2ServiceListDepositsRequest) returns (ClientAccountV2ServiceListDepositsResponse) {}
+  rpc CreateDeposit(CreateDepositRequest) returns (CreateDepositResponse) {}
+  rpc GetDepositGuide(GetDepositGuideRequest) returns (GetDepositGuideResponse) {}
+  rpc GetDepositReceipt(ClientAccountV2ServiceGetDepositReceiptRequest) returns (ClientAccountV2ServiceGetDepositReceiptResponse) {}
+  rpc ListWithdrawals(ClientAccountV2ServiceListWithdrawalsRequest) returns (ClientAccountV2ServiceListWithdrawalsResponse) {}
+  rpc CreateWithdrawal(CreateWithdrawalRequest) returns (CreateWithdrawalResponse) {}
   rpc ListTransfers(ListTransfersRequest) returns (ListTransfersResponse) {}
 }
 
@@ -135,55 +135,55 @@ service ClientAccountServiceV2 {
 
 service SalesAccountService {
   // 分页查询 Sales（sales_uid）下辖的账户列表；可按 keywords、status 及日期范围过滤
-  rpc ListAccounts(ListSalesAccountsRequest) returns (ListAccountsResponse) {
+  rpc ListAccounts(SalesAccountServiceListAccountsRequest) returns (SalesAccountServiceListAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account" };
   }
   // 获取 Sales 下辖某账户（uid）的详情
-  rpc GetAccount(GetSalesAccountRequest) returns (Account) {
+  rpc GetAccount(SalesAccountServiceGetAccountRequest) returns (SalesAccountServiceGetAccountResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}" };
   }
   // 获取子账户（child_account_uid）在推荐层级中对应的等级账户
-  rpc GetLevelAccount(GetLevelAccountRequest) returns (Account) {
+  rpc GetLevelAccount(GetLevelAccountRequest) returns (GetLevelAccountResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{child_account_uid}/level-account" };
   }
   // 获取指定子账户在日期范围内的交易统计（手数、盈亏、笔数）
-  rpc GetChildAccountStat(GetChildAccountStatRequest) returns (ChildStatResponse) {
+  rpc GetChildAccountStat(GetChildAccountStatRequest) returns (GetChildAccountStatResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/stat" };
   }
   // 获取整个下辖网络的汇总统计（净入金、总手数）；view_client=true 时包含客户层
-  rpc GetChildNetStat(GetChildNetStatRequest) returns (ChildNetStatResponse) {
+  rpc GetChildNetStat(SalesAccountServiceGetChildNetStatRequest) returns (SalesAccountServiceGetChildNetStatResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat" };
   }
   // 按交易品种分组汇总下辖网络返佣金额（symbol → volume + amount）
-  rpc GetChildRebateBySymbol(GetChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+  rpc GetChildRebateBySymbol(SalesAccountServiceGetChildRebateBySymbolRequest) returns (SalesAccountServiceGetChildRebateBySymbolResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/rebate/symbol-grouped" };
   }
   // 按交易品种分组汇总下辖网络交易手数（symbol+currency → volume + profit）
-  rpc GetChildTradeBySymbol(GetChildStatByRangeRequest) returns (TradeSymbolGroupStatResponse) {
+  rpc GetChildTradeBySymbol(GetChildTradeBySymbolRequest) returns (GetChildTradeBySymbolResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/child/stat/trade/symbol-grouped" };
   }
   // 获取 Sales 为 agent（agent_uid）账户提供的账户开户配置
-  rpc GetAccountConfiguration(GetSalesAccountConfigRequest) returns (AccountConfigResponse) {
+  rpc GetAccountConfiguration(GetAccountConfigurationRequest) returns (GetAccountConfigurationResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/configuration/{agent_uid}" };
   }
   // 获取 Sales 为 agent（agent_uid）账户配置的默认等级返佣设置
-  rpc GetDefaultLevelSetting(GetSalesDefaultLevelRequest) returns (LevelSettingResponse) {
+  rpc GetDefaultLevelSetting(GetDefaultLevelSettingRequest) returns (GetDefaultLevelSettingResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{agent_uid}/default-level-setting" };
   }
   // 获取 Sales 可为下辖账户配置的可用账户类型列表
-  rpc GetAvailableAccountTypes(GetSalesUidRequest) returns (AccountTypesResponse) {
+  rpc GetAvailableAccountTypes(GetAvailableAccountTypesRequest) returns (GetAvailableAccountTypesResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/configuration/account-type-available" };
   }
   // 获取指定账户（uid）在推荐层级中的完整路径（从顶层 Sales 到该账户）
-  rpc GetReferralPath(GetSalesReferralPathRequest) returns (ReferralPathResponse) {
+  rpc GetReferralPath(GetReferralPathRequest) returns (GetReferralPathResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/referralPath/{uid}" };
   }
   // 发送查看邮箱验证码到 Sales 自己的邮箱（用于二次验证后才能查看下辖用户邮箱）
-  rpc GetViewEmailCode(GetSalesAccountRequest) returns (EmailCodeResponse) {
+  rpc GetViewEmailCode(SalesAccountServiceGetViewEmailCodeRequest) returns (SalesAccountServiceGetViewEmailCodeResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/view-email-code" };
   }
   // 使用有效验证码查看下辖账户（uid）的邮箱地址
-  rpc GetViewEmail(GetViewEmailRequest) returns (EmailResponse) {
+  rpc GetViewEmail(SalesAccountServiceGetViewEmailRequest) returns (SalesAccountServiceGetViewEmailResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/account/{uid}/view-email/{code}" };
   }
 }
@@ -194,35 +194,35 @@ service SalesAccountService {
 
 service AgentAccountService {
   // 分页查询 IB（agent_uid）下辖的账户列表；可按 keywords 和 status 过滤
-  rpc ListAccounts(ListAgentAccountsRequest) returns (ListAccountsResponse) {
+  rpc ListAccounts(AgentAccountServiceListAccountsRequest) returns (AgentAccountServiceListAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account" };
   }
   // 获取 IB 下辖某账户（uid）的详情
-  rpc GetAccount(GetAgentAccountRequest) returns (Account) {
+  rpc GetAccount(AgentAccountServiceGetAccountRequest) returns (AgentAccountServiceGetAccountResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}" };
   }
   // 从 MT4/MT5 服务器刷新 IB 下辖账户数据
-  rpc RefreshAccount(GetAgentAccountRequest) returns (Account) {
+  rpc RefreshAccount(AgentAccountServiceRefreshAccountRequest) returns (AgentAccountServiceRefreshAccountResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/refresh" };
   }
   // 获取整个下辖网络的汇总统计（净入金、总手数）；view_client=true 时包含客户层
-  rpc GetChildNetStat(GetAgentChildNetStatRequest) returns (ChildNetStatResponse) {
+  rpc GetChildNetStat(AgentAccountServiceGetChildNetStatRequest) returns (AgentAccountServiceGetChildNetStatResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/child/stat" };
   }
   // 按交易品种分组汇总 IB 下辖网络返佣金额
-  rpc GetChildRebateBySymbol(GetAgentChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+  rpc GetChildRebateBySymbol(AgentAccountServiceGetChildRebateBySymbolRequest) returns (AgentAccountServiceGetChildRebateBySymbolResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/child/stat/rebate/symbol-grouped" };
   }
   // 获取 IB 账户（uid）的默认等级返佣设置
-  rpc GetDefaultLevelSetting(GetAgentAccountRequest) returns (LevelSettingResponse) {
+  rpc GetDefaultLevelSetting(AgentAccountServiceGetDefaultLevelSettingRequest) returns (AgentAccountServiceGetDefaultLevelSettingResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/default-level-setting" };
   }
   // 发送查看邮箱验证码到 IB 自己的邮箱（用于二次验证后才能查看下辖用户邮箱）
-  rpc GetViewEmailCode(GetAgentAccountRequest) returns (EmailCodeResponse) {
+  rpc GetViewEmailCode(AgentAccountServiceGetViewEmailCodeRequest) returns (AgentAccountServiceGetViewEmailCodeResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/view-email-code" };
   }
   // 使用有效验证码查看下辖账户（uid）的邮箱地址
-  rpc GetViewEmail(GetAgentViewEmailRequest) returns (EmailResponse) {
+  rpc GetViewEmail(AgentAccountServiceGetViewEmailRequest) returns (AgentAccountServiceGetViewEmailResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/account/{uid}/view-email/{code}" };
   }
 }
@@ -233,23 +233,23 @@ service AgentAccountService {
 
 service RepAccountService {
   // 分页查询 Rep（rep_uid）下辖的账户列表；可按 keywords 和 status 过滤
-  rpc ListAccounts(ListRepAccountsRequest) returns (ListAccountsResponse) {
+  rpc ListAccounts(RepAccountServiceListAccountsRequest) returns (RepAccountServiceListAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account" };
   }
   // 获取 Rep 下辖某账户（uid）的详情
-  rpc GetAccount(GetRepAccountRequest) returns (Account) {
+  rpc GetAccount(RepAccountServiceGetAccountRequest) returns (RepAccountServiceGetAccountResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/{uid}" };
   }
   // 获取 Rep 下辖所有账户使用的 MT 组名列表，可按 type 和关键字过滤
-  rpc GetGroupNameList(GetGroupNameListRequest) returns (GroupNameListResponse) {
+  rpc GetGroupNameList(GetGroupNameListRequest) returns (GetGroupNameListResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/group/name-list" };
   }
   // 获取整个下辖网络的汇总统计（净入金、总手数）；view_client=true 时包含客户层
-  rpc GetChildNetStat(GetRepChildNetStatRequest) returns (ChildNetStatResponse) {
+  rpc GetChildNetStat(RepAccountServiceGetChildNetStatRequest) returns (RepAccountServiceGetChildNetStatResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/child/stat" };
   }
   // 按交易品种分组汇总 Rep 下辖网络返佣金额
-  rpc GetChildRebateBySymbol(GetRepChildStatByRangeRequest) returns (SymbolGroupStatResponse) {
+  rpc GetChildRebateBySymbol(RepAccountServiceGetChildRebateBySymbolRequest) returns (RepAccountServiceGetChildRebateBySymbolResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/account/child/stat/rebate/symbol-grouped" };
   }
 }
@@ -1191,3 +1191,365 @@ message GetTenantChildStatByRangeRequest {
   optional string from      = 4; // 兼容前端传 from（等同 date_from）
   optional string to        = 5; // 兼容前端传 to（等同 date_to）
 }
+
+// ─── Per-RPC Response/Request Messages ───────────────────────────────────────
+
+// TenantAccountService per-RPC messages
+message TenantAccountServiceListAccountsRequest {
+  PaginationRequest pagination    = 1;
+  optional string   search_text   = 2;
+  optional int32    status        = 3;
+  optional int64    uid           = 4;
+  repeated int64    uids          = 5;
+  optional int32    role          = 6;
+  optional string   date_from     = 7;
+  optional string   date_to       = 8;
+  optional int64    party_id      = 9;
+  optional int32    fund_type     = 10;
+  optional int32    service_id    = 11;
+  optional bool     include_closed = 12;
+  optional int32    currency_id   = 13;
+  optional int32    site_id       = 14;
+  optional string   group         = 15;
+  optional string   code_uid      = 16;
+  optional int32    page          = 17;
+  optional int32    size          = 18;
+}
+message TenantAccountServiceListAccountsResponse {
+  repeated Account data = 1;
+  PaginationMeta   criteria = 2;
+}
+message GetAccountResponse { Account data = 1; }
+message RefreshAccountRequest { int64 id = 1; }
+message RefreshAccountResponse { Account data = 1; }
+message GetLogActionsRequest {}
+message GetLogActionsResponse { repeated string actions = 1; }
+message UpdateAccountTypeResponse { Account data = 1; }
+message UpdateAccountSiteResponse { Account data = 1; }
+message UpdateAccountStatusResponse { Account data = 1; }
+message UpdateAccountTagsResponse { Account data = 1; }
+message UpdateHasLevelRuleResponse { Account data = 1; }
+message UpdateFundTypeResponse { Account data = 1; }
+message GetLevelSettingRequest { int64 id = 1; }
+message GetLevelSettingResponse { string json = 1; }
+message GetReferralCodesRequest { int64 id = 1; }
+message GetReferralCodesResponse { repeated ReferralCode items = 1; }
+message GetAccountWizardRequest { int64 id = 1; }
+message GetAccountWizardResponse {
+  bool kyc_form_completed     = 1;
+  bool payment_access_granted = 2;
+  bool welcome_email_sent     = 3;
+  bool notice_email_sent      = 4;
+}
+message GetMtGroupSymbolResponse { repeated string items = 1; }
+message ChangeAccountNumberResponse { Account data = 1; }
+message IbToSalesResponse { Account data = 1; }
+message GetParentAccountsRequest { int64 id = 1; }
+message GetParentAccountsResponse { repeated Account items = 1; }
+message GetActivityReportResponse { bool success = 1; string message = 2; }
+message GetFullAccountGroupNamesRequest {
+  optional int32  type     = 1;
+  optional string keywords = 2;
+}
+message GetFullAccountGroupNamesResponse { repeated string names = 1; }
+message AssignAccountToSalesRequest { int64 id = 1; int64 target_uid = 2; }
+message AssignAccountToSalesResponse { Account data = 1; }
+message AssignAccountToAgentRequest { int64 id = 1; int64 target_uid = 2; }
+message AssignAccountToAgentResponse { Account data = 1; }
+message RemoveAccountFromAgentRequest { int64 id = 1; int64 target_uid = 2; }
+message RemoveAccountFromAgentResponse { Account data = 1; }
+message ChangeAgentGroupRequest { int64 id = 1; int64 target_uid = 2; }
+message ChangeAgentGroupResponse { Account data = 1; }
+message ChangeSalesGroupRequest { int64 id = 1; int64 target_uid = 2; }
+message ChangeSalesGroupResponse { Account data = 1; }
+message ChangeAgentGroupNameResponse { Account data = 1; }
+message RenameGroupResponse { bool success = 1; string message = 2; }
+message GetReferralByCodeResponse { ReferralDetailResponse data = 1; }
+message GetReferralHistoryRequest {
+  PaginationRequest pagination = 1;
+  optional string   code       = 2;
+  optional int64    account_id = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+  optional int32    page       = 6;
+  optional int32    size       = 7;
+}
+message GetReferralHistoryResponse {
+  repeated ReferralHistoryItem items = 1;
+  PaginationMeta               criteria = 2;
+}
+message AddReferralCodeResponse { ReferralCode data = 1; }
+message UpdateReferralDefaultPaymentMethodsRequest {
+  int64  id = 1;
+  message Spec {
+    repeated int64 payment_method_ids = 1;
+    string         type               = 2;
+  }
+  Spec spec = 2;
+}
+message UpdateReferralDefaultPaymentMethodsResponse { bool success = 1; string message = 2; }
+message TenantAccountServiceGetChildNetStatRequest {
+  int64           uid         = 1;
+  optional string date_from   = 2;
+  optional string date_to     = 3;
+  bool            view_client = 4;
+  optional string from        = 5;
+  optional string to          = 6;
+}
+message TenantAccountServiceGetChildNetStatResponse { ChildNetStatResponse data = 1; }
+message TenantAccountServiceGetChildRebateBySymbolRequest {
+  int64           uid       = 1;
+  optional string date_from = 2;
+  optional string date_to   = 3;
+  optional string from      = 4;
+  optional string to        = 5;
+}
+message TenantAccountServiceGetChildRebateBySymbolResponse { SymbolGroupStatResponse data = 1; }
+
+// TenantAccountV2Service per-RPC messages
+message ConfirmAutoCreateResponse { Account data = 1; }
+message AssignWalletResponse { Account data = 1; }
+message GetAccountTradeStatResponse { TradeStatResponse data = 1; }
+message GetMultiAccountTradeStatResponse { TradeStatResponse data = 1; }
+message GetDailyReportResponse { DailyReportResponse data = 1; }
+message EnableTransferRequest { int64 id = 1; }
+message EnableTransferResponse { Account data = 1; }
+message DisableTransferRequest { int64 id = 1; }
+message DisableTransferResponse { Account data = 1; }
+message GetStatTopResponse { StatTopResponse data = 1; }
+
+// ClientAccountService per-RPC messages
+message ClientAccountServiceListAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+message ClientAccountServiceListAccountsResponse { ListAccountsResponse data = 1; }
+message ClientAccountServiceGetAccountRequest { int64 id = 1; }
+message ClientAccountServiceGetAccountResponse { Account data = 1; }
+message ClientAccountServiceGetAccountWizardRequest { int64 id = 1; }
+message ClientAccountServiceGetAccountWizardResponse {
+  bool kyc_form_completed     = 1;
+  bool payment_access_granted = 2;
+  bool welcome_email_sent     = 3;
+  bool notice_email_sent      = 4;
+}
+message ClientAccountServiceRefreshAccountRequest { int64 id = 1; }
+message ClientAccountServiceRefreshAccountResponse { Account data = 1; }
+
+// ClientAccountV2Service per-RPC messages
+message ClientAccountV2ServiceListAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+message ClientAccountV2ServiceListAccountsResponse { ListAccountsResponse data = 1; }
+message ListDemoAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional string   keywords    = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+message ListDemoAccountsResponse { ListAccountsResponse data = 1; }
+message CreateDemoAccountResponse { Account data = 1; }
+message GetApplicationConfigRequest {}
+message GetApplicationConfigResponse { ApplicationConfigResponse data = 1; }
+message GetDemoApplicationConfigRequest {}
+message GetDemoApplicationConfigResponse { ApplicationConfigResponse data = 1; }
+message GetAccountTypeByReferralResponse { AccountTypesResponse data = 1; }
+message GetAccountConfigRequest { int64 id = 1; }
+message GetAccountConfigResponse { AccountConfigResponse data = 1; }
+message SetDefaultParentRequest { int64 id = 1; }
+message SetDefaultParentResponse { Account data = 1; }
+message ChangeLeverageResponse { Account data = 1; }
+message ClientAccountV2ServiceChangePasswordRequest {
+  int64              id   = 1;
+  ChangePasswordSpec spec = 2;
+}
+message ClientAccountV2ServiceChangePasswordResponse { Account data = 1; }
+message GetPaymentStatusResponse { PaymentStatusResponse data = 1; }
+message CreateDepositResponse { Deposit data = 1; }
+message GetDepositGuideResponse { DepositGuideResponse data = 1; }
+message ClientAccountV2ServiceListDepositsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+  optional string   currency    = 6;
+}
+message ClientAccountV2ServiceListDepositsResponse {
+  repeated Deposit data     = 1;
+  PaginationMeta   criteria = 2;
+}
+message ClientAccountV2ServiceGetDepositReceiptRequest { int64 id = 1; }
+message ClientAccountV2ServiceGetDepositReceiptResponse {
+  string url      = 1;
+  string filename = 2;
+}
+message ClientAccountV2ServiceListWithdrawalsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+  optional string   currency    = 6;
+}
+message ClientAccountV2ServiceListWithdrawalsResponse {
+  repeated Withdrawal data     = 1;
+  PaginationMeta      criteria = 2;
+}
+message CreateWithdrawalResponse { Withdrawal data = 1; }
+
+// SalesAccountService per-RPC messages
+message SalesAccountServiceGetAccountRequest {
+  int64 sales_uid = 1;
+  int64 uid       = 2;
+}
+message SalesAccountServiceListAccountsRequest {
+  int64             sales_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3;
+  optional int32    status     = 4;
+  optional string   date_from  = 5;
+  optional string   date_to    = 6;
+}
+message SalesAccountServiceListAccountsResponse { ListAccountsResponse data = 1; }
+message SalesAccountServiceGetAccountResponse { Account data = 1; }
+message GetLevelAccountResponse { Account data = 1; }
+message GetChildAccountStatResponse { ChildStatResponse data = 1; }
+message SalesAccountServiceGetChildNetStatRequest {
+  int64           sales_uid  = 1;
+  int64           uid        = 2;
+  optional string date_from  = 3;
+  optional string date_to    = 4;
+  bool            view_client = 5;
+}
+message SalesAccountServiceGetChildNetStatResponse { ChildNetStatResponse data = 1; }
+message SalesAccountServiceGetChildRebateBySymbolRequest {
+  int64           sales_uid = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+message SalesAccountServiceGetChildRebateBySymbolResponse { SymbolGroupStatResponse data = 1; }
+message GetChildTradeBySymbolRequest {
+  int64           sales_uid = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+message GetChildTradeBySymbolResponse { TradeSymbolGroupStatResponse data = 1; }
+message GetAccountConfigurationRequest {
+  int64 sales_uid = 1;
+  int64 agent_uid = 2;
+}
+message GetAccountConfigurationResponse { AccountConfigResponse data = 1; }
+message GetDefaultLevelSettingRequest {
+  int64 sales_uid = 1;
+  int64 agent_uid = 2;
+}
+message GetDefaultLevelSettingResponse { string json = 1; }
+message GetAvailableAccountTypesRequest { int64 sales_uid = 1; }
+message GetAvailableAccountTypesResponse { AccountTypesResponse data = 1; }
+message GetReferralPathRequest {
+  int64 sales_uid = 1;
+  int64 uid       = 2;
+}
+message GetReferralPathResponse { ReferralPathResponse data = 1; }
+message SalesAccountServiceGetViewEmailCodeRequest {
+  int64 sales_uid = 1;
+  int64 uid       = 2;
+}
+message SalesAccountServiceGetViewEmailCodeResponse { string code = 1; string expires_at = 2; }
+message SalesAccountServiceGetViewEmailRequest {
+  int64  sales_uid = 1;
+  int64  uid       = 2;
+  string code      = 3;
+}
+message SalesAccountServiceGetViewEmailResponse { string email = 1; }
+
+// AgentAccountService per-RPC messages
+message AgentAccountServiceGetAccountRequest {
+  int64 agent_uid = 1;
+  int64 uid       = 2;
+}
+message AgentAccountServiceListAccountsRequest {
+  int64             agent_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3;
+  optional int32    status     = 4;
+}
+message AgentAccountServiceListAccountsResponse { ListAccountsResponse data = 1; }
+message AgentAccountServiceGetAccountResponse { Account data = 1; }
+message AgentAccountServiceRefreshAccountRequest {
+  int64 agent_uid = 1;
+  int64 uid       = 2;
+}
+message AgentAccountServiceRefreshAccountResponse { Account data = 1; }
+message AgentAccountServiceGetChildNetStatRequest {
+  int64           agent_uid  = 1;
+  int64           uid        = 2;
+  optional string date_from  = 3;
+  optional string date_to    = 4;
+  bool            view_client = 5;
+}
+message AgentAccountServiceGetChildNetStatResponse { ChildNetStatResponse data = 1; }
+message AgentAccountServiceGetChildRebateBySymbolRequest {
+  int64           agent_uid = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+message AgentAccountServiceGetChildRebateBySymbolResponse { SymbolGroupStatResponse data = 1; }
+message AgentAccountServiceGetDefaultLevelSettingRequest {
+  int64 agent_uid = 1;
+  int64 uid       = 2;
+}
+message AgentAccountServiceGetDefaultLevelSettingResponse { string json = 1; }
+message AgentAccountServiceGetViewEmailCodeRequest {
+  int64 agent_uid = 1;
+  int64 uid       = 2;
+}
+message AgentAccountServiceGetViewEmailCodeResponse { string code = 1; string expires_at = 2; }
+message AgentAccountServiceGetViewEmailRequest {
+  int64  agent_uid = 1;
+  int64  uid       = 2;
+  string code      = 3;
+}
+message AgentAccountServiceGetViewEmailResponse { string email = 1; }
+
+// RepAccountService per-RPC messages
+message RepAccountServiceGetAccountRequest {
+  int64 rep_uid = 1;
+  int64 uid     = 2;
+}
+message RepAccountServiceListAccountsRequest {
+  int64             rep_uid    = 1;
+  PaginationRequest pagination = 2;
+  optional string   keywords   = 3;
+  optional int32    status     = 4;
+}
+message RepAccountServiceListAccountsResponse { ListAccountsResponse data = 1; }
+message RepAccountServiceGetAccountResponse { Account data = 1; }
+message GetGroupNameListResponse { repeated string names = 1; }
+message RepAccountServiceGetChildNetStatRequest {
+  int64           rep_uid   = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+  bool            view_client = 5;
+}
+message RepAccountServiceGetChildNetStatResponse { ChildNetStatResponse data = 1; }
+message RepAccountServiceGetChildRebateBySymbolRequest {
+  int64           rep_uid   = 1;
+  int64           uid       = 2;
+  optional string date_from = 3;
+  optional string date_to   = 4;
+}
+message RepAccountServiceGetChildRebateBySymbolResponse { SymbolGroupStatResponse data = 1; }

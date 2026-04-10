@@ -22,10 +22,10 @@ pub struct SubscribeRequest {
     #[prost(string, tag = "1")]
     pub channel: ::prost::alloc::string::String,
 }
-/// 事件消息
+/// 订阅响应（事件消息）
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Event {
+pub struct SubscribeResponse {
     #[prost(string, tag = "1")]
     pub channel: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
@@ -150,7 +150,7 @@ pub mod boardcast_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SubscribeRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::Event>>,
+            tonic::Response<tonic::codec::Streaming<super::SubscribeResponse>>,
             tonic::Status,
         > {
             self.inner
@@ -187,7 +187,7 @@ pub mod boardcast_service_server {
         ) -> std::result::Result<tonic::Response<super::PublishResponse>, tonic::Status>;
         /// Server streaming response type for the Subscribe method.
         type SubscribeStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::Event, tonic::Status>,
+                Item = std::result::Result<super::SubscribeResponse, tonic::Status>,
             >
             + Send
             + 'static;
@@ -330,7 +330,7 @@ pub mod boardcast_service_server {
                         T: BoardcastService,
                     > tonic::server::ServerStreamingService<super::SubscribeRequest>
                     for SubscribeSvc<T> {
-                        type Response = super::Event;
+                        type Response = super::SubscribeResponse;
                         type ResponseStream = T::SubscribeStream;
                         type Future = BoxFuture<
                             tonic::Response<Self::ResponseStream>,

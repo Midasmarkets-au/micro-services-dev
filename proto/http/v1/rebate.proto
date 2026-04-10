@@ -14,31 +14,31 @@ import "http/v1/common.proto";
 
 service TenantRebateService {
   // 分页查询返佣记录；可按 account_id、status、symbol 及日期范围过滤
-  rpc ListRebates(ListRebatesRequest) returns (ListRebatesResponse) {
+  rpc ListRebates(TenantRebateServiceListRebatesRequest) returns (TenantRebateServiceListRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate" };
   }
   // 按 id 获取单条返佣记录详情
-  rpc GetRebate(GetRebateRequest) returns (Rebate) {
+  rpc GetRebate(TenantRebateServiceGetRebateRequest) returns (TenantRebateServiceGetRebateResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate/{id}" };
   }
   // 获取当前租户所有配置了返佣规则的交易品种列表
-  rpc GetAllSymbols(EmptyRequest) returns (RebateSymbolsResponse) {
+  rpc GetAllSymbols(TenantRebateServiceGetAllSymbolsRequest) returns (TenantRebateServiceGetAllSymbolsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate/symbol/all" };
   }
   // 获取返佣品种分类列表（如 "Forex"、"Metal"、"Crypto"），用于前端分组展示
-  rpc GetSymbolCategories(EmptyRequest) returns (RebateSymbolCategoriesResponse) {
+  rpc GetSymbolCategories(TenantRebateServiceGetSymbolCategoriesRequest) returns (TenantRebateServiceGetSymbolCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate/symbol/category" };
   }
   // 暂停返佣自动释放（可选指定暂停时长，单位：分钟；不传则持续暂停至手动恢复）
-  rpc DisableRelease(DisableReleaseRequest) returns (OperationResponse) {
+  rpc DisableRelease(DisableReleaseRequest) returns (TenantRebateServiceDisableReleaseResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate/disable-release" };
   }
   // 恢复返佣自动释放（与 DisableRelease 配对使用）
-  rpc EnableRelease(EmptyRequest) returns (OperationResponse) {
+  rpc EnableRelease(TenantRebateServiceEnableReleaseRequest) returns (TenantRebateServiceEnableReleaseResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate/enable-release" };
   }
   // 重新触发指定返佣记录的发放流程（用于修复异常状态的返佣）
-  rpc ResendRebate(ResendRebateRequest) returns (OperationResponse) {
+  rpc ResendRebate(ResendRebateRequest) returns (TenantRebateServiceResendRebateResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate/resend", body: "*" };
   }
 }
@@ -53,35 +53,35 @@ service TenantRebateAgentRuleService {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule" };
   }
   // 按 id 获取单条 Agent 返佣规则详情
-  rpc GetRebateAgentRule(GetRebateRuleRequest) returns (RebateAgentRule) {
+  rpc GetRebateAgentRule(TenantRebateAgentRuleServiceGetRebateAgentRuleRequest) returns (TenantRebateAgentRuleServiceGetRebateAgentRuleResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule/{id}" };
   }
   // 为指定账户（account_id）创建 Agent 返佣规则，关联指定 BaseSchema（schema_id）
-  rpc CreateRebateAgentRule(CreateRebateAgentRuleRequest) returns (RebateAgentRule) {
+  rpc CreateRebateAgentRule(CreateRebateAgentRuleRequest) returns (TenantRebateAgentRuleServiceCreateRebateAgentRuleResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-agent-rule", body: "*" };
   }
   // 更新 Agent 返佣规则状态（如启用/禁用）
-  rpc UpdateRebateAgentRule(UpdateRebateAgentRuleRequest) returns (RebateAgentRule) {
+  rpc UpdateRebateAgentRule(UpdateRebateAgentRuleRequest) returns (TenantRebateAgentRuleServiceUpdateRebateAgentRuleResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}", body: "spec" };
   }
   // 删除 Agent 返佣规则
-  rpc DeleteRebateAgentRule(GetRebateRuleRequest) returns (OperationResponse) {
+  rpc DeleteRebateAgentRule(TenantRebateAgentRuleServiceDeleteRebateAgentRuleRequest) returns (TenantRebateAgentRuleServiceDeleteRebateAgentRuleResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-agent-rule/{id}" };
   }
   // 更新规则的顶层等级设置（多层 IB 结构中最高层的 RebateLevelSetting 消息类型配置）
-  rpc UpdateLevelSetting(UpdateRebateLevelSettingRequest) returns (RebateAgentRule) {
+  rpc UpdateLevelSetting(TenantRebateAgentRuleServiceUpdateLevelSettingRequest) returns (TenantRebateAgentRuleServiceUpdateLevelSettingResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/level-setting", body: "spec" };
   }
   // 清除规则的等级设置（恢复为默认等级计算逻辑）
-  rpc ClearLevelSetting(GetRebateRuleRequest) returns (RebateAgentRule) {
+  rpc ClearLevelSetting(TenantRebateAgentRuleServiceClearLevelSettingRequest) returns (TenantRebateAgentRuleServiceClearLevelSettingResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/clear-level-setting" };
   }
   // 更新规则关联的下层 schema（变更 IB 使用的 BaseSchema）
-  rpc UpdateSchema(UpdateSchemaRequest) returns (RebateAgentRule) {
+  rpc UpdateSchema(UpdateSchemaRequest) returns (TenantRebateAgentRuleServiceUpdateSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-agent-rule/{id}/schema", body: "spec" };
   }
   // 获取指定账户（account_id）的默认等级返佣设置（按账户类型预设）
-  rpc GetDefaultLevelSetting(GetDefaultRebateLevelSettingRequest) returns (RebateLevelSettingResponse) {
+  rpc GetDefaultLevelSetting(TenantRebateAgentRuleServiceGetDefaultLevelSettingRequest) returns (TenantRebateAgentRuleServiceGetDefaultLevelSettingResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-agent-rule/{account_id}/default-level-setting" };
   }
 }
@@ -96,11 +96,11 @@ service TenantRebateClientRuleService {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-client-rule" };
   }
   // 按 id 获取单条客户返佣规则详情
-  rpc GetRebateClientRule(GetRebateRuleRequest) returns (RebateClientRule) {
+  rpc GetRebateClientRule(TenantRebateClientRuleServiceGetRebateClientRuleRequest) returns (TenantRebateClientRuleServiceGetRebateClientRuleResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-client-rule/{id}" };
   }
   // 修改客户返佣规则的分配类型（distribution_type 枚举，决定返佣归属比例）
-  rpc UpdateDistributionType(UpdateDistributionTypeRequest) returns (RebateClientRule) {
+  rpc UpdateDistributionType(UpdateDistributionTypeRequest) returns (TenantRebateClientRuleServiceUpdateDistributionTypeResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-client-rule/{id}", body: "spec" };
   }
 }
@@ -116,23 +116,23 @@ service TenantRebateDirectRuleService {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-rule" };
   }
   // 按 id 获取单条直接返佣规则详情
-  rpc GetRebateDirectRule(GetRebateRuleRequest) returns (RebateDirectRule) {
+  rpc GetRebateDirectRule(TenantRebateDirectRuleServiceGetRebateDirectRuleRequest) returns (TenantRebateDirectRuleServiceGetRebateDirectRuleResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-rule/{id}" };
   }
   // 为指定账户（account_id）创建直接返佣规则，关联指定 DirectSchema（schema_id）
-  rpc CreateRebateDirectRule(CreateRebateDirectRuleRequest) returns (RebateDirectRule) {
+  rpc CreateRebateDirectRule(CreateRebateDirectRuleRequest) returns (TenantRebateDirectRuleServiceCreateRebateDirectRuleResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-direct-rule", body: "*" };
   }
   // 更新直接返佣规则状态
-  rpc UpdateRebateDirectRule(UpdateRebateDirectRuleRequest) returns (RebateDirectRule) {
+  rpc UpdateRebateDirectRule(UpdateRebateDirectRuleRequest) returns (TenantRebateDirectRuleServiceUpdateRebateDirectRuleResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-rule/{id}", body: "spec" };
   }
   // 确认直接返佣规则使其正式生效（创建后处于待确认状态，确认后开始计算返佣）
-  rpc ConfirmRebateDirectRule(GetRebateRuleRequest) returns (RebateDirectRule) {
+  rpc ConfirmRebateDirectRule(TenantRebateDirectRuleServiceConfirmRebateDirectRuleRequest) returns (TenantRebateDirectRuleServiceConfirmRebateDirectRuleResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-rule/{id}/confirm" };
   }
   // 删除直接返佣规则
-  rpc DeleteRebateDirectRule(GetRebateRuleRequest) returns (OperationResponse) {
+  rpc DeleteRebateDirectRule(TenantRebateDirectRuleServiceDeleteRebateDirectRuleRequest) returns (TenantRebateDirectRuleServiceDeleteRebateDirectRuleResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-direct-rule/{id}" };
   }
 }
@@ -143,43 +143,43 @@ service TenantRebateDirectRuleService {
 
 service TenantRebateBaseSchemaService {
   // 分页查询 BaseSchema 列表；可按关键字和 status 过滤
-  rpc ListRebateBaseSchemas(ListRebateSchemasRequest) returns (ListRebateBaseSchemasResponse) {
+  rpc ListRebateBaseSchemas(TenantRebateBaseSchemaServiceListRebateBaseSchemasRequest) returns (ListRebateBaseSchemasResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema" };
   }
   // 获取 BaseSchema ID/Name 精简列表（供下拉选择框使用，不含 items 详情）
-  rpc ListRebateBaseSchemaNames(ListRebateSchemasRequest) returns (SchemaNameListResponse) {
+  rpc ListRebateBaseSchemaNames(TenantRebateBaseSchemaServiceListRebateBaseSchemaNamesRequest) returns (TenantRebateBaseSchemaServiceListRebateBaseSchemaNamesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema/list" };
   }
   // 按 base_schema_id 获取 BaseSchema 详情（含全部 items 费率条目）
-  rpc GetRebateBaseSchema(GetSchemaRequest) returns (RebateBaseSchema) {
+  rpc GetRebateBaseSchema(TenantRebateBaseSchemaServiceGetRebateBaseSchemaRequest) returns (TenantRebateBaseSchemaServiceGetRebateBaseSchemaResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema/{base_schema_id}" };
   }
   // 创建新的 BaseSchema（初始无 items，后续通过 CreateItem 添加品种费率）
-  rpc CreateRebateBaseSchema(CreateRebateBaseSchemaRequest) returns (RebateBaseSchema) {
+  rpc CreateRebateBaseSchema(CreateRebateBaseSchemaRequest) returns (TenantRebateBaseSchemaServiceCreateRebateBaseSchemaResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-base-schema", body: "*" };
   }
   // 更新 BaseSchema 名称或状态
-  rpc UpdateRebateBaseSchema(UpdateRebateBaseSchemaRequest) returns (RebateBaseSchema) {
+  rpc UpdateRebateBaseSchema(UpdateRebateBaseSchemaRequest) returns (TenantRebateBaseSchemaServiceUpdateRebateBaseSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-base-schema/{base_schema_id}", body: "spec" };
   }
   // 删除 BaseSchema（需确保无 AgentRule 引用该 schema）
-  rpc DeleteRebateBaseSchema(GetSchemaRequest) returns (OperationResponse) {
+  rpc DeleteRebateBaseSchema(TenantRebateBaseSchemaServiceDeleteRebateBaseSchemaRequest) returns (TenantRebateBaseSchemaServiceDeleteRebateBaseSchemaResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-base-schema/{base_schema_id}" };
   }
   // 获取 BaseSchema 下单条 item（品种费率条目）详情
-  rpc GetRebateBaseSchemaItem(GetSchemaItemRequest) returns (RebateSchemaItem) {
+  rpc GetRebateBaseSchemaItem(TenantRebateBaseSchemaServiceGetRebateBaseSchemaItemRequest) returns (TenantRebateBaseSchemaServiceGetRebateBaseSchemaItemResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/item/{base_schema_item_id}" };
   }
   // 向 BaseSchema 添加新的品种费率条目（symbol + rate + currency）
-  rpc CreateRebateBaseSchemaItem(CreateSchemaItemRequest) returns (RebateSchemaItem) {
+  rpc CreateRebateBaseSchemaItem(TenantRebateBaseSchemaServiceCreateRebateBaseSchemaItemRequest) returns (TenantRebateBaseSchemaServiceCreateRebateBaseSchemaItemResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/item", body: "spec" };
   }
   // 更新 BaseSchema 下单条 item 的费率或货币
-  rpc UpdateRebateBaseSchemaItem(UpdateSchemaItemRequest) returns (RebateSchemaItem) {
+  rpc UpdateRebateBaseSchemaItem(TenantRebateBaseSchemaServiceUpdateRebateBaseSchemaItemRequest) returns (TenantRebateBaseSchemaServiceUpdateRebateBaseSchemaItemResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/item/{base_schema_item_id}", body: "spec" };
   }
   // 批量替换 BaseSchema 的全部 items（全量覆盖，适合从外部导入费率表）
-  rpc BatchUpdateRebateBaseSchemaItems(BatchUpdateSchemaItemsRequest) returns (RebateBaseSchema) {
+  rpc BatchUpdateRebateBaseSchemaItems(TenantRebateBaseSchemaServiceBatchUpdateRebateBaseSchemaItemsRequest) returns (TenantRebateBaseSchemaServiceBatchUpdateRebateBaseSchemaItemsResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-base-schema/{base_schema_id}/items", body: "items" };
   }
 }
@@ -190,49 +190,49 @@ service TenantRebateBaseSchemaService {
 
 service TenantRebateDirectSchemaService {
   // 分页查询 DirectSchema 列表；可按关键字和 status 过滤
-  rpc ListRebateDirectSchemas(ListRebateSchemasRequest) returns (ListRebateDirectSchemasResponse) {
+  rpc ListRebateDirectSchemas(TenantRebateDirectSchemaServiceListRebateDirectSchemasRequest) returns (ListRebateDirectSchemasResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema" };
   }
   // 获取 DirectSchema ID/Name 精简列表（供下拉选择框使用，不含 items 详情）
-  rpc ListRebateDirectSchemaNames(ListRebateSchemasRequest) returns (SchemaNameListResponse) {
+  rpc ListRebateDirectSchemaNames(TenantRebateDirectSchemaServiceListRebateDirectSchemaNamesRequest) returns (TenantRebateDirectSchemaServiceListRebateDirectSchemaNamesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/list" };
   }
   // 按 schema_id 获取 DirectSchema 详情（含全部 items 费率条目）
-  rpc GetRebateDirectSchema(GetSchemaRequest) returns (RebateDirectSchema) {
+  rpc GetRebateDirectSchema(TenantRebateDirectSchemaServiceGetRebateDirectSchemaRequest) returns (TenantRebateDirectSchemaServiceGetRebateDirectSchemaResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}" };
   }
   // 创建新的 DirectSchema（初始无 items，后续通过 CreateItem 添加品种费率）
-  rpc CreateRebateDirectSchema(CreateRebateDirectSchemaRequest) returns (RebateDirectSchema) {
+  rpc CreateRebateDirectSchema(CreateRebateDirectSchemaRequest) returns (TenantRebateDirectSchemaServiceCreateRebateDirectSchemaResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-direct-schema", body: "*" };
   }
   // 确认 DirectSchema 使其生效（创建后处于草稿状态，确认后可被 DirectRule 引用）
-  rpc ConfirmRebateDirectSchema(GetSchemaRequest) returns (RebateDirectSchema) {
+  rpc ConfirmRebateDirectSchema(TenantRebateDirectSchemaServiceConfirmRebateDirectSchemaRequest) returns (TenantRebateDirectSchemaServiceConfirmRebateDirectSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/confirm" };
   }
   // 更新 DirectSchema 备注信息（remark 字段）
-  rpc UpdateRebateDirectSchema(UpdateRebateDirectSchemaRequest) returns (RebateDirectSchema) {
+  rpc UpdateRebateDirectSchema(UpdateRebateDirectSchemaRequest) returns (TenantRebateDirectSchemaServiceUpdateRebateDirectSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}", body: "spec" };
   }
   // 获取 DirectSchema 下单条 item（品种费率条目）详情
-  rpc GetRebateDirectSchemaItem(GetDirectSchemaItemRequest) returns (RebateSchemaItem) {
+  rpc GetRebateDirectSchemaItem(TenantRebateDirectSchemaServiceGetRebateDirectSchemaItemRequest) returns (TenantRebateDirectSchemaServiceGetRebateDirectSchemaItemResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-direct-schema/{schema_id}/item/{schema_item_id}" };
   }
   // 向 DirectSchema 添加新的品种费率条目（symbol + rate + currency）
-  rpc CreateRebateDirectSchemaItem(CreateDirectSchemaItemRequest) returns (RebateSchemaItem) {
+  rpc CreateRebateDirectSchemaItem(TenantRebateDirectSchemaServiceCreateRebateDirectSchemaItemRequest) returns (TenantRebateDirectSchemaServiceCreateRebateDirectSchemaItemResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-direct-schema/{schema_id}/item", body: "spec" };
   }
   // 更新 DirectSchema 下单条 item 的费率或货币
-  rpc UpdateRebateDirectSchemaItem(UpdateDirectSchemaItemRequest) returns (RebateSchemaItem) {
+  rpc UpdateRebateDirectSchemaItem(TenantRebateDirectSchemaServiceUpdateRebateDirectSchemaItemRequest) returns (TenantRebateDirectSchemaServiceUpdateRebateDirectSchemaItemResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/item/{schema_item_id}", body: "spec" };
   }
   // 批量替换 DirectSchema 的全部 items（全量覆盖，适合从外部导入费率表）
-  rpc BatchUpdateRebateDirectSchemaItems(BatchUpdateDirectSchemaItemsRequest) returns (RebateDirectSchema) {
+  rpc BatchUpdateRebateDirectSchemaItems(TenantRebateDirectSchemaServiceBatchUpdateRebateDirectSchemaItemsRequest) returns (TenantRebateDirectSchemaServiceBatchUpdateRebateDirectSchemaItemsResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-direct-schema/{schema_id}/items", body: "items" };
   }
   // 查询哪些 DirectRule 引用了该 DirectSchema（HTTP 路由由 MVC RebateDirectSchemaController 处理，返回 AccountViewModel 列表）
-  rpc GetUsedDirectRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateDirectRulesResponse) {}
+  rpc GetUsedDirectRuleSchemas(TenantRebateDirectSchemaServiceGetUsedDirectRuleSchemasRequest) returns (TenantRebateDirectSchemaServiceGetUsedDirectRuleSchemasResponse) {}
   // 查询哪些 ClientRule 引用了该 DirectSchema（HTTP 路由由 MVC RebateDirectSchemaController 处理，返回 AccountViewModel 列表）
-  rpc GetUsedClientRuleSchemas(GetUsedBySchemaRequest) returns (ListRebateClientRulesResponse) {}
+  rpc GetUsedClientRuleSchemas(TenantRebateDirectSchemaServiceGetUsedClientRuleSchemasRequest) returns (TenantRebateDirectSchemaServiceGetUsedClientRuleSchemasResponse) {}
 }
 
 // ─── Tenant Rebate Schema Bundle API (api/v1/tenant/rebate-schema-bundle) ─────
@@ -241,27 +241,27 @@ service TenantRebateDirectSchemaService {
 
 service TenantRebateSchemaBundleService {
   // 分页查询 SchemaBundle 列表；可按关键字和 status 过滤
-  rpc ListRebateSchemaBundles(ListRebateSchemasRequest) returns (ListRebateSchemaBundlesResponse) {
+  rpc ListRebateSchemaBundles(TenantRebateSchemaBundleServiceListRebateSchemaBundlesRequest) returns (ListRebateSchemaBundlesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-schema-bundle" };
   }
   // 获取 SchemaBundle ID/Name 精简列表（供下拉选择框使用）
-  rpc ListRebateSchemaBundleNames(ListRebateSchemasRequest) returns (SchemaNameListResponse) {
+  rpc ListRebateSchemaBundleNames(TenantRebateSchemaBundleServiceListRebateSchemaBundleNamesRequest) returns (TenantRebateSchemaBundleServiceListRebateSchemaBundleNamesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-schema-bundle/list" };
   }
   // 按 bundle_id 获取 SchemaBundle 详情
-  rpc GetRebateSchemaBundle(GetBundleRequest) returns (RebateSchemaBundle) {
+  rpc GetRebateSchemaBundle(TenantRebateSchemaBundleServiceGetRebateSchemaBundleRequest) returns (TenantRebateSchemaBundleServiceGetRebateSchemaBundleResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/rebate-schema-bundle/{bundle_id}" };
   }
   // 创建新的 SchemaBundle（指定名称和包含的 schema_ids 列表）
-  rpc CreateRebateSchemaBundle(CreateRebateSchemaBundleRequest) returns (RebateSchemaBundle) {
+  rpc CreateRebateSchemaBundle(CreateRebateSchemaBundleRequest) returns (TenantRebateSchemaBundleServiceCreateRebateSchemaBundleResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/rebate-schema-bundle", body: "*" };
   }
   // 更新 SchemaBundle 的名称或包含的 schema 列表
-  rpc UpdateRebateSchemaBundle(UpdateRebateSchemaBundleRequest) returns (RebateSchemaBundle) {
+  rpc UpdateRebateSchemaBundle(UpdateRebateSchemaBundleRequest) returns (TenantRebateSchemaBundleServiceUpdateRebateSchemaBundleResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/rebate-schema-bundle/{bundle_id}", body: "spec" };
   }
   // 删除 SchemaBundle
-  rpc DeleteRebateSchemaBundle(GetBundleRequest) returns (OperationResponse) {
+  rpc DeleteRebateSchemaBundle(TenantRebateSchemaBundleServiceDeleteRebateSchemaBundleRequest) returns (TenantRebateSchemaBundleServiceDeleteRebateSchemaBundleResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/rebate-schema-bundle/{bundle_id}" };
   }
 }
@@ -275,7 +275,7 @@ service TenantSalesRebateService {
     option (google.api.http) = { get: "/api/v1/tenant/sales-rebate" };
   }
   // 手动更新 Sales 返佣记录状态（如强制完成或标记异常）
-  rpc UpdateSalesRebate(UpdateSalesRebateRequest) returns (SalesRebate) {
+  rpc UpdateSalesRebate(UpdateSalesRebateRequest) returns (TenantSalesRebateServiceUpdateSalesRebateResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate/{record_id}", body: "spec" };
   }
 }
@@ -290,19 +290,19 @@ service TenantSalesRebateSchemaService {
     option (google.api.http) = { get: "/api/v1/tenant/sales-rebate-schema" };
   }
   // 创建新的 Sales 返佣 Schema（指定名称、金额和货币）
-  rpc CreateSalesRebateSchema(CreateSalesRebateSchemaRequest) returns (SalesRebateSchema) {
+  rpc CreateSalesRebateSchema(CreateSalesRebateSchemaRequest) returns (TenantSalesRebateSchemaServiceCreateSalesRebateSchemaResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/sales-rebate-schema", body: "*" };
   }
   // 更新 Sales 返佣 Schema 的名称或金额
-  rpc UpdateSalesRebateSchema(UpdateSalesRebateSchemaRequest) returns (SalesRebateSchema) {
+  rpc UpdateSalesRebateSchema(UpdateSalesRebateSchemaRequest) returns (TenantSalesRebateSchemaServiceUpdateSalesRebateSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate-schema/{schema_id}", body: "spec" };
   }
   // 审批通过 Sales 返佣 Schema（审批后 status 变为 active，可被 SalesRebate 引用）
-  rpc ApproveSalesRebateSchema(GetSchemaRequest) returns (SalesRebateSchema) {
+  rpc ApproveSalesRebateSchema(TenantSalesRebateSchemaServiceApproveSalesRebateSchemaRequest) returns (TenantSalesRebateSchemaServiceApproveSalesRebateSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate-schema/{schema_id}/approve" };
   }
   // 软删除 Sales 返佣 Schema（标记为已删除，不物理删除，已引用的记录不受影响）
-  rpc DeleteSalesRebateSchema(GetSchemaRequest) returns (OperationResponse) {
+  rpc DeleteSalesRebateSchema(TenantSalesRebateSchemaServiceDeleteSalesRebateSchemaRequest) returns (TenantSalesRebateSchemaServiceDeleteSalesRebateSchemaResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/sales-rebate-schema/{schema_id}/delete" };
   }
 }
@@ -317,19 +317,19 @@ service TenantTradeRebateService {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate" };
   }
   // 按 id 获取单条 TradeRebate 详情
-  rpc GetTradeRebate(GetRebateRequest) returns (TradeRebate) {
+  rpc GetTradeRebate(TenantTradeRebateServiceGetTradeRebateRequest) returns (TenantTradeRebateServiceGetTradeRebateResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate/{id}" };
   }
   // 校验指定 TradeRebate 记录的返佣计算是否正确（返回 valid 和说明信息）
-  rpc CheckRebates(GetRebateRequest) returns (TradeRebateCheckResponse) {
+  rpc CheckRebates(TenantTradeRebateServiceCheckRebatesRequest) returns (TenantTradeRebateServiceCheckRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate/{id}/check-rebates" };
   }
   // 检查指定日期（格式 YYYY-MM-DD）的 MT 交易数据是否已完整同步到本地
-  rpc CheckTradeSync(CheckTradeSyncRequest) returns (TradeSyncResponse) {
+  rpc CheckTradeSync(CheckTradeSyncRequest) returns (TenantTradeRebateServiceCheckTradeSyncResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-rebate/check-trade-sync" };
   }
   // 重置 TradeRebate 记录状态（清除异常标记，允许系统重新计算返佣）
-  rpc ResetTradeRebate(GetRebateRequest) returns (OperationResponse) {
+  rpc ResetTradeRebate(TenantTradeRebateServiceResetTradeRebateRequest) returns (TenantTradeRebateServiceResetTradeRebateResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/trade-rebate/{id}/reset" };
   }
 }
@@ -340,19 +340,19 @@ service TenantTradeRebateService {
 
 service TenantDefaultRebateLevelService {
   // 获取所有账户类型的默认返佣等级设置列表（account_type_id + option_name + amount）
-  rpc GetAllDefaultRebateLevels(EmptyRequest) returns (DefaultRebateLevelsResponse) {
+  rpc GetAllDefaultRebateLevels(TenantDefaultRebateLevelServiceGetAllDefaultRebateLevelsRequest) returns (TenantDefaultRebateLevelServiceGetAllDefaultRebateLevelsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/defaultrebatelevel" };
   }
   // 获取指定账户类型（account_type_id）和选项（option_name）的详细等级设置
-  rpc GetDefaultRebateLevelDetail(GetDefaultRebateLevelDetailRequest) returns (DefaultRebateLevelDetailResponse) {
+  rpc GetDefaultRebateLevelDetail(GetDefaultRebateLevelDetailRequest) returns (TenantDefaultRebateLevelServiceGetDefaultRebateLevelDetailResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/defaultrebatelevel/{account_type_id}/{option_name}" };
   }
   // 批量更新默认返佣等级设置（全量替换，传入所有账户类型的配置）
-  rpc UpdateDefaultRebateLevels(UpdateDefaultRebateLevelsRequest) returns (DefaultRebateLevelsResponse) {
+  rpc UpdateDefaultRebateLevels(UpdateDefaultRebateLevelsRequest) returns (TenantDefaultRebateLevelServiceUpdateDefaultRebateLevelsResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/defaultrebatelevel", body: "*" };
   }
   // 获取所有可用的品种分类列表（与 TenantRebateService.GetSymbolCategories 数据源相同）
-  rpc GetCategories(EmptyRequest) returns (RebateSymbolCategoriesResponse) {
+  rpc GetCategories(TenantDefaultRebateLevelServiceGetCategoriesRequest) returns (TenantDefaultRebateLevelServiceGetCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/defaultrebatelevel/categories" };
   }
 }
@@ -362,19 +362,19 @@ service TenantDefaultRebateLevelService {
 
 service ClientRebateService {
   // 分页查询当前客户的返佣记录；可按 account_id、status、symbol 及日期范围过滤
-  rpc ListRebates(ListRebatesRequest) returns (ListRebatesResponse) {
+  rpc ListRebates(ClientRebateServiceListRebatesRequest) returns (ClientRebateServiceListRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate" };
   }
   // 按 id 获取当前客户的单条返佣记录详情
-  rpc GetRebate(GetRebateRequest) returns (Rebate) {
+  rpc GetRebate(ClientRebateServiceGetRebateRequest) returns (ClientRebateServiceGetRebateResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate/{id}" };
   }
   // 获取客户账户适用的所有返佣品种列表
-  rpc GetAllSymbols(EmptyRequest) returns (RebateSymbolsResponse) {
+  rpc GetAllSymbols(ClientRebateServiceGetAllSymbolsRequest) returns (ClientRebateServiceGetAllSymbolsResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate/symbol/all" };
   }
   // 获取客户账户适用的品种分类列表（用于前端分组展示）
-  rpc GetSymbolCategories(EmptyRequest) returns (RebateSymbolCategoriesResponse) {
+  rpc GetSymbolCategories(ClientRebateServiceGetSymbolCategoriesRequest) returns (ClientRebateServiceGetSymbolCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/client/rebate/symbol/category" };
   }
 }
@@ -384,11 +384,11 @@ service ClientRebateService {
 
 service SalesRebateService {
   // 分页查询 Sales 下辖的返佣记录；可按日期范围过滤
-  rpc ListRebates(ListSalesAreaRebatesRequest) returns (ListRebatesResponse) {
+  rpc ListRebates(SalesRebateServiceListRebatesRequest) returns (SalesRebateServiceListRebatesResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/rebate" };
   }
   // 按 id 获取 Sales 下辖的单条返佣记录详情
-  rpc GetRebate(GetSalesAreaRebateRequest) returns (Rebate) {
+  rpc GetRebate(SalesRebateServiceGetRebateRequest) returns (SalesRebateServiceGetRebateResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/rebate/{id}" };
   }
 }
@@ -930,4 +930,420 @@ message ListSalesAreaRebatesRequest {
 message GetSalesAreaRebateRequest {
   int64 sales_uid = 1; // Sales 账户 UID
   int64 id        = 2; // 返佣记录 ID
+}
+
+// ─── Per-RPC request/response wrappers (buf lint: RPC_REQUEST_RESPONSE_UNIQUE) ─
+
+// TenantRebateService
+message TenantRebateServiceListRebatesRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+  optional string   symbol      = 6;
+}
+message TenantRebateServiceListRebatesResponse {
+  repeated Rebate data     = 1;
+  PaginationMeta  criteria = 2;
+}
+message TenantRebateServiceGetRebateRequest {
+  int64 id = 1;
+}
+message TenantRebateServiceGetRebateResponse {
+  Rebate data = 1;
+}
+message TenantRebateServiceGetAllSymbolsRequest {}
+message TenantRebateServiceGetAllSymbolsResponse {
+  repeated string symbols = 1;
+}
+message TenantRebateServiceGetSymbolCategoriesRequest {}
+message TenantRebateServiceGetSymbolCategoriesResponse {
+  repeated string categories = 1;
+}
+message TenantRebateServiceDisableReleaseResponse {
+  bool   success = 1;
+  string message = 2;
+}
+message TenantRebateServiceEnableReleaseRequest {}
+message TenantRebateServiceEnableReleaseResponse {
+  bool   success = 1;
+  string message = 2;
+}
+message TenantRebateServiceResendRebateResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// TenantRebateAgentRuleService
+message TenantRebateAgentRuleServiceGetRebateAgentRuleRequest {
+  int64 id = 1;
+}
+message TenantRebateAgentRuleServiceGetRebateAgentRuleResponse {
+  RebateAgentRule data = 1;
+}
+message TenantRebateAgentRuleServiceCreateRebateAgentRuleResponse {
+  RebateAgentRule data = 1;
+}
+message TenantRebateAgentRuleServiceUpdateRebateAgentRuleResponse {
+  RebateAgentRule data = 1;
+}
+message TenantRebateAgentRuleServiceDeleteRebateAgentRuleRequest {
+  int64 id = 1;
+}
+message TenantRebateAgentRuleServiceDeleteRebateAgentRuleResponse {
+  bool   success = 1;
+  string message = 2;
+}
+message TenantRebateAgentRuleServiceUpdateLevelSettingRequest {
+  int64             id   = 1;
+  RebateLevelSchema spec = 2;
+}
+message TenantRebateAgentRuleServiceUpdateLevelSettingResponse {
+  RebateAgentRule data = 1;
+}
+message TenantRebateAgentRuleServiceClearLevelSettingRequest {
+  int64 id = 1;
+}
+message TenantRebateAgentRuleServiceClearLevelSettingResponse {
+  RebateAgentRule data = 1;
+}
+message TenantRebateAgentRuleServiceUpdateSchemaResponse {
+  RebateAgentRule data = 1;
+}
+message TenantRebateAgentRuleServiceGetDefaultLevelSettingRequest {
+  int64 account_id = 1;
+}
+message TenantRebateAgentRuleServiceGetDefaultLevelSettingResponse {
+  repeated RebateLevelSetting levels = 1;
+}
+
+// TenantRebateClientRuleService
+message TenantRebateClientRuleServiceGetRebateClientRuleRequest {
+  int64 id = 1;
+}
+message TenantRebateClientRuleServiceGetRebateClientRuleResponse {
+  RebateClientRule data = 1;
+}
+message TenantRebateClientRuleServiceUpdateDistributionTypeResponse {
+  RebateClientRule data = 1;
+}
+
+// TenantRebateDirectRuleService
+message TenantRebateDirectRuleServiceGetRebateDirectRuleRequest {
+  int64 id = 1;
+}
+message TenantRebateDirectRuleServiceGetRebateDirectRuleResponse {
+  RebateDirectRule data = 1;
+}
+message TenantRebateDirectRuleServiceCreateRebateDirectRuleResponse {
+  RebateDirectRule data = 1;
+}
+message TenantRebateDirectRuleServiceUpdateRebateDirectRuleResponse {
+  RebateDirectRule data = 1;
+}
+message TenantRebateDirectRuleServiceConfirmRebateDirectRuleRequest {
+  int64 id = 1;
+}
+message TenantRebateDirectRuleServiceConfirmRebateDirectRuleResponse {
+  RebateDirectRule data = 1;
+}
+message TenantRebateDirectRuleServiceDeleteRebateDirectRuleRequest {
+  int64 id = 1;
+}
+message TenantRebateDirectRuleServiceDeleteRebateDirectRuleResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// TenantRebateBaseSchemaService
+message TenantRebateBaseSchemaServiceListRebateBaseSchemasRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+}
+message TenantRebateBaseSchemaServiceListRebateBaseSchemaNamesRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+}
+message TenantRebateBaseSchemaServiceListRebateBaseSchemaNamesResponse {
+  repeated SchemaNameItem items = 1;
+}
+message TenantRebateBaseSchemaServiceGetRebateBaseSchemaRequest {
+  int64 base_schema_id = 1;
+}
+message TenantRebateBaseSchemaServiceGetRebateBaseSchemaResponse {
+  RebateBaseSchema data = 1;
+}
+message TenantRebateBaseSchemaServiceCreateRebateBaseSchemaResponse {
+  RebateBaseSchema data = 1;
+}
+message TenantRebateBaseSchemaServiceUpdateRebateBaseSchemaResponse {
+  RebateBaseSchema data = 1;
+}
+message TenantRebateBaseSchemaServiceDeleteRebateBaseSchemaRequest {
+  int64 base_schema_id = 1;
+}
+message TenantRebateBaseSchemaServiceDeleteRebateBaseSchemaResponse {
+  bool   success = 1;
+  string message = 2;
+}
+message TenantRebateBaseSchemaServiceGetRebateBaseSchemaItemRequest {
+  int64 base_schema_id      = 1;
+  int64 base_schema_item_id = 2;
+}
+message TenantRebateBaseSchemaServiceGetRebateBaseSchemaItemResponse {
+  RebateSchemaItem data = 1;
+}
+message TenantRebateBaseSchemaServiceCreateRebateBaseSchemaItemRequest {
+  int64                schema_id = 1;
+  RebateSchemaItemSpec spec      = 2;
+}
+message TenantRebateBaseSchemaServiceCreateRebateBaseSchemaItemResponse {
+  RebateSchemaItem data = 1;
+}
+message TenantRebateBaseSchemaServiceUpdateRebateBaseSchemaItemRequest {
+  int64                base_schema_id      = 1;
+  int64                base_schema_item_id = 2;
+  RebateSchemaItemSpec spec                = 3;
+}
+message TenantRebateBaseSchemaServiceUpdateRebateBaseSchemaItemResponse {
+  RebateSchemaItem data = 1;
+}
+message TenantRebateBaseSchemaServiceBatchUpdateRebateBaseSchemaItemsRequest {
+  int64                        base_schema_id = 1;
+  repeated RebateSchemaItemSpec items         = 2;
+}
+message TenantRebateBaseSchemaServiceBatchUpdateRebateBaseSchemaItemsResponse {
+  RebateBaseSchema data = 1;
+}
+
+// TenantRebateDirectSchemaService
+message TenantRebateDirectSchemaServiceListRebateDirectSchemasRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+}
+message TenantRebateDirectSchemaServiceListRebateDirectSchemaNamesRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+}
+message TenantRebateDirectSchemaServiceListRebateDirectSchemaNamesResponse {
+  repeated SchemaNameItem items = 1;
+}
+message TenantRebateDirectSchemaServiceGetRebateDirectSchemaRequest {
+  int64 schema_id = 1;
+}
+message TenantRebateDirectSchemaServiceGetRebateDirectSchemaResponse {
+  RebateDirectSchema data = 1;
+}
+message TenantRebateDirectSchemaServiceCreateRebateDirectSchemaResponse {
+  RebateDirectSchema data = 1;
+}
+message TenantRebateDirectSchemaServiceConfirmRebateDirectSchemaRequest {
+  int64 schema_id = 1;
+}
+message TenantRebateDirectSchemaServiceConfirmRebateDirectSchemaResponse {
+  RebateDirectSchema data = 1;
+}
+message TenantRebateDirectSchemaServiceUpdateRebateDirectSchemaResponse {
+  RebateDirectSchema data = 1;
+}
+message TenantRebateDirectSchemaServiceGetRebateDirectSchemaItemRequest {
+  int64 schema_id      = 1;
+  int64 schema_item_id = 2;
+}
+message TenantRebateDirectSchemaServiceGetRebateDirectSchemaItemResponse {
+  RebateSchemaItem data = 1;
+}
+message TenantRebateDirectSchemaServiceCreateRebateDirectSchemaItemRequest {
+  int64                schema_id = 1;
+  RebateSchemaItemSpec spec      = 2;
+}
+message TenantRebateDirectSchemaServiceCreateRebateDirectSchemaItemResponse {
+  RebateSchemaItem data = 1;
+}
+message TenantRebateDirectSchemaServiceUpdateRebateDirectSchemaItemRequest {
+  int64                schema_id      = 1;
+  int64                schema_item_id = 2;
+  RebateSchemaItemSpec spec           = 3;
+}
+message TenantRebateDirectSchemaServiceUpdateRebateDirectSchemaItemResponse {
+  RebateSchemaItem data = 1;
+}
+message TenantRebateDirectSchemaServiceBatchUpdateRebateDirectSchemaItemsRequest {
+  int64                        schema_id = 1;
+  repeated RebateSchemaItemSpec items    = 2;
+}
+message TenantRebateDirectSchemaServiceBatchUpdateRebateDirectSchemaItemsResponse {
+  RebateDirectSchema data = 1;
+}
+
+// TenantRebateSchemaBundleService
+message TenantRebateSchemaBundleServiceListRebateSchemaBundlesRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+}
+message TenantRebateSchemaBundleServiceListRebateSchemaBundleNamesRequest {
+  PaginationRequest pagination = 1;
+  optional string   keywords   = 2;
+  optional int32    status     = 3;
+}
+message TenantRebateSchemaBundleServiceListRebateSchemaBundleNamesResponse {
+  repeated SchemaNameItem items = 1;
+}
+message TenantRebateSchemaBundleServiceGetRebateSchemaBundleRequest {
+  int64 bundle_id = 1;
+}
+message TenantRebateSchemaBundleServiceGetRebateSchemaBundleResponse {
+  RebateSchemaBundle data = 1;
+}
+message TenantRebateSchemaBundleServiceCreateRebateSchemaBundleResponse {
+  RebateSchemaBundle data = 1;
+}
+message TenantRebateSchemaBundleServiceUpdateRebateSchemaBundleResponse {
+  RebateSchemaBundle data = 1;
+}
+message TenantRebateSchemaBundleServiceDeleteRebateSchemaBundleRequest {
+  int64 bundle_id = 1;
+}
+message TenantRebateSchemaBundleServiceDeleteRebateSchemaBundleResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// TenantSalesRebateService
+message TenantSalesRebateServiceUpdateSalesRebateResponse {
+  SalesRebate data = 1;
+}
+
+// TenantSalesRebateSchemaService
+message TenantSalesRebateSchemaServiceCreateSalesRebateSchemaResponse {
+  SalesRebateSchema data = 1;
+}
+message TenantSalesRebateSchemaServiceUpdateSalesRebateSchemaResponse {
+  SalesRebateSchema data = 1;
+}
+message TenantSalesRebateSchemaServiceApproveSalesRebateSchemaRequest {
+  int64 schema_id = 1;
+}
+message TenantSalesRebateSchemaServiceApproveSalesRebateSchemaResponse {
+  SalesRebateSchema data = 1;
+}
+message TenantSalesRebateSchemaServiceDeleteSalesRebateSchemaRequest {
+  int64 schema_id = 1;
+}
+message TenantSalesRebateSchemaServiceDeleteSalesRebateSchemaResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// TenantTradeRebateService
+message TenantTradeRebateServiceGetTradeRebateRequest {
+  int64 id = 1;
+}
+message TenantTradeRebateServiceGetTradeRebateResponse {
+  TradeRebate data = 1;
+}
+message TenantTradeRebateServiceCheckRebatesRequest {
+  int64 id = 1;
+}
+message TenantTradeRebateServiceCheckRebatesResponse {
+  bool   valid   = 1;
+  string message = 2;
+}
+message TenantTradeRebateServiceCheckTradeSyncResponse {
+  bool   synced      = 1;
+  int32  trade_count = 2;
+}
+message TenantTradeRebateServiceResetTradeRebateRequest {
+  int64 id = 1;
+}
+message TenantTradeRebateServiceResetTradeRebateResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// TenantDefaultRebateLevelService
+message TenantDefaultRebateLevelServiceGetAllDefaultRebateLevelsRequest {}
+message TenantDefaultRebateLevelServiceGetAllDefaultRebateLevelsResponse {
+  repeated DefaultRebateLevelItem items = 1;
+}
+message TenantDefaultRebateLevelServiceGetDefaultRebateLevelDetailResponse {
+  repeated RebateLevelSetting levels = 1;
+}
+message TenantDefaultRebateLevelServiceUpdateDefaultRebateLevelsResponse {
+  repeated DefaultRebateLevelItem items = 1;
+}
+message TenantDefaultRebateLevelServiceGetCategoriesRequest {}
+message TenantDefaultRebateLevelServiceGetCategoriesResponse {
+  repeated string categories = 1;
+}
+
+// ClientRebateService
+message ClientRebateServiceListRebatesRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2;
+  optional int32    status      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+  optional string   symbol      = 6;
+}
+message ClientRebateServiceListRebatesResponse {
+  repeated Rebate data     = 1;
+  PaginationMeta  criteria = 2;
+}
+message ClientRebateServiceGetRebateRequest {
+  int64 id = 1;
+}
+message ClientRebateServiceGetRebateResponse {
+  Rebate data = 1;
+}
+message ClientRebateServiceGetAllSymbolsRequest {}
+message ClientRebateServiceGetAllSymbolsResponse {
+  repeated string symbols = 1;
+}
+message ClientRebateServiceGetSymbolCategoriesRequest {}
+message ClientRebateServiceGetSymbolCategoriesResponse {
+  repeated string categories = 1;
+}
+
+// TenantRebateDirectSchemaService GetUsedBy
+message TenantRebateDirectSchemaServiceGetUsedDirectRuleSchemasRequest {
+  int64             schema_id  = 1;
+  PaginationRequest pagination = 2;
+}
+message TenantRebateDirectSchemaServiceGetUsedDirectRuleSchemasResponse {
+  repeated RebateDirectRule data     = 1;
+  PaginationMeta            criteria = 2;
+}
+message TenantRebateDirectSchemaServiceGetUsedClientRuleSchemasRequest {
+  int64             schema_id  = 1;
+  PaginationRequest pagination = 2;
+}
+message TenantRebateDirectSchemaServiceGetUsedClientRuleSchemasResponse {
+  repeated RebateClientRule data     = 1;
+  PaginationMeta            criteria = 2;
+}
+
+// SalesRebateService
+message SalesRebateServiceListRebatesRequest {
+  int64             sales_uid  = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3;
+  optional string   date_to    = 4;
+}
+message SalesRebateServiceListRebatesResponse {
+  repeated Rebate data     = 1;
+  PaginationMeta  criteria = 2;
+}
+message SalesRebateServiceGetRebateRequest {
+  int64 sales_uid = 1;
+  int64 id        = 2;
+}
+message SalesRebateServiceGetRebateResponse {
+  Rebate data = 1;
 }

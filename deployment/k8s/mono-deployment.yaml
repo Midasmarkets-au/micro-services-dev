@@ -34,6 +34,9 @@ spec:
           envFrom:
             - secretRef:
                 name: mono-env
+          env:
+            - name: AUTH_GRPC_ADDR
+              value: "http://auth:50002"
           resources:
             requests:
               memory: "2Gi"

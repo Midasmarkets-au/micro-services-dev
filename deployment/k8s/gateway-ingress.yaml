@@ -10,10 +10,15 @@
 #
 #  流量路径：
 #    portal.trademdm.com/api/v1/event               → boardcast:9003/event（rewrite）
-#    portal.trademdm.com/(api|connect|hub|live|...)  → mono:9005
-#    portal.trademdm.com/                            → front-client:80
-#    tenant.trademdm.com/(api|connect|hub|live|...)  → mono:9005
-#    tenant.trademdm.com/                            → front-tenant:80
+#    portal.trademdm.com/connect/                   → auth:9002（Rust auth 服务）
+#    portal.trademdm.com/api/v2/auth/               → auth:9002（Rust auth 服务）
+#    portal.trademdm.com/.well-known/jwks.json      → auth:9002（JWKS 公钥端点）
+#    portal.trademdm.com/(api|hub|live|...)         → mono:9005
+#    portal.trademdm.com/                           → front-client:80
+#    tenant.trademdm.com/connect/                   → auth:9002
+#    tenant.trademdm.com/api/v2/auth/               → auth:9002
+#    tenant.trademdm.com/(api|hub|live|...)         → mono:9005
+#    tenant.trademdm.com/                           → front-tenant:80
 #
 #  注意：portal 的 /api/ 路径使用负向前瞻排除 /api/v1/event，
 #  避免与 boardcast-event-ingress 冲突。
@@ -89,8 +94,30 @@ spec:
     - host: portal.trademdm.com
       http:
         paths:
+          # Rust auth 服务：token 端点、auth API、JWKS 公钥
+          - path: /connect/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /api/v2/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /\.well-known/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
           # 负向前瞻排除 /api/v1/event，该路径由 boardcast-event-ingress 处理
-          - path: /(?!api/v1/event(/|$))(api|connect|hub|live|swagger|.well-known/openid-configuration)/
+          - path: /(?!api/v1/event(/|$))(api|hub|live|swagger|.well-known/openid-configuration)/
             pathType: ImplementationSpecific
             backend:
               service:
@@ -107,7 +134,29 @@ spec:
     - host: tenant.trademdm.com
       http:
         paths:
-          - path: /(api|connect|hub|live|swagger|.well-known/openid-configuration)/
+          # Rust auth 服务
+          - path: /connect/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /api/v2/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /\.well-known/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /(api|hub|live|swagger)/
             pathType: ImplementationSpecific
             backend:
               service:
@@ -123,7 +172,29 @@ spec:
                   number: 80
     - http:
         paths:
-          - path: /(api|connect|hub|live|swagger)/
+          # Rust auth 服务（通配 host）
+          - path: /connect/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /api/v2/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /\.well-known/
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /(api|hub|live|swagger)/
             pathType: ImplementationSpecific
             backend:
               service:

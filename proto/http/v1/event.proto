@@ -18,27 +18,27 @@ service TenantEventService {
     option (google.api.http) = { get: "/api/v1/tenant/event" };
   }
   // 按 id 获取活动详情
-  rpc GetEvent(GetEventRequest) returns (Event) {
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/{id}" };
   }
   // 创建新活动（start_at/end_at 为 ISO 8601 格式）
-  rpc CreateEvent(CreateEventRequest) returns (Event) {
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event", body: "*" };
   }
   // 更新活动基本信息（body 字段名为 spec）
-  rpc UpdateEvent(UpdateEventRequest) returns (Event) {
+  rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}", body: "spec" };
   }
   // 发布活动（status 变更为 published，对前端可见）
-  rpc PublishEvent(GetEventRequest) returns (Event) {
+  rpc PublishEvent(PublishEventRequest) returns (PublishEventResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}/publish" };
   }
   // 关闭活动（status 变更为 closed，停止接受报名）
-  rpc CloseEvent(GetEventRequest) returns (Event) {
+  rpc CloseEvent(CloseEventRequest) returns (CloseEventResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}/close" };
   }
   // 更新活动指定语言的内容（lang 为语言代码，如 "en"、"zh"）
-  rpc UpdateEventLang(UpdateEventLangRequest) returns (Event) {
+  rpc UpdateEventLang(UpdateEventLangRequest) returns (UpdateEventLangResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/{id}/lang/{lang}", body: "spec" };
   }
   // 分页查询活动参与用户列表；可按 status 和关键字过滤
@@ -46,15 +46,15 @@ service TenantEventService {
     option (google.api.http) = { get: "/api/v1/tenant/event/users" };
   }
   // 审批通过指定用户的活动参与申请（party_id 为路径参数）
-  rpc ApproveEventUser(EventUserPartyRequest) returns (OperationResponse) {
+  rpc ApproveEventUser(ApproveEventUserRequest) returns (ApproveEventUserResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/approve" };
   }
   // 拒绝指定用户的活动参与申请
-  rpc RejectEventUser(EventUserPartyRequest) returns (OperationResponse) {
+  rpc RejectEventUser(RejectEventUserRequest) returns (RejectEventUserResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/reject" };
   }
   // 取消指定用户的活动参与资格（已审批后的撤销）
-  rpc CancelEventUser(EventUserPartyRequest) returns (OperationResponse) {
+  rpc CancelEventUser(CancelEventUserRequest) returns (CancelEventUserResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/user/{party_id}/cancel" };
   }
 }
@@ -70,39 +70,39 @@ service TenantShopItemService {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/item" };
   }
   // 按 id 获取商品详情
-  rpc GetShopItem(GetShopItemRequest) returns (ShopItem) {
+  rpc GetShopItem(GetShopItemRequest) returns (GetShopItemResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/item/{id}" };
   }
   // 创建商品
-  rpc CreateShopItem(CreateShopItemRequest) returns (ShopItem) {
+  rpc CreateShopItem(CreateShopItemRequest) returns (CreateShopItemResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/shop/item", body: "*" };
   }
   // 更新商品基本信息（body 字段名为 spec）
-  rpc UpdateShopItem(UpdateShopItemRequest) returns (ShopItem) {
+  rpc UpdateShopItem(UpdateShopItemRequest) returns (UpdateShopItemResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}", body: "spec" };
   }
   // 发布商品（status 变更为 active，对客户端可见）
-  rpc PublishShopItem(GetShopItemRequest) returns (ShopItem) {
+  rpc PublishShopItem(PublishShopItemRequest) returns (PublishShopItemResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/publish" };
   }
   // 下架商品（status 变更为 closed）
-  rpc CloseShopItem(GetShopItemRequest) returns (ShopItem) {
+  rpc CloseShopItem(CloseShopItemRequest) returns (CloseShopItemResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/close" };
   }
   // 更新商品指定语言内容（lang 为语言代码）
-  rpc UpdateShopItemLang(UpdateShopItemLangRequest) returns (ShopItem) {
+  rpc UpdateShopItemLang(UpdateShopItemLangRequest) returns (UpdateShopItemLangResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/{id}/{lang}", body: "spec" };
   }
   // 获取所有商品分类列表（含 key、name、status、sort）
-  rpc ListShopCategories(EmptyRequest) returns (ShopCategoriesResponse) {
+  rpc ListShopCategories(ListShopCategoriesRequest) returns (ListShopCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/item/category" };
   }
   // 批量更新分类排序或信息（body 为全量分类列表）
-  rpc UpdateShopCategory(UpdateShopCategoryRequest) returns (OperationResponse) {
+  rpc UpdateShopCategory(UpdateShopCategoryRequest) returns (UpdateShopCategoryResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/category", body: "*" };
   }
   // 更新指定分类（by key）的 status（body 字段名为 spec，IntValue 类型）
-  rpc UpdateShopCategoryStatus(UpdateShopCategoryStatusRequest) returns (OperationResponse) {
+  rpc UpdateShopCategoryStatus(UpdateShopCategoryStatusRequest) returns (UpdateShopCategoryStatusResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/item/category/{key}/status", body: "spec" };
   }
 }
@@ -118,43 +118,43 @@ service TenantShopRewardService {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward" };
   }
   // 按 id 获取奖励详情
-  rpc GetShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc GetShopReward(GetShopRewardRequest) returns (GetShopRewardResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward/{id}" };
   }
   // 查询返佣类奖励列表（类型为 rebate 的 ShopReward）
-  rpc GetShopRewardRebate(ListShopRewardsRequest) returns (ListShopRewardsResponse) {
+  rpc GetShopRewardRebate(GetShopRewardRebateRequest) returns (GetShopRewardRebateResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/reward/rebate" };
   }
   // 设为待处理（status → pending）
-  rpc PendingShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc PendingShopReward(PendingShopRewardRequest) returns (PendingShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/pending" };
   }
   // 设为处理中（status → processing）
-  rpc ProcessShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc ProcessShopReward(ProcessShopRewardRequest) returns (ProcessShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/process" };
   }
   // 审批通过奖励（status → approved）
-  rpc ApproveShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc ApproveShopReward(ApproveShopRewardRequest) returns (ApproveShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/approve" };
   }
   // 标记奖励发放成功（status → succeeded）
-  rpc SucceedShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc SucceedShopReward(SucceedShopRewardRequest) returns (SucceedShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/succeed" };
   }
   // 取消奖励（status → cancelled，积分返还）
-  rpc CancelShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc CancelShopReward(CancelShopRewardRequest) returns (CancelShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/cancel" };
   }
   // 设为过期（status → expired）
-  rpc ExpireShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc ExpireShopReward(ExpireShopRewardRequest) returns (ExpireShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/expire" };
   }
   // 激活奖励（status → active，使其对客户端可见）
-  rpc ActivateShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc ActivateShopReward(ActivateShopRewardRequest) returns (ActivateShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/active" };
   }
   // 停用奖励（status → inactive）
-  rpc DeactivateShopReward(GetShopRewardRequest) returns (ShopReward) {
+  rpc DeactivateShopReward(DeactivateShopRewardRequest) returns (DeactivateShopRewardResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/reward/{id}/inactive" };
   }
 }
@@ -170,31 +170,31 @@ service TenantShopOrderService {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/order" };
   }
   // 按 id 获取订单详情（含快递单号等）
-  rpc GetShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+  rpc GetShopOrder(GetShopOrderRequest) returns (GetShopOrderResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/event/shop/order/{id}" };
   }
   // 设为待处理（status → pending）
-  rpc PendingShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+  rpc PendingShopOrder(PendingShopOrderRequest) returns (PendingShopOrderResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/pending" };
   }
   // 设为处理中（status → processing）
-  rpc ProcessShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+  rpc ProcessShopOrder(ProcessShopOrderRequest) returns (ProcessShopOrderResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/process" };
   }
   // 标记为已发货（status → shipped）
-  rpc ShipShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+  rpc ShipShopOrder(ShipShopOrderRequest) returns (ShipShopOrderResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/ship" };
   }
   // 标记为已完成/已签收（status → succeeded）
-  rpc SucceedShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+  rpc SucceedShopOrder(SucceedShopOrderRequest) returns (SucceedShopOrderResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/succeed" };
   }
   // 取消订单（status → cancelled，积分返还）
-  rpc CancelShopOrder(GetShopOrderRequest) returns (ShopOrder) {
+  rpc CancelShopOrder(CancelShopOrderRequest) returns (CancelShopOrderResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/cancel" };
   }
   // 填写快递单号（发货后调用，body 字段名为 spec）
-  rpc UpdateShopOrderShipping(UpdateShopOrderShippingRequest) returns (ShopOrder) {
+  rpc UpdateShopOrderShipping(UpdateShopOrderShippingRequest) returns (UpdateShopOrderShippingResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/event/shop/order/{id}/update-shipping", body: "spec" };
   }
 }
@@ -204,7 +204,7 @@ service TenantShopOrderService {
 
 service TenantShopPointService {
   // 手动调整指定用户的积分（amount 可为正（增加）或负（扣减））
-  rpc AdjustShopPoint(AdjustShopPointRequest) returns (OperationResponse) {
+  rpc AdjustShopPoint(AdjustShopPointRequest) returns (AdjustShopPointResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/event/shop/point/adjust", body: "*" };
   }
   // 分页查询积分流水记录；可按 party_id 及日期范围过滤
@@ -219,23 +219,23 @@ service TenantShopPointService {
 
 service ClientEventService {
   // 按活动 key 获取活动详情（含当前语言的内容）
-  rpc GetClientEvent(GetClientEventRequest) returns (ClientEvent) {
+  rpc GetClientEvent(GetClientEventRequest) returns (GetClientEventResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/{key}" };
   }
   // 报名参与指定活动（key 为路径参数）
-  rpc ApplyClientEvent(ApplyClientEventRequest) returns (OperationResponse) {
+  rpc ApplyClientEvent(ApplyClientEventRequest) returns (ApplyClientEventResponse) {
     option (google.api.http) = { post: "/api/v1/client/event/{key}/apply" };
   }
   // 获取当前登录用户在指定活动中的参与状态（event_key 为路径参数）
-  rpc GetClientEventUser(GetClientEventUserRequest) returns (ClientEventUser) {
+  rpc GetClientEventUser(GetClientEventUserRequest) returns (GetClientEventUserResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/{event_key}/user" };
   }
   // 获取积分商城活动（固定 key 为 "ShopEvent"）
-  rpc GetShopEvent(EmptyRequest) returns (ClientEvent) {
+  rpc GetShopEvent(GetShopEventRequest) returns (GetShopEventResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/ShopEvent" };
   }
   // 获取积分商城所有商品分类的名称列表
-  rpc GetClientShopCategories(EmptyRequest) returns (ClientShopCategoriesResponse) {
+  rpc GetClientShopCategories(GetClientShopCategoriesRequest) returns (GetClientShopCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/item/category-name" };
   }
   // 分页查询积分商城商品列表；可按 category_key 或关键字过滤
@@ -243,7 +243,7 @@ service ClientEventService {
     option (google.api.http) = { get: "/api/v1/client/event/shop/item" };
   }
   // 按 hash_id 获取商品详情
-  rpc GetClientShopItem(GetClientShopItemRequest) returns (ClientShopItem) {
+  rpc GetClientShopItem(GetClientShopItemRequest) returns (GetClientShopItemResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/item/{hash_id}" };
   }
   // 分页查询当前用户的兑换订单列表；可按 status 过滤
@@ -251,19 +251,19 @@ service ClientEventService {
     option (google.api.http) = { get: "/api/v1/client/event/shop/order" };
   }
   // 购买商品（消耗积分创建订单）；body 含 item_hash_id、quantity、address_hash_id
-  rpc CreateClientShopOrder(CreateClientShopOrderRequest) returns (ClientShopOrder) {
+  rpc CreateClientShopOrder(CreateClientShopOrderRequest) returns (CreateClientShopOrderResponse) {
     option (google.api.http) = { post: "/api/v1/client/event/shop/order", body: "*" };
   }
   // 按 hash_id 获取订单详情
-  rpc GetClientShopOrder(GetClientShopOrderRequest) returns (ClientShopOrder) {
+  rpc GetClientShopOrder(GetClientShopOrderRequest) returns (GetClientShopOrderResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/order/{hash_id}" };
   }
   // 更新订单收货地址（在发货前可修改）
-  rpc UpdateClientShopOrderAddress(UpdateClientShopOrderAddressRequest) returns (ClientShopOrder) {
+  rpc UpdateClientShopOrderAddress(UpdateClientShopOrderAddressRequest) returns (UpdateClientShopOrderAddressResponse) {
     option (google.api.http) = { put: "/api/v1/client/event/shop/order/{hash_id}/address/{address_hash_id}" };
   }
   // 确认收货（status → succeeded）
-  rpc SucceedClientShopOrder(GetClientShopOrderRequest) returns (ClientShopOrder) {
+  rpc SucceedClientShopOrder(SucceedClientShopOrderRequest) returns (SucceedClientShopOrderResponse) {
     option (google.api.http) = { put: "/api/v1/client/event/shop/order/{hash_id}/succeed" };
   }
   // 分页查询当前用户的虚拟奖励列表；可按 status 过滤
@@ -271,11 +271,11 @@ service ClientEventService {
     option (google.api.http) = { get: "/api/v1/client/event/shop/reward" };
   }
   // 购买虚拟奖励（消耗积分）
-  rpc CreateClientShopReward(CreateClientShopRewardRequest) returns (ClientShopReward) {
+  rpc CreateClientShopReward(CreateClientShopRewardRequest) returns (CreateClientShopRewardResponse) {
     option (google.api.http) = { post: "/api/v1/client/event/shop/reward", body: "*" };
   }
   // 分页查询当前用户的返佣类虚拟奖励列表
-  rpc ListClientShopRewardRebate(ListClientShopRewardsRequest) returns (ListClientShopRewardsResponse) {
+  rpc ListClientShopRewardRebate(ListClientShopRewardRebateRequest) returns (ListClientShopRewardRebateResponse) {
     option (google.api.http) = { get: "/api/v1/client/event/shop/reward/rebate" };
   }
   // 分页查询当前用户的积分流水记录；可按日期范围过滤
@@ -729,3 +729,102 @@ message ListClientShopPointTransactionsResponse {
   repeated ClientShopPointTransaction data = 1;
   PaginationMeta                      criteria = 2;
 }
+
+// ─── Per-RPC wrapper messages ─────────────────────────────────────────────────
+
+// TenantEventService wrappers
+message GetEventResponse        { Event data = 1; }
+message CreateEventResponse     { Event data = 1; }
+message UpdateEventResponse     { Event data = 1; }
+message PublishEventRequest     { int32 id = 1; }
+message PublishEventResponse    { Event data = 1; }
+message CloseEventRequest       { int32 id = 1; }
+message CloseEventResponse      { Event data = 1; }
+message UpdateEventLangResponse { Event data = 1; }
+
+message ApproveEventUserRequest  { int64 party_id = 1; }
+message ApproveEventUserResponse { bool success = 1; string message = 2; }
+message RejectEventUserRequest   { int64 party_id = 1; }
+message RejectEventUserResponse  { bool success = 1; string message = 2; }
+message CancelEventUserRequest   { int64 party_id = 1; }
+message CancelEventUserResponse  { bool success = 1; string message = 2; }
+
+// TenantShopItemService wrappers
+message GetShopItemResponse        { ShopItem data = 1; }
+message CreateShopItemResponse     { ShopItem data = 1; }
+message UpdateShopItemResponse     { ShopItem data = 1; }
+message PublishShopItemRequest     { int32 id = 1; }
+message PublishShopItemResponse    { ShopItem data = 1; }
+message CloseShopItemRequest       { int32 id = 1; }
+message CloseShopItemResponse      { ShopItem data = 1; }
+message UpdateShopItemLangResponse { ShopItem data = 1; }
+
+message ListShopCategoriesRequest  {}
+message ListShopCategoriesResponse { repeated ShopCategory categories = 1; }
+message UpdateShopCategoryResponse       { bool success = 1; string message = 2; }
+message UpdateShopCategoryStatusResponse { bool success = 1; string message = 2; }
+
+// TenantShopRewardService wrappers
+message GetShopRewardResponse      { ShopReward data = 1; }
+message GetShopRewardRebateRequest {
+  PaginationRequest pagination = 1;
+  optional int64    party_id   = 2;
+  optional int32    status     = 3;
+  optional string   date_from  = 4;
+  optional string   date_to    = 5;
+}
+message GetShopRewardRebateResponse  { repeated ShopReward data = 1; PaginationMeta criteria = 2; }
+message PendingShopRewardRequest     { int64 id = 1; }
+message PendingShopRewardResponse    { ShopReward data = 1; }
+message ProcessShopRewardRequest     { int64 id = 1; }
+message ProcessShopRewardResponse    { ShopReward data = 1; }
+message ApproveShopRewardRequest     { int64 id = 1; }
+message ApproveShopRewardResponse    { ShopReward data = 1; }
+message SucceedShopRewardRequest     { int64 id = 1; }
+message SucceedShopRewardResponse    { ShopReward data = 1; }
+message CancelShopRewardRequest      { int64 id = 1; }
+message CancelShopRewardResponse     { ShopReward data = 1; }
+message ExpireShopRewardRequest      { int64 id = 1; }
+message ExpireShopRewardResponse     { ShopReward data = 1; }
+message ActivateShopRewardRequest    { int64 id = 1; }
+message ActivateShopRewardResponse   { ShopReward data = 1; }
+message DeactivateShopRewardRequest  { int64 id = 1; }
+message DeactivateShopRewardResponse { ShopReward data = 1; }
+
+// TenantShopOrderService wrappers
+message GetShopOrderResponse            { ShopOrder data = 1; }
+message PendingShopOrderRequest         { int64 id = 1; }
+message PendingShopOrderResponse        { ShopOrder data = 1; }
+message ProcessShopOrderRequest         { int64 id = 1; }
+message ProcessShopOrderResponse        { ShopOrder data = 1; }
+message ShipShopOrderRequest            { int64 id = 1; }
+message ShipShopOrderResponse           { ShopOrder data = 1; }
+message SucceedShopOrderRequest         { int64 id = 1; }
+message SucceedShopOrderResponse        { ShopOrder data = 1; }
+message CancelShopOrderRequest          { int64 id = 1; }
+message CancelShopOrderResponse         { ShopOrder data = 1; }
+message UpdateShopOrderShippingResponse { ShopOrder data = 1; }
+
+// TenantShopPointService wrappers
+message AdjustShopPointResponse { bool success = 1; string message = 2; }
+
+// ClientEventService wrappers
+message GetClientEventResponse       { ClientEvent data = 1; }
+message ApplyClientEventResponse     { bool success = 1; string message = 2; }
+message GetClientEventUserResponse   { ClientEventUser data = 1; }
+message GetShopEventRequest          {}
+message GetShopEventResponse         { ClientEvent data = 1; }
+message GetClientShopCategoriesRequest  {}
+message GetClientShopCategoriesResponse { repeated ClientShopCategory categories = 1; }
+message GetClientShopItemResponse       { ClientShopItem data = 1; }
+message CreateClientShopOrderResponse  { ClientShopOrder data = 1; }
+message GetClientShopOrderResponse     { ClientShopOrder data = 1; }
+message UpdateClientShopOrderAddressResponse { ClientShopOrder data = 1; }
+message SucceedClientShopOrderRequest  { string hash_id = 1; }
+message SucceedClientShopOrderResponse { ClientShopOrder data = 1; }
+message CreateClientShopRewardResponse { ClientShopReward data = 1; }
+message ListClientShopRewardRebateRequest {
+  PaginationRequest pagination = 1;
+  optional int32    status     = 2;
+}
+message ListClientShopRewardRebateResponse { repeated ClientShopReward data = 1; PaginationMeta criteria = 2; }
