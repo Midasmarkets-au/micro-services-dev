@@ -1,21 +1,24 @@
 # Build context: repo root
 #   docker build -f services/auth/Dockerfile -t auth .
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+#   docker build -f services/auth/Dockerfile --build-arg TARGETARCH=amd64 -t auth .
+ARG TARGETARCH=arm64
+
+FROM --platform=linux/${TARGETARCH} rust:1-bookworm AS builder
 
 WORKDIR /app
-COPY services/auth/Bacera.Gateway.Auth.csproj ./services/auth/
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet restore services/auth/Bacera.Gateway.Auth.csproj
 
+COPY Cargo.toml Cargo.lock ./
 COPY services/auth/ ./services/auth/
-RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet publish services/auth/Bacera.Gateway.Auth.csproj -c Release -o /publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+RUN cargo build --release -p auth
+
+FROM --platform=linux/${TARGETARCH} debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=build /publish .
+COPY --from=builder /app/target/release/auth /app/auth
 
-ENV HTTP_ADDR=http://[::]:8081
+ENV HTTP_ADDR=[::]:8081
 EXPOSE 8081
 
-ENTRYPOINT ["dotnet", "Bacera.Gateway.Auth.dll"]
+ENTRYPOINT ["/app/auth"]
