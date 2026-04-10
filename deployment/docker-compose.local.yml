@@ -104,6 +104,35 @@ services:
     depends_on:
       - postgres
 
+  # Rust Auth 服务
+  auth:
+    build:
+      context: ..
+      dockerfile: services/auth/Dockerfile
+    image: bacera-auth:local
+    container_name: bacera-auth
+    restart: unless-stopped
+    ports:
+      - "9001:9001"
+      - "50006:50006"
+    environment:
+      HTTP_ADDR: "[::]:9001"
+      GRPC_ADDR: "[::]:50006"
+      SECURE_COOKIE: "false"   # HTTP 本地开发不设 Secure flag
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: qazwsx1@3
+      DB_DATABASE: portal_central
+      REDIS_URL: "redis://:qazwsx13@redis:6379"
+      MONO_GRPC_ADDR: "http://gateway-web:50005"
+      RUST_LOG: "info"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
   # Gateway Web（mono .NET 服务）
   gateway-web:
     build:
@@ -124,11 +153,14 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: qazwsx1@3
       DB_DATABASE: portal_central
+      AUTH_GRPC_ADDR: "http://auth:50006"
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      auth:
+        condition: service_started
 
   # ID Generator（Rust gRPC + HTTP 服务）
   idgen:
