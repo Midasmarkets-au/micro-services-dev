@@ -158,6 +158,58 @@
   <OpenTradeAccount ref="OpenTradeAccountRef" />
   <AccountRebateRelation ref="AccountRebateRelationRef" />
   <ShowDashboard ref="showDashboardRef" />
+
+  <div
+    class="modal fade"
+    id="kt_modal_sales_link_lists"
+    tabindex="-1"
+    aria-hidden="true"
+    ref="SalesLinkListsModalRef"
+  >
+    <div class="modal-dialog modal-dialog-centered mw-1000px">
+      <div class="modal-content">
+        <div class="modal-header" id="kt_modal_new_address_header">
+          <h2 class="fs-2">{{ title }}</h2>
+          <div data-bs-dismiss="modal">
+            <span class="svg-icon svg-icon-1">
+              <inline-svg src="/images/icons/arrows/arr061.svg" />
+            </span>
+          </div>
+        </div>
+        <div class="modal-body" style="max-height: 80vh; overflow: auto">
+          <SaleLinks
+            ref="SaleLinksRef"
+            :saleId="selectedSalesUid"
+            isHideTitle
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="modal fade"
+    id="kt_modal_sales_add_link"
+    tabindex="-1"
+    aria-hidden="true"
+    ref="SalesAddLinkModalRef"
+  >
+    <div class="modal-dialog modal-dialog-centered mw-1000px">
+      <div class="modal-content">
+        <div class="modal-header" id="kt_modal_new_sales_link_header">
+          <h2 class="fs-2">{{ addSalesLinkTitle }}</h2>
+          <div data-bs-dismiss="modal">
+            <span class="svg-icon svg-icon-1">
+              <inline-svg src="/images/icons/arrows/arr061.svg" />
+            </span>
+          </div>
+        </div>
+        <div class="modal-body" style="max-height: 80vh; overflow: auto">
+          <SalesAddNewLink :saleId="selectedSalesUid" @refresh="refresh" />
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 <script setup lang="ts">
 import i18n from "@/core/plugins/i18n";
@@ -172,10 +224,13 @@ import OpenTradeAccount from "../OpenTradeAccount.vue";
 import AccountRebateRelation from "@/projects/client/modules/sales/components/modal/AccountRebateRelation.vue";
 import ShowDashboard from "../modal/ShowDashboard.vue";
 import IbLinks from "../modal/IbLinks.vue";
+import SaleLinks from "@/projects/client/modules/sales/components/SalesManageLink.vue";
+import SalesAddNewLink from "@/projects/client/modules/sales/components/SalesAddNewLink.vue";
 import UnlockEmailAddress from "../UnlockEmailAddress.vue";
 import ViewRebateStat from "../modal/ViewRebateStat.vue";
 import { ArrowDown } from "@element-plus/icons-vue";
 import SalesService from "../../services/SalesService";
+import { hideModal, showModal } from "@/core/helpers/dom";
 
 const data = inject<any>("data");
 const isLoading = inject("isLoading");
@@ -190,7 +245,9 @@ const getUserName = inject<any>("getUserName");
 const store = useStore();
 const t = i18n.global.t;
 const projectConfig: PublicSetting = store.state.AuthModule.config;
-
+const title = ref("Refer Code List");
+const addSalesLinkTitle = ref("Add New Link");
+const selectedSalesUid = ref<number>();
 const IbLinksRef = ref<InstanceType<typeof IbLinks>>();
 const UnlockEmailAddressRef = ref<InstanceType<typeof UnlockEmailAddress>>();
 const ViewRebateStatRef = ref<InstanceType<typeof ViewRebateStat>>();
@@ -200,7 +257,9 @@ const OpenTradeAccountRef = ref<InstanceType<typeof OpenTradeAccount>>();
 const showDashboardRef = ref<InstanceType<typeof ShowDashboard>>();
 const AccountRebateRelationRef =
   ref<InstanceType<typeof AccountRebateRelation>>();
-
+const SaleLinksRef = ref<InstanceType<typeof SaleLinks>>();
+const SalesLinkListsModalRef = ref<null | HTMLElement>(null);
+const SalesAddLinkModalRef = ref<null | HTMLElement>(null);
 const getRoleType = (item: any) => {
   switch (item.role) {
     case AccountRoleTypes.Client:
@@ -266,6 +325,22 @@ const showDashboard = (item: any) => {
 const showCreateAccount = (item: any) => {
   OpenTradeAccountRef.value?.show(item);
 };
+const showSalesLinkList = (_item: any) => {
+  selectedSalesUid.value = _item.uid;
+  title.value = _item.user.displayName + " " + "Refer Code List";
+  showModal(SalesLinkListsModalRef.value);
+  SaleLinksRef.value?.fetchData();
+};
+const showAddSalesLinkModal = (item: any) => {
+  selectedSalesUid.value = item.uid;
+  addSalesLinkTitle.value =
+    item.user.displayName + " " + t("action.addNewLink");
+  showModal(SalesAddLinkModalRef.value);
+};
+const refresh = () => {
+  hideModal(SalesAddLinkModalRef.value);
+  SaleLinksRef.value?.fetchData();
+};
 
 const getDropdownItems = (item) => {
   return [
@@ -315,6 +390,12 @@ const getDropdownItems = (item) => {
       action: () => showLinkList(item),
       label: t("title.refferalCodeList"),
     },
+    // {
+    //   condition: item.role == AccountRoleTypes.Sales,
+    //   isLink: false,
+    //   action: () => showSalesLinkList(item),
+    //   label: t("title.refferalCodeList"),
+    // },
 
     {
       condition:
@@ -330,6 +411,13 @@ const getDropdownItems = (item) => {
       action: () => showAddLinkModal(item),
       label: t("action.newIBReferraCode"),
     },
+    // {
+    //   condition:
+    //     item.role == AccountRoleTypes.Sales && projectConfig.rebateEnabled,
+    //   isLink: false,
+    //   action: () => showAddSalesLinkModal(item),
+    //   label: t("action.newIBReferraCode"),
+    // },
   ];
 };
 </script>

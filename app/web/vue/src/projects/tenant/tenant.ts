@@ -140,6 +140,7 @@ ApiService.init(app);
 initApexCharts(app);
 initInlineSvg(app);
 initVeeValidate();
+
 const wsSignalR = createSignalR(process.env.VUE_APP_API_URL + "/hub/client");
 wsSignalR.setup(JwtService.getToken());
 

@@ -73,7 +73,7 @@
             </div>
 
             <div class="mt-6">
-              MM Co Ltd<br />Suite 18.03, Level 18, 201 Elizabeth Street<br />Sydney,
+              MDM Co Ltd<br />Suite 18.03, Level 18, 201 Elizabeth Street<br />Sydney,
               NSW 2000
             </div>
           </div>

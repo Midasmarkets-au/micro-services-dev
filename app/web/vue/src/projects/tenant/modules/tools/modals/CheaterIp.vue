@@ -20,6 +20,9 @@
         </el-button>
       </div>
       <div class="card-toolbar">
+        <el-button type="primary" plain @click="showUpload()">
+          Batch Upload
+        </el-button>
         <el-button type="primary" @click="showCreate()">{{
           $t("action.addCheaterIp")
         }}</el-button>
@@ -83,12 +86,14 @@
       <TableFooter @page-change="fetchData" :criteria="criteria" />
     </div>
     <CheaterIpCreate ref="createModalRef" @event-submit="onEventSubmitted" />
+    <CheaterIpUpload ref="uploadModalRef" @event-submit="onEventSubmitted" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref, onMounted, inject } from "vue";
 import CheaterIpCreate from "../components/CheaterIpCreate.vue";
+import CheaterIpUpload from "../components/CheaterIpUpload.vue";
 import { InfoFilled } from "@element-plus/icons-vue";
 import ToolServices from "../services/ToolServices";
 import { ElNotification } from "element-plus";
@@ -101,10 +106,15 @@ const criteria = ref({
   size: 25,
   ip: "",
 });
-const createModalRef = ref(null);
+const createModalRef = ref<any>(null);
+const uploadModalRef = ref<any>(null);
 
 const showCreate = (item?: any) => {
   createModalRef.value?.show(item);
+};
+
+const showUpload = () => {
+  uploadModalRef.value?.show();
 };
 
 const reset = () => {
@@ -146,7 +156,7 @@ const deleteCheaterIp = async (id: number) => {
       offset: 100,
     });
     fetchData(1);
-  } catch (error) {
+  } catch (error: any) {
     console.log(error);
     ElNotification.error({
       title: "Error",

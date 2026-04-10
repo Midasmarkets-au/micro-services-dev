@@ -3,6 +3,19 @@
     <div class="card-header">
       <div class="card-title">{{ $t("title.notice") }}</div>
       <div class="card-toolbar">
+        <!-- <el-select
+          v-model="criteria.category"
+          class="me-3"
+          style="width: 160px"
+          @change="onCategoryChange"
+        >
+          <el-option
+            v-for="item in categorySelections"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select> -->
         <button class="btn btn-success" @click="createNoticeRef?.show()">
           {{ $t("action.new") }}
         </button>
@@ -18,6 +31,7 @@
             <th>{{ $t("tip.published") }}</th>
             <th>id</th>
             <th>{{ $t("fields.title") }}</th>
+            <th>{{ $t("fields.category") }}</th>
             <th>{{ $t("fields.language") }}</th>
             <th>{{ $t("tip.publishedDate") }}</th>
             <th>{{ $t("action.detail") }}</th>
@@ -45,6 +59,7 @@
             </td>
             <td>{{ item.id }}</td>
             <td class="">{{ item["contents"]["en-us"].title }}</td>
+            <td>{{ getCategoryLabel(item.category) }}</td>
             <td>
               <span
                 class="badge text-bg-warning me-1"
@@ -94,6 +109,7 @@ import { onMounted, ref } from "vue";
 import DateUtils from "@/core/utils/DateUtils";
 import GlobalService from "../../../services/TenantGlobalService";
 import { TopicTypes } from "@/core/types/TopicTypes";
+import { TopicCategoryTypes } from "@/core/types/TopicCategoryTypes";
 import LoadingRing from "@/components/LoadingRing.vue";
 import NoDataBox from "@/components/NoDataBox.vue";
 import CreateNotice from "../components/CreateNotice.vue";
@@ -109,10 +125,16 @@ const noticeDetailRef = ref<any>(null);
 
 const criteria = ref({
   type: TopicTypes.Notice,
+  category: TopicCategoryTypes.All,
   page: 1,
   size: 20,
   sortField: "createdOn",
 } as any);
+
+const categorySelections = [
+  { label: "Activity", value: TopicCategoryTypes.Activity },
+  { label: "Information", value: TopicCategoryTypes.Information },
+];
 
 onMounted(async () => {
   fetchData(1);
@@ -130,7 +152,10 @@ const fetchData = async (_page: number) => {
         publishStatus: switchOn(item.effectiveTo),
         publishLoading: false,
       }));
-      criteria.value = res.criteria;
+      criteria.value = {
+        ...res.criteria,
+        category: res?.criteria?.category ?? criteria.value.category,
+      };
     }
   } catch (e) {
     console.log(e);
@@ -140,6 +165,17 @@ const fetchData = async (_page: number) => {
 };
 const pageChange = (page: number) => {
   fetchData(page);
+};
+
+const onCategoryChange = () => {
+  fetchData(1);
+};
+
+const getCategoryLabel = (category: TopicCategoryTypes) => {
+  if (category === TopicCategoryTypes.Activity) return "Activity";
+  if (category === TopicCategoryTypes.Information) return "Information";
+  if (category === TopicCategoryTypes.All) return "All";
+  return "-";
 };
 
 const publishToggle = (item: any) => {

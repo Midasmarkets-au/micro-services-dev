@@ -77,47 +77,47 @@ pub async fn generate_rebate_csv(
 
     // Common SELECT clause (identical for both modes)
     let select_sql = r#"
-        tr."Ticket" as ticket,
-        tr."Symbol" as symbol,
-        tr."AccountNumber" as account_number,
+        tr.ticket as ticket,
+        tr.symbol as symbol,
+        tr.account_number as account_number,
         a."Uid" as account_uid,
         p."NativeName" as client_name,
         a."Code" as client_code,
         c."Code" as currency,
         COALESCE(sc."Code", c."Code") as source_currency,
-        tr."Volume"::float8 / 100.0 as volume,
-        r."Amount"::float8 / 1000000.0 as amount,
-        COALESCE((r."Information"::jsonb -> 'baseRebate' ->> 'rate')::float8, 0.0) / 100.0 as rate_value,
-        COALESCE((r."Information"::jsonb -> 'baseRebate' ->> 'pip')::float8, 0.0) / 100.0 as pips_value,
-        COALESCE((r."Information"::jsonb -> 'baseRebate' ->> 'commission')::float8, 0.0) / 100.0 as commission_value,
-        COALESCE((r."Information"::jsonb -> 'baseRebate' ->> 'rate')::float8, 0.0) / 100.0 as rate,
-        COALESCE((r."Information"::jsonb -> 'baseRebate' ->> 'pip')::float8, 0.0) / 100.0 as pips,
-        COALESCE((r."Information"::jsonb -> 'baseRebate' ->> 'commission')::float8, 0.0) / 100.0 as commission,
-        TO_CHAR(tr."ClosedOn", 'YYYY-MM-DD HH24:MI:SS')                                        as closed_on,
+        tr.volume::float8 / 100.0 as volume,
+        r.amount::float8 / 1000000.0 as amount,
+        COALESCE((r.information::jsonb -> 'baseRebate' ->> 'rate')::float8, 0.0) / 100.0 as rate_value,
+        COALESCE((r.information::jsonb -> 'baseRebate' ->> 'pip')::float8, 0.0) / 100.0 as pips_value,
+        COALESCE((r.information::jsonb -> 'baseRebate' ->> 'commission')::float8, 0.0) / 100.0 as commission_value,
+        COALESCE((r.information::jsonb -> 'baseRebate' ->> 'rate')::float8, 0.0) / 100.0 as rate,
+        COALESCE((r.information::jsonb -> 'baseRebate' ->> 'pip')::float8, 0.0) / 100.0 as pips,
+        COALESCE((r.information::jsonb -> 'baseRebate' ->> 'commission')::float8, 0.0) / 100.0 as commission,
+        TO_CHAR(tr.closed_on, 'YYYY-MM-DD HH24:MI:SS')                                          as closed_on,
         TO_CHAR(wt.max_created_on + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS')               as created_on,
-        TO_CHAR(m."StatedOn"   + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS')                  as released_on
-       FROM trd."_Rebate" r
-       LEFT JOIN trd."_TradeRebate" tr ON tr."Id" = r."TradeRebateId"
-       JOIN trd."_Account" a ON a."Id" = r."AccountId"
+        TO_CHAR(m.stated_on + INTERVAL '2 hours', 'YYYY-MM-DD HH24:MI:SS')                     as released_on
+       FROM trd.rebate_k8s r
+       LEFT JOIN trd.trade_rebate_k8s tr ON tr.id = r.trade_rebate_id
+       JOIN trd."_Account" a ON a."Id" = r.account_id
        LEFT JOIN core."_Party" p ON p."Id" = a."PartyId"
-       LEFT JOIN trd."_Account" ta ON ta."Id" = tr."AccountId"
-       LEFT JOIN acct."_Currency" c ON c."Id" = r."CurrencyId"
+       LEFT JOIN trd."_Account" ta ON ta."Id" = tr.account_id
+       LEFT JOIN acct."_Currency" c ON c."Id" = r.currency_id
        LEFT JOIN acct."_Currency" sc ON sc."Id" = ta."CurrencyId"
-       JOIN core."_Matter" m ON m."Id" = r."Id"
+       JOIN core.matter_k8s m ON m.id = r.id
        LEFT JOIN (
-           SELECT "MatterId", MAX("CreatedOn") as max_created_on
-           FROM acct."_WalletTransaction"
-           GROUP BY "MatterId"
-       ) wt ON wt."MatterId" = r."Id""#;
+           SELECT matter_id, MAX(created_on) as max_created_on
+           FROM acct.wallet_transaction_k8s
+           GROUP BY matter_id
+       ) wt ON wt.matter_id = r.id"#;
 
     let records = if !is_from_api {
         // Job mode: TradeRebate.Status IN (Completed=2, SkippedWithOpenCloseTimeLessThanOneMinute=4)
         // Filter by ClosedOn (MT5 time) AND StatedOn (UTC after -2h, +5min buffer)
         let sql = format!(
-            r#"SELECT {} WHERE tr."Status" IN (2, 4)
-               AND tr."ClosedOn" >= $1 AND tr."ClosedOn" <= $2
-               AND m."StatedOn" >= $3 AND m."StatedOn" < $4
-               ORDER BY r."Id" DESC"#,
+            r#"SELECT {} WHERE tr.status IN (2, 4)
+               AND tr.closed_on >= $1 AND tr.closed_on <= $2
+               AND m.stated_on >= $3 AND m.stated_on < $4
+               ORDER BY r.id DESC"#,
             select_sql
         );
         sqlx::query_as::<_, RebateRecord>(&sql)
@@ -130,9 +130,9 @@ pub async fn generate_rebate_csv(
     } else {
         // API mode (UseClosingTime=false): filter by StatedOn only, no +5min buffer
         let sql = format!(
-            r#"SELECT {} WHERE tr."Status" IN (2, 4)
-               AND m."StatedOn" >= $1 AND m."StatedOn" <= $2
-               ORDER BY r."Id" DESC"#,
+            r#"SELECT {} WHERE tr.status IN (2, 4)
+               AND m.stated_on >= $1 AND m.stated_on <= $2
+               ORDER BY r.id DESC"#,
             select_sql
         );
         sqlx::query_as::<_, RebateRecord>(&sql)

@@ -18,11 +18,8 @@ pub const OPERATOR_PARTY_ID: i64 = 1;
 
 #[derive(Debug, sqlx::FromRow)]
 struct RebateRow {
-    #[sqlx(rename = "AccountId")]
     account_id: i64,
-    #[sqlx(rename = "Amount")]
     amount: Decimal,
-    #[sqlx(rename = "StateId")]
     state_id: i32,
 }
 
@@ -51,11 +48,11 @@ struct AccountRow {
 /// PG partition pruning handles the date range automatically.
 pub async fn get_pending_rebate_ids(pool: &PgPool) -> Result<Vec<i64>> {
     let rows: Vec<(i64,)> = sqlx::query_as(&format!(
-        r#"SELECT r."Id"
+        r#"SELECT r.id
            FROM {REBATE_TABLE} r
-           INNER JOIN core.matter_k8s m ON r."Id" = m."Id"
-           WHERE m."StateId" IN ($1, $2)
-           ORDER BY r."Id""#
+           INNER JOIN core.matter_k8s m ON r.id = m.id
+           WHERE m.state_id IN ($1, $2)
+           ORDER BY r.id"#
     ))
     .bind(STATE_REBATE_ON_HOLD)
     .bind(STATE_REBATE_RELEASED)
@@ -72,10 +69,10 @@ async fn get_rebate(
     rebate_id: i64,
 ) -> Result<Option<RebateRow>> {
     let row = sqlx::query_as::<_, RebateRow>(&format!(
-        r#"SELECT r."AccountId", r."Amount", m."StateId"
+        r#"SELECT r.account_id, r.amount, m.state_id
            FROM {REBATE_TABLE} r
-           INNER JOIN core.matter_k8s m ON r."Id" = m."Id"
-           WHERE r."Id" = $1"#
+           INNER JOIN core.matter_k8s m ON r.id = m.id
+           WHERE r.id = $1"#
     ))
     .bind(rebate_id)
     .fetch_optional(&mut **tx)
@@ -116,7 +113,7 @@ async fn transit_state(
 
     sqlx::query(
         r#"INSERT INTO core.activity_k8s
-           ("MatterId", "PartyId", "PerformedOn", "OnStateId", "ActionId", "ToStateId", "Data")
+           (matter_id, party_id, performed_on, on_state_id, action_id, to_state_id, data)
            VALUES ($1, $2, $3, $4, 0, $5, $6)"#,
     )
     .bind(matter_id)
@@ -129,7 +126,7 @@ async fn transit_state(
     .await?;
 
     sqlx::query(
-        r#"UPDATE core.matter_k8s SET "StateId" = $1, "StatedOn" = $2 WHERE "Id" = $3"#
+        r#"UPDATE core.matter_k8s SET state_id = $1, stated_on = $2 WHERE id = $3"#
     )
     .bind(to_state)
     .bind(now)
@@ -212,7 +209,7 @@ pub async fn process_rebate(pool: &PgPool, rebate_id: i64) -> Result<()> {
 
     // 7. Idempotency check — if WalletTransaction already exists, just complete
     let already_released: (bool,) = sqlx::query_as(
-        r#"SELECT EXISTS(SELECT 1 FROM acct.wallet_transaction_k8s WHERE "MatterId" = $1)"#,
+        r#"SELECT EXISTS(SELECT 1 FROM acct.wallet_transaction_k8s WHERE matter_id = $1)"#,
     )
     .bind(rebate_id)
     .fetch_one(&mut *tx)
@@ -242,7 +239,7 @@ pub async fn process_rebate(pool: &PgPool, rebate_id: i64) -> Result<()> {
 
     sqlx::query(
         r#"INSERT INTO acct.wallet_transaction_k8s
-           ("WalletId", "MatterId", "PrevBalance", "Amount", "CreatedOn", "UpdatedOn")
+           (wallet_id, matter_id, prev_balance, amount, created_on, updated_on)
            VALUES ($1, $2, $3, $4, $5, $5)"#,
     )
     .bind(wallet_id)

@@ -57,8 +57,8 @@
           <h4>{{ $t("title.electronicIdentityVerification") }}*</h4>
           <p>
             {{ $t("tip.verificationAgreementElectronicIdentityVerification1") }}
-            <span v-if="isAuTenant">MM Co Ltd</span>
-            <span v-else>MM Co Ltd</span>
+            <span v-if="isAuTenant">MDM Co Ltd</span>
+            <span v-else>MDM Co Ltd</span>
             {{ $t("tip.verificationAgreementElectronicIdentityVerification2") }}
           </p>
 

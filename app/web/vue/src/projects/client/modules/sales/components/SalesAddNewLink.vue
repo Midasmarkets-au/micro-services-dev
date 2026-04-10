@@ -257,12 +257,16 @@ import BaseRebatePCForm from "./form/BaseRebatePCForm.vue";
 import { isMobile } from "@/core/config/WindowConfig";
 import { useI18n } from "vue-i18n";
 import { useStore } from "@/store";
-import { ref, onMounted } from "vue";
+import { ref, watch } from "vue";
 import { getLanguage } from "@/core/types/LanguageTypes";
 import { PublicSetting } from "@/core/types/ConfigTypes";
 import { Field, ErrorMessage, useForm } from "vee-validate";
 import { AccountRoleTypes } from "@/core/types/AccountInfos";
 import { processKeysToCamelCase } from "@/core/services/api.client";
+const props = defineProps<{
+  saleId?: number;
+}>();
+
 const emit = defineEmits(["refresh"]);
 
 const { t } = useI18n();
@@ -271,7 +275,7 @@ const schemaForm = ref({} as any);
 const selectAccountError = ref(false);
 const defaultLevelSetting = ref({} as any);
 const productCategory = ref(Array<any>());
-const availableAccounts = ref({} as any);
+const availableAccounts = ref<any[]>([]);
 const submitButtonRef = ref<null | HTMLButtonElement>(null);
 const BaseRebatePCFormRef = ref<InstanceType<typeof BaseRebatePCForm>>();
 const projectConfig: PublicSetting = store.state.AuthModule.config;
@@ -319,12 +323,16 @@ const reset = () => {
 
 // ==============================================================================================================================
 
-const setAccountRule = async (_accountType: string, _index: number) => {
-  var _defaultAccount = defaultLevelSetting.value[_accountType][_index];
+const setAccountRule = async (
+  _accountType: string,
+  _index: number | string
+) => {
+  const currentIndex = Number(_index);
+  var _defaultAccount = defaultLevelSetting.value[_accountType][currentIndex];
 
   schemaForm.value[_accountType] = {
     ...schemaForm.value[_accountType],
-    selectedDefaultRebateOptions: _index,
+    selectedDefaultRebateOptions: currentIndex,
     allowPipOptions: _defaultAccount.allowPipOptions,
     allowCommissionOptions: _defaultAccount.allowCommissionOptions,
   };
@@ -355,13 +363,14 @@ const initializeForm = (accountType) => {
 
 const setUpForm = async () => {
   // availableAccounts.value = store.state.AuthModule.config.accountTypeAvailable;
+  schemaForm.value = {};
 
   try {
     const [getCategory, getDefaultLevelSetting, getAvailableAccountTypes] =
       await Promise.all([
-        SalesService.getCategory(),
-        SalesService.getDefaultLevelSetting(),
-        SalesService.getAvailableAccountTypes(),
+        SalesService.getCategory(props.saleId),
+        SalesService.getDefaultLevelSetting(props.saleId),
+        SalesService.getAvailableAccountTypes(props.saleId),
       ]);
 
     productCategory.value = getCategory;
@@ -416,19 +425,27 @@ const generateLink = handleSubmit(async () => {
 
   try {
     if (requestData.value.ServiceType == AccountRoleTypes.IB) {
-      await SalesService.postSalesLinkForIB({
-        name: requestData.value.name,
-        language: requestData.value.language,
-        schema: createAllowAccountRequestForIB(),
-        isAutoCreatePaymentMethod: requestData.value.isAutoCreatePaymentMethod,
-      });
+      await SalesService.postSalesLinkForIB(
+        {
+          name: requestData.value.name,
+          language: requestData.value.language,
+          schema: createAllowAccountRequestForIB(),
+          isAutoCreatePaymentMethod:
+            requestData.value.isAutoCreatePaymentMethod,
+        },
+        props.saleId
+      );
     } else if (requestData.value.ServiceType == AccountRoleTypes.Client) {
-      await SalesService.postSalesLinkForClient({
-        name: requestData.value.name,
-        language: requestData.value.language,
-        allowAccountTypes: createAllowAccountRequestForClient(),
-        isAutoCreatePaymentMethod: requestData.value.isAutoCreatePaymentMethod,
-      });
+      await SalesService.postSalesLinkForClient(
+        {
+          name: requestData.value.name,
+          language: requestData.value.language,
+          allowAccountTypes: createAllowAccountRequestForClient(),
+          isAutoCreatePaymentMethod:
+            requestData.value.isAutoCreatePaymentMethod,
+        },
+        props.saleId
+      );
     }
     MsgPrompt.success(t("tip.formSuccessSubmit")).then(() => {
       reset();
@@ -442,9 +459,15 @@ const generateLink = handleSubmit(async () => {
   }
 });
 
-onMounted(() => {
-  if (projectConfig?.rebateEnabled) setUpForm();
-});
+watch(
+  () => props.saleId,
+  () => {
+    if (projectConfig?.rebateEnabled) {
+      setUpForm();
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped lang="scss">
