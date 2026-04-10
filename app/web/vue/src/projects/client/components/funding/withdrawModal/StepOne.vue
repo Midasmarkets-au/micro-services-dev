@@ -11,7 +11,11 @@
       <LoadingRing />
     </div>
 
-    <div v-else-if="!isLoading && services.length > 0" class="row mb-4">
+    <div
+      v-else-if="!isLoading && services.length > 0"
+      class="row mb-4 max-h-400px overflow-y-auto"
+      style="max-height: 400px; overflow-y: auto"
+    >
       <div
         class="col-lg-6 col-6 mt-3"
         v-for="(item, index) in services"

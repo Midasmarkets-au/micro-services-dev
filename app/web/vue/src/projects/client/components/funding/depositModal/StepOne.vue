@@ -12,13 +12,13 @@
 
   <div
     v-else-if="!isLoading && services && services.length > 0"
-    class="row mb-4"
+    class="row mb-4 max-h-400px overflow-y-auto"
   >
     <div
       class="col-lg-6 col-6 mt-9"
       v-for="(item, index) in services"
       :key="index"
-      @click="selectedGroup(item)"
+      @click="item.isActive ? selectedGroup(item) : null"
     >
       <PaymentGroupCard
         :item="item"

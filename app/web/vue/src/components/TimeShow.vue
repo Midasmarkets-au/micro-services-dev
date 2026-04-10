@@ -36,9 +36,9 @@
   </div>
   <!-- use  -->
   <span v-else-if="type === 'exactTime'">{{ getExactDateAndTime() }} GMT</span>
-  <span v-else-if="type === 'exactTimeGMT'"
-    >{{ getExactDateAndTime() }} GMT+{{ getTradeServerGMTOffset() }}</span
-  >
+  <span v-else-if="type === 'exactTimeGMT'">{{
+    getExactDateAndTimeAndGMT()
+  }}</span>
   <span v-else-if="type === 'reportTime'">{{ getExactDateAndTime() }}</span>
   <span v-else-if="type === 'reportDate'">{{ getExactDate() }}</span>
   <span v-else>{{ getDateAndTimeFromISOString() }}</span>
@@ -48,11 +48,19 @@
 import moment from "moment";
 import { useStore } from "@/store";
 import { computed } from "vue";
+import {
+  convertToLocalGMT,
+  convertToLocalTime,
+} from "@/core/plugins/TimerService";
 
 const props = defineProps<{
   dateIsoString: string | null | undefined;
   format?: string;
   type?: string;
+  gmtOption?: {
+    isconvert?: boolean;
+    islocal?: boolean;
+  } | null;
 }>();
 
 const store = useStore();
@@ -77,8 +85,8 @@ const date = computed(() => {
   }
 });
 
-const getExactDateAndTime = () => {
-  const date = moment.parseZone(props.dateIsoString);
+const getExactDateAndTime = (localDate?: string) => {
+  const date = moment.parseZone(localDate || props.dateIsoString);
   const formattedDate = date.format("YYYY-MM-DD HH:mm:ss");
 
   if (date.year() === moment().year()) {
@@ -86,6 +94,19 @@ const getExactDateAndTime = () => {
   }
 
   return formattedDate;
+};
+const getExactDateAndTimeAndGMT = () => {
+  let localDate = props.dateIsoString || "";
+  let gmtNumber: string | number = 0;
+
+  if (props.gmtOption?.islocal) {
+    gmtNumber = convertToLocalGMT(props.dateIsoString, "America/Los_Angeles");
+  }
+  if (props.gmtOption?.isconvert) {
+    localDate = convertToLocalTime(props.dateIsoString, "America/Los_Angeles");
+  }
+  localDate = getExactDateAndTime(localDate);
+  return localDate + " GMT+" + gmtNumber;
 };
 
 const getExactDate = () => {
@@ -98,20 +119,6 @@ const getExactTime = () => {
   const date = moment.parseZone(props.dateIsoString);
   const formattedDate = date.format("HH:mm:ss");
   return formattedDate;
-};
-
-// Returns 3 (DST/summer) or 2 (winter) based on America/Los_Angeles DST for the trade date.
-// Trading servers use GMT+3 in DST period, GMT+2 in standard time.
-const getTradeServerGMTOffset = (): number => {
-  if (!props.dateIsoString) return 2;
-  const d = new Date(props.dateIsoString);
-  const tzPart = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles",
-    timeZoneName: "short",
-  })
-    .formatToParts(d)
-    .find((p) => p.type === "timeZoneName")?.value ?? "";
-  return tzPart === "PDT" ? 3 : 2;
 };
 
 const getDateAndTimeFromISOString = () => {

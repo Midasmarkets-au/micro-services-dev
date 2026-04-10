@@ -240,6 +240,6 @@ export const getBackendFooterName = computed(() => {
     case tenancies.jp:
       return "ISec";
     default:
-      return "MM Pro";
+      return "MDM Pro";
   }
 });
