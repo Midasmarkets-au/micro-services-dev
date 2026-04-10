@@ -427,14 +427,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let secure_cookie: bool = env("SECURE_COOKIE", "true")
         .parse()
         .unwrap_or(true);
+    let jwt_secret = std::env::var("JWT_SECRET").ok();
     let rsa_key_path = std::env::var("RSA_PRIVATE_KEY_PATH").ok();
-    let redis_url = env("REDIS_URL", "redis://localhost:6379");
-    let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50006").parse()?;
-    let mono_grpc_addr = std::env::var("MONO_GRPC_ADDR").ok();
-    let http_addr: SocketAddr = env("HTTP_ADDR", "[::]:9001").parse()?;
+    let redis_url = env("REDIS_URL", "redis://redis:6379");
+    let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50002").parse()?;
+    let mono_grpc_addr = Some(env("MONO_GRPC_ADDR", "http://mono:50005"));
+    // Strip optional http:// prefix for compatibility with .NET-style HTTP_ADDR values
+    let http_addr_raw = env("HTTP_ADDR", "[::]:9002");
+    let http_addr_str = http_addr_raw
+        .trim_start_matches("http://")
+        .trim_start_matches("https://");
+    let http_addr: SocketAddr = http_addr_str.parse()?;
 
     info!("Loading RSA key pair...");
-    let key_pair = RsaKeyPair::load_or_generate(rsa_key_path.as_deref())?;
+    let key_pair = RsaKeyPair::load_or_generate(jwt_secret.as_deref(), rsa_key_path.as_deref())?;
     info!("RSA key loaded, kid={}", key_pair.kid);
 
     info!(
