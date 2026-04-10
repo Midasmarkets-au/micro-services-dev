@@ -117,6 +117,10 @@ public static partial class Startup
         var boardcastAddr = GetEnvValue("BOARDCAST_GRPC_ADDR", "http://boardcast:50003");
         me.AddGrpcClient<Api.V1.BoardcastService.BoardcastServiceClient>(o => o.Address = new Uri(boardcastAddr));
 
+        // Rust auth service — ValidateToken gRPC client
+        var authGrpcAddr = GetEnvValue("AUTH_GRPC_ADDR", "http://auth:50006");
+        me.AddGrpcClient<Api.V1.AuthValidationService.AuthValidationServiceClient>(o => o.Address = new Uri(authGrpcAddr));
+
         me.AddHttpClient(HttpClientHandlerTypes.ManualCertificate, client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
