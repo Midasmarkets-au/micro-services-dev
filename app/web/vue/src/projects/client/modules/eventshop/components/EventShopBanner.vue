@@ -1,15 +1,35 @@
 <template v-if="!isLoading">
   <div
-    class="card ratio overflow-hidden banner-card-desktop"
-    style="--bs-aspect-ratio: 31.615%; border: 0 !important; scale: 1.002"
+    class="banner-wrapper overflow-hidden"
+    style="border: 0 !important; scale: 1.002"
     v-if="!isMobile"
   >
+    <img :src="imgUrl" alt="banner" class="banner-img" />
     <div
-      class="card-body d-flex flex-column justify-content-end align-items-end banner-bg gap-3 px-16"
-      :style="bannerBgStyle"
+      class="banner-overlay d-flex align-items-start justify-content-center flex-column gap-3 px-16"
     >
-      <div class="d-flex flex-row items-content-center gap-5 banner-actions">
-        <!-- click open modal -->
+      <div class="fs-3 fw-bold d-flex flex-column gap-1">
+        <h3 class="fw-bold banner-title leading-[4.28rem] text-5xl">
+          {{ data.name }}
+        </h3>
+        <div
+          class="d-flex flex-row gap-5 text-2xl leading-[4.27rem] items-content-center"
+        >
+          <span class="d-flex flex-row gap-5">
+            <span class="banner-detail">{{ $t("fields.startDate") }}</span>
+            <span class="banner-detail_value">
+              <TimeShow :date-iso-string="data.startOn" type="eventShop"
+            /></span>
+          </span>
+          <span class="d-flex flex-row gap-5">
+            <span class="banner-detail">{{ $t("fields.endDate") }}</span>
+            <span class="banner-detail_value">
+              <TimeShow :date-iso-string="data.endOn" type="eventShop"
+            /></span>
+          </span>
+        </div>
+      </div>
+      <div class="d-flex flex-row items-content-center gap-5 mt-10">
         <button
           class="btn btn-sm btn-secondary btn-radius"
           style="
@@ -36,18 +56,33 @@
     </div>
   </div>
   <div
-    class="card overflow-hidden border mb-5 banner-card-mobile"
+    class="banner-wrapper overflow-hidden mb-5"
     v-if="isMobile"
     style="border: 0 !important"
   >
+    <img :src="imgUrl" alt="banner" class="banner-img" />
     <div
-      class="card-body d-flex flex-column justify-content-end align-items-end gap-3 px-4 pb-4 pt-3 banner-bg banner-card-body-mobile"
-      :style="bannerBgStyle"
+      class="banner-overlay d-flex align-items-start justify-content-center flex-column gap-3 px-6 pb-10"
+      style="padding-top: 25px !important"
     >
-      <div
-        class="d-flex flex-row items-content-center gap-3 banner-actions banner-actions-mobile"
-      >
-        <!-- click open modal -->
+      <div class="fs-3 leading-[28px] fw-bold d-flex flex-column gap-1 mb-3">
+        <h3 class="fw-bold banner-title fs-5">{{ $t("title.eventShop") }}</h3>
+        <div class="d-flex flex-row gap-5">
+          <span class="d-flex flex-row gap-2">
+            <span class="banner-detail">{{ $t("fields.startDate") }}</span>
+            <span class="banner-detail_value"
+              ><TimeShow :date-iso-string="data.startOn" type="eventShop"
+            /></span>
+          </span>
+          <span class="d-flex flex-row gap-2">
+            <span class="banner-detail">{{ $t("fields.endDate") }}</span>
+            <span class="banner-detail_value">
+              <TimeShow :date-iso-string="data.endOn" type="eventShop"
+            /></span>
+          </span>
+        </div>
+      </div>
+      <div class="d-flex flex-row items-content-center gap-5">
         <button
           class="btn btn-sm btn-primary d-flex align-items-center gap-2"
           @click="openEventDescription()"
@@ -56,7 +91,7 @@
         </button>
         <router-link
           :to="'/eventshop'"
-          class="btn btn-sm d-flex align-items-center gap-2 outline-button"
+          class="btn-sm btn d-flex align-items-center gap-2 outline-button"
         >
           {{ $t("title.eventShop") }}
         </router-link>
@@ -66,7 +101,7 @@
   <EventDetailsCard ref="eventDescriptionRef" />
 </template>
 <script lang="ts" setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { isMobile } from "@/core/config/WindowConfig";
 import EventDetailsCard from "@/projects/client/modules/eventshop/components/modal/EventDetailsCard.vue";
 import ShopService from "../services/ShopService";
@@ -79,9 +114,8 @@ const t = i18n.global.t;
 const eventNote = ref<string>(t("tip.eventShopDetail"));
 const data = ref(<any>[]);
 
-const BANNER_IMAGE_URL =
-  "https://midasmarkets.s3.amazonaws.com/t_10000/26/02/ef225bd7-cf31-486c-af59-2194cb712502_48c84ac2.jpg";
-let imgUrl = BANNER_IMAGE_URL;
+var imgUrl =
+  "https://midasmarkets.s3.amazonaws.com/t_10000/26/03/523d599f-69de-421c-9629-295a6acdf502_20d43d49.jpg";
 const eventDescriptionRef = ref<any>(null);
 const openEventDescription = () => {
   eventDescriptionRef.value?.show(data.value, imgUrl);
@@ -91,51 +125,35 @@ const fetchData = async () => {
   isLoading.value = true;
   const response = await ShopService.queryEventByKey("EventShop");
   data.value = response;
+  console.log("data.value", data.value.images);
+  //const img = await ShopService.getImagesWithGuid(data.value.images.desktop);
+  //console.log("img", img);
+  // if (img) imgUrl = img;
   isLoading.value = false;
 };
 
-const bannerBgStyle = computed(() => ({
-  backgroundImage: `url("${BANNER_IMAGE_URL}")`,
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-}));
-
 onMounted(async () => {
   await fetchData();
-  // document.documentElement.style.setProperty(
-  //   "--banner-bg-image",
-  //   `url("${imgUrl}")`
-  // );
 });
 </script>
 
 <style scoped>
-/* 1920 × 607 等比例：高度 / 宽度 ≈ 31.615% */
-.banner-card-desktop {
-  aspect-ratio: 1920 / 607;
+.banner-wrapper {
+  position: relative;
+  border-radius: 1.25rem;
 }
-.banner-card-mobile {
-  aspect-ratio: 1920 / 607;
+
+.banner-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }
-.banner-card-body-mobile {
-  min-height: 100%;
-}
-.banner-bg {
+
+.banner-overlay {
+  position: absolute;
+  inset: 0;
   color: white;
-}
-.banner-actions {
-  margin-top: auto;
-}
-.banner-actions-mobile .btn,
-.banner-actions-mobile a.btn {
-  padding: 0.4rem 0.85rem !important;
-  font-size: 0.875rem !important;
-  min-height: unset;
-  line-height: 1.35;
-}
-.banner-actions-mobile {
-  gap: 0.75rem !important;
 }
 
 .banner-title {
@@ -160,8 +178,6 @@ onMounted(async () => {
   background-color: #fff;
 }
 .outline-button:hover {
-  /* background-color: #ffce00 !important;
-  border: 1px solid #ffce00 !important; */
   color: #000;
 }
 .credit-color {

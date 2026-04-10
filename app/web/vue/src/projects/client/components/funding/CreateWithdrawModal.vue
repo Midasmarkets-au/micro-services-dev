@@ -22,15 +22,24 @@
     <div class="d-flex border-top">
       <StepDisplay />
       <div class="content">
-        <StepOne v-if="currentStep == 1" ref="stepOneRef" />
-        <StepTwo v-if="currentStep == 2" />
-        <StepThree v-if="currentStep == 3" ref="stepThreeRef" />
-        <StepFour
-          v-if="currentStep == 4"
-          ref="stepFourRef"
-          @on-created="emits('onCreated')"
-        />
-        <StepFive v-if="currentStep == 5" />
+        <div
+          v-if="isWithdrawLocked"
+          class="alert alert-warning mb-4"
+          role="alert"
+        >
+          {{ $t("tip.withdrawalBlockedAfterPasswordChange24h") }}
+        </div>
+        <div :class="{ 'withdraw-lock': isWithdrawLocked }">
+          <StepOne v-if="currentStep == 1" ref="stepOneRef" />
+          <StepTwo v-if="currentStep == 2" />
+          <StepThree v-if="currentStep == 3" ref="stepThreeRef" />
+          <StepFour
+            v-if="currentStep == 4"
+            ref="stepFourRef"
+            @on-created="emits('onCreated')"
+          />
+          <StepFive v-if="currentStep == 5" />
+        </div>
       </div>
     </div>
     <template #footer>
@@ -51,6 +60,7 @@
             @keyon.enter="handleStep"
             size="large"
             :loading="isLoading"
+            :disabled="isWithdrawLocked"
           >
             {{ $t("action.next") }}
           </el-button>
@@ -62,7 +72,7 @@
             color="#ffce00"
             plain
             @click="currentStep--"
-            :disabled="isLoading"
+            :disabled="isLoading || isWithdrawLocked"
             >{{ $t("action.back") }}</el-button
           >
           <el-button
@@ -72,6 +82,7 @@
             @keyon.enter="handleStep"
             size="large"
             :loading="isLoading"
+            :disabled="isWithdrawLocked"
           >
             {{ currentStep == 4 ? $t("action.submit") : $t("action.next") }}
           </el-button>
@@ -93,8 +104,9 @@
 </template>
 <script lang="ts" setup>
 import { useI18n } from "vue-i18n";
-import { ref, provide, nextTick } from "vue";
+import { ref, provide, nextTick, computed } from "vue";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
+import { useStore } from "@/store";
 import StepOne from "./withdrawModal/StepOne.vue";
 import StepTwo from "./withdrawModal/StepTwo.vue";
 import StepThree from "./withdrawModal/StepThree.vue";
@@ -108,6 +120,7 @@ const emits = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const store = useStore();
 const isUSDT = ref(false);
 const currentStep = ref(0);
 const isLoading = ref(true);
@@ -118,6 +131,9 @@ const stepThreeRef = ref<any>(null);
 const paymentRequireData = ref<any>({});
 const CreateWithdrawalModalRef = ref(false);
 const stepOneRef = ref<InstanceType<typeof StepOne>>();
+const isWithdrawLocked = computed(
+  () => store.state.AuthModule.config?.passwordChangedWithinLast24h === true
+);
 
 provide("paymentRequireData", paymentRequireData);
 provide("selectedForm", selectedForm);
@@ -126,6 +142,11 @@ provide("isLoading", isLoading);
 provide("services", services);
 
 const handleStep = async () => {
+  if (isWithdrawLocked.value) {
+    MsgPrompt.warning(t("tip.withdrawalBlockedAfterPasswordChange24h"));
+    return;
+  }
+
   switch (currentStep.value) {
     case 1:
       if (!paymentRequireData.value.selectedServiceHashId) {
@@ -201,5 +222,10 @@ defineExpose({
 }
 .secondary-btn:hover {
   color: #000;
+}
+
+.withdraw-lock {
+  pointer-events: none;
+  opacity: 0.6;
 }
 </style>

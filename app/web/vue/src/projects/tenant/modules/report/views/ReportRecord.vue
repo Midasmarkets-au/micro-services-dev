@@ -29,6 +29,13 @@
           >
             {{ $t("action.generateDailyEquityReport") }}
           </el-button>
+          <el-button
+            type="success"
+            @click="showMonthlyEquityReportModal"
+            class="ms-3"
+          >
+            {{ $t("action.generateMonthlyEquityReport") }}
+          </el-button>
         </div>
         <div class="card-toolbar">
           <div class="d-flex gap-2">
@@ -200,6 +207,12 @@
       :report-type="ReportRequestTypes.DailyEquityReport"
       @fetch-data="fetchData(1)"
     />
+    <MonthlyEquityReportModal
+      ref="monthlyEquityReportModalRef"
+      :custom-title="$t('action.generateMonthlyEquityReport')"
+      :report-type="ReportRequestTypes.MonthlyEquityReport"
+      @fetch-data="fetchData(1)"
+    />
   </div>
 </template>
 
@@ -213,16 +226,22 @@ import { getImageUrl } from "@/core/plugins/ProcessImageLink";
 import TenantGlobalService from "@/projects/tenant/services/TenantGlobalService";
 import moment from "moment";
 import NewReportRequestModal from "@/projects/tenant/modules/rebate/components/modal/NewReportRequestModal.vue";
+import MonthlyEquityReportModal from "@/projects/tenant/modules/rebate/components/modal/NewReportRequestModal.vue";
 import { ReportRequestTypes } from "@/core/types/ReportRequestTypes";
 
 const { t } = useI18n();
 const reports = ref<Array<any>>([]);
 const isLoading = ref(false);
 const dailyEquityReportModalRef = ref();
+const monthlyEquityReportModalRef = ref();
 
 // 打开 Daily Equity Report 模态框
 const showDailyEquityReportModal = () => {
   dailyEquityReportModalRef.value?.show();
+};
+// 打开 Daily Equity Report 模态框
+const showMonthlyEquityReportModal = () => {
+  monthlyEquityReportModalRef.value?.show();
 };
 const criteria = ref({
   page: 1,

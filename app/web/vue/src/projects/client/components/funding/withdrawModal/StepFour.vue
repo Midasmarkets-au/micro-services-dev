@@ -297,7 +297,7 @@ defineExpose({
 
 .review-wrapper {
   overflow: hidden;
-  background-image: url("/images/bg/deposit_amount-bg.svg");
+  background-image: url("/public//images//bg/deposit_amount-bg.svg");
   background-size: cover;
   background-repeat: no-repeat;
   height: 176px;

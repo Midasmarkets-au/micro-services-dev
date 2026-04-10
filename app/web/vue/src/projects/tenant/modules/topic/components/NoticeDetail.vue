@@ -2,6 +2,7 @@
   <div
     class="modal fade"
     tabindex="-1"
+    data-bs-focus="false"
     aria-hidden="true"
     aria-modal="true"
     role="dialog"

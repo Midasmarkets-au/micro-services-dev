@@ -78,15 +78,14 @@ import {
   themeLightLogo,
   themeDarkLogo,
 } from "@/core/helpers/config";
-import { canLiveChat } from "@/core/types/TenantTypes";
+// import { canLiveChat } from "@/core/types/TenantTypes";
 
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
 const toolBarAction = ref<InstanceType<typeof KTToolbar>>();
-const script = document.createElement("script");
-script.src = "/js/zenChat.js?ver=1.0.1";
-document.body.appendChild(script);
+// const script = document.createElement("script");
+// script.src = "/js/zenChat.js?ver=1.0.1";
 
 store.dispatch(Actions.ADD_BODY_CLASSNAME, "page-loading");
 
@@ -110,7 +109,7 @@ onMounted(() => {
   setTimeout(() => {
     // Remove page loader after some time
     store.dispatch(Actions.REMOVE_BODY_CLASSNAME, "page-loading");
-    document.head.appendChild(script);
+    // document.head.appendChild(script);
   }, 500);
 });
 
