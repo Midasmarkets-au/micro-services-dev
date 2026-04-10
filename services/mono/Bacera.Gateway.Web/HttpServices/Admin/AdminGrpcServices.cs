@@ -54,7 +54,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
         return response;
     }
 
-    public override async Task<ProtoAudit> GetAudit(GetAuditRequest request, ServerCallContext context)
+    public override async Task<GetAuditResponse> GetAudit(GetAuditRequest request, ServerCallContext context)
     {
         var item = await tenantDb.Audits
             .Where(x => x.Id == request.Id)
@@ -62,19 +62,22 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
             .FirstOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Audit not found"));
 
-        return new ProtoAudit
+        return new GetAuditResponse
         {
-            Id        = item.Id,
-            AccountId = item.RowId,
-            Action    = item.Type.ToString(),
-            Detail    = item.Data,
-            Ip        = "",
-            CreatedAt = item.CreatedOn.ToString("O"),
+            Data = new ProtoAudit
+            {
+                Id        = item.Id,
+                AccountId = item.RowId,
+                Action    = item.Type.ToString(),
+                Detail    = item.Data,
+                Ip        = "",
+                CreatedAt = item.CreatedOn.ToString("O"),
+            },
         };
     }
 
-    public override async Task<ListAuditsResponse> ListAccountChangeBalanceAudits(
-        ListAuditsRequest request, ServerCallContext context)
+    public override async Task<ListAccountChangeBalanceAuditsResponse> ListAccountChangeBalanceAudits(
+        ListAccountChangeBalanceAuditsRequest request, ServerCallContext context)
     {
         var criteria = new Audit.Criteria
         {
@@ -88,7 +91,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
             .ToTenantPageModel()
             .ToListAsync();
 
-        var response = new ListAuditsResponse
+        var response = new ListAccountChangeBalanceAuditsResponse
         {
             Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
@@ -104,8 +107,8 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
         return response;
     }
 
-    public override async Task<ListAuditsResponse> GetHighDollarLatest(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetHighDollarLatestResponse> GetHighDollarLatest(
+        GetHighDollarLatestRequest request, ServerCallContext context)
     {
         var key = Enum.GetName(typeof(ConfigurationTypes), ConfigurationTypes.HighDollarValue) ?? string.Empty;
         var rowId = await tenantDb.Configurations
@@ -120,7 +123,7 @@ public class TenantAuditGrpcService(AuthDbContext authDb, TenantDbContext tenant
             .ToTenantPageModel()
             .ToListAsync();
 
-        var response = new ListAuditsResponse { Criteria = BuildMeta(1, 1, items.Count) };
+        var response = new GetHighDollarLatestResponse { Criteria = BuildMeta(1, 1, items.Count) };
         response.Data.AddRange(items.Select(a => new ProtoAudit
         {
             Id        = a.Id,
@@ -186,7 +189,7 @@ public class TenantIpBlacklistGrpcService(
         return response;
     }
 
-    public override async Task<IpBlacklistItem> CreateIpBlacklist(
+    public override async Task<CreateIpBlacklistResponse> CreateIpBlacklist(
         CreateIpBlacklistRequest request, ServerCallContext context)
     {
         if (!System.Net.IPAddress.TryParse(request.Ip, out _))
@@ -199,14 +202,17 @@ public class TenantIpBlacklistGrpcService(
         centralDb.IpBlackLists.Add(entity);
         await centralDb.SaveChangesAsync();
         await myCache.HSetStringAsync(_ipKey, entity.Ip, "1");
-        return MapToProto(new IpBlackList.TenantPageModel
+        return new CreateIpBlacklistResponse
         {
-            Id = entity.Id, Ip = entity.Ip, Note = entity.Note,
-            Enabled = entity.Enabled, CreatedOn = entity.CreatedOn
-        });
+            Data = MapToProto(new IpBlackList.TenantPageModel
+            {
+                Id = entity.Id, Ip = entity.Ip, Note = entity.Note,
+                Enabled = entity.Enabled, CreatedOn = entity.CreatedOn
+            }),
+        };
     }
 
-    public override async Task<IpBlacklistItem> UpdateIpBlacklist(
+    public override async Task<UpdateIpBlacklistResponse> UpdateIpBlacklist(
         UpdateIpBlacklistRequest request, ServerCallContext context)
     {
         var entity = await centralDb.IpBlackLists.FindAsync(request.Id)
@@ -221,30 +227,33 @@ public class TenantIpBlacklistGrpcService(
         spec.ApplyTo(entity, await GetOperatorNameAsync(context));
         await centralDb.SaveChangesAsync();
         await myCache.HSetStringAsync(_ipKey, entity.Ip, "1");
-        return MapToProto(new IpBlackList.TenantPageModel
+        return new UpdateIpBlacklistResponse
         {
-            Id = entity.Id, Ip = entity.Ip, Note = entity.Note,
-            Enabled = entity.Enabled, CreatedOn = entity.CreatedOn
-        });
+            Data = MapToProto(new IpBlackList.TenantPageModel
+            {
+                Id = entity.Id, Ip = entity.Ip, Note = entity.Note,
+                Enabled = entity.Enabled, CreatedOn = entity.CreatedOn
+            }),
+        };
     }
 
-    public override async Task<OperationResponse> DeleteIpBlacklist(
-        GetIpBlacklistRequest request, ServerCallContext context)
+    public override async Task<DeleteIpBlacklistResponse> DeleteIpBlacklist(
+        DeleteIpBlacklistRequest request, ServerCallContext context)
     {
         var entity = await centralDb.IpBlackLists.FindAsync(request.Id)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
         centralDb.IpBlackLists.Remove(entity);
         await centralDb.SaveChangesAsync();
         await myCache.HSetDeleteByKeyFieldAsync(_ipKey, entity.Ip);
-        return new OperationResponse { Success = true };
+        return new DeleteIpBlacklistResponse { Success = true };
     }
 
-    public override async Task<OperationResponse> ReloadCache(EmptyRequest request, ServerCallContext context)
+    public override async Task<ReloadCacheResponse> ReloadCache(ReloadCacheRequest request, ServerCallContext context)
     {
         await myCache.HSetDeleteByKeyAsync(_ipKey);
         var ips = await centralDb.IpBlackLists.Select(x => x.Ip).ToListAsync();
         foreach (var ip in ips) await myCache.HSetStringAsync(_ipKey, ip, "1");
-        return new OperationResponse { Success = true, Message = $"Reloaded {ips.Count} entries" };
+        return new ReloadCacheResponse { Success = true, Message = $"Reloaded {ips.Count} entries" };
     }
 
     private static IpBlacklistItem MapToProto(IpBlackList.TenantPageModel m) => new()
@@ -318,7 +327,7 @@ public class TenantUserBlacklistGrpcService(
         return response;
     }
 
-    public override async Task<UserBlacklistItem> CreateUserBlacklist(
+    public override async Task<CreateUserBlacklistResponse> CreateUserBlacklist(
         CreateUserBlacklistRequest request, ServerCallContext context)
     {
         var exists = await centralDb.UserBlackLists.AnyAsync(x => x.Email == request.Email);
@@ -329,13 +338,16 @@ public class TenantUserBlacklistGrpcService(
         centralDb.UserBlackLists.Add(entity);
         await centralDb.SaveChangesAsync();
         await AddCacheAsync(entity);
-        return MapToProto(new UserBlackList.TenantPageModel
+        return new CreateUserBlacklistResponse
         {
-            Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
-        });
+            Data = MapToProto(new UserBlackList.TenantPageModel
+            {
+                Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
+            }),
+        };
     }
 
-    public override async Task<UserBlacklistItem> UpdateUserBlacklist(
+    public override async Task<UpdateUserBlacklistResponse> UpdateUserBlacklist(
         UpdateUserBlacklistRequest request, ServerCallContext context)
     {
         var entity = await centralDb.UserBlackLists.FindAsync(request.Id)
@@ -351,25 +363,28 @@ public class TenantUserBlacklistGrpcService(
         spec.ApplyTo(entity, await GetOperatorNameAsync(context));
         await centralDb.SaveChangesAsync();
         await AddCacheAsync(entity);
-        return MapToProto(new UserBlackList.TenantPageModel
+        return new UpdateUserBlacklistResponse
         {
-            Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
-        });
+            Data = MapToProto(new UserBlackList.TenantPageModel
+            {
+                Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
+            }),
+        };
     }
 
-    public override async Task<OperationResponse> DeleteUserBlacklist(
-        GetUserBlacklistRequest request, ServerCallContext context)
+    public override async Task<DeleteUserBlacklistResponse> DeleteUserBlacklist(
+        DeleteUserBlacklistRequest request, ServerCallContext context)
     {
         var entity = await centralDb.UserBlackLists.FindAsync(request.Id)
             ?? throw new RpcException(new Status(StatusCode.NotFound, "Not found"));
         centralDb.UserBlackLists.Remove(entity);
         await centralDb.SaveChangesAsync();
         await RemoveCacheAsync(entity);
-        return new OperationResponse { Success = true };
+        return new DeleteUserBlacklistResponse { Success = true };
     }
 
-    public override async Task<OperationResponse> ReloadUserBlacklistCache(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<ReloadUserBlacklistCacheResponse> ReloadUserBlacklistCache(
+        ReloadUserBlacklistCacheRequest request, ServerCallContext context)
     {
         await myCache.HSetDeleteByKeyAsync(_nameKey);
         await myCache.HSetDeleteByKeyAsync(_phoneKey);
@@ -388,7 +403,7 @@ public class TenantUserBlacklistGrpcService(
             await myCache.HSetStringAsync(_idNumKey, item.IdNumber, "1");
         }
 
-        return new OperationResponse { Success = true, Message = items.Count.ToString() };
+        return new ReloadUserBlacklistCacheResponse { Success = true, Message = items.Count.ToString() };
     }
 
     private Task RemoveCacheAsync(UserBlackList e) => Task.WhenAll(
@@ -499,8 +514,8 @@ public class TenantApiLogGrpcService(TenantDbContext tenantDb)
 public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cache, MyDbContextPool pool)
     : TenantStatisticsService.TenantStatisticsServiceBase
 {
-    public override async Task<OnlineAdminsResponse> GetOnlineAdmins(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetOnlineAdminsResponse> GetOnlineAdmins(
+        GetOnlineAdminsRequest request, ServerCallContext context)
     {
         var rawInfos = await monitorSvc.GetOnlineAdminAsync();
         // Stored format: "email_partyId_tenantId_datetime"
@@ -527,17 +542,17 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
             })
             .ToList();
 
-        var response = new OnlineAdminsResponse { Count = users.Count };
-        response.Users.AddRange(users);
-        return response;
+        var inner = new OnlineAdminsResponse { Count = users.Count };
+        inner.Users.AddRange(users);
+        return new GetOnlineAdminsResponse { Data = inner };
     }
 
-    public override async Task<OnlineUsersResponse> GetOnlineUsers(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetOnlineUsersResponse> GetOnlineUsers(
+        GetOnlineUsersRequest request, ServerCallContext context)
     {
         var db        = cache.GetDatabase();
         var tenantIds = pool.GetTenantIds();
-        var response  = new OnlineUsersResponse();
+        var inner     = new OnlineUsersResponse();
 
         foreach (var tenantId in tenantIds)
         {
@@ -570,10 +585,10 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
             var stat = new OnlineTenantStat { TenantId = tenantId, Total = total };
             foreach (var kv in deviceStat) stat.DeviceStat[kv.Key] = kv.Value;
             foreach (var kv in clientStat) stat.ClientStat[kv.Key] = kv.Value;
-            response.Items.Add(stat);
+            inner.Items.Add(stat);
         }
 
-        return response;
+        return new GetOnlineUsersResponse { Data = inner };
     }
 }
 
@@ -583,10 +598,10 @@ public class TenantStatisticsGrpcService(MonitorService monitorSvc, IMyCache cac
 /// Server list and metrics (replaces StatisticControllerV2 server endpoints).
 /// </summary>
 public class TenantStatisticsV2GrpcService(MybcrDbContext bcrCtx, IHttpClientFactory httpFactory)
-    : TenantStatisticsServiceV2.TenantStatisticsServiceV2Base
+    : TenantStatisticsV2Service.TenantStatisticsV2ServiceBase
 {
-    public override async Task<ServersResponse> GetServers(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetServersResponse> GetServers(
+        GetServersRequest request, ServerCallContext context)
     {
         var items = await bcrCtx.Servers
             .PagedFilterBy<Server, ulong>(new Server.Criteria())
@@ -595,18 +610,18 @@ public class TenantStatisticsV2GrpcService(MybcrDbContext bcrCtx, IHttpClientFac
             .ThenBy(x => x.Name)
             .ToListAsync();
 
-        var response = new ServersResponse();
-        response.Servers.AddRange(items.Select(s => new ServerItem
+        var inner = new ServersResponse();
+        inner.Servers.AddRange(items.Select(s => new ServerItem
         {
             Id   = (int)s.Id,
             Name = s.Name,
             Host = s.Ip,
         }));
-        return response;
+        return new GetServersResponse { Data = inner };
     }
 
-    public override async Task<ServerMetricsResponse> GetServerMetrics(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetServerMetricsResponse> GetServerMetrics(
+        GetServerMetricsRequest request, ServerCallContext context)
     {
         var servers = await bcrCtx.Servers
             .ToTenantPageModel()
@@ -641,9 +656,9 @@ public class TenantStatisticsV2GrpcService(MybcrDbContext bcrCtx, IHttpClientFac
             });
         }));
 
-        var response = new ServerMetricsResponse();
-        response.Metrics.AddRange(metrics);
-        return response;
+        var inner = new ServerMetricsResponse();
+        inner.Metrics.AddRange(metrics);
+        return new GetServerMetricsResponse { Data = inner };
     }
 }
 
@@ -663,7 +678,7 @@ public class TenantAdminGrpcService(
     // ─── Users ────────────────────────────────────────────────────────────────
 
     public override async Task<ListAdminUsersResponse> ListAdminUsers(
-        EmptyRequest request, ServerCallContext context)
+        ListAdminUsersRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var items = await authDb.Users
@@ -677,7 +692,7 @@ public class TenantAdminGrpcService(
         return response;
     }
 
-    public override async Task<AdminUserDetail> GetAdminUser(
+    public override async Task<GetAdminUserResponse> GetAdminUser(
         GetAdminUserRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
@@ -701,23 +716,23 @@ public class TenantAdminGrpcService(
             new AdminPermission { Id = id }));
         detail.RolePermissions.AddRange(rolePermissions.Select(id =>
             new AdminPermission { Id = id }));
-        return detail;
+        return new GetAdminUserResponse { Data = detail };
     }
 
     // ─── Roles ────────────────────────────────────────────────────────────────
 
-    public override async Task<AdminRolesResponse> ListAdminRoles(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<ListAdminRolesResponse> ListAdminRoles(
+        ListAdminRolesRequest request, ServerCallContext context)
     {
         var items = await userService.GetAllRolesAsync();
-        var response = new AdminRolesResponse();
-        response.Data.AddRange(items
+        var inner = new AdminRolesResponse();
+        inner.Data.AddRange(items
             .Where(r => r.Id < 100)
             .Select(r => new AdminRole { Id = r.Id, Name = r.Name ?? "" }));
-        return response;
+        return new ListAdminRolesResponse { Data = inner };
     }
 
-    public override async Task<AdminRoleDetail> GetAdminRole(
+    public override async Task<GetAdminRoleResponse> GetAdminRole(
         GetAdminRoleRequest request, ServerCallContext context)
     {
         var role = await authDb.ApplicationRoles
@@ -729,22 +744,22 @@ public class TenantAdminGrpcService(
         var permIds = await permissionSvc.GetRolePermissionIdsAsync(role.Name);
         var detail  = new AdminRoleDetail { Id = role.Id, Name = role.Name };
         detail.PermissionIds.AddRange(permIds);
-        return detail;
+        return new GetAdminRoleResponse { Data = detail };
     }
 
     // ─── Permissions ──────────────────────────────────────────────────────────
 
-    public override async Task<AdminPermissionsResponse> ListAdminPermissions(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<ListAdminPermissionsResponse> ListAdminPermissions(
+        ListAdminPermissionsRequest request, ServerCallContext context)
     {
         var items    = await permissionSvc.GetAllAsync();
-        var response = new AdminPermissionsResponse();
-        response.Data.AddRange(items.Select(MapPermToProto));
-        return response;
+        var inner = new AdminPermissionsResponse();
+        inner.Data.AddRange(items.Select(MapPermToProto));
+        return new ListAdminPermissionsResponse { Data = inner };
     }
 
-    public override async Task<AdminPermission> CreateAdminPermission(
-        CreatePermissionRequest request, ServerCallContext context)
+    public override async Task<CreateAdminPermissionResponse> CreateAdminPermission(
+        CreateAdminPermissionRequest request, ServerCallContext context)
     {
         var ok = await permissionSvc.CreateAsync(
             request.Auth, request.Action, request.Method, request.Category, request.Key);
@@ -754,19 +769,19 @@ public class TenantAdminGrpcService(
             .Where(x => x.Action == request.Action && x.Method == request.Method && x.Category == request.Category)
             .FirstOrDefaultAsync()
             ?? throw new RpcException(new Status(StatusCode.Internal, "Failed to retrieve created permission"));
-        return MapPermToProto(created);
+        return new CreateAdminPermissionResponse { Data = MapPermToProto(created) };
     }
 
-    public override async Task<OperationResponse> TogglePermission(
+    public override async Task<TogglePermissionResponse> TogglePermission(
         TogglePermissionRequest request, ServerCallContext context)
     {
         var ok = await permissionSvc.ToggleAuthAsync(request.Id);
-        return new OperationResponse { Success = ok };
+        return new TogglePermissionResponse { Success = ok };
     }
 
     // ─── User role / permission toggles ──────────────────────────────────────
 
-    public override async Task<OperationResponse> ToggleUserRole(
+    public override async Task<ToggleUserRoleResponse> ToggleUserRole(
         ToggleUserRoleRequest request, ServerCallContext context)
     {
         var partyId = await authDb.Users
@@ -786,10 +801,10 @@ public class TenantAdminGrpcService(
             ? await userService.RemoveRoleAsync(partyId, roleName, operatorPartyId)
             : await userService.AddRoleAsync(partyId, roleName, operatorPartyId);
 
-        return new OperationResponse { Success = ok };
+        return new ToggleUserRoleResponse { Success = ok };
     }
 
-    public override async Task<OperationResponse> ToggleUserPermission(
+    public override async Task<ToggleUserPermissionResponse> ToggleUserPermission(
         ToggleUserPermissionRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
@@ -803,10 +818,10 @@ public class TenantAdminGrpcService(
             ? await permissionSvc.RemoveUserPermissionAsync(tenantId, partyId, request.PermissionId)
             : await permissionSvc.AddUserPermissionAsync(tenantId, partyId, request.PermissionId);
 
-        return new OperationResponse { Success = ok };
+        return new ToggleUserPermissionResponse { Success = ok };
     }
 
-    public override async Task<OperationResponse> ToggleRolePermission(
+    public override async Task<ToggleRolePermissionResponse> ToggleRolePermission(
         ToggleRolePermissionRequest request, ServerCallContext context)
     {
         var roleName = await authDb.ApplicationRoles
@@ -819,13 +834,13 @@ public class TenantAdminGrpcService(
             ? await permissionSvc.RemoveRolePermissionAsync(roleName, request.PermissionId)
             : await permissionSvc.AddRolePermissionAsync(roleName, request.PermissionId);
 
-        return new OperationResponse { Success = ok };
+        return new ToggleRolePermissionResponse { Success = ok };
     }
 
     // ─── User permissions by party ID (v2) ───────────────────────────────────
 
-    public override async Task<UserPermissionsDetailResponse> GetUserPermissionsByPartyId(
-        GetPermissionsByPartyIdRequest request, ServerCallContext context)
+    public override async Task<GetUserPermissionsByPartyIdResponse> GetUserPermissionsByPartyId(
+        GetUserPermissionsByPartyIdRequest request, ServerCallContext context)
     {
         var tenantId        = tenantGetter.GetTenantId();
         var webPermissions  = await permissionSvc.GetUserWebPermissions(tenantId, request.PartyId);
@@ -839,10 +854,10 @@ public class TenantAdminGrpcService(
             .Distinct()
             .ToList();
 
-        var response = new UserPermissionsDetailResponse();
-        response.UserPermissions.AddRange(webPermissions);
-        response.RolePermissions.AddRange(rolePermActions);
-        return response;
+        var inner = new UserPermissionsDetailResponse();
+        inner.UserPermissions.AddRange(webPermissions);
+        inner.RolePermissions.AddRange(rolePermActions);
+        return new GetUserPermissionsByPartyIdResponse { Data = inner };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

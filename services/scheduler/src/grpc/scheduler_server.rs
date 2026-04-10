@@ -17,7 +17,8 @@ use crate::AppContext;
 use crate::generated::api::v1::{
     scheduler_service_server::SchedulerService,
     EnqueueReportRequestRequest, EnqueueReportRequestResponse,
-    TriggerJobRequest, TriggerJobResponse,
+    TriggerCloseTradeRequest, TriggerCloseTradeResponse,
+    TriggerAccountDailyRequest, TriggerAccountDailyResponse,
 };
 
 pub struct SchedulerGrpcServer {
@@ -59,8 +60,8 @@ impl SchedulerService for SchedulerGrpcServer {
 
     async fn trigger_close_trade(
         &self,
-        _request: Request<TriggerJobRequest>,
-    ) -> Result<Response<TriggerJobResponse>, Status> {
+        _request: Request<TriggerCloseTradeRequest>,
+    ) -> Result<Response<TriggerCloseTradeResponse>, Status> {
         let ctx = self.ctx.clone();
         tokio::spawn(async move {
             if let Err(e) = crate::jobs::close_trade::execute(ctx).await {
@@ -68,7 +69,7 @@ impl SchedulerService for SchedulerGrpcServer {
             }
         });
 
-        Ok(Response::new(TriggerJobResponse {
+        Ok(Response::new(TriggerCloseTradeResponse {
             success: true,
             message: "CloseTradeJob triggered".to_string(),
         }))
@@ -76,8 +77,8 @@ impl SchedulerService for SchedulerGrpcServer {
 
     async fn trigger_account_daily(
         &self,
-        _request: Request<TriggerJobRequest>,
-    ) -> Result<Response<TriggerJobResponse>, Status> {
+        _request: Request<TriggerAccountDailyRequest>,
+    ) -> Result<Response<TriggerAccountDailyResponse>, Status> {
         let ctx = self.ctx.clone();
         tokio::spawn(async move {
             if let Err(e) = crate::jobs::account_daily::execute(ctx).await {
@@ -85,7 +86,7 @@ impl SchedulerService for SchedulerGrpcServer {
             }
         });
 
-        Ok(Response::new(TriggerJobResponse {
+        Ok(Response::new(TriggerAccountDailyResponse {
             success: true,
             message: "AccountDailyJob triggered".to_string(),
         }))

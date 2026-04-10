@@ -3,6 +3,7 @@ syntax = "proto3";
 package api.v1;
 
 option csharp_namespace = "Api.V1";
+option go_package = "api/v1";
 
 // SchedulerService — exposed by the Rust scheduler service.
 // mono calls this to enqueue report jobs and trigger cron jobs.
@@ -11,10 +12,10 @@ service SchedulerService {
   rpc EnqueueReportRequest(EnqueueReportRequestRequest) returns (EnqueueReportRequestResponse);
 
   // Manually trigger the close-trade cron job.
-  rpc TriggerCloseTrade(TriggerJobRequest) returns (TriggerJobResponse);
+  rpc TriggerCloseTrade(TriggerCloseTradeRequest) returns (TriggerCloseTradeResponse);
 
   // Manually trigger the account-daily-confirmation cron job.
-  rpc TriggerAccountDaily(TriggerJobRequest) returns (TriggerJobResponse);
+  rpc TriggerAccountDaily(TriggerAccountDailyRequest) returns (TriggerAccountDailyResponse);
 }
 
 // MonoCallbackService — exposed by mono.
@@ -25,9 +26,9 @@ service MonoCallbackService {
   rpc NotifyReportDone(NotifyReportDoneRequest) returns (NotifyReportDoneResponse);
 
   // Trigger recurring jobs (cron schedule managed by Rust scheduler).
-  rpc TriggerCalculateRebate(TriggerJobRequest) returns (TriggerJobResponse);
-  rpc TriggerReleaseRebate(TriggerJobRequest) returns (TriggerJobResponse);
-  rpc TriggerCryptoMonitor(TriggerJobRequest) returns (TriggerJobResponse);
+  rpc TriggerCalculateRebate(TriggerCalculateRebateRequest) returns (TriggerCalculateRebateResponse);
+  rpc TriggerReleaseRebate(TriggerReleaseRebateRequest) returns (TriggerReleaseRebateResponse);
+  rpc TriggerCryptoMonitor(TriggerCryptoMonitorRequest) returns (TriggerCryptoMonitorResponse);
 }
 
 message EnqueueReportRequestRequest {
@@ -40,12 +41,47 @@ message EnqueueReportRequestResponse {
   string message = 2;
 }
 
-message TriggerJobRequest {
-  // Optional: reserved for future per-tenant trigger.
+message TriggerCloseTradeRequest {
   int64 tenant_id = 1;
 }
 
-message TriggerJobResponse {
+message TriggerCloseTradeResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message TriggerAccountDailyRequest {
+  int64 tenant_id = 1;
+}
+
+message TriggerAccountDailyResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message TriggerCalculateRebateRequest {
+  int64 tenant_id = 1;
+}
+
+message TriggerCalculateRebateResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message TriggerReleaseRebateRequest {
+  int64 tenant_id = 1;
+}
+
+message TriggerReleaseRebateResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message TriggerCryptoMonitorRequest {
+  int64 tenant_id = 1;
+}
+
+message TriggerCryptoMonitorResponse {
   bool   success = 1;
   string message = 2;
 }

@@ -14,39 +14,39 @@ import "http/v1/common.proto";
 
 service TenantTradeAccountService {
   // 分页查询交易账户列表；可按 account_uid、status、关键字及日期范围过滤
-  rpc ListTradeAccounts(ListTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+  rpc ListTradeAccounts(TenantTradeAccountServiceListTradeAccountsRequest) returns (TenantTradeAccountServiceListTradeAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-account" };
   }
   // 按 uid 获取交易账户详情（含余额、净值、信用额）
-  rpc GetTradeAccount(GetTradeAccountRequest) returns (TradeAccount) {
+  rpc GetTradeAccount(TenantTradeAccountServiceGetTradeAccountRequest) returns (TenantTradeAccountServiceGetTradeAccountResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-account/{uid}" };
   }
   // 在 MT 服务器上创建新交易账户（触发异步开户流程）
-  rpc CreateTradeAccount(CreateTradeAccountRequest) returns (TradeAccount) {
+  rpc CreateTradeAccount(CreateTradeAccountRequest) returns (CreateTradeAccountResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/trade-account", body: "*" };
   }
   // 为交易账户设置返佣规则模板（rebate_rule_template_id 为路径参数）
-  rpc SetRebateRuleTemplate(SetRebateRuleTemplateRequest) returns (TradeAccount) {
+  rpc SetRebateRuleTemplate(SetRebateRuleTemplateRequest) returns (SetRebateRuleTemplateResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/trade-account/{id}/template/{rebate_rule_template_id}" };
   }
   // 获取交易账户的只读密码（MT4/MT5 观察密码，含过期时间）
-  rpc GetReadOnlyCode(GetTradeAccountRequest) returns (ReadOnlyCodeResponse) {
+  rpc GetReadOnlyCode(GetReadOnlyCodeRequest) returns (GetReadOnlyCodeResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-account/{uid}/read-only-code" };
   }
   // 预览只读密码通知邮件内容（不发送，返回 subject 和 HTML body）
-  rpc PreviewReadOnlyCodeNotice(ReadOnlyCodeNoticeRequest) returns (EmailPreviewResponse) {
+  rpc PreviewReadOnlyCodeNotice(PreviewReadOnlyCodeNoticeRequest) returns (PreviewReadOnlyCodeNoticeResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/trade-account/{id}/read-only-code/notice/preview" };
   }
   // 向指定邮箱发送只读密码通知邮件（支持 bcc）
-  rpc SendReadOnlyCodeNotice(ReadOnlyCodeNoticeRequest) returns (OperationResponse) {
+  rpc SendReadOnlyCodeNotice(SendReadOnlyCodeNoticeRequest) returns (SendReadOnlyCodeNoticeResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/trade-account/{id}/read-only-code/notice" };
   }
   // 更新交易账户杠杆倍数（leverage 为路径参数）
-  rpc UpdateLeverage(UpdateLeverageRequest) returns (TradeAccount) {
+  rpc UpdateLeverage(UpdateLeverageRequest) returns (UpdateLeverageResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/trade-account/{account_id}/leverage/{leverage}" };
   }
   // 从 MT 服务器同步并刷新账户余额/净值数据
-  rpc CheckBalance(GetTradeAccountRequest) returns (TradeAccount) {
+  rpc CheckBalance(CheckBalanceRequest) returns (CheckBalanceResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/trade-account/{uid}/check-balance" };
   }
 }
@@ -56,11 +56,11 @@ service TenantTradeAccountService {
 
 service TenantTradeDemoAccountService {
   // 分页查询模拟交易账户列表；可按 account_uid、status 过滤
-  rpc ListTradeDemoAccounts(ListTradeDemoAccountsRequest) returns (ListTradeDemoAccountsResponse) {
+  rpc ListTradeDemoAccounts(TenantTradeDemoAccountServiceListTradeDemoAccountsRequest) returns (TenantTradeDemoAccountServiceListTradeDemoAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade-demo-account" };
   }
   // 删除模拟交易账户（uid 为路径参数，操作不可恢复）
-  rpc DeleteTradeDemoAccount(GetTradeAccountRequest) returns (OperationResponse) {
+  rpc DeleteTradeDemoAccount(DeleteTradeDemoAccountRequest) returns (DeleteTradeDemoAccountResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/trade-demo-account/{uid}" };
   }
 }
@@ -70,27 +70,27 @@ service TenantTradeDemoAccountService {
 
 service TenantTradeService {
   // 分页查询交易记录；可按 trade_account_uid、品种、日期范围过滤
-  rpc ListTrades(ListTradesRequest) returns (ListTradesResponse) {
+  rpc ListTrades(ListTradesRequest) returns (TenantTradeServiceListTradesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade" };
   }
   // 获取所有 MT 交易服务列表（含 id、name、type）
-  rpc ListServices(EmptyRequest) returns (TradeServicesResponse) {
+  rpc ListServices(TenantTradeServiceListServicesRequest) returns (TenantTradeServiceListServicesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade/service" };
   }
   // 获取指定服务的 MT 账户分组列表（group 名称字符串数组）
-  rpc GetServiceGroups(GetServiceRequest) returns (ServiceGroupsResponse) {
+  rpc GetServiceGroups(GetServiceGroupsRequest) returns (GetServiceGroupsResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/trade/service/{id}/group" };
   }
   // 向服务的分组列表添加一个新分组名称（body 字段名为 spec）
-  rpc AddServiceGroup(AddServiceGroupRequest) returns (ServiceGroupsResponse) {
+  rpc AddServiceGroup(AddServiceGroupRequest) returns (AddServiceGroupResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/trade/service/{id}/group", body: "spec" };
   }
   // 从服务的分组列表删除一个分组（body 字段名为 spec，含 group 名称）
-  rpc DeleteServiceGroup(DeleteServiceGroupRequest) returns (ServiceGroupsResponse) {
+  rpc DeleteServiceGroup(DeleteServiceGroupRequest) returns (DeleteServiceGroupResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/trade/service/{id}/group" };
   }
   // 全量替换服务的分组列表（body 字段名为 spec）
-  rpc UpdateServiceGroups(UpdateServiceGroupsRequest) returns (ServiceGroupsResponse) {
+  rpc UpdateServiceGroups(UpdateServiceGroupsRequest) returns (UpdateServiceGroupsResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/trade/service/{id}/group", body: "spec" };
   }
 }
@@ -100,12 +100,12 @@ service TenantTradeService {
 
 // HTTP 路由全部由 MVC TradePasswordController 处理，gRPC 仅保留内部调用定义
 service TenantTradePasswordService {
-  rpc ResetCrmPassword(ResetCrmPasswordRequest) returns (OperationResponse) {}
-  rpc GetInitialTradePassword(GetTradeAccountIdRequest) returns (InitialPasswordResponse) {}
-  rpc ChangeMainPassword(ChangeTradePasswordRequest) returns (OperationResponse) {}
-  rpc ChangeInvestorPassword(ChangeTradePasswordRequest) returns (OperationResponse) {}
-  rpc ResetToInitialPassword(ResetToInitialPasswordRequest) returns (OperationResponse) {}
-  rpc GetPasswordHistory(GetPasswordHistoryRequest) returns (PasswordHistoryResponse) {}
+  rpc ResetCrmPassword(ResetCrmPasswordRequest) returns (ResetCrmPasswordResponse) {}
+  rpc GetInitialTradePassword(GetInitialTradePasswordRequest) returns (GetInitialTradePasswordResponse) {}
+  rpc ChangeMainPassword(ChangeMainPasswordRequest) returns (ChangeMainPasswordResponse) {}
+  rpc ChangeInvestorPassword(ChangeInvestorPasswordRequest) returns (ChangeInvestorPasswordResponse) {}
+  rpc ResetToInitialPassword(ResetToInitialPasswordRequest) returns (ResetToInitialPasswordResponse) {}
+  rpc GetPasswordHistory(GetPasswordHistoryRequest) returns (GetPasswordHistoryResponse) {}
 }
 
 // ─── Tenant Trade Service Configuration (api/v1/tenant/tradeserviceconfiguration) ──
@@ -113,15 +113,15 @@ service TenantTradePasswordService {
 
 service TenantTradeServiceConfigurationService {
   // 获取指定服务（by service_id）的配置信息（server 地址、type）
-  rpc GetConfiguration(GetTradeServiceConfigRequest) returns (TradeServiceConfigResponse) {
+  rpc GetConfiguration(GetConfigurationRequest) returns (GetConfigurationResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/configuration" };
   }
   // 获取 MT5 模拟账户前缀映射（key=前缀字符串，value=起始账号数字）
-  rpc GetAccountPrefixes(GetTradeServiceConfigRequest) returns (AccountPrefixesResponse) {
+  rpc GetAccountPrefixes(GetAccountPrefixesRequest) returns (GetAccountPrefixesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/account-prefixes" };
   }
   // 更新 MT5 模拟账户前缀映射（body 字段名为 prefixes）
-  rpc UpdateAccountPrefixes(UpdateAccountPrefixesRequest) returns (AccountPrefixesResponse) {
+  rpc UpdateAccountPrefixes(UpdateAccountPrefixesRequest) returns (UpdateAccountPrefixesResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/tradeserviceconfiguration/{service_id}/account-prefixes", body: "*" };
   }
 }
@@ -131,11 +131,11 @@ service TenantTradeServiceConfigurationService {
 
 service ClientTradeAccountService {
   // 分页查询当前用户的交易账户列表
-  rpc ListTradeAccounts(ListTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+  rpc ListTradeAccounts(ClientTradeAccountServiceListTradeAccountsRequest) returns (ClientTradeAccountServiceListTradeAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/client/trade-account" };
   }
   // 按 uid 获取交易账户详情
-  rpc GetTradeAccount(GetTradeAccountRequest) returns (TradeAccount) {
+  rpc GetTradeAccount(ClientTradeAccountServiceGetTradeAccountRequest) returns (ClientTradeAccountServiceGetTradeAccountResponse) {
     option (google.api.http) = { get: "/api/v1/client/trade-account/{uid}" };
   }
   // 检查目标邮箱是否存在，及对应的钱包 UID（转账前验证用）
@@ -147,15 +147,15 @@ service ClientTradeAccountService {
     option (google.api.http) = { get: "/api/v1/client/trade-account/wholesale-referral-check" };
   }
   // 分页查询指定交易账户的交易记录；可按日期范围过滤
-  rpc ListTrades(GetTradeAccountTradesRequest) returns (ListTradesResponse) {
+  rpc ListTrades(ClientTradeAccountServiceListTradesRequest) returns (ClientTradeAccountServiceListTradesResponse) {
     option (google.api.http) = { get: "/api/v1/client/trade-account/{uid}/trade" };
   }
   // 触发修改密码 OTP 发送（发送验证码到用户邮箱，后续用于密码修改）
-  rpc RequestChangePasswordOtp(GetTradeAccountRequest) returns (OperationResponse) {
+  rpc RequestChangePasswordOtp(RequestChangePasswordOtpRequest) returns (RequestChangePasswordOtpResponse) {
     option (google.api.http) = { post: "/api/v1/client/trade-account/{uid}/change-password" };
   }
   // 分页查询指定交易账户的资金流水（充提款/调整等）
-  rpc ListTransactions(GetTradeAccountTransactionsRequest) returns (ListTradeTransactionsResponse) {
+  rpc ListTransactions(ClientTradeAccountServiceListTransactionsRequest) returns (ClientTradeAccountServiceListTransactionsResponse) {
     option (google.api.http) = { get: "/api/v1/client/trade-account/{uid}/transaction" };
   }
 }
@@ -163,9 +163,9 @@ service ClientTradeAccountService {
 // ─── Client Trade Account V2 API (api/v2/client/trade-account) ───────────────
 // 客户端交易账户接口 V2 版本。
 
-service ClientTradeAccountServiceV2 {
+service ClientTradeAccountV2Service {
   // 分页查询当前用户的交易账户列表（V2 版）
-  rpc ListTradeAccounts(ListTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+  rpc ListTradeAccounts(ClientTradeAccountV2ServiceListTradeAccountsRequest) returns (ClientTradeAccountV2ServiceListTradeAccountsResponse) {
     option (google.api.http) = { get: "/api/v2/client/trade-account" };
   }
 }
@@ -175,11 +175,11 @@ service ClientTradeAccountServiceV2 {
 
 service ClientTradeDemoAccountService {
   // 分页查询当前用户的模拟账户列表
-  rpc ListTradeDemoAccounts(ListTradeDemoAccountsRequest) returns (ListTradeDemoAccountsResponse) {
+  rpc ListTradeDemoAccounts(ClientTradeDemoAccountServiceListTradeDemoAccountsRequest) returns (ClientTradeDemoAccountServiceListTradeDemoAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/client/trade-demo-account" };
   }
   // 创建模拟账户（指定初始存款金额和杠杆）
-  rpc CreateTradeDemoAccount(CreateTradeDemoAccountRequest) returns (TradeDemoAccount) {
+  rpc CreateTradeDemoAccount(CreateTradeDemoAccountRequest) returns (CreateTradeDemoAccountResponse) {
     option (google.api.http) = { post: "/api/v1/client/trade-demo-account", body: "*" };
   }
 }
@@ -189,7 +189,7 @@ service ClientTradeDemoAccountService {
 
 service ClientTradeService {
   // 获取客户端可用的 MT 交易服务列表
-  rpc ListServices(EmptyRequest) returns (TradeServicesResponse) {
+  rpc ListServices(ClientTradeServiceListServicesRequest) returns (ClientTradeServiceListServicesResponse) {
     option (google.api.http) = { get: "/api/v1/client/trade/service" };
   }
 }
@@ -199,19 +199,19 @@ service ClientTradeService {
 
 service IbTradeAccountService {
   // 分页查询 IB 旗下客户的交易账户列表；可按 account_uid、status 过滤
-  rpc ListTradeAccounts(ListIbTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+  rpc ListTradeAccounts(IbTradeAccountServiceListTradeAccountsRequest) returns (IbTradeAccountServiceListTradeAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account" };
   }
   // 获取 IB 旗下指定客户的交易账户详情
-  rpc GetTradeAccount(GetIbTradeAccountRequest) returns (TradeAccount) {
+  rpc GetTradeAccount(IbTradeAccountServiceGetTradeAccountRequest) returns (IbTradeAccountServiceGetTradeAccountResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account/{uid}" };
   }
   // 分页查询 IB 旗下指定交易账户的交易记录
-  rpc ListTrades(GetIbTradeAccountTradesRequest) returns (ListTradesResponse) {
+  rpc ListTrades(IbTradeAccountServiceListTradesRequest) returns (IbTradeAccountServiceListTradesResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account/{uid}/trade" };
   }
   // 分页查询 IB 旗下指定交易账户的资金流水
-  rpc ListTransactions(GetIbTradeAccountTransactionsRequest) returns (ListTradeTransactionsResponse) {
+  rpc ListTransactions(IbTradeAccountServiceListTransactionsRequest) returns (IbTradeAccountServiceListTransactionsResponse) {
     option (google.api.http) = { get: "/api/v1/ib/{agent_uid}/trade-account/{uid}/transaction" };
   }
 }
@@ -221,19 +221,19 @@ service IbTradeAccountService {
 
 service SalesTradeAccountService {
   // 分页查询 Sales 旗下客户的交易账户列表；可按 account_uid、status 过滤
-  rpc ListTradeAccounts(ListSalesTradeAccountsRequest) returns (ListTradeAccountsResponse) {
+  rpc ListTradeAccounts(SalesTradeAccountServiceListTradeAccountsRequest) returns (SalesTradeAccountServiceListTradeAccountsResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account" };
   }
   // 获取 Sales 旗下指定客户的交易账户详情
-  rpc GetTradeAccount(GetSalesTradeAccountRequest) returns (TradeAccount) {
+  rpc GetTradeAccount(SalesTradeAccountServiceGetTradeAccountRequest) returns (SalesTradeAccountServiceGetTradeAccountResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account/{uid}" };
   }
   // 分页查询 Sales 旗下指定交易账户的交易记录
-  rpc ListTrades(GetSalesTradeAccountTradesRequest) returns (ListTradesResponse) {
+  rpc ListTrades(SalesTradeAccountServiceListTradesRequest) returns (SalesTradeAccountServiceListTradesResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account/{uid}/trade" };
   }
   // 分页查询 Sales 旗下指定交易账户的资金流水
-  rpc ListTransactions(GetSalesTradeAccountTransactionsRequest) returns (ListTradeTransactionsResponse) {
+  rpc ListTransactions(SalesTradeAccountServiceListTransactionsRequest) returns (SalesTradeAccountServiceListTransactionsResponse) {
     option (google.api.http) = { get: "/api/v1/sales/{sales_uid}/trade-account/{uid}/transaction" };
   }
 }
@@ -243,11 +243,11 @@ service SalesTradeAccountService {
 
 service RepTradeAccountService {
   // 分页查询 Rep 旗下指定交易账户的交易记录
-  rpc ListTrades(GetRepTradeAccountTradesRequest) returns (ListTradesResponse) {
+  rpc ListTrades(RepTradeAccountServiceListTradesRequest) returns (RepTradeAccountServiceListTradesResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/trade-account/{uid}/trade" };
   }
   // 分页查询 Rep 旗下指定交易账户的资金流水
-  rpc ListTransactions(GetRepTradeAccountTransactionsRequest) returns (ListTradeTransactionsResponse) {
+  rpc ListTransactions(RepTradeAccountServiceListTransactionsRequest) returns (RepTradeAccountServiceListTransactionsResponse) {
     option (google.api.http) = { get: "/api/v1/rep/{rep_uid}/trade-account/{uid}/transaction" };
   }
 }
@@ -304,10 +304,53 @@ message Transaction {
   string created_at  = 6; // 创建时间，ISO 8601 格式
 }
 
-// ─── 列表请求/响应 ─────────────────────────────────────────────────────────────
+// ─── 列表载荷（供各 RPC 专用 Response 包装）────────────────────────────────────
 
-// 交易账户列表查询（通用）
-message ListTradeAccountsRequest {
+message ListTradeAccountsPayload {
+  repeated TradeAccount data = 1;
+  PaginationMeta        criteria = 2;
+}
+
+message ListTradeDemoAccountsPayload {
+  repeated TradeDemoAccount data = 1;
+  PaginationMeta            criteria = 2;
+}
+
+message ListTradesPayload {
+  repeated Trade data = 1;
+  PaginationMeta criteria = 2;
+}
+
+message ListTradeTransactionsPayload {
+  repeated Transaction data = 1;
+  PaginationMeta       criteria = 2;
+}
+
+message ServiceGroupsPayload {
+  repeated string groups = 1; // MT 账户分组名称列表，如 ["Standard", "ECN", "VIP"]
+}
+
+message TradeServicesPayload {
+  repeated TradeServiceItem items = 1;
+}
+
+message AccountPrefixesPayload {
+  map<string, int64> prefixes = 1; // key=前缀字符串，value=该前缀的账号起始值
+}
+
+message ReadOnlyCodePayload {
+  string code       = 1; // 只读密码（MT4/MT5 观察密码）
+  string expires_at = 2; // 过期时间，ISO 8601 格式
+}
+
+message EmailPreviewPayload {
+  string subject = 1; // 邮件主题
+  string body    = 2; // 邮件 HTML 正文
+}
+
+// ─── TenantTradeAccountService ───────────────────────────────────────────────
+
+message TenantTradeAccountServiceListTradeAccountsRequest {
   PaginationRequest pagination  = 1;
   optional int64    account_uid = 2; // 按关联账户 ID 过滤
   optional int32    status      = 3; // 按账户状态过滤
@@ -316,29 +359,18 @@ message ListTradeAccountsRequest {
   optional string   date_to     = 6; // ISO 8601 格式
 }
 
-message ListTradeAccountsResponse {
-  repeated TradeAccount data = 1;
-  PaginationMeta        criteria = 2;
+message TenantTradeAccountServiceListTradeAccountsResponse {
+  ListTradeAccountsPayload data = 1;
 }
 
-// 按 uid 查询交易账户
-message GetTradeAccountRequest {
+message TenantTradeAccountServiceGetTradeAccountRequest {
   int64 uid = 1; // 交易账户 uid（TradeAccount.id）
 }
 
-// 模拟账户列表查询
-message ListTradeDemoAccountsRequest {
-  PaginationRequest pagination  = 1;
-  optional int64    account_uid = 2;
-  optional int32    status      = 3;
+message TenantTradeAccountServiceGetTradeAccountResponse {
+  TradeAccount data = 1;
 }
 
-message ListTradeDemoAccountsResponse {
-  repeated TradeDemoAccount data = 1;
-  PaginationMeta            criteria = 2;
-}
-
-// 创建交易账户请求
 message CreateTradeAccountRequest {
   int64  account_uid  = 1; // 关联的 portal 账户 ID
   int32  server_id    = 2; // MT 服务器 ID
@@ -347,30 +379,49 @@ message CreateTradeAccountRequest {
   string currency     = 5; // 基础货币代码，如 "USD"、"AUD"
 }
 
+message CreateTradeAccountResponse {
+  TradeAccount data = 1;
+}
+
 // 设置返佣规则模板请求
 message SetRebateRuleTemplateRequest {
   int64 id                      = 1; // 交易账户 ID
   int64 rebate_rule_template_id = 2; // 返佣规则模板 ID
 }
 
-// 只读密码响应
-message ReadOnlyCodeResponse {
-  string code       = 1; // 只读密码（MT4/MT5 观察密码）
-  string expires_at = 2; // 过期时间，ISO 8601 格式
+message SetRebateRuleTemplateResponse {
+  TradeAccount data = 1;
 }
 
-// 只读密码通知邮件请求
-message ReadOnlyCodeNoticeRequest {
+message GetReadOnlyCodeRequest {
+  int64 uid = 1; // 交易账户 uid（TradeAccount.id）
+}
+
+message GetReadOnlyCodeResponse {
+  ReadOnlyCodePayload data = 1;
+}
+
+message PreviewReadOnlyCodeNoticeRequest {
   int64           id       = 1; // 交易账户 ID
   string          to       = 2; // 收件人邮箱
   repeated string bcc      = 3; // 密送邮箱列表
   string          language = 4; // 邮件语言，如 "en"
 }
 
-// 邮件预览响应
-message EmailPreviewResponse {
-  string subject = 1; // 邮件主题
-  string body    = 2; // 邮件 HTML 正文
+message PreviewReadOnlyCodeNoticeResponse {
+  EmailPreviewPayload data = 1;
+}
+
+message SendReadOnlyCodeNoticeRequest {
+  int64           id       = 1; // 交易账户 ID
+  string          to       = 2; // 收件人邮箱
+  repeated string bcc      = 3; // 密送邮箱列表
+  string          language = 4; // 邮件语言，如 "en"
+}
+
+message SendReadOnlyCodeNoticeResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
 }
 
 // 更新杠杆请求
@@ -379,7 +430,40 @@ message UpdateLeverageRequest {
   int32 leverage   = 2; // 新杠杆倍数
 }
 
-// ─── 交易记录相关 ──────────────────────────────────────────────────────────────
+message UpdateLeverageResponse {
+  TradeAccount data = 1;
+}
+
+message CheckBalanceRequest {
+  int64 uid = 1; // 交易账户 uid（TradeAccount.id）
+}
+
+message CheckBalanceResponse {
+  TradeAccount data = 1;
+}
+
+// ─── TenantTradeDemoAccountService ───────────────────────────────────────────
+
+message TenantTradeDemoAccountServiceListTradeDemoAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+}
+
+message TenantTradeDemoAccountServiceListTradeDemoAccountsResponse {
+  ListTradeDemoAccountsPayload data = 1;
+}
+
+message DeleteTradeDemoAccountRequest {
+  int64 uid = 1; // 交易账户 uid（TradeAccount.id）
+}
+
+message DeleteTradeDemoAccountResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
+}
+
+// ─── TenantTradeService ──────────────────────────────────────────────────────
 
 // 交易记录列表查询（通用，后台使用）
 message ListTradesRequest {
@@ -390,42 +474,62 @@ message ListTradesRequest {
   optional string   symbol            = 5; // 按品种名称过滤，如 "EURUSD"
 }
 
-message ListTradesResponse {
-  repeated Trade data = 1;
-  PaginationMeta criteria = 2;
+message TenantTradeServiceListTradesResponse {
+  ListTradesPayload data = 1;
 }
 
-// 查询指定交易账户的交易记录（客户端）
-message GetTradeAccountTradesRequest {
-  int64             uid        = 1; // 交易账户 uid
-  PaginationRequest pagination = 2;
-  optional string   date_from  = 3; // ISO 8601 格式
-  optional string   date_to    = 4; // ISO 8601 格式
+message TenantTradeServiceListServicesRequest {}
+
+message TenantTradeServiceListServicesResponse {
+  TradeServicesPayload data = 1;
 }
 
-// 查询指定交易账户的资金流水（客户端）
-message GetTradeAccountTransactionsRequest {
-  int64             uid        = 1;
-  PaginationRequest pagination = 2;
-  optional string   date_from  = 3; // ISO 8601 格式
-  optional string   date_to    = 4; // ISO 8601 格式
-}
-
-message ListTradeTransactionsResponse {
-  repeated Transaction data = 1;
-  PaginationMeta       criteria = 2;
-}
-
-// ─── MT 服务相关 ───────────────────────────────────────────────────────────────
-
-// 按 id 查询服务
-message GetServiceRequest {
+message GetServiceGroupsRequest {
   int32 id = 1;
 }
 
-// MT 交易服务列表响应
-message TradeServicesResponse {
-  repeated TradeServiceItem items = 1;
+message GetServiceGroupsResponse {
+  ServiceGroupsPayload data = 1;
+}
+
+// 添加服务分组请求
+message AddServiceGroupRequest {
+  int32            id   = 1;
+  ServiceGroupSpec spec = 2;
+}
+
+message AddServiceGroupResponse {
+  ServiceGroupsPayload data = 1;
+}
+
+// 删除服务分组请求
+message DeleteServiceGroupRequest {
+  int32            id   = 1;
+  ServiceGroupSpec spec = 2;
+}
+
+message DeleteServiceGroupResponse {
+  ServiceGroupsPayload data = 1;
+}
+
+// 批量更新服务分组请求
+message UpdateServiceGroupsRequest {
+  int32                  id   = 1;
+  UpdateServiceGroupSpec spec = 2;
+}
+
+message UpdateServiceGroupsResponse {
+  ServiceGroupsPayload data = 1;
+}
+
+// 分组名称规格
+message ServiceGroupSpec {
+  string group = 1; // MT 账户分组名称
+}
+
+// 批量分组规格
+message UpdateServiceGroupSpec {
+  repeated string groups = 1; // 新的完整分组列表（全量替换）
 }
 
 // MT 交易服务实体
@@ -435,50 +539,16 @@ message TradeServiceItem {
   int32  type = 3; // 服务类型：1=MT4、2=MT5
 }
 
-// MT 账户分组列表响应
-message ServiceGroupsResponse {
-  repeated string groups = 1; // MT 账户分组名称列表，如 ["Standard", "ECN", "VIP"]
-}
+// ─── TenantTradePasswordService ────────────────────────────────────────────────
 
-// 添加服务分组请求
-message AddServiceGroupRequest {
-  int32            id   = 1;
-  ServiceGroupSpec spec = 2;
-}
-
-// 分组名称规格
-message ServiceGroupSpec {
-  string group = 1; // MT 账户分组名称
-}
-
-// 删除服务分组请求
-message DeleteServiceGroupRequest {
-  int32            id   = 1;
-  ServiceGroupSpec spec = 2;
-}
-
-// 批量更新服务分组请求
-message UpdateServiceGroupsRequest {
-  int32                  id   = 1;
-  UpdateServiceGroupSpec spec = 2;
-}
-
-// 批量分组规格
-message UpdateServiceGroupSpec {
-  repeated string groups = 1; // 新的完整分组列表（全量替换）
-}
-
-// ─── 密码管理相关 ──────────────────────────────────────────────────────────────
-
-// 按 account_id 查询（密码管理接口使用）
-message GetTradeAccountIdRequest {
-  int64 account_id = 1; // 交易账户 ID
-}
-
-// CRM 管理员重置密码请求
 message ResetCrmPasswordRequest {
   int64                       account_id = 1;
   ResetCrmPasswordByAdminSpec request    = 2;
+}
+
+message ResetCrmPasswordResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
 }
 
 // CRM 重置密码规格
@@ -486,15 +556,36 @@ message ResetCrmPasswordByAdminSpec {
   string new_password = 1; // 新密码（明文）
 }
 
-// 初始密码响应
-message InitialPasswordResponse {
+message GetInitialTradePasswordRequest {
+  int64 account_id = 1; // 交易账户 ID
+}
+
+message GetInitialTradePasswordResponse {
+  InitialTradePasswordPayload data = 1;
+}
+
+message InitialTradePasswordPayload {
   string password = 1; // 系统生成的初始密码（明文）
 }
 
-// 修改交易密码请求
-message ChangeTradePasswordRequest {
+message ChangeMainPasswordRequest {
   int64                   account_id = 1;
   ChangeTradePasswordSpec request    = 2;
+}
+
+message ChangeMainPasswordResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
+}
+
+message ChangeInvestorPasswordRequest {
+  int64                   account_id = 1;
+  ChangeTradePasswordSpec request    = 2;
+}
+
+message ChangeInvestorPasswordResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
 }
 
 // 修改密码规格
@@ -507,6 +598,11 @@ message ChangeTradePasswordSpec {
 message ResetToInitialPasswordRequest {
   int64              account_id = 1;
   ResetToInitialSpec request    = 2;
+}
+
+message ResetToInitialPasswordResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
 }
 
 // 重置到初始密码规格
@@ -522,8 +618,11 @@ message GetPasswordHistoryRequest {
   int32           offset        = 4; // 分页偏移量
 }
 
-// 密码修改历史响应
-message PasswordHistoryResponse {
+message GetPasswordHistoryResponse {
+  PasswordHistoryPayload data = 1;
+}
+
+message PasswordHistoryPayload {
   repeated PasswordHistoryItem items = 1;
 }
 
@@ -534,23 +633,28 @@ message PasswordHistoryItem {
   string changed_by = 3; // 操作人标识（管理员邮箱或系统）
 }
 
-// ─── 服务配置相关 ──────────────────────────────────────────────────────────────
+// ─── TenantTradeServiceConfigurationService ───────────────────────────────────
 
-// 按 service_id 查询服务配置
-message GetTradeServiceConfigRequest {
+message GetConfigurationRequest {
   int32 service_id = 1;
 }
 
-// MT 服务配置响应
-message TradeServiceConfigResponse {
+message GetConfigurationResponse {
+  TradeServiceConfigPayload data = 1;
+}
+
+message TradeServiceConfigPayload {
   int32  service_id = 1;
   string server     = 2; // MT 服务器连接地址，如 "mt5.example.com:443"
   int32  type       = 3; // 服务类型：1=MT4、2=MT5
 }
 
-// MT5 模拟账户前缀映射响应
-message AccountPrefixesResponse {
-  map<string, int64> prefixes = 1; // key=前缀字符串，value=该前缀的账号起始值
+message GetAccountPrefixesRequest {
+  int32 service_id = 1;
+}
+
+message GetAccountPrefixesResponse {
+  AccountPrefixesPayload data = 1;
 }
 
 // 更新账户前缀请求
@@ -559,7 +663,32 @@ message UpdateAccountPrefixesRequest {
   map<string, int64> prefixes   = 2;
 }
 
-// ─── 客户端特有消息 ────────────────────────────────────────────────────────────
+message UpdateAccountPrefixesResponse {
+  AccountPrefixesPayload data = 1;
+}
+
+// ─── ClientTradeAccountService ─────────────────────────────────────────────────
+
+message ClientTradeAccountServiceListTradeAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2; // 按关联账户 ID 过滤
+  optional int32    status      = 3; // 按账户状态过滤
+  optional string   keywords    = 4; // 按 login 账号或名称关键字搜索
+  optional string   date_from   = 5; // ISO 8601 格式
+  optional string   date_to     = 6; // ISO 8601 格式
+}
+
+message ClientTradeAccountServiceListTradeAccountsResponse {
+  ListTradeAccountsPayload data = 1;
+}
+
+message ClientTradeAccountServiceGetTradeAccountRequest {
+  int64 uid = 1; // 交易账户 uid（TradeAccount.id）
+}
+
+message ClientTradeAccountServiceGetTradeAccountResponse {
+  TradeAccount data = 1;
+}
 
 // 检查目标邮箱请求
 message CheckTargetEmailRequest {
@@ -584,6 +713,64 @@ message WholesaleReferralCheckResponse {
   bool email_exists         = 2; // 该邮箱是否已注册
 }
 
+message ClientTradeAccountServiceListTradesRequest {
+  int64             uid        = 1; // 交易账户 uid
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
+}
+
+message ClientTradeAccountServiceListTradesResponse {
+  ListTradesPayload data = 1;
+}
+
+message RequestChangePasswordOtpRequest {
+  int64 uid = 1; // 交易账户 uid（TradeAccount.id）
+}
+
+message RequestChangePasswordOtpResponse {
+  bool   success = 1; // 操作是否成功
+  string message = 2; // 补充说明，错误时返回原因
+}
+
+message ClientTradeAccountServiceListTransactionsRequest {
+  int64             uid        = 1;
+  PaginationRequest pagination = 2;
+  optional string   date_from  = 3; // ISO 8601 格式
+  optional string   date_to    = 4; // ISO 8601 格式
+}
+
+message ClientTradeAccountServiceListTransactionsResponse {
+  ListTradeTransactionsPayload data = 1;
+}
+
+// ─── ClientTradeAccountV2Service ─────────────────────────────────────────────
+
+message ClientTradeAccountV2ServiceListTradeAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2; // 按关联账户 ID 过滤
+  optional int32    status      = 3; // 按账户状态过滤
+  optional string   keywords    = 4; // 按 login 账号或名称关键字搜索
+  optional string   date_from   = 5; // ISO 8601 格式
+  optional string   date_to     = 6; // ISO 8601 格式
+}
+
+message ClientTradeAccountV2ServiceListTradeAccountsResponse {
+  ListTradeAccountsPayload data = 1;
+}
+
+// ─── ClientTradeDemoAccountService ───────────────────────────────────────────
+
+message ClientTradeDemoAccountServiceListTradeDemoAccountsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_uid = 2;
+  optional int32    status      = 3;
+}
+
+message ClientTradeDemoAccountServiceListTradeDemoAccountsResponse {
+  ListTradeDemoAccountsPayload data = 1;
+}
+
 // 创建模拟账户请求（客户端）
 message CreateTradeDemoAccountRequest {
   string account_type    = 1; // 账户类型，如 "Standard"
@@ -591,24 +778,41 @@ message CreateTradeDemoAccountRequest {
   int32  leverage        = 3; // 杠杆倍数
 }
 
-// ─── IB 区域消息 ───────────────────────────────────────────────────────────────
+message CreateTradeDemoAccountResponse {
+  TradeDemoAccount data = 1;
+}
 
-// IB 交易账户列表查询
-message ListIbTradeAccountsRequest {
+// ─── ClientTradeService ─────────────────────────────────────────────────────
+
+message ClientTradeServiceListServicesRequest {}
+
+message ClientTradeServiceListServicesResponse {
+  TradeServicesPayload data = 1;
+}
+
+// ─── IB 区域消息 ─────────────────────────────────────────────────────────────
+
+message IbTradeAccountServiceListTradeAccountsRequest {
   int64             agent_uid   = 1; // IB 代理账户 UID
   PaginationRequest pagination  = 2;
   optional int64    account_uid = 3;
   optional int32    status      = 4;
 }
 
-// 获取 IB 旗下指定交易账户
-message GetIbTradeAccountRequest {
+message IbTradeAccountServiceListTradeAccountsResponse {
+  ListTradeAccountsPayload data = 1;
+}
+
+message IbTradeAccountServiceGetTradeAccountRequest {
   int64 agent_uid = 1;
   int64 uid       = 2;
 }
 
-// IB 旗下交易账户的交易记录查询
-message GetIbTradeAccountTradesRequest {
+message IbTradeAccountServiceGetTradeAccountResponse {
+  TradeAccount data = 1;
+}
+
+message IbTradeAccountServiceListTradesRequest {
   int64             agent_uid  = 1;
   int64             uid        = 2;
   PaginationRequest pagination = 3;
@@ -616,8 +820,11 @@ message GetIbTradeAccountTradesRequest {
   optional string   date_to    = 5; // ISO 8601 格式
 }
 
-// IB 旗下交易账户的资金流水查询
-message GetIbTradeAccountTransactionsRequest {
+message IbTradeAccountServiceListTradesResponse {
+  ListTradesPayload data = 1;
+}
+
+message IbTradeAccountServiceListTransactionsRequest {
   int64             agent_uid  = 1;
   int64             uid        = 2;
   PaginationRequest pagination = 3;
@@ -625,24 +832,33 @@ message GetIbTradeAccountTransactionsRequest {
   optional string   date_to    = 5; // ISO 8601 格式
 }
 
-// ─── Sales 区域消息 ────────────────────────────────────────────────────────────
+message IbTradeAccountServiceListTransactionsResponse {
+  ListTradeTransactionsPayload data = 1;
+}
 
-// Sales 交易账户列表查询
-message ListSalesTradeAccountsRequest {
+// ─── Sales 区域消息 ───────────────────────────────────────────────────────────
+
+message SalesTradeAccountServiceListTradeAccountsRequest {
   int64             sales_uid   = 1;
   PaginationRequest pagination  = 2;
   optional int64    account_uid = 3;
   optional int32    status      = 4;
 }
 
-// 获取 Sales 旗下指定交易账户
-message GetSalesTradeAccountRequest {
+message SalesTradeAccountServiceListTradeAccountsResponse {
+  ListTradeAccountsPayload data = 1;
+}
+
+message SalesTradeAccountServiceGetTradeAccountRequest {
   int64 sales_uid = 1;
   int64 uid       = 2;
 }
 
-// Sales 旗下交易账户的交易记录查询
-message GetSalesTradeAccountTradesRequest {
+message SalesTradeAccountServiceGetTradeAccountResponse {
+  TradeAccount data = 1;
+}
+
+message SalesTradeAccountServiceListTradesRequest {
   int64             sales_uid  = 1;
   int64             uid        = 2;
   PaginationRequest pagination = 3;
@@ -650,8 +866,11 @@ message GetSalesTradeAccountTradesRequest {
   optional string   date_to    = 5; // ISO 8601 格式
 }
 
-// Sales 旗下交易账户的资金流水查询
-message GetSalesTradeAccountTransactionsRequest {
+message SalesTradeAccountServiceListTradesResponse {
+  ListTradesPayload data = 1;
+}
+
+message SalesTradeAccountServiceListTransactionsRequest {
   int64             sales_uid  = 1;
   int64             uid        = 2;
   PaginationRequest pagination = 3;
@@ -659,10 +878,13 @@ message GetSalesTradeAccountTransactionsRequest {
   optional string   date_to    = 5; // ISO 8601 格式
 }
 
-// ─── Rep 区域消息 ──────────────────────────────────────────────────────────────
+message SalesTradeAccountServiceListTransactionsResponse {
+  ListTradeTransactionsPayload data = 1;
+}
 
-// Rep 旗下交易账户的交易记录查询
-message GetRepTradeAccountTradesRequest {
+// ─── Rep 区域消息 ─────────────────────────────────────────────────────────────
+
+message RepTradeAccountServiceListTradesRequest {
   int64             rep_uid    = 1;
   int64             uid        = 2;
   PaginationRequest pagination = 3;
@@ -670,11 +892,18 @@ message GetRepTradeAccountTradesRequest {
   optional string   date_to    = 5; // ISO 8601 格式
 }
 
-// Rep 旗下交易账户的资金流水查询
-message GetRepTradeAccountTransactionsRequest {
+message RepTradeAccountServiceListTradesResponse {
+  ListTradesPayload data = 1;
+}
+
+message RepTradeAccountServiceListTransactionsRequest {
   int64             rep_uid    = 1;
   int64             uid        = 2;
   PaginationRequest pagination = 3;
   optional string   date_from  = 4; // ISO 8601 格式
   optional string   date_to    = 5; // ISO 8601 格式
+}
+
+message RepTradeAccountServiceListTransactionsResponse {
+  ListTradeTransactionsPayload data = 1;
 }
