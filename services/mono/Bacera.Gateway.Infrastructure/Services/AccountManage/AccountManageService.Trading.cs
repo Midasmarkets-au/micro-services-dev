@@ -50,7 +50,7 @@ public partial class AccountManageService
         await tenantDbCon.ExecuteAsync($"""
                                         update trd."_Account" set "AccountNumber" = {accountNumber} where "Id" = {accountId};
                                         update trd."_TradeAccount" set "AccountNumber" = {accountNumber} where "Id" = {accountId};
-                                        update trd."_TradeRebate" set "AccountNumber" = {accountNumber} where "AccountId" = {accountId};
+                                        update trd.trade_rebate_k8s set account_number = {accountNumber} where account_id = {accountId};
                                         update trd."_AccountReport" set "AccountNumber" = {accountNumber} where "AccountId" = {accountId};
                                         """);
 

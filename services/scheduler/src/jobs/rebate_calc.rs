@@ -1642,7 +1642,7 @@ mod tests {
     async fn send_rebates_no_rebates_no_existing_marks_has_no_rebate() {
         let db = MockRebateDb::new();
         let tr = make_trade_rebate(1, Some(10));
-        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebateK8s\"")
+        send_rebates_with_db(&db, &tr, vec![], "trd.trade_rebate_k8s")
             .await
             .unwrap();
 
@@ -1661,7 +1661,7 @@ mod tests {
             NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 2, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
             .await
             .unwrap();
 
@@ -1685,7 +1685,7 @@ mod tests {
             NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 3, currency_id: 1, fund_type: 0, amount: dec!(7000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
             .await
             .unwrap();
 
@@ -1708,7 +1708,7 @@ mod tests {
             NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 4, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
             .await
             .unwrap();
 
@@ -1724,7 +1724,7 @@ mod tests {
             .with_target_account(make_target_account(101));
         let tr = make_trade_rebate(5, Some(10));
 
-        send_rebates_with_db(&db, &tr, vec![], "trd.\"_TradeRebateK8s\"")
+        send_rebates_with_db(&db, &tr, vec![], "trd.trade_rebate_k8s")
             .await
             .unwrap();
 
@@ -1746,7 +1746,7 @@ mod tests {
             NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 6, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
         ];
 
-        send_rebates_with_db(&db, &tr, rebates, "trd.\"_TradeRebateK8s\"")
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
             .await
             .unwrap();
 
@@ -1765,7 +1765,7 @@ mod tests {
     #[tokio::test]
     async fn guards_trade_rebate_not_found_returns_early_exit_silently() {
         let db = MockRebateDb::new(); // trade_rebate = None
-        let outcome = run_generate_guards(&db, 999, "trd.\"_TradeRebate_2025\"")
+        let outcome = run_generate_guards(&db, 999, "trd.trade_rebate_k8s")
             .await
             .unwrap();
         assert!(matches!(outcome, GuardOutcome::EarlyExit));
@@ -1776,7 +1776,7 @@ mod tests {
     async fn guards_null_account_id_marks_has_no_rebate() {
         let db = MockRebateDb::new()
             .with_trade_rebate(make_trade_rebate(10, None)); // account_id = None
-        let outcome = run_generate_guards(&db, 10, "trd.\"_TradeRebate_2025\"")
+        let outcome = run_generate_guards(&db, 10, "trd.trade_rebate_k8s")
             .await
             .unwrap();
         assert!(matches!(outcome, GuardOutcome::EarlyExit));
@@ -1791,7 +1791,7 @@ mod tests {
         let db = MockRebateDb::new()
             .with_trade_rebate(make_trade_rebate(11, Some(50)))
             .with_account_active(false);
-        let outcome = run_generate_guards(&db, 11, "trd.\"_TradeRebate_2025\"")
+        let outcome = run_generate_guards(&db, 11, "trd.trade_rebate_k8s")
             .await
             .unwrap();
         assert!(matches!(outcome, GuardOutcome::EarlyExit));
@@ -1804,7 +1804,7 @@ mod tests {
             .with_trade_rebate(make_trade_rebate(12, Some(50)))
             .with_account_active(true);
         // distribution_type = None (no RebateClientRule for this account)
-        let outcome = run_generate_guards(&db, 12, "trd.\"_TradeRebate_2025\"")
+        let outcome = run_generate_guards(&db, 12, "trd.trade_rebate_k8s")
             .await
             .unwrap();
         assert!(matches!(outcome, GuardOutcome::EarlyExit));
@@ -1817,7 +1817,7 @@ mod tests {
             .with_trade_rebate(make_trade_rebate(13, Some(50)))
             .with_account_active(true)
             .with_distribution_type(1, Some(7)); // DIST_DIRECT=1
-        let outcome = run_generate_guards(&db, 13, "trd.\"_TradeRebate_2025\"")
+        let outcome = run_generate_guards(&db, 13, "trd.trade_rebate_k8s")
             .await
             .unwrap();
         match outcome {
@@ -1839,7 +1839,7 @@ mod tests {
             .with_trade_rebate(make_trade_rebate(14, Some(50)))
             .with_account_active(true)
             .with_distribution_type(99, None);
-        let outcome = run_generate_guards(&db, 14, "trd.\"_TradeRebate_2025\"")
+        let outcome = run_generate_guards(&db, 14, "trd.trade_rebate_k8s")
             .await
             .unwrap();
         assert!(matches!(outcome, GuardOutcome::Proceed { dist_type: 99, .. }));
