@@ -32,7 +32,7 @@ impl RsaKeyPair {
                 key
             }
         } else {
-            info!("No RSA_PRIVATE_KEY_PATH set — generating ephemeral key pair");
+            info!("No RSA_PRIVATE_KEY_PATH set — generating ephemeral RSA-2048 key pair (not persisted across restarts)");
             RsaPrivateKey::new(&mut OsRng, 2048)?
         };
 

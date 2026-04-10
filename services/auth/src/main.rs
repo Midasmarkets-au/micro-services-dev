@@ -428,9 +428,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()
         .unwrap_or(true);
     let rsa_key_path = std::env::var("RSA_PRIVATE_KEY_PATH").ok();
-    let redis_url = env("REDIS_URL", "redis://localhost:6379");
+    let redis_url = env("REDIS_URL", "redis://redis:6379");
     let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50006").parse()?;
-    let mono_grpc_addr = std::env::var("MONO_GRPC_ADDR").ok();
+    let mono_grpc_addr = Some(env("MONO_GRPC_ADDR", "http://mono:50005"));
     // Strip optional http:// prefix for compatibility with .NET-style HTTP_ADDR values
     let http_addr_raw = env("HTTP_ADDR", "[::]:9001");
     let http_addr_str = http_addr_raw
