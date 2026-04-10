@@ -136,7 +136,7 @@ defineExpose({
   border-radius: 30px;
   border: 1px solid #e4e6ef;
   overflow: hidden;
-  background-image: url("/images/bg/deposit_amount-bg.svg");
+  background-image: "/images/bg/deposit_amount-bg.svg";
   background-size: cover;
   background-repeat: no-repeat;
   height: 176px;
