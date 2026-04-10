@@ -69,7 +69,7 @@ pub async fn find_users_by_email(pool: &PgPool, email: &str) -> Result<Vec<User>
 
 pub async fn is_ip_blocked(pool: &PgPool, ip: &str) -> Result<bool, sqlx::Error> {
     let row: (bool,) = sqlx::query_as(
-        r#"SELECT EXISTS(SELECT 1 FROM core."_IpBlackList" WHERE "Ip" = $1)"#,
+        r#"SELECT EXISTS(SELECT 1 FROM central."_IpBlackList" WHERE "Ip" = $1)"#,
     )
     .bind(ip)
     .fetch_one(pool)

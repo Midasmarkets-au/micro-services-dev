@@ -43,11 +43,42 @@ pub struct User {
     pub last_login_ip: String,
 }
 
+impl User {
+    /// Mirrors mono's User.GuessUserName() — prefer NativeName, fall back to FirstName+LastName, then email.
+    pub fn guess_display_name(&self) -> String {
+        if !self.native_name.is_empty() {
+            return self.native_name.clone();
+        }
+        let full = format!("{} {}", self.first_name, self.last_name).trim().to_string();
+        if !full.is_empty() {
+            return full;
+        }
+        self.email.clone().unwrap_or_default()
+    }
+}
+
 /// User roles fetched by joining auth."_UserRole" and auth."_Role".
 #[derive(Debug, sqlx::FromRow)]
 pub struct UserRoleName {
     #[sqlx(rename = "Name")]
     pub name: Option<String>,
+}
+
+pub async fn find_user_by_id(pool: &PgPool, user_id: i64) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as::<_, User>(
+        r#"
+        SELECT "Id", "Uid", "PartyId", "TenantId", "Email", "NormalizedEmail",
+               "EmailConfirmed", "PasswordHash", "Status",
+               "LockoutEnabled", "LockoutEnd", "TwoFactorEnabled",
+               "NativeName", "FirstName", "LastName", "Language",
+               "LastLoginOn", "LastLoginIp"
+        FROM auth."_User"
+        WHERE "Id" = $1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
 }
 
 pub async fn find_users_by_email(pool: &PgPool, email: &str) -> Result<Vec<User>, sqlx::Error> {
@@ -69,7 +100,7 @@ pub async fn find_users_by_email(pool: &PgPool, email: &str) -> Result<Vec<User>
 
 pub async fn is_ip_blocked(pool: &PgPool, ip: &str) -> Result<bool, sqlx::Error> {
     let row: (bool,) = sqlx::query_as(
-        r#"SELECT EXISTS(SELECT 1 FROM central."_IpBlackList" WHERE "Ip" = $1)"#,
+        r#"SELECT EXISTS(SELECT 1 FROM core."_IpBlackList" WHERE "Ip" = $1)"#,
     )
     .bind(ip)
     .fetch_one(pool)

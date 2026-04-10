@@ -20,6 +20,7 @@ public partial class Startup
             .AddScoped<RefreshTokenGrantHandler>()
             .AddSingleton<ApplyTokenResponseHandler>()
             .AddSingleton<IPostConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>()
+            .AddSingleton<AuthGrpcTokenValidator>()
             .AddHostedService<OpenIddictSeedService>();
 
         me.Services.AddOpenIddict()
@@ -106,6 +107,9 @@ public partial class Startup
                 // Extract access_token from HttpOnly cookie (set by ApplyTokenResponseHandler).
                 // Bearer header still takes precedence when both are present.
                 options.AddEventHandler(ExtractCookieTokenHandler.Descriptor);
+                // Validate via Rust auth gRPC service when available.
+                // Falls back to local OpenIddict validation if gRPC is unreachable.
+                options.AddEventHandler(AuthGrpcTokenValidator.Descriptor);
             });
     }
 

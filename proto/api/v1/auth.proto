@@ -6,6 +6,31 @@ option csharp_namespace = "Api.V1";
 option go_package = "api/v1";
 
 // ============================================================================
+//  AuthValidationService — 由 auth service 实现，供 mono 调用验证 JWT
+//
+//  调用方向：
+//    mono  ──gRPC──►  auth service (AuthValidationService)
+// ============================================================================
+service AuthValidationService {
+
+  // 验证 access token，返回解析后的 claims
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool            valid      = 1;
+  int64           user_id    = 2;
+  int64           tenant_id  = 3;
+  string          party_id   = 4;
+  repeated string roles      = 5;
+  string          error      = 6;  // 验证失败时的错误描述
+}
+
+// ============================================================================
 //  AuthService — 由 mono 实现，供 auth service 在登录流程中回调
 //
 //  调用方向：

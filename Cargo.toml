@@ -2,7 +2,7 @@
 members = [
   "services/idgen",
   "services/auth",
-  "services/auth_rust",
+  "services/auth_old",
   "services/boardcast",
   "services/scheduler",
   "services/tools",
