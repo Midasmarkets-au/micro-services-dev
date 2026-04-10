@@ -46,8 +46,8 @@ Use below html tag for RTL version
       integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
       crossorigin="anonymous"
     ></script>
-    <script id="ze-snippet" src="https://static.zdassets.com/ekr/snippet.js?key=fdf56cc0-f9e1-4dc6-b7ba-7e46cee980b2">
-    </script>
+    <!-- <script id="ze-snippet" src="https://static.zdassets.com/ekr/snippet.js?key=fdf56cc0-f9e1-4dc6-b7ba-7e46cee980b2">
+    </script> -->
   </head>
   <body class="page-loading">
     <!--begin::Theme mode setup on page load-->
