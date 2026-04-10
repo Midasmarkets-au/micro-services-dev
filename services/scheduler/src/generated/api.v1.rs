@@ -17,14 +17,69 @@ pub struct EnqueueReportRequestResponse {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TriggerJobRequest {
-    /// Optional: reserved for future per-tenant trigger.
+pub struct TriggerCloseTradeRequest {
     #[prost(int64, tag = "1")]
     pub tenant_id: i64,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TriggerJobResponse {
+pub struct TriggerCloseTradeResponse {
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerAccountDailyRequest {
+    #[prost(int64, tag = "1")]
+    pub tenant_id: i64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerAccountDailyResponse {
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerCalculateRebateRequest {
+    #[prost(int64, tag = "1")]
+    pub tenant_id: i64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerCalculateRebateResponse {
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerReleaseRebateRequest {
+    #[prost(int64, tag = "1")]
+    pub tenant_id: i64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerReleaseRebateResponse {
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+    #[prost(string, tag = "2")]
+    pub message: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerCryptoMonitorRequest {
+    #[prost(int64, tag = "1")]
+    pub tenant_id: i64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TriggerCryptoMonitorResponse {
     #[prost(bool, tag = "1")]
     pub success: bool,
     #[prost(string, tag = "2")]
@@ -164,9 +219,9 @@ pub mod scheduler_service_client {
         /// Manually trigger the close-trade cron job.
         pub async fn trigger_close_trade(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+            request: impl tonic::IntoRequest<super::TriggerCloseTradeRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerCloseTradeResponse>,
             tonic::Status,
         > {
             self.inner
@@ -190,9 +245,9 @@ pub mod scheduler_service_client {
         /// Manually trigger the account-daily-confirmation cron job.
         pub async fn trigger_account_daily(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+            request: impl tonic::IntoRequest<super::TriggerAccountDailyRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerAccountDailyResponse>,
             tonic::Status,
         > {
             self.inner
@@ -336,9 +391,9 @@ pub mod mono_callback_service_client {
         /// Trigger recurring jobs (cron schedule managed by Rust scheduler).
         pub async fn trigger_calculate_rebate(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+            request: impl tonic::IntoRequest<super::TriggerCalculateRebateRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerCalculateRebateResponse>,
             tonic::Status,
         > {
             self.inner
@@ -366,9 +421,9 @@ pub mod mono_callback_service_client {
         }
         pub async fn trigger_release_rebate(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+            request: impl tonic::IntoRequest<super::TriggerReleaseRebateRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerReleaseRebateResponse>,
             tonic::Status,
         > {
             self.inner
@@ -393,9 +448,9 @@ pub mod mono_callback_service_client {
         }
         pub async fn trigger_crypto_monitor(
             &mut self,
-            request: impl tonic::IntoRequest<super::TriggerJobRequest>,
+            request: impl tonic::IntoRequest<super::TriggerCryptoMonitorRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerCryptoMonitorResponse>,
             tonic::Status,
         > {
             self.inner
@@ -438,17 +493,17 @@ pub mod scheduler_service_server {
         /// Manually trigger the close-trade cron job.
         async fn trigger_close_trade(
             &self,
-            request: tonic::Request<super::TriggerJobRequest>,
+            request: tonic::Request<super::TriggerCloseTradeRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerCloseTradeResponse>,
             tonic::Status,
         >;
         /// Manually trigger the account-daily-confirmation cron job.
         async fn trigger_account_daily(
             &self,
-            request: tonic::Request<super::TriggerJobRequest>,
+            request: tonic::Request<super::TriggerAccountDailyRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerAccountDailyResponse>,
             tonic::Status,
         >;
     }
@@ -588,16 +643,16 @@ pub mod scheduler_service_server {
                     struct TriggerCloseTradeSvc<T: SchedulerService>(pub Arc<T>);
                     impl<
                         T: SchedulerService,
-                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    > tonic::server::UnaryService<super::TriggerCloseTradeRequest>
                     for TriggerCloseTradeSvc<T> {
-                        type Response = super::TriggerJobResponse;
+                        type Response = super::TriggerCloseTradeResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerJobRequest>,
+                            request: tonic::Request<super::TriggerCloseTradeRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -638,16 +693,16 @@ pub mod scheduler_service_server {
                     struct TriggerAccountDailySvc<T: SchedulerService>(pub Arc<T>);
                     impl<
                         T: SchedulerService,
-                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    > tonic::server::UnaryService<super::TriggerAccountDailyRequest>
                     for TriggerAccountDailySvc<T> {
-                        type Response = super::TriggerJobResponse;
+                        type Response = super::TriggerAccountDailyResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerJobRequest>,
+                            request: tonic::Request<super::TriggerAccountDailyRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -741,23 +796,23 @@ pub mod mono_callback_service_server {
         /// Trigger recurring jobs (cron schedule managed by Rust scheduler).
         async fn trigger_calculate_rebate(
             &self,
-            request: tonic::Request<super::TriggerJobRequest>,
+            request: tonic::Request<super::TriggerCalculateRebateRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerCalculateRebateResponse>,
             tonic::Status,
         >;
         async fn trigger_release_rebate(
             &self,
-            request: tonic::Request<super::TriggerJobRequest>,
+            request: tonic::Request<super::TriggerReleaseRebateRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerReleaseRebateResponse>,
             tonic::Status,
         >;
         async fn trigger_crypto_monitor(
             &self,
-            request: tonic::Request<super::TriggerJobRequest>,
+            request: tonic::Request<super::TriggerCryptoMonitorRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::TriggerJobResponse>,
+            tonic::Response<super::TriggerCryptoMonitorResponse>,
             tonic::Status,
         >;
     }
@@ -899,16 +954,16 @@ pub mod mono_callback_service_server {
                     struct TriggerCalculateRebateSvc<T: MonoCallbackService>(pub Arc<T>);
                     impl<
                         T: MonoCallbackService,
-                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    > tonic::server::UnaryService<super::TriggerCalculateRebateRequest>
                     for TriggerCalculateRebateSvc<T> {
-                        type Response = super::TriggerJobResponse;
+                        type Response = super::TriggerCalculateRebateResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerJobRequest>,
+                            request: tonic::Request<super::TriggerCalculateRebateRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -949,16 +1004,16 @@ pub mod mono_callback_service_server {
                     struct TriggerReleaseRebateSvc<T: MonoCallbackService>(pub Arc<T>);
                     impl<
                         T: MonoCallbackService,
-                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    > tonic::server::UnaryService<super::TriggerReleaseRebateRequest>
                     for TriggerReleaseRebateSvc<T> {
-                        type Response = super::TriggerJobResponse;
+                        type Response = super::TriggerReleaseRebateResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerJobRequest>,
+                            request: tonic::Request<super::TriggerReleaseRebateRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -999,16 +1054,16 @@ pub mod mono_callback_service_server {
                     struct TriggerCryptoMonitorSvc<T: MonoCallbackService>(pub Arc<T>);
                     impl<
                         T: MonoCallbackService,
-                    > tonic::server::UnaryService<super::TriggerJobRequest>
+                    > tonic::server::UnaryService<super::TriggerCryptoMonitorRequest>
                     for TriggerCryptoMonitorSvc<T> {
-                        type Response = super::TriggerJobResponse;
+                        type Response = super::TriggerCryptoMonitorResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::TriggerJobRequest>,
+                            request: tonic::Request<super::TriggerCryptoMonitorRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1089,30 +1144,30 @@ pub mod mono_callback_service_server {
 /// Hello 请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloRequest {
+pub struct SayHelloRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Hello 响应
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloResponse {
+pub struct SayHelloResponse {
     #[prost(string, tag = "1")]
     pub message: ::prost::alloc::string::String,
 }
 /// 健康检查请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HealthCheckRequest {}
+pub struct CheckRequest {}
 /// 健康检查响应
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HealthCheckResponse {
-    #[prost(enumeration = "health_check_response::Status", tag = "1")]
+pub struct CheckResponse {
+    #[prost(enumeration = "check_response::Status", tag = "1")]
     pub status: i32,
 }
-/// Nested message and enum types in `HealthCheckResponse`.
-pub mod health_check_response {
+/// Nested message and enum types in `CheckResponse`.
+pub mod check_response {
     #[derive(
         Clone,
         Copy,
@@ -1126,7 +1181,7 @@ pub mod health_check_response {
     )]
     #[repr(i32)]
     pub enum Status {
-        Unknown = 0,
+        Unspecified = 0,
         Serving = 1,
         NotServing = 2,
     }
@@ -1137,30 +1192,30 @@ pub mod health_check_response {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Status::Unknown => "UNKNOWN",
-                Status::Serving => "SERVING",
-                Status::NotServing => "NOT_SERVING",
+                Status::Unspecified => "STATUS_UNSPECIFIED",
+                Status::Serving => "STATUS_SERVING",
+                Status::NotServing => "STATUS_NOT_SERVING",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
-                "UNKNOWN" => Some(Self::Unknown),
-                "SERVING" => Some(Self::Serving),
-                "NOT_SERVING" => Some(Self::NotServing),
+                "STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+                "STATUS_SERVING" => Some(Self::Serving),
+                "STATUS_NOT_SERVING" => Some(Self::NotServing),
                 _ => None,
             }
         }
     }
 }
-/// 健康检查请求
+/// GenerateID 请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateIdRequest {
     #[prost(uint32, tag = "1")]
     pub work_id: u32,
 }
-/// 健康检查响应
+/// GenerateID 响应
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateIdResponse {
@@ -1256,8 +1311,11 @@ pub mod api_service_client {
         /// 简单问候
         pub async fn say_hello(
             &mut self,
-            request: impl tonic::IntoRequest<super::HelloRequest>,
-        ) -> std::result::Result<tonic::Response<super::HelloResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::SayHelloRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SayHelloResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -1279,11 +1337,8 @@ pub mod api_service_client {
         /// 健康检查
         pub async fn check(
             &mut self,
-            request: impl tonic::IntoRequest<super::HealthCheckRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::HealthCheckResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::CheckRequest>,
+        ) -> std::result::Result<tonic::Response<super::CheckResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -1337,16 +1392,16 @@ pub mod api_service_server {
         /// 简单问候
         async fn say_hello(
             &self,
-            request: tonic::Request<super::HelloRequest>,
-        ) -> std::result::Result<tonic::Response<super::HelloResponse>, tonic::Status>;
+            request: tonic::Request<super::SayHelloRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SayHelloResponse>,
+            tonic::Status,
+        >;
         /// 健康检查
         async fn check(
             &self,
-            request: tonic::Request<super::HealthCheckRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::HealthCheckResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::CheckRequest>,
+        ) -> std::result::Result<tonic::Response<super::CheckResponse>, tonic::Status>;
         /// SnowFlakeID generate
         async fn generate_id(
             &self,
@@ -1439,16 +1494,18 @@ pub mod api_service_server {
                 "/api.v1.ApiService/SayHello" => {
                     #[allow(non_camel_case_types)]
                     struct SayHelloSvc<T: ApiService>(pub Arc<T>);
-                    impl<T: ApiService> tonic::server::UnaryService<super::HelloRequest>
+                    impl<
+                        T: ApiService,
+                    > tonic::server::UnaryService<super::SayHelloRequest>
                     for SayHelloSvc<T> {
-                        type Response = super::HelloResponse;
+                        type Response = super::SayHelloResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::HelloRequest>,
+                            request: tonic::Request<super::SayHelloRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1483,18 +1540,16 @@ pub mod api_service_server {
                 "/api.v1.ApiService/Check" => {
                     #[allow(non_camel_case_types)]
                     struct CheckSvc<T: ApiService>(pub Arc<T>);
-                    impl<
-                        T: ApiService,
-                    > tonic::server::UnaryService<super::HealthCheckRequest>
+                    impl<T: ApiService> tonic::server::UnaryService<super::CheckRequest>
                     for CheckSvc<T> {
-                        type Response = super::HealthCheckResponse;
+                        type Response = super::CheckResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::HealthCheckRequest>,
+                            request: tonic::Request<super::CheckRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {

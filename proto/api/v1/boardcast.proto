@@ -10,7 +10,7 @@ service BoardcastService {
   // 发布消息到指定频道
   rpc Publish(PublishRequest) returns (PublishResponse);
   // 订阅指定频道，服务端以流式推送事件
-  rpc Subscribe(SubscribeRequest) returns (stream Event);
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 }
 
 // 发布消息请求
@@ -29,8 +29,8 @@ message SubscribeRequest {
   string channel = 1;
 }
 
-// 事件消息
-message Event {
+// 订阅响应（事件消息）
+message SubscribeResponse {
   string channel   = 1;
   string message   = 2;
   int64  timestamp = 3;
