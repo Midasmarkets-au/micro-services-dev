@@ -59,16 +59,14 @@ spec:
               cpu: "200m"
           livenessProbe:
             httpGet:
-              # TODO: change to /.well-known/jwks.json after Rust image is live
-              path: /health
+              path: /.well-known/jwks.json
               port: 9001
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 3
           readinessProbe:
             httpGet:
-              # TODO: change to /.well-known/jwks.json after Rust image is live
-              path: /health
+              path: /.well-known/jwks.json
               port: 9001
             initialDelaySeconds: 5
             periodSeconds: 5
