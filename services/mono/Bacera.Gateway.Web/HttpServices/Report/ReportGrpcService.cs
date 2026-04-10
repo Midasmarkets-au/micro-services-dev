@@ -56,15 +56,15 @@ public class TenantReportGrpcService(
         return response;
     }
 
-    public override async Task<ProtoReportRequest> GetReportRequest(
+    public override async Task<GetReportRequestResponse> GetReportRequest(
         GetReportRequestRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.ReportRequests.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Report not found"));
-        return MapToProto(item);
+        return new GetReportRequestResponse { Data = MapToProto(item) };
     }
 
-    public override Task<QuerySampleResponse> GetQuerySample(
+    public override Task<GetQuerySampleResponse> GetQuerySample(
         GetQuerySampleRequest request, ServerCallContext context)
     {
         var sample = (ReportRequestTypes)request.Type switch
@@ -72,10 +72,13 @@ public class TenantReportGrpcService(
             ReportRequestTypes.Rebate => JsonConvert.SerializeObject(new Bacera.Gateway.Rebate.Criteria()),
             _ => "{}"
         };
-        return Task.FromResult(new QuerySampleResponse { Sample = sample });
+        return Task.FromResult(new GetQuerySampleResponse
+        {
+            Data = new QuerySampleResponse { Sample = sample },
+        });
     }
 
-    public override async Task<QueryPreviewResponse> PreviewQuery(
+    public override async Task<PreviewQueryResponse> PreviewQuery(
         PreviewQueryRequest request, ServerCallContext context)
     {
         var data = (ReportRequestTypes)request.Type switch
@@ -83,10 +86,10 @@ public class TenantReportGrpcService(
             ReportRequestTypes.Rebate => await PreviewRebateAsync(request.Query),
             _ => "[]"
         };
-        return new QueryPreviewResponse { Data = data };
+        return new PreviewQueryResponse { Data = new QueryPreviewResponse { Data = data } };
     }
 
-    public override async Task<ProtoReportRequest> CreateReportRequest(
+    public override async Task<CreateReportRequestResponse> CreateReportRequest(
         CreateReportRequestRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
@@ -109,11 +112,11 @@ public class TenantReportGrpcService(
 
         await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
 
-        return MapToProto(item);
+        return new CreateReportRequestResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoReportRequest> RegenReport(
-        GetReportRequestRequest request, ServerCallContext context)
+    public override async Task<RegenReportResponse> RegenReport(
+        RegenReportRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.ReportRequests.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Report not found"));
@@ -281,11 +284,11 @@ public class TenantReportGrpcService(
             catch (Exception ex) { Console.Error.WriteLine($"Report failed {requestId}: {ex.Message}"); }
         });
 
-        return MapToProto(item);
+        return new RegenReportResponse { Data = MapToProto(item) };
     }
 
     public override async Task<DownloadReportResponse> DownloadReport(
-        CreateReportRequestRequest request, ServerCallContext context)
+        DownloadReportRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var item = Bacera.Gateway.ReportRequest.Build(
@@ -304,7 +307,7 @@ public class TenantReportGrpcService(
         return new DownloadReportResponse { RequestId = item.Id, Url = item.FileName ?? "" };
     }
 
-    public override async Task<ProtoReportRequest> CreateEquityReport(
+    public override async Task<CreateEquityReportResponse> CreateEquityReport(
         CreateEquityReportRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
@@ -320,11 +323,11 @@ public class TenantReportGrpcService(
 
         await reportServiceClient.EnqueueProcessReportRequestAsync(tenantGetter.GetTenantId(), item.Id);
 
-        return MapToProto(item);
+        return new CreateEquityReportResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoReportRequest> SimulateJob(
-        CreateReportRequestRequest request, ServerCallContext context)
+    public override async Task<SimulateJobResponse> SimulateJob(
+        SimulateJobRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var item = Bacera.Gateway.ReportRequest.Build(
@@ -343,20 +346,23 @@ public class TenantReportGrpcService(
         await reportJob.ProcessReportRequest(tenantGetter.GetTenantId(), item.Id);
 
         var updated = await tenantCtx.ReportRequests.SingleOrDefaultAsync(x => x.Id == item.Id);
-        return MapToProto(updated ?? item);
+        return new SimulateJobResponse { Data = MapToProto(updated ?? item) };
     }
 
-    public override async Task<EquityReportHtmlResponse> GetEquityReportHtml(
-        CreateEquityReportRequest request, ServerCallContext context)
+    public override async Task<GetEquityReportHtmlResponse> GetEquityReportHtml(
+        GetEquityReportHtmlRequest request, ServerCallContext context)
     {
         var cfg = JsonConvert.DeserializeObject<ReportConfiguration>(request.Configuration)
                   ?? new ReportConfiguration();
         var html = await ReportJob.GenerateEquityReportHtmlAsync(reportService, cfg);
-        return new EquityReportHtmlResponse { Html = html ?? "" };
+        return new GetEquityReportHtmlResponse
+        {
+            Data = new EquityReportHtmlResponse { Html = html ?? "" },
+        };
     }
 
-    public override async Task<EquityReportLoginsResponse> GetEquityReportLogins(
-        CreateEquityReportRequest request, ServerCallContext context)
+    public override async Task<GetEquityReportLoginsResponse> GetEquityReportLogins(
+        GetEquityReportLoginsRequest request, ServerCallContext context)
     {
         var cfg = JsonConvert.DeserializeObject<ReportConfiguration>(request.Configuration)
                   ?? new ReportConfiguration();
@@ -372,7 +378,10 @@ public class TenantReportGrpcService(
             .OrderBy(x => x.Key)
             .ToDictionary(x => x.Key, x => x.Value.OrderBy(y => y.Key).ToDictionary(y => y.Key, y => y.Value));
 
-        return new EquityReportLoginsResponse { Data = JsonConvert.SerializeObject(ordered) };
+        return new GetEquityReportLoginsResponse
+        {
+            Data = new EquityReportLoginsResponse { Data = JsonConvert.SerializeObject(ordered) },
+        };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -455,22 +464,25 @@ public class TenantAccountReportGrpcService(
         return response;
     }
 
-    public override async Task<AccountReportPreviewResponse> PreviewAccountReport(
-        GetAccountReportRequest request, ServerCallContext context)
+    public override async Task<PreviewAccountReportResponse> PreviewAccountReport(
+        PreviewAccountReportRequest request, ServerCallContext context)
     {
         var html = await reportService.TryGetAccountDailyReportModelPreviewHtml(request.Id);
-        return new AccountReportPreviewResponse { HtmlContent = html ?? "" };
+        return new PreviewAccountReportResponse
+        {
+            Data = new AccountReportPreviewResponse { HtmlContent = html ?? "" },
+        };
     }
 
-    public override async Task<OperationResponse> SendAccountReport(
+    public override async Task<SendAccountReportResponse> SendAccountReport(
         SendAccountReportRequest request, ServerCallContext context)
     {
         var (result, msg) = await reportService.SendAccountReportEmailById(request.Id, receiverEmail: request.Spec?.Email);
-        return new OperationResponse { Success = result, Message = msg ?? "" };
+        return new SendAccountReportResponse { Success = result, Message = msg ?? "" };
     }
 
-    public override async Task<AccountReportTodayStatusResponse> GetTodayStatus(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetTodayStatusResponse> GetTodayStatus(
+        GetTodayStatusRequest request, ServerCallContext context)
     {
         var today = DateTime.UtcNow.Date;
         var reports = await tenantCtx.AccountReports
@@ -479,11 +491,14 @@ public class TenantAccountReportGrpcService(
             .Select(g => new { Total = g.Count(), Sent = g.Count(x => x.Status == 1) })
             .FirstOrDefaultAsync();
 
-        return new AccountReportTodayStatusResponse
+        return new GetTodayStatusResponse
         {
-            Total   = reports?.Total ?? 0,
-            Sent    = reports?.Sent  ?? 0,
-            Pending = (reports?.Total ?? 0) - (reports?.Sent ?? 0),
+            Data = new AccountReportTodayStatusResponse
+            {
+                Total   = reports?.Total ?? 0,
+                Sent    = reports?.Sent  ?? 0,
+                Pending = (reports?.Total ?? 0) - (reports?.Sent ?? 0),
+            },
         };
     }
 }

@@ -34,8 +34,8 @@ public class TenantAccountGrpcService(
     IGeneralJob generalJob)
     : TenantAccountService.TenantAccountServiceBase
 {
-    public override async Task<ListAccountsResponse> ListAccounts(
-        ListAccountsRequest request, ServerCallContext context)
+    public override async Task<TenantAccountServiceListAccountsResponse> ListAccounts(
+        TenantAccountServiceListAccountsRequest request, ServerCallContext context)
     {
         var criteria = new Bacera.Gateway.Account.Criteria
         {
@@ -58,7 +58,7 @@ public class TenantAccountGrpcService(
 
         var result = await tradingSvc.AccountQueryForTenantAsync(criteria, null);
 
-        var response = new ListAccountsResponse
+        var response = new TenantAccountServiceListAccountsResponse
         {
             Criteria = new PaginationMeta
             {
@@ -73,16 +73,16 @@ public class TenantAccountGrpcService(
         return response;
     }
 
-    public override async Task<ProtoAccount> GetAccount(
+    public override async Task<GetAccountResponse> GetAccount(
         GetAccountRequest request, ServerCallContext context)
     {
         var item = await tradingSvc.AccountGetAsync(request.Id);
         if (item.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(item);
+        return new GetAccountResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoAccount> RefreshAccount(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<RefreshAccountResponse> RefreshAccount(
+        RefreshAccountRequest request, ServerCallContext context)
     {
         await Task.WhenAll(
             generalJob.TryUpdateTradeAccountStatus(tenancy.GetTenantId(), request.Id, true),
@@ -90,7 +90,7 @@ public class TenantAccountGrpcService(
         );
         var item = await tradingSvc.AccountGetAsync(request.Id);
         if (item.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(item);
+        return new RefreshAccountResponse { Data = MapToProto(item) };
     }
 
     public override async Task<ListAccountLogsResponse> ListAccountLogs(
@@ -150,8 +150,8 @@ public class TenantAccountGrpcService(
         return response;
     }
 
-    public override async Task<LogActionsResponse> GetLogActions(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetLogActionsResponse> GetLogActions(
+        GetLogActionsRequest request, ServerCallContext context)
     {
         var cacheKey = $"account_log_action_tid:{tenancy.GetTenantId()}";
         var actions = await myCache.GetOrSetAsync(
@@ -162,12 +162,12 @@ public class TenantAccountGrpcService(
                 .ToListAsync(),
             TimeSpan.FromDays(1));
 
-        var response = new LogActionsResponse();
+        var response = new GetLogActionsResponse();
         response.Actions.AddRange(actions ?? new List<string>());
         return response;
     }
 
-    public override async Task<ProtoAccount> UpdateAccountType(
+    public override async Task<UpdateAccountTypeResponse> UpdateAccountType(
         UpdateAccountTypeRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
@@ -180,10 +180,10 @@ public class TenantAccountGrpcService(
         account.UpdatedOn = DateTime.UtcNow;
         tenantCtx.Accounts.Update(account);
         await tenantCtx.SaveChangesAsync();
-        return MapToProto(account);
+        return new UpdateAccountTypeResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> UpdateAccountSite(
+    public override async Task<UpdateAccountSiteResponse> UpdateAccountSite(
         UpdateAccountSiteRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
@@ -196,10 +196,10 @@ public class TenantAccountGrpcService(
         account.UpdatedOn = DateTime.UtcNow;
         tenantCtx.Accounts.Update(account);
         await tenantCtx.SaveChangesAsync();
-        return MapToProto(account);
+        return new UpdateAccountSiteResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> UpdateAccountStatus(
+    public override async Task<UpdateAccountStatusResponse> UpdateAccountStatus(
         UpdateAccountStatusRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts
@@ -233,10 +233,10 @@ public class TenantAccountGrpcService(
         account.UpdatedOn = DateTime.UtcNow;
         tenantCtx.Accounts.Update(account);
         await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
-        return MapToProto(account);
+        return new UpdateAccountStatusResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> UpdateAccountTags(
+    public override async Task<UpdateAccountTagsResponse> UpdateAccountTags(
         UpdateAccountTagsRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts
@@ -252,10 +252,10 @@ public class TenantAccountGrpcService(
         account.UpdatedOn = DateTime.UtcNow;
         tenantCtx.Accounts.Update(account);
         await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
-        return MapToProto(account);
+        return new UpdateAccountTagsResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> UpdateHasLevelRule(
+    public override async Task<UpdateHasLevelRuleResponse> UpdateHasLevelRule(
         UpdateHasLevelRuleRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
@@ -268,10 +268,10 @@ public class TenantAccountGrpcService(
         account.UpdatedOn = DateTime.UtcNow;
         tenantCtx.Accounts.Update(account);
         await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
-        return MapToProto(account);
+        return new UpdateHasLevelRuleResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> UpdateFundType(
+    public override async Task<UpdateFundTypeResponse> UpdateFundType(
         UpdateFundTypeRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
@@ -284,25 +284,25 @@ public class TenantAccountGrpcService(
         account.UpdatedOn = DateTime.UtcNow;
         tenantCtx.Accounts.Update(account);
         await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
-        return MapToProto(account);
+        return new UpdateFundTypeResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<LevelSettingResponse> GetLevelSetting(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<GetLevelSettingResponse> GetLevelSetting(
+        GetLevelSettingRequest request, ServerCallContext context)
     {
         var levelSetting = await tradingSvc.GetCalculatedRebateLevelSettingById(request.Id);
         if (levelSetting.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Level setting not found"));
-        return new LevelSettingResponse { Json = JsonConvert.SerializeObject(levelSetting) };
+        return new GetLevelSettingResponse { Json = JsonConvert.SerializeObject(levelSetting) };
     }
 
-    public override async Task<ReferralCodesResponse> GetReferralCodes(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<GetReferralCodesResponse> GetReferralCodes(
+        GetReferralCodesRequest request, ServerCallContext context)
     {
         var codes = await tenantCtx.ReferralCodes
             .Where(x => x.AccountId == request.Id)
             .ToListAsync();
 
-        var response = new ReferralCodesResponse();
+        var response = new GetReferralCodesResponse();
         response.Items.AddRange(codes.Select(c => new ProtoReferralCode
         {
             Code      = c.Code ?? "",
@@ -312,11 +312,11 @@ public class TenantAccountGrpcService(
         return response;
     }
 
-    public override async Task<AccountWizardResponse> GetAccountWizard(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<GetAccountWizardResponse> GetAccountWizard(
+        GetAccountWizardRequest request, ServerCallContext context)
     {
         var wizard = await tradingSvc.GetAccountWizardAsync(request.Id);
-        return new AccountWizardResponse
+        return new GetAccountWizardResponse
         {
             KycFormCompleted     = wizard.KycFormCompleted,
             PaymentAccessGranted = wizard.PaymentAccessGranted,
@@ -325,12 +325,12 @@ public class TenantAccountGrpcService(
         };
     }
 
-    public override async Task<MtGroupSymbolResponse> GetMtGroupSymbol(
+    public override async Task<GetMtGroupSymbolResponse> GetMtGroupSymbol(
         GetMtGroupSymbolRequest request, ServerCallContext context)
     {
         var info = await tradingSvc.GetMetaTradeGroupAndSymbolInfo(
             request.ServiceId, request.Group, request.Symbol, request.TransId);
-        var response = new MtGroupSymbolResponse();
+        var response = new GetMtGroupSymbolResponse();
         try
         {
             var data = JsonConvert.DeserializeObject<dynamic>(info);
@@ -351,88 +351,88 @@ public class TenantAccountGrpcService(
         return new CheckAccountNumberResponse { Valid = result, Message = msg ?? "" };
     }
 
-    public override async Task<ProtoAccount> ChangeAccountNumber(
+    public override async Task<ChangeAccountNumberResponse> ChangeAccountNumber(
         ChangeAccountNumberRequest request, ServerCallContext context)
     {
         var (result, msg) = await accManSvc.ChangeAccountNumberAsync(request.Id, request.AccountNumber);
         if (!result) throw new RpcException(new Status(StatusCode.Internal, msg ?? "Change account number failed"));
         var item = await tradingSvc.AccountGetAsync(request.Id);
-        return MapToProto(item);
+        return new ChangeAccountNumberResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoAccount> IbToSales(IbToSalesRequest request, ServerCallContext context)
+    public override async Task<IbToSalesResponse> IbToSales(IbToSalesRequest request, ServerCallContext context)
     {
         // Complex IB-to-Sales conversion; delegated to the original controller logic
         // Returns the account with the updated role
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Uid == request.Uid);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(account);
+        return new IbToSalesResponse { Data = MapToProto(account) };
     }
 
     // ─── Parent accounts ──────────────────────────────────────────────────────
 
-    public override async Task<ParentAccountsResponse> GetParentAccounts(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<GetParentAccountsResponse> GetParentAccounts(
+        GetParentAccountsRequest request, ServerCallContext context)
     {
         var items = await tradingSvc.ParentAccountsGetForTenantAsync(request.Id, hideEmail: false);
-        var response = new ParentAccountsResponse();
+        var response = new GetParentAccountsResponse();
         response.Items.AddRange(items.Select(MapViewModelToProto));
         return response;
     }
 
     // ─── Account group / assignment operations ────────────────────────────────
 
-    public override async Task<ProtoAccount> AssignAccountToSales(
-        AssignAccountRequest request, ServerCallContext context)
+    public override async Task<AssignAccountToSalesResponse> AssignAccountToSales(
+        AssignAccountToSalesRequest request, ServerCallContext context)
     {
         var (ok, msg) = await tradingSvc.ChangeSalesGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
         if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(account);
+        return new AssignAccountToSalesResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> AssignAccountToAgent(
-        AssignAccountRequest request, ServerCallContext context)
+    public override async Task<AssignAccountToAgentResponse> AssignAccountToAgent(
+        AssignAccountToAgentRequest request, ServerCallContext context)
     {
         var (ok, msg) = await tradingSvc.ChangeAgentGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
         if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(account);
+        return new AssignAccountToAgentResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> RemoveAccountFromAgent(
-        AssignAccountRequest request, ServerCallContext context)
+    public override async Task<RemoveAccountFromAgentResponse> RemoveAccountFromAgent(
+        RemoveAccountFromAgentRequest request, ServerCallContext context)
     {
         var (ok, msg) = await tradingSvc.RemoveFromAgentGroupAsync(request.Id);
         if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(account);
+        return new RemoveAccountFromAgentResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> ChangeAgentGroup(
-        AssignAccountRequest request, ServerCallContext context)
+    public override async Task<ChangeAgentGroupResponse> ChangeAgentGroup(
+        ChangeAgentGroupRequest request, ServerCallContext context)
     {
         var (ok, msg) = await tradingSvc.ChangeAgentGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
         if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(account);
+        return new ChangeAgentGroupResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> ChangeSalesGroup(
-        AssignAccountRequest request, ServerCallContext context)
+    public override async Task<ChangeSalesGroupResponse> ChangeSalesGroup(
+        ChangeSalesGroupRequest request, ServerCallContext context)
     {
         var (ok, msg) = await tradingSvc.ChangeSalesGroupAsync(request.Id, request.TargetUid, GetPartyId(context));
         if (!ok) throw new RpcException(new Status(StatusCode.InvalidArgument, msg));
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return MapToProto(account);
+        return new ChangeSalesGroupResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> ChangeAgentGroupName(
+    public override async Task<ChangeAgentGroupNameResponse> ChangeAgentGroupName(
         ChangeAgentGroupNameRequest request, ServerCallContext context)
     {
         var newName = request.Spec?.GroupName ?? "";
@@ -466,43 +466,43 @@ public class TenantAccountGrpcService(
         catch { /* ignored */ }
 
         await tenantCtx.Entry(agentAccount).ReloadAsync();
-        return MapToProto(agentAccount);
+        return new ChangeAgentGroupNameResponse { Data = MapToProto(agentAccount) };
     }
 
-    public override async Task<OperationResponse> RenameGroup(
+    public override async Task<RenameGroupResponse> RenameGroup(
         RenameGroupRequest request, ServerCallContext context)
     {
         var group = await tenantCtx.Groups.FindAsync(request.GroupId);
         if (group == null) throw new RpcException(new Status(StatusCode.NotFound, "Group not found"));
         group.Name = request.Spec?.Name ?? "";
         await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
-        return new OperationResponse { Success = true };
+        return new RenameGroupResponse { Success = true };
     }
 
-    public override async Task<GroupNameListResponse> GetFullAccountGroupNames(
-        GetAccountGroupNamesRequest request, ServerCallContext context)
+    public override async Task<GetFullAccountGroupNamesResponse> GetFullAccountGroupNames(
+        GetFullAccountGroupNamesRequest request, ServerCallContext context)
     {
         var role = request.HasType
             ? (AccountRoleTypes?)((AccountRoleTypes)(request.Type * 100))
             : null;
         var items = await tradingSvc.GetAllGroupNamesAsync(role, request.HasKeywords ? request.Keywords : "");
-        var response = new GroupNameListResponse();
+        var response = new GetFullAccountGroupNamesResponse();
         response.Names.AddRange(items);
         return response;
     }
 
-    public override async Task<OperationResponse> GetActivityReport(
+    public override async Task<GetActivityReportResponse> GetActivityReport(
         GetActivityReportRequest request, ServerCallContext context)
     {
         // Activity report generation is handled asynchronously via background job
         // Returns success immediately; the report is sent to the account's email
-        return new OperationResponse { Success = true, Message = "Report generation queued" };
+        return new GetActivityReportResponse { Success = true, Message = "Report generation queued" };
     }
 
     // ─── Tenant child stat ────────────────────────────────────────────────────
 
-    public override async Task<ChildNetStatResponse> GetChildNetStat(
-        GetTenantChildNetStatRequest request, ServerCallContext context)
+    public override async Task<TenantAccountServiceGetChildNetStatResponse> GetChildNetStat(
+        TenantAccountServiceGetChildNetStatRequest request, ServerCallContext context)
     {
         // 兼容前端传 from/to 或标准 date_from/date_to
         var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
@@ -514,7 +514,7 @@ public class TenantAccountGrpcService(
         var sumUp  = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
                      ?? result.FirstOrDefault(x => x.Uid == 0);
 
-        var response = new ChildNetStatResponse
+        var data = new ChildNetStatResponse
         {
             Uid   = sumUp?.Uid   ?? 0,
             Group = sumUp?.Group ?? "Child-Sum-Up",
@@ -522,17 +522,17 @@ public class TenantAccountGrpcService(
         };
         if (sumUp != null)
         {
-            foreach (var kvp in sumUp.DepositAmounts)    response.DepositAmounts[kvp.Key.ToString()]    = kvp.Value;
-            foreach (var kvp in sumUp.WithdrawalAmounts) response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
-            foreach (var kvp in sumUp.RebateAmounts)     response.RebateAmounts[kvp.Key.ToString()]     = kvp.Value;
-            foreach (var kvp in sumUp.ProfitAmounts)     response.ProfitAmounts[kvp.Key.ToString()]     = kvp.Value;
-            foreach (var kvp in sumUp.NetAmounts)        response.NetAmounts[kvp.Key.ToString()]        = kvp.Value;
+            foreach (var kvp in sumUp.DepositAmounts)    data.DepositAmounts[kvp.Key.ToString()]    = kvp.Value;
+            foreach (var kvp in sumUp.WithdrawalAmounts) data.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+            foreach (var kvp in sumUp.RebateAmounts)     data.RebateAmounts[kvp.Key.ToString()]     = kvp.Value;
+            foreach (var kvp in sumUp.ProfitAmounts)     data.ProfitAmounts[kvp.Key.ToString()]     = kvp.Value;
+            foreach (var kvp in sumUp.NetAmounts)        data.NetAmounts[kvp.Key.ToString()]        = kvp.Value;
         }
-        return response;
+        return new TenantAccountServiceGetChildNetStatResponse { Data = data };
     }
 
-    public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
-        GetTenantChildStatByRangeRequest request, ServerCallContext context)
+    public override async Task<TenantAccountServiceGetChildRebateBySymbolResponse> GetChildRebateBySymbol(
+        TenantAccountServiceGetChildRebateBySymbolRequest request, ServerCallContext context)
     {
         // 兼容前端传 from/to 或标准 date_from/date_to
         var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
@@ -541,14 +541,14 @@ public class TenantAccountGrpcService(
         var to   = toStr   != null && DateTime.TryParse(toStr,   out var t) ? (DateTime?)t : null;
 
         var stats    = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
-        var response = new SymbolGroupStatResponse();
+        var data = new SymbolGroupStatResponse();
         foreach (var kvp in stats)
         {
             var entry = new SymbolStatEntry { Volume = kvp.Value.Volume, Profit = kvp.Value.Profit };
             foreach (var a in kvp.Value.Amounts) entry.Amounts[a.Key.ToString()] = a.Value;
-            response.Items[kvp.Key] = entry;
+            data.Items[kvp.Key] = entry;
         }
-        return response;
+        return new TenantAccountServiceGetChildRebateBySymbolResponse { Data = data };
     }
 
     // ─── Referral ─────────────────────────────────────────────────────────────
@@ -577,7 +577,7 @@ public class TenantAccountGrpcService(
         return response;
     }
 
-    public override async Task<ReferralDetailResponse> GetReferralByCode(
+    public override async Task<GetReferralByCodeResponse> GetReferralByCode(
         GetReferralByCodeRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.ReferralCodes
@@ -585,17 +585,20 @@ public class TenantAccountGrpcService(
             .Select(x => new { x.Id, x.AccountId, x.Account.Uid, x.Code, x.ServiceType })
             .FirstOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Referral code not found"));
-        return new ReferralDetailResponse
+        return new GetReferralByCodeResponse
         {
-            AccountId = item.AccountId,
-            Uid       = item.Uid,
-            Code      = item.Code,
-            Type      = item.ServiceType,
+            Data = new ReferralDetailResponse
+            {
+                AccountId = item.AccountId,
+                Uid       = item.Uid,
+                Code      = item.Code,
+                Type      = item.ServiceType,
+            }
         };
     }
 
-    public override async Task<ListReferralHistoryResponse> GetReferralHistory(
-        ListReferralHistoryRequest request, ServerCallContext context)
+    public override async Task<GetReferralHistoryResponse> GetReferralHistory(
+        GetReferralHistoryRequest request, ServerCallContext context)
     {
         var criteria = new Bacera.Gateway.Referral.Criteria
         {
@@ -603,7 +606,7 @@ public class TenantAccountGrpcService(
             Size = request.Pagination?.Size > 0 ? request.Pagination.Size : request.HasSize && request.Size > 0 ? request.Size : 20,
         };
         var items = await tenantCtx.Referrals.PagedFilterBy(criteria).ToListAsync();
-        var response = new ListReferralHistoryResponse
+        var response = new GetReferralHistoryResponse
         {
             Criteria = new PaginationMeta { Page = criteria.Page, Size = criteria.Size, Total = criteria.Total },
         };
@@ -617,7 +620,7 @@ public class TenantAccountGrpcService(
         return response;
     }
 
-    public override async Task<ProtoReferralCode> AddReferralCode(
+    public override async Task<AddReferralCodeResponse> AddReferralCode(
         AddReferralCodeRequest request, ServerCallContext context)
     {
         var targetAccount = await tenantCtx.Accounts
@@ -650,11 +653,11 @@ public class TenantAccountGrpcService(
         tenantCtx.ReferralCodes.Update(item);
         await tenantCtx.SaveChangesWithAuditAsync(GetPartyId(context));
 
-        return new ProtoReferralCode { Code = item.Code, Type = item.ServiceType, IsDefault = item.IsDefault != 0 };
+        return new AddReferralCodeResponse { Data = new ProtoReferralCode { Code = item.Code, Type = item.ServiceType, IsDefault = item.IsDefault != 0 } };
     }
 
-    public override async Task<OperationResponse> UpdateReferralDefaultPaymentMethods(
-        UpdateReferralPaymentMethodsRequest request, ServerCallContext context)
+    public override async Task<UpdateReferralDefaultPaymentMethodsResponse> UpdateReferralDefaultPaymentMethods(
+        UpdateReferralDefaultPaymentMethodsRequest request, ServerCallContext context)
     {
         var referralCode = await tenantCtx.ReferralCodes.FindAsync(request.Id);
         if (referralCode == null) throw new RpcException(new Status(StatusCode.NotFound, "Referral code not found"));
@@ -691,7 +694,7 @@ public class TenantAccountGrpcService(
             });
         }
         await tenantCtx.SaveChangesAsync();
-        return new OperationResponse { Success = true };
+        return new UpdateReferralDefaultPaymentMethodsResponse { Success = true };
     }
 
     // ─── Communicate ──────────────────────────────────────────────────────────
@@ -908,9 +911,9 @@ public class TenantAccountV2GrpcService(
     AccountManageService accManSvc,
     MyDbContextPool pool,
     ITradingApiService tradingApiSvc)
-    : TenantAccountServiceV2.TenantAccountServiceV2Base
+    : TenantAccountV2Service.TenantAccountV2ServiceBase
 {
-    public override async Task<ProtoAccount> ConfirmAutoCreate(
+    public override async Task<ConfirmAutoCreateResponse> ConfirmAutoCreate(
         ConfirmAutoCreateRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts
@@ -924,10 +927,10 @@ public class TenantAccountV2GrpcService(
         account.Tags.Remove(autoOpenTag);
         await tenantCtx.SaveChangesAsync();
         await accManSvc.AddAccountTagsAsync(request.Id, AccountTagTypes.AutoCreateConfirmed);
-        return MapToProto(account);
+        return new ConfirmAutoCreateResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> AssignWallet(
+    public override async Task<AssignWalletResponse> AssignWallet(
         AssignWalletRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
@@ -943,10 +946,10 @@ public class TenantAccountV2GrpcService(
 
         account.WalletId = request.WalletId;
         await tenantCtx.SaveChangesAsync();
-        return MapToProto(account);
+        return new AssignWalletResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<TradeStatResponse> GetAccountTradeStat(
+    public override async Task<GetAccountTradeStatResponse> GetAccountTradeStat(
         GetAccountTradeStatRequest request, ServerCallContext context)
     {
         var accountNumbers = await tenantCtx.Accounts
@@ -964,20 +967,23 @@ public class TenantAccountV2GrpcService(
             var stat = await accManSvc.GetTradeStatisticsByIdAsync(accountNumbers, from, to);
             var volume = (double)(stat.ClosedTradeStats?.Sum(x => x.Volume) ?? 0m);
             var profit = stat.ClosedTradeStats?.Sum(x => (double)x.Profit) ?? 0.0;
-            return new TradeStatResponse
+            return new GetAccountTradeStatResponse
             {
-                Volume     = volume,
-                Profit     = profit,
-                TradeCount = stat.ClosedTradeStats?.Count ?? 0,
+                Data = new TradeStatResponse
+                {
+                    Volume     = volume,
+                    Profit     = profit,
+                    TradeCount = stat.ClosedTradeStats?.Count ?? 0,
+                }
             };
         }
         catch
         {
-            return new TradeStatResponse();
+            return new GetAccountTradeStatResponse { Data = new TradeStatResponse() };
         }
     }
 
-    public override async Task<TradeStatResponse> GetMultiAccountTradeStat(
+    public override async Task<GetMultiAccountTradeStatResponse> GetMultiAccountTradeStat(
         GetMultiAccountTradeStatRequest request, ServerCallContext context)
     {
         var fromStr = (request.HasDateFrom ? request.DateFrom : null) ?? (request.HasFrom ? request.From : null);
@@ -990,20 +996,23 @@ public class TenantAccountV2GrpcService(
             var stat = await accManSvc.GetTradeStatisticsByIdAsync(request.AccountNumbers.ToList(), from, to);
             var volume = (double)(stat.ClosedTradeStats?.Sum(x => x.Volume) ?? 0m);
             var profit = stat.ClosedTradeStats?.Sum(x => (double)x.Profit) ?? 0.0;
-            return new TradeStatResponse
+            return new GetMultiAccountTradeStatResponse
             {
-                Volume     = volume,
-                Profit     = profit,
-                TradeCount = stat.ClosedTradeStats?.Count ?? 0,
+                Data = new TradeStatResponse
+                {
+                    Volume     = volume,
+                    Profit     = profit,
+                    TradeCount = stat.ClosedTradeStats?.Count ?? 0,
+                }
             };
         }
         catch
         {
-            return new TradeStatResponse();
+            return new GetMultiAccountTradeStatResponse { Data = new TradeStatResponse() };
         }
     }
 
-    public override async Task<DailyReportResponse> GetDailyReport(
+    public override async Task<GetDailyReportResponse> GetDailyReport(
         GetDailyReportRequest request, ServerCallContext context)
     {
         var serviceId = await tenantCtx.Accounts
@@ -1025,16 +1034,19 @@ public class TenantAccountV2GrpcService(
 
         var res = await tradingApiSvc.GetDailyReport(serviceId, request.AccountNumber, from, from.AddDays(1));
         var first = res.FirstOrDefault();
-        return new DailyReportResponse
+        return new GetDailyReportResponse
         {
-            Date    = request.Date,
-            Balance = first?.Balance    ?? 0,
-            Equity  = first?.ProfitEquity ?? 0,
+            Data = new DailyReportResponse
+            {
+                Date    = request.Date,
+                Balance = first?.Balance    ?? 0,
+                Equity  = first?.ProfitEquity ?? 0,
+            }
         };
     }
 
-    public override async Task<ProtoAccount> EnableTransfer(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<EnableTransferResponse> EnableTransfer(
+        EnableTransferRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
@@ -1046,11 +1058,11 @@ public class TenantAccountV2GrpcService(
             account.Permission = string.Join("", permission);
             await tenantCtx.SaveChangesAsync();
         }
-        return MapToProto(account);
+        return new EnableTransferResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<ProtoAccount> DisableTransfer(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<DisableTransferResponse> DisableTransfer(
+        DisableTransferRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
@@ -1062,10 +1074,10 @@ public class TenantAccountV2GrpcService(
             account.Permission = string.Join("", permission);
             await tenantCtx.SaveChangesAsync();
         }
-        return MapToProto(account);
+        return new DisableTransferResponse { Data = MapToProto(account) };
     }
 
-    public override async Task<StatTopResponse> GetStatTop(
+    public override async Task<GetStatTopResponse> GetStatTop(
         GetStatTopRequest request, ServerCallContext context)
     {
         var from          = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
@@ -1087,13 +1099,13 @@ public class TenantAccountV2GrpcService(
             .Take(request.Count > 0 ? request.Count : 20)
             .ToListAsync();
 
-        var response = new StatTopResponse();
-        response.Items.AddRange(items.Select(x => new StatTopItem
+        var data = new StatTopResponse();
+        data.Items.AddRange(items.Select(x => new StatTopItem
         {
             AccountId = x.AccountNumber,
             Value     = (double)x.Pnl,
         }));
-        return response;
+        return new GetStatTopResponse { Data = data };
     }
 
     private static ProtoAccount MapToProto(Bacera.Gateway.Account a) => new ProtoAccount
@@ -1122,8 +1134,8 @@ public class ClientAccountGrpcService(
     ITenantGetter tenantGetter)
     : ClientAccountService.ClientAccountServiceBase
 {
-    public override async Task<ListAccountsResponse> ListAccounts(
-        ListClientAccountsRequest request, ServerCallContext context)
+    public override async Task<ClientAccountServiceListAccountsResponse> ListAccounts(
+        ClientAccountServiceListAccountsRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var criteria = new Bacera.Gateway.Account.Criteria
@@ -1134,7 +1146,7 @@ public class ClientAccountGrpcService(
         };
 
         var result = await tradingSvc.AccountQueryForClientAsync(criteria, partyId);
-        var response = new ListAccountsResponse
+        var inner = new ListAccountsResponse
         {
             Criteria = new PaginationMeta
             {
@@ -1145,7 +1157,7 @@ public class ClientAccountGrpcService(
                 HasMore   = false,
             }
         };
-        response.Data.AddRange(result.Data.Select(a => new ProtoAccount
+        inner.Data.AddRange(result.Data.Select(a => new ProtoAccount
         {
             Id        = a.Id,
             Name      = a.Name ?? "",
@@ -1154,31 +1166,34 @@ public class ClientAccountGrpcService(
             FundType  = (int)a.FundType,
             CreatedOn = a.CreatedOn.ToString("O"),
         }));
-        return response;
+        return new ClientAccountServiceListAccountsResponse { Data = inner };
     }
 
-    public override async Task<ProtoAccount> GetAccount(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<ClientAccountServiceGetAccountResponse> GetAccount(
+        ClientAccountServiceGetAccountRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var item = await tradingSvc.AccountClientResponseModelGetForPartyAsync(request.Id, partyId);
         if (item.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return new ProtoAccount
+        return new ClientAccountServiceGetAccountResponse
         {
-            Id        = item.Id,
-            Name      = item.Name ?? "",
-            Status    = (int)item.Status,
-            Role      = (int)item.Role,
-            FundType  = (int)item.FundType,
-            CreatedOn = item.CreatedOn.ToString("O"),
+            Data = new ProtoAccount
+            {
+                Id        = item.Id,
+                Name      = item.Name ?? "",
+                Status    = (int)item.Status,
+                Role      = (int)item.Role,
+                FundType  = (int)item.FundType,
+                CreatedOn = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
-    public override async Task<AccountWizardResponse> GetAccountWizard(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<ClientAccountServiceGetAccountWizardResponse> GetAccountWizard(
+        ClientAccountServiceGetAccountWizardRequest request, ServerCallContext context)
     {
         var wizard = await tradingSvc.GetAccountWizardAsync(request.Id);
-        return new AccountWizardResponse
+        return new ClientAccountServiceGetAccountWizardResponse
         {
             KycFormCompleted     = wizard.KycFormCompleted,
             PaymentAccessGranted = wizard.PaymentAccessGranted,
@@ -1187,21 +1202,24 @@ public class ClientAccountGrpcService(
         };
     }
 
-    public override async Task<ProtoAccount> RefreshAccount(
-        GetAccountRequest request, ServerCallContext context)
+    public override async Task<ClientAccountServiceRefreshAccountResponse> RefreshAccount(
+        ClientAccountServiceRefreshAccountRequest request, ServerCallContext context)
     {
         await generalJob.TryUpdateTradeAccountStatus(tenantGetter.GetTenantId(), request.Id, true);
         var partyId = GetPartyId(context);
         var item = await tradingSvc.AccountClientResponseModelGetForPartyAsync(request.Id, partyId);
         if (item.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
-        return new ProtoAccount
+        return new ClientAccountServiceRefreshAccountResponse
         {
-            Id        = item.Id,
-            Name      = item.Name ?? "",
-            Status    = (int)item.Status,
-            Role      = (int)item.Role,
-            FundType  = (int)item.FundType,
-            CreatedOn = item.CreatedOn.ToString("O"),
+            Data = new ProtoAccount
+            {
+                Id        = item.Id,
+                Name      = item.Name ?? "",
+                Status    = (int)item.Status,
+                Role      = (int)item.Role,
+                FundType  = (int)item.FundType,
+                CreatedOn = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
@@ -1228,8 +1246,8 @@ public class SalesAccountGrpcService(
     ITenantGetter tenantGetter)
     : SalesAccountService.SalesAccountServiceBase
 {
-    public override async Task<ListAccountsResponse> ListAccounts(
-        ListSalesAccountsRequest request, ServerCallContext context)
+    public override async Task<SalesAccountServiceListAccountsResponse> ListAccounts(
+        SalesAccountServiceListAccountsRequest request, ServerCallContext context)
     {
         var salesId  = await accManSvc.GetAccountIdByUidAsync(request.SalesUid);
         var criteria = new Bacera.Gateway.Account.SalesCriteria
@@ -1239,7 +1257,7 @@ public class SalesAccountGrpcService(
             SearchText = request.HasKeywords ? request.Keywords : null,
         };
         var items = await accManSvc.QueryAccountForSalesAsync(salesId, criteria);
-        var response = new ListAccountsResponse
+        var inner = new ListAccountsResponse
         {
             Criteria = new PaginationMeta
             {
@@ -1250,7 +1268,7 @@ public class SalesAccountGrpcService(
                 HasMore   = criteria.Page * criteria.Size < criteria.Total,
             }
         };
-        response.Data.AddRange(items.Select(a => new ProtoAccount
+        inner.Data.AddRange(items.Select(a => new ProtoAccount
         {
             Name      = a.NativeName,
             Status    = (int)a.Status,
@@ -1258,42 +1276,48 @@ public class SalesAccountGrpcService(
             FundType  = (int)a.FundType,
             CreatedOn = a.CreatedOn.ToString("O"),
         }));
-        return response;
+        return new SalesAccountServiceListAccountsResponse { Data = inner };
     }
 
-    public override async Task<ProtoAccount> GetAccount(
-        GetSalesAccountRequest request, ServerCallContext context)
+    public override async Task<SalesAccountServiceGetAccountResponse> GetAccount(
+        SalesAccountServiceGetAccountRequest request, ServerCallContext context)
     {
         var clientAccount = await tradingSvc.AccountLookupForParentAsync(request.SalesUid, request.Uid);
         if (clientAccount.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
 
         var item = await tradingSvc.AccountGetForPartyAsync(clientAccount.Uid, clientAccount.PartyId);
-        return new ProtoAccount
+        return new SalesAccountServiceGetAccountResponse
         {
-            Id        = item.Id,
-            Name      = item.Name ?? "",
-            Status    = (int)item.Status,
-            Role      = (int)item.Role,
-            FundType  = (int)item.FundType,
-            PartyId   = clientAccount.PartyId,
-            CreatedOn = item.CreatedOn.ToString("O"),
+            Data = new ProtoAccount
+            {
+                Id        = item.Id,
+                Name      = item.Name ?? "",
+                Status    = (int)item.Status,
+                Role      = (int)item.Role,
+                FundType  = (int)item.FundType,
+                PartyId   = clientAccount.PartyId,
+                CreatedOn = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
-    public override async Task<ProtoAccount> GetLevelAccount(
+    public override async Task<GetLevelAccountResponse> GetLevelAccount(
         GetLevelAccountRequest request, ServerCallContext context)
     {
         var items = await accManSvc.GetParentLevelAccountAsync(request.SalesUid, request.ChildAccountUid);
         var first = items?.FirstOrDefault();
         if (first == null) throw new RpcException(new Status(StatusCode.NotFound, "Level account not found"));
-        return new ProtoAccount
+        return new GetLevelAccountResponse
         {
-            Name = first.NativeName,
-            Role = (int)first.Role,
+            Data = new ProtoAccount
+            {
+                Name = first.NativeName,
+                Role = (int)first.Role,
+            }
         };
     }
 
-    public override async Task<ChildStatResponse> GetChildAccountStat(
+    public override async Task<GetChildAccountStatResponse> GetChildAccountStat(
         GetChildAccountStatRequest request, ServerCallContext context)
     {
         var childAccountId = await tenantCtx.Accounts
@@ -1306,16 +1330,19 @@ public class SalesAccountGrpcService(
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var stat = await tradingSvc.GetParentAccountStatAsync(childAccountId, from, to);
-        return new ChildStatResponse
+        return new GetChildAccountStatResponse
         {
-            Volume     = (double)(stat?.TradeVolume ?? 0),
-            Profit     = (double)(stat?.TradeProfit ?? 0),
-            TradeCount = (int)(stat?.TradeCount ?? 0),
+            Data = new ChildStatResponse
+            {
+                Volume     = (double)(stat?.TradeVolume ?? 0),
+                Profit     = (double)(stat?.TradeProfit ?? 0),
+                TradeCount = (int)(stat?.TradeCount ?? 0),
+            }
         };
     }
 
-    public override async Task<ChildNetStatResponse> GetChildNetStat(
-        GetChildNetStatRequest request, ServerCallContext context)
+    public override async Task<SalesAccountServiceGetChildNetStatResponse> GetChildNetStat(
+        SalesAccountServiceGetChildNetStatRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
@@ -1324,7 +1351,7 @@ public class SalesAccountGrpcService(
         var sumUp = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
                     ?? result.FirstOrDefault(x => x.Uid == 0);
 
-        var response = new ChildNetStatResponse
+        var data = new ChildNetStatResponse
         {
             Uid   = sumUp?.Uid   ?? 0,
             Group = sumUp?.Group ?? "Child-Sum-Up",
@@ -1333,27 +1360,27 @@ public class SalesAccountGrpcService(
         if (sumUp != null)
         {
             foreach (var kvp in sumUp.DepositAmounts)
-                response.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.WithdrawalAmounts)
-                response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.RebateAmounts)
-                response.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.ProfitAmounts)
-                response.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.NetAmounts)
-                response.NetAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.NetAmounts[kvp.Key.ToString()] = kvp.Value;
         }
-        return response;
+        return new SalesAccountServiceGetChildNetStatResponse { Data = data };
     }
 
-    public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
-        GetChildStatByRangeRequest request, ServerCallContext context)
+    public override async Task<SalesAccountServiceGetChildRebateBySymbolResponse> GetChildRebateBySymbol(
+        SalesAccountServiceGetChildRebateBySymbolRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var stats = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
-        var response = new SymbolGroupStatResponse();
+        var data = new SymbolGroupStatResponse();
         foreach (var kvp in stats)
         {
             var entry = new SymbolStatEntry
@@ -1363,41 +1390,41 @@ public class SalesAccountGrpcService(
             };
             foreach (var amtKvp in kvp.Value.Amounts)
                 entry.Amounts[amtKvp.Key.ToString()] = amtKvp.Value;
-            response.Items[kvp.Key] = entry;
+            data.Items[kvp.Key] = entry;
         }
-        return response;
+        return new SalesAccountServiceGetChildRebateBySymbolResponse { Data = data };
     }
 
-    public override async Task<TradeSymbolGroupStatResponse> GetChildTradeBySymbol(
-        GetChildStatByRangeRequest request, ServerCallContext context)
+    public override async Task<GetChildTradeBySymbolResponse> GetChildTradeBySymbol(
+        GetChildTradeBySymbolRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var stats = await tradingSvc.GetChildAccountTradeSymbolGroupedStatByUid(request.Uid, from, to);
-        var response = new TradeSymbolGroupStatResponse();
-        response.Items.AddRange(stats.Select(s => new SymbolStat
+        var data = new TradeSymbolGroupStatResponse();
+        data.Items.AddRange(stats.Select(s => new SymbolStat
         {
             Symbol     = s.Symbol,
             CurrencyId = (int)s.CurrencyId,
             Volume     = s.Volume,
             Profit     = s.Profit,
         }));
-        return response;
+        return new GetChildTradeBySymbolResponse { Data = data };
     }
 
-    public override async Task<AccountConfigResponse> GetAccountConfiguration(
-        GetSalesAccountConfigRequest request, ServerCallContext context)
+    public override async Task<GetAccountConfigurationResponse> GetAccountConfiguration(
+        GetAccountConfigurationRequest request, ServerCallContext context)
     {
         var agentAccount = await tenantCtx.Accounts
             .Where(x => x.Uid == request.AgentUid)
             .SingleOrDefaultAsync();
         if (agentAccount == null) throw new RpcException(new Status(StatusCode.NotFound, "Agent account not found"));
-        return new AccountConfigResponse { AccountId = agentAccount.Id };
+        return new GetAccountConfigurationResponse { Data = new AccountConfigResponse { AccountId = agentAccount.Id } };
     }
 
-    public override async Task<LevelSettingResponse> GetDefaultLevelSetting(
-        GetSalesDefaultLevelRequest request, ServerCallContext context)
+    public override async Task<GetDefaultLevelSettingResponse> GetDefaultLevelSetting(
+        GetDefaultLevelSettingRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.Where(x => x.Uid == request.AgentUid).FirstOrDefaultAsync();
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
@@ -1408,14 +1435,14 @@ public class SalesAccountGrpcService(
             .FirstOrDefaultAsync();
 
         if (item?.ValueString is { Length: > 0 } raw)
-            return new LevelSettingResponse { Json = raw };
+            return new GetDefaultLevelSettingResponse { Json = raw };
 
         var result = await configurationService.GetDefaultRebateLevelSettingAsync(account.SiteId);
-        return new LevelSettingResponse { Json = JsonConvert.SerializeObject(result) };
+        return new GetDefaultLevelSettingResponse { Json = JsonConvert.SerializeObject(result) };
     }
 
-    public override async Task<AccountTypesResponse> GetAvailableAccountTypes(
-        GetSalesUidRequest request, ServerCallContext context)
+    public override async Task<GetAvailableAccountTypesResponse> GetAvailableAccountTypes(
+        GetAvailableAccountTypesRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.Where(x => x.Uid == request.SalesUid).FirstOrDefaultAsync();
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
@@ -1434,13 +1461,13 @@ public class SalesAccountGrpcService(
         else
             typeIds = await configurationService.GetAccountTypeAvailableAsync(account.SiteId);
 
-        var response = new AccountTypesResponse();
-        response.Types_.AddRange(typeIds.Select(id => new AccountTypeConfig { Id = id, Name = "" }));
-        return response;
+        var data = new AccountTypesResponse();
+        data.Types_.AddRange(typeIds.Select(id => new AccountTypeConfig { Id = id, Name = "" }));
+        return new GetAvailableAccountTypesResponse { Data = data };
     }
 
-    public override async Task<ReferralPathResponse> GetReferralPath(
-        GetSalesReferralPathRequest request, ServerCallContext context)
+    public override async Task<GetReferralPathResponse> GetReferralPath(
+        GetReferralPathRequest request, ServerCallContext context)
     {
         var referPath = await tenantCtx.Accounts
             .Where(x => x.ReferPath.Contains(request.SalesUid.ToString()))
@@ -1456,18 +1483,18 @@ public class SalesAccountGrpcService(
             .Select(x => new { x.Id, x.Uid, x.Name, x.Level })
             .ToListAsync();
 
-        var response = new ReferralPathResponse();
-        response.Path.AddRange(accounts.Select(a => new ReferralPathItem
+        var data = new ReferralPathResponse();
+        data.Path.AddRange(accounts.Select(a => new ReferralPathItem
         {
             AccountId = a.Id,
             Name      = a.Name ?? "",
             Level     = a.Level,
         }));
-        return response;
+        return new GetReferralPathResponse { Data = data };
     }
 
-    public override async Task<EmailCodeResponse> GetViewEmailCode(
-        GetSalesAccountRequest request, ServerCallContext context)
+    public override async Task<SalesAccountServiceGetViewEmailCodeResponse> GetViewEmailCode(
+        SalesAccountServiceGetViewEmailCodeRequest request, ServerCallContext context)
     {
         var isAccountUnder = await tenantCtx.Accounts
             .Where(x => x.Uid == request.Uid)
@@ -1494,11 +1521,11 @@ public class SalesAccountGrpcService(
         backgroundJobClient.Enqueue<IGeneralJob>(x => x.GenerateAuthCodeAndSendEmailAsync(
             tenantGetter.GetTenantId(), user.EmailRaw, $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}"));
 
-        return new EmailCodeResponse { ExpiresAt = "" };
+        return new SalesAccountServiceGetViewEmailCodeResponse { ExpiresAt = "" };
     }
 
-    public override async Task<EmailResponse> GetViewEmail(
-        GetViewEmailRequest request, ServerCallContext context)
+    public override async Task<SalesAccountServiceGetViewEmailResponse> GetViewEmail(
+        SalesAccountServiceGetViewEmailRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
 
@@ -1523,7 +1550,7 @@ public class SalesAccountGrpcService(
         if (item == null)
             throw new RpcException(new Status(StatusCode.NotFound, "CODE_NOT_FOUND"));
 
-        return new EmailResponse { Email = account.Email ?? "" };
+        return new SalesAccountServiceGetViewEmailResponse { Email = account.Email ?? "" };
     }
 
     private static long GetPartyId(ServerCallContext ctx)
@@ -1550,8 +1577,8 @@ public class AgentAccountGrpcService(
     UserService userSvc)
     : AgentAccountService.AgentAccountServiceBase
 {
-    public override async Task<ListAccountsResponse> ListAccounts(
-        ListAgentAccountsRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceListAccountsResponse> ListAccounts(
+        AgentAccountServiceListAccountsRequest request, ServerCallContext context)
     {
         var criteria = new Bacera.Gateway.Account.Criteria
         {
@@ -1568,7 +1595,7 @@ public class AgentAccountGrpcService(
             .FirstOrDefaultAsync();
 
         var result = await tradingSvc.AccountQueryForParentAsync(criteria, GetPartyId(context), parentLevel, false);
-        var response = new ListAccountsResponse
+        var inner = new ListAccountsResponse
         {
             Criteria = new PaginationMeta
             {
@@ -1579,7 +1606,7 @@ public class AgentAccountGrpcService(
                 HasMore   = criteria.Page * criteria.Size < criteria.Total,
             }
         };
-        response.Data.AddRange(result.Data.Select(a => new ProtoAccount
+        inner.Data.AddRange(result.Data.Select(a => new ProtoAccount
         {
             Id        = a.Id,
             Name      = a.User.NativeName,
@@ -1589,49 +1616,55 @@ public class AgentAccountGrpcService(
             PartyId   = a.PartyId,
             CreatedOn = a.CreatedOn.ToString("O"),
         }));
-        return response;
+        return new AgentAccountServiceListAccountsResponse { Data = inner };
     }
 
-    public override async Task<ProtoAccount> GetAccount(
-        GetAgentAccountRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceGetAccountResponse> GetAccount(
+        AgentAccountServiceGetAccountRequest request, ServerCallContext context)
     {
         var clientAccount = await tradingSvc.AccountLookupForParentAsync(request.AgentUid, request.Uid);
         if (clientAccount.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
 
         var item = await tradingSvc.AccountGetForPartyAsync(clientAccount.Uid, clientAccount.PartyId);
-        return new ProtoAccount
+        return new AgentAccountServiceGetAccountResponse
         {
-            Id        = item.Id,
-            Name      = item.Name ?? "",
-            Status    = (int)item.Status,
-            Role      = (int)item.Role,
-            FundType  = (int)item.FundType,
-            PartyId   = clientAccount.PartyId,
-            CreatedOn = item.CreatedOn.ToString("O"),
+            Data = new ProtoAccount
+            {
+                Id        = item.Id,
+                Name      = item.Name ?? "",
+                Status    = (int)item.Status,
+                Role      = (int)item.Role,
+                FundType  = (int)item.FundType,
+                PartyId   = clientAccount.PartyId,
+                CreatedOn = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
-    public override async Task<ProtoAccount> RefreshAccount(
-        GetAgentAccountRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceRefreshAccountResponse> RefreshAccount(
+        AgentAccountServiceRefreshAccountRequest request, ServerCallContext context)
     {
         var clientAccount = await tradingSvc.AccountLookupForParentAsync(request.AgentUid, request.Uid);
         if (clientAccount.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
         await generalJob.TryUpdateTradeAccountStatus(tenantGetter.GetTenantId(), clientAccount.Id, true);
         var item = await tradingSvc.AccountGetForPartyAsync(clientAccount.Uid, clientAccount.PartyId);
-        return new ProtoAccount
+        return new AgentAccountServiceRefreshAccountResponse
         {
-            Id        = item.Id,
-            Name      = item.Name ?? "",
-            Status    = (int)item.Status,
-            Role      = (int)item.Role,
-            FundType  = (int)item.FundType,
-            PartyId   = clientAccount.PartyId,
-            CreatedOn = item.CreatedOn.ToString("O"),
+            Data = new ProtoAccount
+            {
+                Id        = item.Id,
+                Name      = item.Name ?? "",
+                Status    = (int)item.Status,
+                Role      = (int)item.Role,
+                FundType  = (int)item.FundType,
+                PartyId   = clientAccount.PartyId,
+                CreatedOn = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
-    public override async Task<ChildNetStatResponse> GetChildNetStat(
-        GetAgentChildNetStatRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceGetChildNetStatResponse> GetChildNetStat(
+        AgentAccountServiceGetChildNetStatRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
@@ -1640,7 +1673,7 @@ public class AgentAccountGrpcService(
         var sumUp = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
                     ?? result.FirstOrDefault(x => x.Uid == 0);
 
-        var response = new ChildNetStatResponse
+        var data = new ChildNetStatResponse
         {
             Uid   = sumUp?.Uid   ?? 0,
             Group = sumUp?.Group ?? "Child-Sum-Up",
@@ -1649,27 +1682,27 @@ public class AgentAccountGrpcService(
         if (sumUp != null)
         {
             foreach (var kvp in sumUp.DepositAmounts)
-                response.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.WithdrawalAmounts)
-                response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.RebateAmounts)
-                response.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.ProfitAmounts)
-                response.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.NetAmounts)
-                response.NetAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.NetAmounts[kvp.Key.ToString()] = kvp.Value;
         }
-        return response;
+        return new AgentAccountServiceGetChildNetStatResponse { Data = data };
     }
 
-    public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
-        GetAgentChildStatByRangeRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceGetChildRebateBySymbolResponse> GetChildRebateBySymbol(
+        AgentAccountServiceGetChildRebateBySymbolRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var stats = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
-        var response = new SymbolGroupStatResponse();
+        var data = new SymbolGroupStatResponse();
         foreach (var kvp in stats)
         {
             var entry = new SymbolStatEntry
@@ -1679,13 +1712,13 @@ public class AgentAccountGrpcService(
             };
             foreach (var amtKvp in kvp.Value.Amounts)
                 entry.Amounts[amtKvp.Key.ToString()] = amtKvp.Value;
-            response.Items[kvp.Key] = entry;
+            data.Items[kvp.Key] = entry;
         }
-        return response;
+        return new AgentAccountServiceGetChildRebateBySymbolResponse { Data = data };
     }
 
-    public override async Task<LevelSettingResponse> GetDefaultLevelSetting(
-        GetAgentAccountRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceGetDefaultLevelSettingResponse> GetDefaultLevelSetting(
+        AgentAccountServiceGetDefaultLevelSettingRequest request, ServerCallContext context)
     {
         var account = await tenantCtx.Accounts.Where(x => x.Uid == request.AgentUid).FirstOrDefaultAsync();
         if (account == null) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
@@ -1696,14 +1729,14 @@ public class AgentAccountGrpcService(
             .FirstOrDefaultAsync();
 
         if (item?.ValueString is { Length: > 0 } raw)
-            return new LevelSettingResponse { Json = raw };
+            return new AgentAccountServiceGetDefaultLevelSettingResponse { Json = raw };
 
         var result = await configurationService.GetDefaultRebateLevelSettingAsync(account.SiteId);
-        return new LevelSettingResponse { Json = JsonConvert.SerializeObject(result) };
+        return new AgentAccountServiceGetDefaultLevelSettingResponse { Json = JsonConvert.SerializeObject(result) };
     }
 
-    public override async Task<EmailCodeResponse> GetViewEmailCode(
-        GetAgentAccountRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceGetViewEmailCodeResponse> GetViewEmailCode(
+        AgentAccountServiceGetViewEmailCodeRequest request, ServerCallContext context)
     {
         var isAccountUnder = await tenantCtx.Accounts
             .Where(x => x.Uid == request.Uid)
@@ -1738,11 +1771,11 @@ public class AgentAccountGrpcService(
         backgroundJobClient.Enqueue<IGeneralJob>(x => x.GenerateAuthCodeAndSendEmailAsync(
             tenantGetter.GetTenantId(), user.EmailRaw, $"{AuthCode.EventLabel.ParentViewEmail}:{account.Email}"));
 
-        return new EmailCodeResponse { ExpiresAt = "" };
+        return new AgentAccountServiceGetViewEmailCodeResponse { ExpiresAt = "" };
     }
 
-    public override async Task<EmailResponse> GetViewEmail(
-        GetAgentViewEmailRequest request, ServerCallContext context)
+    public override async Task<AgentAccountServiceGetViewEmailResponse> GetViewEmail(
+        AgentAccountServiceGetViewEmailRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
 
@@ -1767,7 +1800,7 @@ public class AgentAccountGrpcService(
         if (item == null)
             throw new RpcException(new Status(StatusCode.NotFound, "CODE_NOT_FOUND"));
 
-        return new EmailResponse { Email = account.Email ?? "" };
+        return new AgentAccountServiceGetViewEmailResponse { Email = account.Email ?? "" };
     }
 
     private static long GetPartyId(ServerCallContext ctx)
@@ -1788,8 +1821,8 @@ public class RepAccountGrpcService(
     TenantDbContext tenantCtx)
     : RepAccountService.RepAccountServiceBase
 {
-    public override async Task<ListAccountsResponse> ListAccounts(
-        ListRepAccountsRequest request, ServerCallContext context)
+    public override async Task<RepAccountServiceListAccountsResponse> ListAccounts(
+        RepAccountServiceListAccountsRequest request, ServerCallContext context)
     {
         var criteria = new Bacera.Gateway.Account.Criteria
         {
@@ -1806,7 +1839,7 @@ public class RepAccountGrpcService(
             .FirstOrDefaultAsync();
 
         var result = await tradingSvc.AccountQueryForParentAsync(criteria, GetPartyId(context), parentLevel, false);
-        var response = new ListAccountsResponse
+        var inner = new ListAccountsResponse
         {
             Criteria = new PaginationMeta
             {
@@ -1817,7 +1850,7 @@ public class RepAccountGrpcService(
                 HasMore   = criteria.Page * criteria.Size < criteria.Total,
             }
         };
-        response.Data.AddRange(result.Data.Select(a => new ProtoAccount
+        inner.Data.AddRange(result.Data.Select(a => new ProtoAccount
         {
             Id        = a.Id,
             Name      = a.User.NativeName,
@@ -1827,41 +1860,44 @@ public class RepAccountGrpcService(
             PartyId   = a.PartyId,
             CreatedOn = a.CreatedOn.ToString("O"),
         }));
-        return response;
+        return new RepAccountServiceListAccountsResponse { Data = inner };
     }
 
-    public override async Task<ProtoAccount> GetAccount(
-        GetRepAccountRequest request, ServerCallContext context)
+    public override async Task<RepAccountServiceGetAccountResponse> GetAccount(
+        RepAccountServiceGetAccountRequest request, ServerCallContext context)
     {
         var clientAccount = await tradingSvc.AccountLookupForParentAsync(request.RepUid, request.Uid);
         if (clientAccount.IsEmpty()) throw new RpcException(new Status(StatusCode.NotFound, "Account not found"));
 
         var item = await tradingSvc.AccountGetForPartyAsync(clientAccount.Uid, clientAccount.PartyId);
-        return new ProtoAccount
+        return new RepAccountServiceGetAccountResponse
         {
-            Id        = item.Id,
-            Name      = item.Name ?? "",
-            Status    = (int)item.Status,
-            Role      = (int)item.Role,
-            FundType  = (int)item.FundType,
-            PartyId   = clientAccount.PartyId,
-            CreatedOn = item.CreatedOn.ToString("O"),
+            Data = new ProtoAccount
+            {
+                Id        = item.Id,
+                Name      = item.Name ?? "",
+                Status    = (int)item.Status,
+                Role      = (int)item.Role,
+                FundType  = (int)item.FundType,
+                PartyId   = clientAccount.PartyId,
+                CreatedOn = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
-    public override async Task<GroupNameListResponse> GetGroupNameList(
+    public override async Task<GetGroupNameListResponse> GetGroupNameList(
         GetGroupNameListRequest request, ServerCallContext context)
     {
         var type  = request.HasType ? (AccountGroupTypes)request.Type : AccountGroupTypes.Agent;
         var role  = (AccountRoleTypes)((int)type * 100);
         var items = await tradingSvc.GetAllGroupNamesUnderAccountByUid(request.RepUid, role, request.HasKeywords ? request.Keywords : "");
-        var response = new GroupNameListResponse();
+        var response = new GetGroupNameListResponse();
         response.Names.AddRange(items);
         return response;
     }
 
-    public override async Task<ChildNetStatResponse> GetChildNetStat(
-        GetRepChildNetStatRequest request, ServerCallContext context)
+    public override async Task<RepAccountServiceGetChildNetStatResponse> GetChildNetStat(
+        RepAccountServiceGetChildNetStatRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
@@ -1870,7 +1906,7 @@ public class RepAccountGrpcService(
         var sumUp = result.FirstOrDefault(x => x.Uid == 0 && x.Group == "Child-Sum-Up")
                     ?? result.FirstOrDefault(x => x.Uid == 0);
 
-        var response = new ChildNetStatResponse
+        var data = new ChildNetStatResponse
         {
             Uid   = sumUp?.Uid   ?? 0,
             Group = sumUp?.Group ?? "Child-Sum-Up",
@@ -1879,27 +1915,27 @@ public class RepAccountGrpcService(
         if (sumUp != null)
         {
             foreach (var kvp in sumUp.DepositAmounts)
-                response.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.DepositAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.WithdrawalAmounts)
-                response.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.WithdrawalAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.RebateAmounts)
-                response.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.RebateAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.ProfitAmounts)
-                response.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.ProfitAmounts[kvp.Key.ToString()] = kvp.Value;
             foreach (var kvp in sumUp.NetAmounts)
-                response.NetAmounts[kvp.Key.ToString()] = kvp.Value;
+                data.NetAmounts[kvp.Key.ToString()] = kvp.Value;
         }
-        return response;
+        return new RepAccountServiceGetChildNetStatResponse { Data = data };
     }
 
-    public override async Task<SymbolGroupStatResponse> GetChildRebateBySymbol(
-        GetRepChildStatByRangeRequest request, ServerCallContext context)
+    public override async Task<RepAccountServiceGetChildRebateBySymbolResponse> GetChildRebateBySymbol(
+        RepAccountServiceGetChildRebateBySymbolRequest request, ServerCallContext context)
     {
         var from = request.HasDateFrom && DateTime.TryParse(request.DateFrom, out var f) ? (DateTime?)f : null;
         var to   = request.HasDateTo   && DateTime.TryParse(request.DateTo,   out var t) ? (DateTime?)t : null;
 
         var stats = await tradingSvc.GetChildAccountRebateSymbolGroupedStatByUid(request.Uid, from, to);
-        var response = new SymbolGroupStatResponse();
+        var data = new SymbolGroupStatResponse();
         foreach (var kvp in stats)
         {
             var entry = new SymbolStatEntry
@@ -1909,9 +1945,9 @@ public class RepAccountGrpcService(
             };
             foreach (var amtKvp in kvp.Value.Amounts)
                 entry.Amounts[amtKvp.Key.ToString()] = amtKvp.Value;
-            response.Items[kvp.Key] = entry;
+            data.Items[kvp.Key] = entry;
         }
-        return response;
+        return new RepAccountServiceGetChildRebateBySymbolResponse { Data = data };
     }
 
     private static long GetPartyId(ServerCallContext ctx)

@@ -63,15 +63,15 @@ public class TenantMessageGrpcService(
         return response;
     }
 
-    public override async Task<ProtoMessage> GetMessage(
+    public override async Task<GetMessageResponse> GetMessage(
         GetMessageRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.Messages.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Message not found"));
-        return MapToProto(item);
+        return new GetMessageResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoMessage> CreateMessage(
+    public override async Task<CreateMessageResponse> CreateMessage(
         CreateMessageRequest request, ServerCallContext context)
     {
         var item = new Bacera.Gateway.Message
@@ -85,10 +85,10 @@ public class TenantMessageGrpcService(
         };
         await tenantCtx.Messages.AddAsync(item);
         await tenantCtx.SaveChangesAsync();
-        return MapToProto(item);
+        return new CreateMessageResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoMessage> UpdateMessage(
+    public override async Task<UpdateMessageResponse> UpdateMessage(
         UpdateMessageRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.Messages.SingleOrDefaultAsync(x => x.Id == request.Id);
@@ -103,27 +103,27 @@ public class TenantMessageGrpcService(
 
         tenantCtx.Messages.Update(item);
         await tenantCtx.SaveChangesAsync();
-        return MapToProto(item);
+        return new UpdateMessageResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<OperationResponse> DeleteMessage(
-        GetMessageRequest request, ServerCallContext context)
+    public override async Task<DeleteMessageResponse> DeleteMessage(
+        DeleteMessageRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.Messages.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Message not found"));
 
         tenantCtx.Messages.Remove(item);
         await tenantCtx.SaveChangesAsync();
-        return new OperationResponse { Success = true };
+        return new DeleteMessageResponse { Success = true };
     }
 
-    public override async Task<OperationResponse> SendPopupMessage(
+    public override async Task<SendPopupMessageResponse> SendPopupMessage(
         SendPopupMessageRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var dto = MessagePopupDTO.BuildInfo(request.Title, request.Body);
         await sendMessageSvc.SendPopupToPartyAsync(tenantId, request.AccountId, dto);
-        return new OperationResponse { Success = true };
+        return new SendPopupMessageResponse { Success = true };
     }
 
     private static ProtoMessage MapToProto(Bacera.Gateway.Message m) => new ProtoMessage
@@ -154,7 +154,7 @@ public class TenantEmailGrpcService(
     ISendMailService sendMailService)
     : TenantEmailService.TenantEmailServiceBase
 {
-    public override async Task<OperationResponse> DebugEmail(
+    public override async Task<DebugEmailResponse> DebugEmail(
         ProtoDebugEmailRequest request, ServerCallContext context)
     {
         var domainReq = new Bacera.Gateway.DebugEmailRequest
@@ -163,10 +163,10 @@ public class TenantEmailGrpcService(
             Title = request.Subject,
         };
         var (ok, msg) = await sendMailService.DebugAsync(domainReq);
-        return new OperationResponse { Success = ok, Message = msg ?? "" };
+        return new DebugEmailResponse { Success = ok, Message = msg ?? "" };
     }
 
-    public override async Task<OperationResponse> SendToUser(
+    public override async Task<SendToUserResponse> SendToUser(
         SendToUserRequest request, ServerCallContext context)
     {
         var domainReq = new SendToPartyRequest
@@ -176,10 +176,10 @@ public class TenantEmailGrpcService(
             Content = request.Body,
         };
         var (ok, msg) = await batchSendEmailSvc.SendEmailToPartyAsync(domainReq);
-        return new OperationResponse { Success = ok, Message = msg ?? "" };
+        return new SendToUserResponse { Success = ok, Message = msg ?? "" };
     }
 
-    public override async Task<EmailBatch> CreateBatch(
+    public override async Task<CreateBatchResponse> CreateBatch(
         CreateBatchRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
@@ -189,41 +189,44 @@ public class TenantEmailGrpcService(
         var spec = new CreateSendTopicContentSpec { TopicId = (long)request.TopicContentId };
         var info = await batchSendEmailSvc.InitSendBatchEmailInfoAsync(spec, partyId);
 
-        return new EmailBatch
+        return new CreateBatchResponse
         {
-            Id        = info.TopicId,
-            Subject   = info.TopicKey,
-            Status    = info.Status switch
+            Data = new EmailBatch
             {
-                "pending"   => 1,
-                "sending"   => 2,
-                "completed" => 3,
-                "failed"    => 4,
-                _           => 0,
+                Id        = info.TopicId,
+                Subject   = info.TopicKey,
+                Status    = info.Status switch
+                {
+                    "pending"   => 1,
+                    "sending"   => 2,
+                    "completed" => 3,
+                    "failed"    => 4,
+                    _           => 0,
+                },
+                Total     = (int)info.Total,
+                CreatedAt = DateTime.UtcNow.ToString("O"),
             },
-            Total     = (int)info.Total,
-            CreatedAt = DateTime.UtcNow.ToString("O"),
         };
     }
 
-    public override async Task<EmailBatchInfoResponse> GetBatchInfo(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetBatchInfoResponse> GetBatchInfo(
+        GetBatchInfoRequest request, ServerCallContext context)
     {
         var info = await batchSendEmailSvc.GetRealTimeInfoAsync();
-        return new EmailBatchInfoResponse { RecipientCount = (int)(info?.Total ?? 0) };
+        return new GetBatchInfoResponse { RecipientCount = (int)(info?.Total ?? 0) };
     }
 
-    public override async Task<EmailBatchDetailResponse> GetBatchDetail(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetBatchDetailResponse> GetBatchDetail(
+        GetBatchDetailRequest request, ServerCallContext context)
     {
         var items = await batchSendEmailSvc.GetBatchEmailDetail();
-        var response = new EmailBatchDetailResponse();
+        var response = new GetBatchDetailResponse();
         response.Emails.AddRange(items.Select(x => x.Email));
         return response;
     }
 
-    public override async Task<OperationResponse> TestBatch(
-        TestBatchEmailRequest request, ServerCallContext context)
+    public override async Task<TestBatchResponse> TestBatch(
+        TestBatchRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var info = await cfgSvc.GetAsync<SendBatchEmailInfo>(
@@ -243,10 +246,10 @@ public class TenantEmailGrpcService(
                 await batchEmailSvc.SendEmailByTopicIdWithContent(dto, true);
         });
 
-        return new OperationResponse { Success = true };
+        return new TestBatchResponse { Success = true };
     }
 
-    public override async Task<OperationResponse> ConfirmBatch(
+    public override async Task<ConfirmBatchResponse> ConfirmBatch(
         ConfirmBatchRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
@@ -254,31 +257,31 @@ public class TenantEmailGrpcService(
         if (info == null) throw new RpcException(new Status(StatusCode.NotFound, "No batch email info found"));
 
         backgroundJobClient.Enqueue<IGeneralJob>(x => x.SendEmailByTopicIdWithContent(tenantId, info.Uuid));
-        return new OperationResponse { Success = true };
+        return new ConfirmBatchResponse { Success = true };
     }
 
-    public override async Task<SuppressionResponse> CheckSuppression(
+    public override async Task<CheckSuppressionResponse> CheckSuppression(
         CheckSuppressionRequest request, ServerCallContext context)
     {
         var result = await awsEmailClientV2.EmailInSuppressedDestinationAsync(request.Email);
-        return new SuppressionResponse { Suppressed = result, Reason = "" };
+        return new CheckSuppressionResponse { Suppressed = result, Reason = "" };
     }
 
-    public override async Task<OperationResponse> RemoveSuppression(
-        SuppressionEmailRequest request, ServerCallContext context)
+    public override async Task<RemoveSuppressionResponse> RemoveSuppression(
+        RemoveSuppressionRequest request, ServerCallContext context)
     {
         var result = await awsEmailClientV2.DeleteEmailFromSuppressedDestinationAsync(request.Email);
-        return new OperationResponse { Success = result };
+        return new RemoveSuppressionResponse { Success = result };
     }
 
-    public override async Task<OperationResponse> AddSuppression(
-        SuppressionEmailRequest request, ServerCallContext context)
+    public override async Task<AddSuppressionResponse> AddSuppression(
+        AddSuppressionRequest request, ServerCallContext context)
     {
         var result = await awsEmailClientV2.PutEmailInSuppressedDestinationAsync(request.Email);
-        return new OperationResponse { Success = result };
+        return new AddSuppressionResponse { Success = result };
     }
 
-    public override async Task<ListTopicsResponse> ListEmailTemplates(
+    public override async Task<ListEmailTemplatesResponse> ListEmailTemplates(
         ListEmailTemplatesRequest request, ServerCallContext context)
     {
         var page = request.Pagination?.Page > 0 ? request.Pagination.Page : 1;
@@ -297,7 +300,7 @@ public class TenantEmailGrpcService(
             .Take(size)
             .ToListAsync();
 
-        var response = new ListTopicsResponse
+        var response = new ListEmailTemplatesResponse
         {
             Criteria = new PaginationMeta
             {
@@ -318,7 +321,7 @@ public class TenantEmailGrpcService(
         return response;
     }
 
-    public override async Task<BatchReceiverEmailsResponse> GetBatchReceiverEmails(
+    public override async Task<GetBatchReceiverEmailsResponse> GetBatchReceiverEmails(
         GetBatchReceiverEmailsRequest request, ServerCallContext context)
     {
         var spec = Newtonsoft.Json.JsonConvert.DeserializeObject<CreateSendTopicContentSpec>(request.Spec)
@@ -335,7 +338,7 @@ public class TenantEmailGrpcService(
 
         var total = await query.CountAsync();
 
-        var response = new BatchReceiverEmailsResponse { Total = total, Page = request.Page };
+        var response = new GetBatchReceiverEmailsResponse { Total = total, Page = request.Page };
         response.Emails.AddRange(emails);
         return response;
     }
@@ -385,7 +388,7 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         return response;
     }
 
-    public override async Task<ProtoTopic> GetTopic(
+    public override async Task<GetTopicResponse> GetTopic(
         GetTopicRequest request, ServerCallContext context)
     {
         Bacera.Gateway.Topic item;
@@ -395,22 +398,22 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
             item = await topicSvc.GetAsync(request.Id);
 
         if (item.Id == 0) throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
-        return MapToProto(item);
+        return new GetTopicResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<LanguagesResponse> GetTopicLanguages(
-        GetTopicIdRequest request, ServerCallContext context)
+    public override async Task<GetTopicLanguagesResponse> GetTopicLanguages(
+        GetTopicLanguagesRequest request, ServerCallContext context)
     {
         if (!await topicSvc.ExistsAsync(request.Id))
             throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
 
         var languages = await topicSvc.GetLanguagesAsync(request.Id);
-        var response = new LanguagesResponse();
+        var response = new GetTopicLanguagesResponse();
         response.Languages.AddRange(languages);
         return response;
     }
 
-    public override async Task<ProtoTopic> CreateTopic(
+    public override async Task<CreateTopicResponse> CreateTopic(
         CreateTopicRequest request, ServerCallContext context)
     {
         var spec = new Bacera.Gateway.Topic.CreateSpec
@@ -422,10 +425,10 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         };
         var item = await topicSvc.CreateAsync(spec);
         if (item.Id == 0) throw new RpcException(new Status(StatusCode.Internal, "Failed to create topic"));
-        return MapToProto(item);
+        return new CreateTopicResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoTopic> UpdateTopic(
+    public override async Task<UpdateTopicResponse> UpdateTopic(
         UpdateTopicRequest request, ServerCallContext context)
     {
         var spec = new Bacera.Gateway.Topic.UpdateSpec
@@ -435,29 +438,29 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         };
         var item = await topicSvc.UpdateAsync(request.Id, spec);
         if (item.Id == 0) throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
-        return MapToProto(item);
+        return new UpdateTopicResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoTopic> MoveToTrash(
-        GetTopicIdRequest request, ServerCallContext context)
+    public override async Task<MoveToTrashResponse> MoveToTrash(
+        MoveToTrashRequest request, ServerCallContext context)
     {
         var item = await topicSvc.GetAsync(request.Id);
         if (item.Id == 0) throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
         await topicSvc.MoveToTrash(request.Id);
         item = await topicSvc.GetAsync(request.Id);
-        return MapToProto(item);
+        return new MoveToTrashResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<OperationResponse> DeleteTopic(
-        GetTopicIdRequest request, ServerCallContext context)
+    public override async Task<DeleteTopicResponse> DeleteTopic(
+        DeleteTopicRequest request, ServerCallContext context)
     {
         if (!await topicSvc.ExistsAsync(request.Id))
             throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
         await topicSvc.DeleteAsync(request.Id);
-        return new OperationResponse { Success = true };
+        return new DeleteTopicResponse { Success = true };
     }
 
-    public override async Task<ProtoTopicContent> CreateTopicContent(
+    public override async Task<CreateTopicContentResponse> CreateTopicContent(
         CreateTopicContentRequest request, ServerCallContext context)
     {
         var spec = new TopicContent.Spec
@@ -468,10 +471,10 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         };
         var item = await topicSvc.CreateContentAsync(request.Id, spec);
         if (item.Id == 0) throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
-        return MapContentToProto(item);
+        return new CreateTopicContentResponse { Data = MapContentToProto(item) };
     }
 
-    public override async Task<ProtoTopicContent> UpdateTopicContent(
+    public override async Task<UpdateTopicContentResponse> UpdateTopicContent(
         UpdateTopicContentRequest request, ServerCallContext context)
     {
         var spec = new TopicContent.Spec
@@ -482,16 +485,16 @@ public class TenantTopicGrpcService(ITopicService topicSvc)
         };
         var item = await topicSvc.UpdateContentAsync(request.ContentId, spec);
         if (item.Id == 0) throw new RpcException(new Status(StatusCode.NotFound, "TopicContent not found"));
-        return MapContentToProto(item);
+        return new UpdateTopicContentResponse { Data = MapContentToProto(item) };
     }
 
-    public override async Task<OperationResponse> DeleteTopicContent(
+    public override async Task<DeleteTopicContentResponse> DeleteTopicContent(
         DeleteTopicContentRequest request, ServerCallContext context)
     {
         if (!await topicSvc.ExistsAsync(request.Id))
             throw new RpcException(new Status(StatusCode.NotFound, "Topic not found"));
         await topicSvc.DeleteContentAsync(request.ContentId);
-        return new OperationResponse { Success = true };
+        return new DeleteTopicContentResponse { Success = true };
     }
 
     private static ProtoTopic MapToProto(Bacera.Gateway.Topic t) => new ProtoTopic

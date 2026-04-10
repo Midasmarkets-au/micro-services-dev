@@ -2,30 +2,30 @@
 /// Hello 请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloRequest {
+pub struct SayHelloRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
 /// Hello 响应
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloResponse {
+pub struct SayHelloResponse {
     #[prost(string, tag = "1")]
     pub message: ::prost::alloc::string::String,
 }
 /// 健康检查请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HealthCheckRequest {}
+pub struct CheckRequest {}
 /// 健康检查响应
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HealthCheckResponse {
-    #[prost(enumeration = "health_check_response::Status", tag = "1")]
+pub struct CheckResponse {
+    #[prost(enumeration = "check_response::Status", tag = "1")]
     pub status: i32,
 }
-/// Nested message and enum types in `HealthCheckResponse`.
-pub mod health_check_response {
+/// Nested message and enum types in `CheckResponse`.
+pub mod check_response {
     #[derive(
         Clone,
         Copy,
@@ -39,7 +39,7 @@ pub mod health_check_response {
     )]
     #[repr(i32)]
     pub enum Status {
-        Unknown = 0,
+        Unspecified = 0,
         Serving = 1,
         NotServing = 2,
     }
@@ -50,30 +50,30 @@ pub mod health_check_response {
         /// (if the ProtoBuf definition does not change) and safe for programmatic use.
         pub fn as_str_name(&self) -> &'static str {
             match self {
-                Status::Unknown => "UNKNOWN",
-                Status::Serving => "SERVING",
-                Status::NotServing => "NOT_SERVING",
+                Status::Unspecified => "STATUS_UNSPECIFIED",
+                Status::Serving => "STATUS_SERVING",
+                Status::NotServing => "STATUS_NOT_SERVING",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
-                "UNKNOWN" => Some(Self::Unknown),
-                "SERVING" => Some(Self::Serving),
-                "NOT_SERVING" => Some(Self::NotServing),
+                "STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+                "STATUS_SERVING" => Some(Self::Serving),
+                "STATUS_NOT_SERVING" => Some(Self::NotServing),
                 _ => None,
             }
         }
     }
 }
-/// 健康检查请求
+/// GenerateID 请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateIdRequest {
     #[prost(uint32, tag = "1")]
     pub work_id: u32,
 }
-/// 健康检查响应
+/// GenerateID 响应
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateIdResponse {
@@ -169,8 +169,11 @@ pub mod api_service_client {
         /// 简单问候
         pub async fn say_hello(
             &mut self,
-            request: impl tonic::IntoRequest<super::HelloRequest>,
-        ) -> std::result::Result<tonic::Response<super::HelloResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::SayHelloRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SayHelloResponse>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -192,11 +195,8 @@ pub mod api_service_client {
         /// 健康检查
         pub async fn check(
             &mut self,
-            request: impl tonic::IntoRequest<super::HealthCheckRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::HealthCheckResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::CheckRequest>,
+        ) -> std::result::Result<tonic::Response<super::CheckResponse>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -250,16 +250,16 @@ pub mod api_service_server {
         /// 简单问候
         async fn say_hello(
             &self,
-            request: tonic::Request<super::HelloRequest>,
-        ) -> std::result::Result<tonic::Response<super::HelloResponse>, tonic::Status>;
+            request: tonic::Request<super::SayHelloRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SayHelloResponse>,
+            tonic::Status,
+        >;
         /// 健康检查
         async fn check(
             &self,
-            request: tonic::Request<super::HealthCheckRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::HealthCheckResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::CheckRequest>,
+        ) -> std::result::Result<tonic::Response<super::CheckResponse>, tonic::Status>;
         /// SnowFlakeID generate
         async fn generate_id(
             &self,
@@ -352,16 +352,18 @@ pub mod api_service_server {
                 "/api.v1.ApiService/SayHello" => {
                     #[allow(non_camel_case_types)]
                     struct SayHelloSvc<T: ApiService>(pub Arc<T>);
-                    impl<T: ApiService> tonic::server::UnaryService<super::HelloRequest>
+                    impl<
+                        T: ApiService,
+                    > tonic::server::UnaryService<super::SayHelloRequest>
                     for SayHelloSvc<T> {
-                        type Response = super::HelloResponse;
+                        type Response = super::SayHelloResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::HelloRequest>,
+                            request: tonic::Request<super::SayHelloRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -396,18 +398,16 @@ pub mod api_service_server {
                 "/api.v1.ApiService/Check" => {
                     #[allow(non_camel_case_types)]
                     struct CheckSvc<T: ApiService>(pub Arc<T>);
-                    impl<
-                        T: ApiService,
-                    > tonic::server::UnaryService<super::HealthCheckRequest>
+                    impl<T: ApiService> tonic::server::UnaryService<super::CheckRequest>
                     for CheckSvc<T> {
-                        type Response = super::HealthCheckResponse;
+                        type Response = super::CheckResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::HealthCheckRequest>,
+                            request: tonic::Request<super::CheckRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {

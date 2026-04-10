@@ -21,23 +21,23 @@ pub mod service {
     use snowflaked::Generator;
 
     use crate::api::v1::{
-        GenerateIdRequest, GenerateIdResponse, HealthCheckRequest, HealthCheckResponse,
-        HelloRequest, HelloResponse, health_check_response::Status as HealthStatus,
+        GenerateIdRequest, GenerateIdResponse, CheckRequest, CheckResponse,
+        SayHelloRequest, SayHelloResponse, check_response::Status as HealthStatus,
     };
 
     /// 问候逻辑：根据 name 生成 message。
-    pub fn say_hello(req: HelloRequest) -> HelloResponse {
+    pub fn say_hello(req: SayHelloRequest) -> SayHelloResponse {
         let message = if req.name.is_empty() {
             "Hello14, World!".to_string()
         } else {
             format!("Hello13, {}!", req.name)
         };
-        HelloResponse { message }
+        SayHelloResponse { message }
     }
 
     /// 健康检查逻辑。
-    pub fn check(_req: HealthCheckRequest) -> HealthCheckResponse {
-        HealthCheckResponse {
+    pub fn check(_req: CheckRequest) -> CheckResponse {
+        CheckResponse {
             status: HealthStatus::Serving.into(),
         }
     }

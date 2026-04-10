@@ -49,22 +49,25 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         return response;
     }
 
-    public override async Task<ProtoSymbol> GetSymbol(GetSymbolRequest request, ServerCallContext context)
+    public override async Task<GetSymbolResponse> GetSymbol(GetSymbolRequest request, ServerCallContext context)
     {
         var s = await db.Symbols.FindAsync(request.Id);
         if (s == null) throw new RpcException(new Status(StatusCode.NotFound, "Symbol not found"));
 
-        return new ProtoSymbol
+        return new GetSymbolResponse
         {
-            Id          = s.Id,
-            Name        = s.Code,
-            Description = s.Category ?? "",
-            CategoryId  = s.CategoryId,
-            Type        = s.Type,
+            Data = new ProtoSymbol
+            {
+                Id          = s.Id,
+                Name        = s.Code,
+                Description = s.Category ?? "",
+                CategoryId  = s.CategoryId,
+                Type        = s.Type,
+            },
         };
     }
 
-    public override async Task<ProtoSymbol> CreateSymbol(
+    public override async Task<CreateSymbolResponse> CreateSymbol(
         CreateSymbolRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
@@ -80,17 +83,20 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         db.Symbols.Add(entity);
         await db.SaveChangesAsync();
 
-        return new ProtoSymbol
+        return new CreateSymbolResponse
         {
-            Id          = entity.Id,
-            Name        = entity.Code,
-            Description = entity.Category ?? "",
-            CategoryId  = entity.CategoryId,
-            Type        = entity.Type,
+            Data = new ProtoSymbol
+            {
+                Id          = entity.Id,
+                Name        = entity.Code,
+                Description = entity.Category ?? "",
+                CategoryId  = entity.CategoryId,
+                Type        = entity.Type,
+            },
         };
     }
 
-    public override async Task<ProtoSymbol> UpdateSymbol(
+    public override async Task<UpdateSymbolResponse> UpdateSymbol(
         UpdateSymbolRequest request, ServerCallContext context)
     {
         var entity = await db.Symbols.FindAsync(request.Id);
@@ -103,25 +109,28 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
 
         await db.SaveChangesAsync();
 
-        return new ProtoSymbol
+        return new UpdateSymbolResponse
         {
-            Id          = entity.Id,
-            Name        = entity.Code,
-            Description = entity.Category ?? "",
-            CategoryId  = entity.CategoryId,
-            Type        = entity.Type,
+            Data = new ProtoSymbol
+            {
+                Id          = entity.Id,
+                Name        = entity.Code,
+                Description = entity.Category ?? "",
+                CategoryId  = entity.CategoryId,
+                Type        = entity.Type,
+            },
         };
     }
 
-    public override async Task<OperationResponse> DeleteSymbol(
-        GetSymbolRequest request, ServerCallContext context)
+    public override async Task<DeleteSymbolResponse> DeleteSymbol(
+        DeleteSymbolRequest request, ServerCallContext context)
     {
         var entity = await db.Symbols.FindAsync(request.Id);
         if (entity == null) throw new RpcException(new Status(StatusCode.NotFound, "Symbol not found"));
 
         db.Symbols.Remove(entity);
         await db.SaveChangesAsync();
-        return new OperationResponse { Success = true };
+        return new DeleteSymbolResponse { Success = true };
     }
 
     public override async Task<BatchImportSymbolsResponse> BatchImportSymbols(
@@ -153,20 +162,24 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         return new BatchImportSymbolsResponse { Imported = imported, Skipped = skipped };
     }
 
-    public override async Task<OperationResponse> BatchDeleteSymbols(
+    public override async Task<BatchDeleteSymbolsResponse> BatchDeleteSymbols(
         BatchDeleteSymbolsRequest request, ServerCallContext context)
     {
         var ids = request.Ids.ToHashSet();
         var symbols = await db.Symbols.Where(x => ids.Contains(x.Id)).ToListAsync();
         db.Symbols.RemoveRange(symbols);
         await db.SaveChangesAsync();
-        return new OperationResponse { Success = true, Message = $"Deleted {symbols.Count} symbols" };
+        return new BatchDeleteSymbolsResponse
+        {
+            Success = true,
+            Message = $"Deleted {symbols.Count} symbols",
+        };
     }
 
     // ─── Categories ───────────────────────────────────────────────────────────
 
-    public override async Task<SymbolCategoriesResponse> GetCategories(
-        GetSymbolCategoriesRequest request, ServerCallContext context)
+    public override async Task<GetCategoriesResponse> GetCategories(
+        GetCategoriesRequest request, ServerCallContext context)
     {
         var query = db.Symbols.AsQueryable();
         if (request.HasType) query = query.Where(x => x.Type == request.Type);
@@ -177,7 +190,7 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
             .Distinct()
             .ToListAsync();
 
-        var response = new SymbolCategoriesResponse();
+        var response = new GetCategoriesResponse();
         response.Categories.AddRange(categories.Select(c => new ProtoSymbolCategory
         {
             Id   = c.CategoryId,
@@ -187,8 +200,8 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         return response;
     }
 
-    public override async Task<ProtoSymbolCategory> CreateCategory(
-        CreateSymbolCategoryRequest request, ServerCallContext context)
+    public override async Task<CreateCategoryResponse> CreateCategory(
+        CreateCategoryRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var maxCategoryId = await db.Symbols
@@ -207,16 +220,19 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         });
         await db.SaveChangesAsync();
 
-        return new ProtoSymbolCategory
+        return new CreateCategoryResponse
         {
-            Id   = newCategoryId,
-            Name = request.Name,
-            Type = request.Type,
+            Data = new ProtoSymbolCategory
+            {
+                Id   = newCategoryId,
+                Name = request.Name,
+                Type = request.Type,
+            },
         };
     }
 
-    public override async Task<ProtoSymbolCategory> UpdateCategory(
-        UpdateSymbolCategoryRequest request, ServerCallContext context)
+    public override async Task<UpdateCategoryResponse> UpdateCategory(
+        UpdateCategoryRequest request, ServerCallContext context)
     {
         var symbols = await db.Symbols
             .Where(x => x.Type == request.Model.Type && x.CategoryId == request.CategoryId)
@@ -228,16 +244,19 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         foreach (var s in symbols) s.Category = request.Model.Name;
         await db.SaveChangesAsync();
 
-        return new ProtoSymbolCategory
+        return new UpdateCategoryResponse
         {
-            Id   = request.CategoryId,
-            Name = request.Model.Name,
-            Type = request.Model.Type,
+            Data = new ProtoSymbolCategory
+            {
+                Id   = request.CategoryId,
+                Name = request.Model.Name,
+                Type = request.Model.Type,
+            },
         };
     }
 
-    public override async Task<OperationResponse> DeleteCategory(
-        DeleteSymbolCategoryRequest request, ServerCallContext context)
+    public override async Task<DeleteCategoryResponse> DeleteCategory(
+        DeleteCategoryRequest request, ServerCallContext context)
     {
         var symbols = await db.Symbols
             .Where(x => x.CategoryId == request.CategoryId && x.Type == request.Type)
@@ -248,7 +267,7 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
 
         db.Symbols.RemoveRange(symbols);
         await db.SaveChangesAsync();
-        return new OperationResponse { Success = true };
+        return new DeleteCategoryResponse { Success = true };
     }
 
     private static PaginationMeta BuildMeta(int page, int size, int total)
@@ -305,7 +324,7 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
         return response;
     }
 
-    public override async Task<ProtoExchangeRate> GetExchangeRate(
+    public override async Task<GetExchangeRateResponse> GetExchangeRate(
         GetExchangeRateRequest request, ServerCallContext context)
     {
         var item = await db.ExchangeRates
@@ -314,10 +333,10 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
             .FirstOrDefaultAsync();
 
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "ExchangeRate not found"));
-        return MapToProto(item);
+        return new GetExchangeRateResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ExchangeRateHistoryResponse> GetExchangeRateHistory(
+    public override async Task<GetExchangeRateHistoryResponse> GetExchangeRateHistory(
         GetExchangeRateHistoryRequest request, ServerCallContext context)
     {
         var criteria = new Bacera.Gateway.Audit.Criteria
@@ -333,7 +352,7 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
             .ToTenantPageModel()
             .ToListAsync();
 
-        var response = new ExchangeRateHistoryResponse();
+        var response = new GetExchangeRateHistoryResponse();
         response.Items.AddRange(items.Select(a =>
         {
             double rate = 0;
@@ -354,7 +373,7 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
         return response;
     }
 
-    public override async Task<ProtoExchangeRate> CreateExchangeRate(
+    public override async Task<CreateExchangeRateResponse> CreateExchangeRate(
         CreateExchangeRateRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
@@ -373,10 +392,10 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
 
         var result = await tradingSvc.ExchangeRateCreateAsync(spec);
         if (result.IsEmpty()) throw new RpcException(new Status(StatusCode.Internal, "Create failed"));
-        return MapToProto(result);
+        return new CreateExchangeRateResponse { Data = MapToProto(result) };
     }
 
-    public override async Task<ProtoExchangeRate> UpdateExchangeRate(
+    public override async Task<UpdateExchangeRateResponse> UpdateExchangeRate(
         UpdateExchangeRateRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
@@ -396,7 +415,7 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
 
         var result = await tradingSvc.ExchangeRateUpdateAsync(updateSpec, partyId);
         if (result.IsEmpty()) throw new RpcException(new Status(StatusCode.Internal, "Update failed"));
-        return MapToProto(result);
+        return new UpdateExchangeRateResponse { Data = MapToProto(result) };
     }
 
     private static long GetPartyId(ServerCallContext ctx)
