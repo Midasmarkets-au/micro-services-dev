@@ -92,7 +92,7 @@
               {{ $t("fields.openTime") }}
             </div>
           </template>
-          <TimeShow type="exactTime" :date-iso-string="item.openedOn" />
+          <TimeShow type="exactTimeGMT" :date-iso-string="item.openedOn" />
         </el-descriptions-item>
 
         <el-descriptions-item>
@@ -101,7 +101,7 @@
               {{ $t("fields.closeTime") }}
             </div>
           </template>
-          <TimeShow type="exactTime" :date-iso-string="item.closedOn" />
+          <TimeShow type="exactTimeGMT" :date-iso-string="item.closedOn" />
         </el-descriptions-item>
       </el-descriptions>
       <el-divider></el-divider>

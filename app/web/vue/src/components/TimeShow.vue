@@ -36,6 +36,9 @@
   </div>
   <!-- use  -->
   <span v-else-if="type === 'exactTime'">{{ getExactDateAndTime() }} GMT</span>
+  <span v-else-if="type === 'exactTimeGMT'"
+    >{{ getExactDateAndTime() }} GMT+{{ getTradeServerGMTOffset() }}</span
+  >
   <span v-else-if="type === 'reportTime'">{{ getExactDateAndTime() }}</span>
   <span v-else-if="type === 'reportDate'">{{ getExactDate() }}</span>
   <span v-else>{{ getDateAndTimeFromISOString() }}</span>
@@ -95,6 +98,20 @@ const getExactTime = () => {
   const date = moment.parseZone(props.dateIsoString);
   const formattedDate = date.format("HH:mm:ss");
   return formattedDate;
+};
+
+// Returns 3 (DST/summer) or 2 (winter) based on America/Los_Angeles DST for the trade date.
+// Trading servers use GMT+3 in DST period, GMT+2 in standard time.
+const getTradeServerGMTOffset = (): number => {
+  if (!props.dateIsoString) return 2;
+  const d = new Date(props.dateIsoString);
+  const tzPart = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    timeZoneName: "short",
+  })
+    .formatToParts(d)
+    .find((p) => p.type === "timeZoneName")?.value ?? "";
+  return tzPart === "PDT" ? 3 : 2;
 };
 
 const getDateAndTimeFromISOString = () => {
