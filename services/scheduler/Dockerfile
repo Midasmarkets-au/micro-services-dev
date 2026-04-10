@@ -21,12 +21,10 @@ COPY services/auth/Cargo.toml ./services/auth/Cargo.toml
 COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
 COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
-COPY services/auth_rust/Cargo.toml ./services/auth_rust/Cargo.toml
 RUN for svc in idgen auth boardcast tools scheduler; do \
       mkdir -p services/$svc/src && printf 'fn main() {}' > services/$svc/src/main.rs; \
     done && \
-    mkdir -p services/otel/src && touch services/otel/src/lib.rs && \
-    mkdir -p services/auth_rust/src && printf 'fn main() {}' > services/auth_rust/src/main.rs && touch services/auth_rust/src/lib.rs
+    mkdir -p services/otel/src && touch services/otel/src/lib.rs
 RUN cargo chef prepare --recipe-path recipe.json
 
 # ── Stage 3: compile dependencies (cached as long as deps unchanged) ─────────
@@ -41,7 +39,6 @@ COPY services/auth/Cargo.toml ./services/auth/Cargo.toml
 COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
 COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
-COPY services/auth_rust/Cargo.toml ./services/auth_rust/Cargo.toml
 # Only deps change → this layer is cached. Use cargo cache mount to avoid
 # re-downloading crates even when this layer is invalidated.
 RUN --mount=type=cache,target=/root/.cargo/registry \
