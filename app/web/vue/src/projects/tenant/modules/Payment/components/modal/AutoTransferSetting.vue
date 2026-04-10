@@ -17,6 +17,7 @@
             v-model="formData.amount"
             :disalbed="isLoading"
           ></el-input-number>
+          <span>&nbsp; USD</span>
         </div>
       </el-form-item>
     </el-form>

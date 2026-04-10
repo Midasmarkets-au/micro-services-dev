@@ -12,6 +12,8 @@ const ibPrefix = "api/v1/ib/";
 const salesPrefix = computed(
   () => `api/v1/sales/${store.state.SalesModule.salesAccount.uid}/`
 );
+const getSalesPrefix = (salesUid?: number) =>
+  `api/v1/sales/${salesUid ?? store.state.SalesModule.salesAccount.uid}/`;
 import { normalizeAmountList } from "@/lib/utils";
 const salesService = {
   getEmailByCode: async (uid: number, code: number) =>
@@ -139,14 +141,18 @@ const salesService = {
         { params: criteria }
       )
     ).data,
-  getDefaultLevelSetting: async () =>
-    (await axios.get(salesPrefix.value + "rebate-rule/default-level-setting"))
-      .data,
-
-  getAvailableAccountTypes: async () =>
+  getDefaultLevelSetting: async (salesUid?: number) =>
     (
       await axios.get(
-        salesPrefix.value + "account/configuration/account-type-available"
+        getSalesPrefix(salesUid) + "rebate-rule/default-level-setting"
+      )
+    ).data,
+
+  getAvailableAccountTypes: async (salesUid?: number) =>
+    (
+      await axios.get(
+        getSalesPrefix(salesUid) +
+          "account/configuration/account-type-available"
       )
     ).data,
 
@@ -229,7 +235,7 @@ const salesService = {
       )
     ).data,
 
-  getCategory: async () =>
+  getCategory: async (_salesUid?: number) =>
     (await axios.get(clientPrefix + "rebate/symbol/category")).data,
 
   getSymbolsList: async () =>
@@ -238,9 +244,12 @@ const salesService = {
   queryAccounts: async (criteria?: any) =>
     (await axios.get(salesPrefix.value + "account", { params: criteria })).data,
 
-  getIbLinks: async (criteria?: any) =>
-    (await axios.get(salesPrefix.value + "referral", { params: criteria }))
-      .data,
+  getIbLinks: async (criteria?: any, salesUid?: number) =>
+    (
+      await axios.get(getSalesPrefix(salesUid) + "referral", {
+        params: criteria,
+      })
+    ).data,
 
   postIbLink: async (formData: any) =>
     (await axios.post(salesPrefix.value + "referral", formData)).data,
@@ -248,11 +257,17 @@ const salesService = {
   getSalesLinkDetail: async (code: any) =>
     (await axios.get(salesPrefix.value + "referral/code/" + code)).data,
 
-  postSalesLinkForIB: async (formData: any) =>
-    (await axios.post(salesPrefix.value + "referral/top-agent", formData)).data,
+  postSalesLinkForIB: async (formData: any, salesUid?: number) =>
+    (
+      await axios.post(
+        getSalesPrefix(salesUid) + "referral/top-agent",
+        formData
+      )
+    ).data,
 
-  postSalesLinkForClient: async (formData: any) =>
-    (await axios.post(salesPrefix.value + "referral/client", formData)).data,
+  postSalesLinkForClient: async (formData: any, salesUid?: number) =>
+    (await axios.post(getSalesPrefix(salesUid) + "referral/client", formData))
+      .data,
 
   getIbLinkDetail: async (code: any) =>
     (await axios.get(salesPrefix.value + "referral/" + code)).data,

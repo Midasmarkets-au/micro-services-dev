@@ -137,7 +137,12 @@
               <td>{{ $t(`type.currency.${item.currencyId}`) }}</td>
               <td>{{ $t(`type.tradeRebateStatus.${item.status}`) }}</td>
               <td>
-                <TimeShow type="exactTime" :date-iso-string="item.closedOn" />
+                <!-- <TimeShow type="exactTime" :date-iso-string="item.closedOn" /> -->
+                <TimeShow
+                  type="exactTimeGMT"
+                  :date-iso-string="item.closedOn"
+                  :gmt-option="{ isconvert: false, islocal: true }"
+                />
               </td>
               <td>
                 <el-button

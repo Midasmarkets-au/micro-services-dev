@@ -24,7 +24,7 @@
               <div class="d-flex fw-normal fs-7 py-2" style="color: #b1b1b1">
                 <span>{{ $t("fields.postedOn") }}:&nbsp;</span
                 ><TimeShow :date-iso-string="details.updatedOn" />
-                <span>&nbsp; • By MM Event Notice</span>
+                <span>&nbsp; • By MDM Event Notice</span>
               </div>
             </h2>
             <div

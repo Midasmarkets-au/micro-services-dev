@@ -71,8 +71,8 @@
     >
       <div class="flex-1 flex flex-row">
         <div class="field">
-          <div>Are you an employee of MM or other Financial Company?</div>
-          <div>您是否为MM的员工或其他金融公司的员工？</div>
+          <div>Are you an employee of MDM or other Financial Company?</div>
+          <div>您是否为MDM的员工或其他金融公司的员工？</div>
         </div>
       </div>
       <div class="flex-1 flex-col ml-2">
@@ -308,7 +308,7 @@
           <div class="flex-1 flex flex-row border-r border-black-800">
             <div class="field w-1/3 border-r border-black-800">
               <div>
-                Nature and purpose of the business relationship between MM and
+                Nature and purpose of the business relationship between MDM and
                 the client:
               </div>
               <div>MM与客户之间业务关系的性质和目的:</div>

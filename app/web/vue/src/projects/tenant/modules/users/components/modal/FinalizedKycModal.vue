@@ -39,7 +39,7 @@
         <div class="fs-1">
           KYC EVIDENCE VERIFICATION FORM / 客户信息核实证明表
         </div>
-        <div class="fs-1">MM Co Ltd</div>
+        <div class="fs-1">MDM Co Ltd</div>
         <div class="fs-3">
           For Individuals, Individual Beneficial Owners and Sole Traders
         </div>
@@ -262,10 +262,10 @@
           <tr>
             <td colspan="2" class="kyc-label-col-2">
               <span
-                >Are you an employee of MM or another Financial Company?</span
+                >Are you an employee of MDM or another Financial Company?</span
               >
               <br />
-              <span>您是 MM 或其他金融公司的员工吗?</span>
+              <span>您是 MDM 或其他金融公司的员工吗?</span>
             </td>
             <td colspan="3" class="kyc-input-col-8">
               <div style="font-size: 12px">
@@ -523,11 +523,11 @@
           <tr>
             <td class="kyc-label-col-2">
               <span
-                >Nature and purpose of the business relationship between MM and
+                >Nature and purpose of the business relationship between MDM and
                 the client</span
               >
               <br />
-              <span>MM与客户之间业务关系的性质和目的</span>
+              <span>MDM与客户之间业务关系的性质和目的</span>
             </td>
             <td class="kyc-input-col-3">
               {{ kycInfos.businessCompanyPurposeBetweenUs }}
@@ -1350,7 +1350,7 @@
 
       <footer class="text-center mt-11">
         <p>Level 18, Suite 3, 201 Elizabeth Street, Sydney NSW, 2000</p>
-        <p>MM Co Ltd | AU Company No. | License No.</p>
+        <p>MDM Co Ltd | AU Company No. | License No.</p>
       </footer>
     </div>
   </SimpleForm>

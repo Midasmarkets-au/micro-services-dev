@@ -36,6 +36,10 @@ export default {
 
   updateCheaterIp: async (id: number, formData: object) =>
     (await axios.put(prefix + "ip-black-list/" + id, formData)).data,
+
+  uploadCheaterIps: async (formData: FormData) =>
+    (await axios.post(prefix + "ip-black-list/upload-ips", formData)).data,
+
   // Blocked List
   getBlockedList: async (criteria?: any) =>
     (await axios.get(prefix + "user-black-list", { params: criteria })).data,
@@ -48,6 +52,9 @@ export default {
 
   removeBlockedUser: async (id: number) =>
     (await axios.delete(prefix + "user-black-list/" + id)).data,
+
+  uploadBlockedUsers: async (formData: FormData) =>
+    (await axios.post(prefix + "user-black-list/upload-users", formData)).data,
 
   // Violation List
   getViolationList: async (siteId: number) =>
