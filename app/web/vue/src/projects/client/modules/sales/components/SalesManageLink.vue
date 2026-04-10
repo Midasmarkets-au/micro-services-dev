@@ -4,7 +4,9 @@
     <TableFooter @page-change="fetchData" :criteria="{ status: 0 }" />
   </div>
   <div v-else>
-    <div class="font-medium fs-2 card-title">{{ $t("action.manageLink") }}</div>
+    <div v-if="!props.isHideTitle" class="font-medium fs-2 card-title">
+      {{ $t("action.manageLink") }}
+    </div>
     <div class="overflow-auto" style="white-space: nowrap">
       <table class="table align-middle table-row-bordered gy-5">
         <thead>
@@ -15,7 +17,15 @@
             <th class="text-center">{{ $t("fields.language") }}</th>
             <!-- <th class="text-center">{{ $t("tip.numberOfIB") }}</th> -->
             <th class="text-center" v-if="projectConfig?.rebateEnabled">
-              {{ $t("title.rebateSettings") }}
+              <template v-if="props.isHideTitle">
+                {{ $t("action.view") }}
+              </template>
+              <template v-else>
+                {{ $t("title.rebateSettings") }}
+              </template>
+            </th>
+            <th v-if="props.isHideTitle" class="text-center">
+              {{ $t("status.active") }}
             </th>
             <th class="text-center">
               {{ $t("title.autoCreateAccount") }}
@@ -65,6 +75,18 @@
               ></i>
             </td>
             <td class="text-center">
+              <el-switch
+                v-model="item.status"
+                class="p-4"
+                size="small"
+                style="font-size: 18px"
+                :active-value="0"
+                :inactive-value="1"
+                @change="changeStatus(item)"
+              >
+              </el-switch>
+            </td>
+            <td class="text-center">
               {{
                 item.displaySummary?.isAutoCreatePaymentMethod === 1
                   ? $t("action.yes")
@@ -107,6 +129,16 @@ import CopyReferralLink from "@/components/CopyReferralLink.vue";
 import EditReferralLink from "@/projects/client/modules/sales/components/modal/EditReferralLink.vue";
 import ManageLinkMobile from "./link/ManageLinkMobile.vue";
 
+const props = withDefaults(
+  defineProps<{
+    isHideTitle?: boolean;
+    saleId?: number;
+  }>(),
+  {
+    isHideTitle: false,
+  }
+);
+
 const { t } = useI18n();
 const store = useStore();
 const isLoading = ref(true);
@@ -115,11 +147,14 @@ const projectConfig: PublicSetting = store.state.AuthModule.config;
 const salesAccount = computed(() => store.state.SalesModule.salesAccount);
 const SalesLinkDetailRef = ref<InstanceType<typeof SalesLinkDetailModal>>();
 const EditReferralLinkRef = ref<InstanceType<typeof EditReferralLink>>();
-
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    ibLinks.value = await SalesService.getIbLinks({ status: 0 });
+    let params = { status: 0 };
+    if (props.isHideTitle) {
+      params = {} as any;
+    }
+    ibLinks.value = await SalesService.getIbLinks(params, props.saleId);
     ibLinks.value.data = ibLinks.value.data.filter((item) =>
       item.code.startsWith("RS")
     );
@@ -133,11 +168,19 @@ const fetchData = async () => {
 const showDetail = (_code: string) => {
   SalesLinkDetailRef.value?.show(_code);
 };
-
 const editCode = (item: any) => {
   EditReferralLinkRef.value?.show(item);
 };
-
+const changeStatus = async (item: any) => {
+  try {
+    await SalesService.updateIbLink(item.id, {
+      status: item.status,
+      name: item.name,
+    });
+  } catch (error) {
+    // console.log(error);
+  }
+};
 provide("isLoading", isLoading);
 provide("ibLinks", ibLinks);
 provide("editCode", editCode);

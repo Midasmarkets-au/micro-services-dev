@@ -37,7 +37,7 @@
             src="/images/logos/logo@2x.png"
             class="h-60px h-lg-75px"
           />
-          <span style="font-size: 50px; color: #ffff">MM</span>
+          <span style="font-size: 50px; color: #ffff">MDM</span>
         </router-link>
         <!--end::Logo-->
 

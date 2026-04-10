@@ -40,7 +40,7 @@
             <img
               class="w-15px h-15px rounded-1 ms-2"
               :src="currentLanguageLocale.flag"
-              alt="MM Pro"
+              alt="MDM Pro"
             />
           </span>
         </span>
@@ -61,7 +61,7 @@
             :class="{ active: currentLanguage(lang.code) }"
           >
             <span class="symbol symbol-20px me-4">
-              <img class="rounded-1" :src="lang.flag" alt="MM Pro" />
+              <img class="rounded-1" :src="lang.flag" alt="MDM Pro" />
             </span>
             {{ lang.name ?? "Name" }}
           </a>

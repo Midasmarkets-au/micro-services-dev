@@ -26,6 +26,9 @@
         </el-button>
       </div>
       <div class="card-toolbar">
+        <el-button type="primary" plain @click="showUpload()">
+          Batch Upload
+        </el-button>
         <el-button type="primary" @click="showCreate()">Block User</el-button>
       </div>
     </div>
@@ -81,6 +84,7 @@
     </div>
   </div>
   <BlockListCreate ref="createModalRef" @event-submit="fetchData(1)" />
+  <BlockListUpload ref="uploadModalRef" @event-submit="fetchData(1)" />
 </template>
 
 <script lang="ts" setup>
@@ -89,11 +93,13 @@ import { InfoFilled } from "@element-plus/icons-vue";
 import ToolServices from "../services/ToolServices";
 import { ElNotification } from "element-plus";
 import BlockListCreate from "../components/BlockListCreate.vue";
+import BlockListUpload from "../components/BlockListUpload.vue";
 const isLoading = inject<any>("isLoading");
 const selectedOption = ref("email");
 const detail = ref(Array<any>());
-const createModalRef = ref(null);
-const criteria = ref({
+const createModalRef = ref<any>(null);
+const uploadModalRef = ref<any>(null);
+const criteria = ref<any>({
   page: 1,
   size: 25,
 });
@@ -131,6 +137,10 @@ const fetchData = async (_page: number) => {
 const showCreate = (item?: any) => {
   createModalRef.value?.show(item);
 };
+
+const showUpload = () => {
+  uploadModalRef.value?.show();
+};
 const removeBlockedUser = async (id: number) => {
   try {
     await ToolServices.removeBlockedUser(id);
@@ -140,7 +150,7 @@ const removeBlockedUser = async (id: number) => {
       offset: 100,
     });
     fetchData(1);
-  } catch (error) {
+  } catch (error: any) {
     console.log(error);
     ElNotification.error({
       title: "Error",

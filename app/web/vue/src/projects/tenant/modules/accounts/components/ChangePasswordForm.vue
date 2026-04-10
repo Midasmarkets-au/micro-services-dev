@@ -86,7 +86,9 @@
         />
       </el-form-item>
     </el-form>
-
+    <div class="alert alert-warning mb-4">
+      {{ $t("tip.passwordUpdateWithdrawLock24h") }}
+    </div>
     <!-- 确认邮箱区域 - 独立样式 -->
     <div class="email-confirmation-section">
       <!-- <div class="confirmation-header">

@@ -6,6 +6,7 @@
     <div
       v-if="services.withdrawal && services.withdrawal.length > 0"
       class="row mb-4"
+      style="max-height: 400px; overflow-y: auto"
     >
       <div
         class="col-lg-4 col-6 mt-3"

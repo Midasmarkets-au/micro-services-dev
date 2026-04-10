@@ -23,7 +23,7 @@ const store = useStore();
 
 const SESSION_KEY = "session_login_time";
 
-const timeoutHours = 8;
+const timeoutHours = 10;
 const timeoutMs = timeoutHours * 60 * 60 * 1000;
 const enabled = timeoutHours > 0;
 

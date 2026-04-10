@@ -25,7 +25,7 @@
               <div class="d-flex fw-normal fs-7 pt-3" style="color: #b1b1b1">
                 <span>{{ $t("fields.postedOn") }}:&nbsp;</span>
                 <TimeShow :date-iso-string="details.updatedOn" />
-                <span>&nbsp; • By MM Event Notice</span>
+                <span>&nbsp; • By MDM Event Notice</span>
               </div>
             </h2>
             <div id="kt_modal_add_event_close" data-bs-dismiss="modal">
@@ -87,7 +87,7 @@ defineExpose({
 <style lang="scss">
 .image-bg {
   aspect-ratio: 16/4;
-  background-image: url("/images/bg/bcr-points-mall-banner.jpeg");
+  background-image: url("/public/images/bg/bcr-points-mall-banner.jpeg");
   background-size: cover;
   background-repeat: no-repeat;
 }
