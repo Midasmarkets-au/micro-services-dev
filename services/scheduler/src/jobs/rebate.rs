@@ -9,7 +9,7 @@ use crate::jobs::rebate_calc;
 use crate::AppContext;
 
 /// Calculate rebates for all tenants.
-/// Reads from trd."_TradeRebateK8s", writes to core."_MatterK8s" + trd."_Rebate_{year}".
+/// Reads from trd.trade_rebate_k8s, writes to core.matter_k8s + trd."_Rebate_{year}".
 /// Cron: every 2 minutes (*/2 * * * *).
 pub async fn execute_calculate(ctx: AppContext) -> Result<()> {
     let tenant_ids = tenant::get_all_tenant_ids(&ctx.central_pool).await?;

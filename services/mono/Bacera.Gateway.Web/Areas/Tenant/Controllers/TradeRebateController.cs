@@ -73,9 +73,9 @@ public class TradeRebateController(
                                 DATE_PART('hour', "CreatedOn") AS hour,
                                 COUNT(*) AS count
                               FROM
-                                trd."_TradeRebate"
+                                trd.trade_rebate_k8s
                               WHERE
-                                DATE("CreatedOn") = DATE '{dateStr}'
+                                DATE(created_on) = DATE '{dateStr}'
                               GROUP BY
                                 hour
                               ORDER BY
