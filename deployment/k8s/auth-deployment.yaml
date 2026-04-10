@@ -1,8 +1,10 @@
 # ============================================================================
-#  auth — .NET 认证服务
-#  镜像：docker build -f services/auth/Dockerfile -t auth .
-#  端口：9001 (HTTP)
-#  入口：/connect/token 由 gateway-ingress 路由到此服务
+#  auth — Rust 认证服务
+#  镜像：docker build --target auth -t auth .
+#  端口：9002 (HTTP /connect/token, /api/v2/auth/*, /.well-known/jwks.json)
+#        50002 (gRPC AuthValidationService — mono 调用 ValidateToken)
+#  依赖：postgres (portal_central), redis
+#  环境变量：由 Secret auth-env 注入
 # ============================================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -26,13 +28,21 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 9001
+              containerPort: 9002
+            - name: grpc
+              containerPort: 50002
           envFrom:
             - secretRef:
                 name: auth-env
           env:
             - name: HTTP_ADDR
-              value: "http://[::]:9001"
+              value: "[::]:9002"
+            - name: GRPC_ADDR
+              value: "[::]:50002"
+            - name: SECURE_COOKIE
+              value: "true"
+            - name: MONO_GRPC_ADDR
+              value: "http://mono:50005"
             - name: RUST_LOG
               value: "info"
             - name: LOG_DIR
@@ -46,13 +56,15 @@ spec:
               cpu: "200m"
           livenessProbe:
             httpGet:
-              path: /health
-              port: 9001
+              path: /.well-known/jwks.json
+              port: 9002
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 3
           readinessProbe:
             httpGet:
-              path: /health
-              port: 9001
+              path: /.well-known/jwks.json
+              port: 9002
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3

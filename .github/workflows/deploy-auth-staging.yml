@@ -1,0 +1,69 @@
+name: Deploy Auth Staging
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - "services/auth/**"
+      - "proto/api/v1/auth.proto"
+      - ".github/workflows/deploy-auth-staging.yml"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-2
+  ECR_REGISTRY: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com
+  ECR_REPOSITORY: auth
+  K8S_DEPLOYMENT: auth
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/auth/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}-cache:latest
+          cache-to: type=registry,ref=${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}-cache:latest,mode=max,image-manifest=true,oci-mediatypes=true
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region ${{ env.AWS_REGION }} \
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Deploy to EKS
+        run: |
+          kubectl rollout restart deployment $K8S_DEPLOYMENT
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/$K8S_DEPLOYMENT --timeout=120s

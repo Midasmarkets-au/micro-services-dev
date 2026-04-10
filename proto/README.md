@@ -8,12 +8,39 @@
 |------|---------|------|
 | `api/v1/service.proto` | `api.v1` | ApiService — gRPC + HTTP REST（SayHello、HealthCheck、GenerateID） |
 | `api/v1/hello.proto` | `api.v1` | HelloRequest / HelloResponse 消息定义 |
-| `api/v1/auth.proto` | `api.v1` | AuthService — 认证相关接口 |
+| `api/v1/auth.proto` | `api.v1` | AuthValidationService（auth 实现，mono 调用）；AuthService（mono 实现，auth 回调） |
 | `api/v1/boardcast.proto` | `api.v1` | BoardcastService — 消息广播（Publish / Subscribe） |
 | `api/v1/scheduler.proto` | `api.v1` | SchedulerService — 任务入队（EnqueueReportRequest）；MonoCallbackService — mono 回调（NotifyReportDone） |
 | `google/api/annotations.proto` | `google.api` | HTTP 注解扩展 |
 | `google/api/http.proto` | `google.api` | HTTP 规则消息 |
 | `google/protobuf/descriptor.proto` | `google.protobuf` | 描述符，供注解扩展使用 |
+
+## AuthValidationService / AuthService
+
+```protobuf
+// auth service 实现，mono 调用验证 JWT
+service AuthValidationService {
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+// mono 实现，auth service 在登录流程中回调（跨库操作）
+service AuthService {
+  rpc VerifyAuthCode(VerifyAuthCodeRequest)           returns (VerifyAuthCodeResponse);
+  rpc SendAuthCode(SendAuthCodeRequest)               returns (SendAuthCodeResponse);
+  rpc GetTwoFactorSetting(GetTwoFactorSettingRequest) returns (GetTwoFactorSettingResponse);
+  rpc GetRecentUserAgents(GetRecentUserAgentsRequest) returns (GetRecentUserAgentsResponse);
+  rpc WriteLoginLog(WriteLoginLogRequest)             returns (WriteLoginLogResponse);
+}
+```
+
+| RPC | 说明 | 调用方 |
+|-----|------|--------|
+| `AuthValidationService.ValidateToken` | 验证 JWT，返回 user_id / tenant_id / roles 等 claims | mono → auth (:50002) |
+| `AuthService.VerifyAuthCode` | 验证 2FA 邮件验证码 | auth → mono (:50005) |
+| `AuthService.SendAuthCode` | 生成并发送 2FA 验证码邮件 | auth → mono (:50005) |
+| `AuthService.GetTwoFactorSetting` | 读取租户 2FA 配置 | auth → mono (:50005) |
+| `AuthService.GetRecentUserAgents` | 读取最近登录 UA（新设备识别） | auth → mono (:50005) |
+| `AuthService.WriteLoginLog` | 写入登录日志 + 更新 LastLoginIp | auth → mono (:50005) |
 
 ## BoardcastService
 
@@ -60,6 +87,7 @@ service MonoCallbackService {
 `build.rs` 在 `cargo build` 时调用 `tonic_build` 从 proto 生成 Rust 代码到 `src/generated/`：
 
 ```bash
+cargo build -p auth       # 生成 AuthValidationService 服务端 + AuthService 客户端
 cargo build -p idgen      # 生成 ApiService 客户端 + 服务端
 cargo build -p boardcast  # 生成 BoardcastService 客户端 + 服务端
 cargo build -p scheduler  # 生成 SchedulerService 客户端 + MonoCallbackService 服务端
@@ -71,7 +99,7 @@ cargo build -p scheduler  # 生成 SchedulerService 客户端 + MonoCallbackServ
 
 ```xml
 <Protobuf Include="..\..\..\proto\api\v1\service.proto"   GrpcServices="Both"   />
-<Protobuf Include="..\..\..\proto\api\v1\auth.proto"      GrpcServices="Server" />
+<Protobuf Include="..\..\..\proto\api\v1\auth.proto"      GrpcServices="Both"   />
 <Protobuf Include="..\..\..\proto\api\v1\boardcast.proto"  GrpcServices="Client" />
 <Protobuf Include="..\..\..\proto\api\v1\scheduler.proto"  GrpcServices="Both"   />
 ```
