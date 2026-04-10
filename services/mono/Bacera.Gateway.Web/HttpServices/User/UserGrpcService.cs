@@ -57,7 +57,7 @@ public class TenantUserGrpcService(
         return response;
     }
 
-    public override async Task<ProtoUser> GetUser(GetUserRequest request, ServerCallContext context)
+    public override async Task<GetUserResponse> GetUser(GetUserRequest request, ServerCallContext context)
     {
         var item = await tenantDb.Parties
             .Where(x => x.Id == request.PartyId)
@@ -68,14 +68,17 @@ public class TenantUserGrpcService(
         var proto = MapDetailToProto(item);
         if (await userSvc.IsUserLockedOutAsync(request.PartyId))
             proto.LockoutEnd = DateTime.MaxValue.ToString("O");
-        return proto;
+        return new GetUserResponse { Data = proto };
     }
 
-    public override Task<ProtoUser> GetUserByPid(GetUserByPidRequest request, ServerCallContext context)
-        => GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+    public override async Task<GetUserByPidResponse> GetUserByPid(GetUserByPidRequest request, ServerCallContext context)
+    {
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new GetUserByPidResponse { Data = result.Data };
+    }
 
-    public override async Task<ListUsersResponse> GetUserSummary(
-        ListUsersRequest request, ServerCallContext context)
+    public override async Task<GetUserSummaryResponse> GetUserSummary(
+        GetUserSummaryRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var criteria = new Bacera.Gateway.Auth.User.Criteria
@@ -92,7 +95,7 @@ public class TenantUserGrpcService(
             .ToUserInfo()
             .ToListAsync();
 
-        var response = new ListUsersResponse
+        var response = new GetUserSummaryResponse
         {
             Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
@@ -107,54 +110,56 @@ public class TenantUserGrpcService(
         return response;
     }
 
-    public override async Task<ProtoUser> GetUserByUid(GetUserByUidRequest request, ServerCallContext context)
+    public override async Task<GetUserByUidResponse> GetUserByUid(GetUserByUidRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await authDb.Users
             .Where(x => x.TenantId == tenantId && x.Uid == request.Uid)
             .SingleOrDefaultAsync();
         if (user == null) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
-        return MapAuthUserToProto(user);
+        return new GetUserByUidResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> GetUserById(GetUserByIdRequest request, ServerCallContext context)
+    public override async Task<GetUserByIdResponse> GetUserById(GetUserByIdRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await authDb.Users
             .Where(x => x.TenantId == tenantId && x.Id == request.Id)
             .SingleOrDefaultAsync();
         if (user == null) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
-        return MapAuthUserToProto(user);
+        return new GetUserByIdResponse { Data = MapAuthUserToProto(user) };
     }
 
     // ─── Tags ─────────────────────────────────────────────────────────────────
 
-    public override async Task<ProtoUser> AddUserTag(UserTagRequest request, ServerCallContext context)
+    public override async Task<AddUserTagResponse> AddUserTag(AddUserTagRequest request, ServerCallContext context)
     {
         await tagSvc.AddPartyTagAsync(request.PartyId, request.Tag);
-        return await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new AddUserTagResponse { Data = result.Data };
     }
 
-    public override async Task<ProtoUser> RemoveUserTag(UserTagRequest request, ServerCallContext context)
+    public override async Task<RemoveUserTagResponse> RemoveUserTag(RemoveUserTagRequest request, ServerCallContext context)
     {
         await tagSvc.RemovePartyTagAsync(request.PartyId, request.Tag);
-        return await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new RemoveUserTagResponse { Data = result.Data };
     }
 
     // ─── Roles (on User) ──────────────────────────────────────────────────────
 
-    public override async Task<RolesResponse> GetAllRoles(EmptyRequest request, ServerCallContext context)
+    public override async Task<GetAllRolesResponse> GetAllRoles(GetAllRolesRequest request, ServerCallContext context)
     {
         var roles = await authDb.Roles
             .Where(x => x.Name != UserRoleTypesString.SuperAdmin)
             .Select(x => new { x.Id, x.Name })
             .ToListAsync();
-        var response = new RolesResponse();
+        var response = new GetAllRolesResponse();
         response.Roles.AddRange(roles.Select(r => new ProtoRole { Id = r.Id, Name = r.Name ?? "" }));
         return response;
     }
 
-    public override async Task<ProtoUser> AddRole(UserRoleRequest request, ServerCallContext context)
+    public override async Task<AddRoleResponse> AddRole(AddRoleRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -168,10 +173,10 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new AddRoleResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> RemoveRole(UserRoleRequest request, ServerCallContext context)
+    public override async Task<RemoveRoleResponse> RemoveRole(RemoveRoleRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -185,11 +190,11 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new RemoveRoleResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<UserPermissionsResponse> GetUserPermissions(
-        GetUserRequest request, ServerCallContext context)
+    public override async Task<GetUserPermissionsResponse> GetUserPermissions(
+        GetUserPermissionsRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var userId = await authDb.Users
@@ -203,13 +208,13 @@ public class TenantUserGrpcService(
             .Select(x => x.ClaimValue!)
             .ToListAsync();
 
-        var response = new UserPermissionsResponse();
+        var response = new GetUserPermissionsResponse();
         response.Permissions.AddRange(perms);
         return response;
     }
 
-    public override async Task<UserClaimsResponse> GetUserClaims(
-        GetUserRequest request, ServerCallContext context)
+    public override async Task<GetUserClaimsResponse> GetUserClaims(
+        GetUserClaimsRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await authDb.Users
@@ -217,14 +222,14 @@ public class TenantUserGrpcService(
         if (user == null) throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
 
         var claims = await userManager.GetClaimsAsync(user);
-        var response = new UserClaimsResponse();
+        var response = new GetUserClaimsResponse();
         foreach (var c in claims)
             if (c.Type != null && c.Value != null)
                 response.Claims[c.Type] = c.Value;
         return response;
     }
 
-    public override async Task<ProtoUser> AddRoleByName(UserRoleByNameRequest request, ServerCallContext context)
+    public override async Task<AddRoleByNameResponse> AddRoleByName(AddRoleByNameRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -235,10 +240,10 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new AddRoleByNameResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> RemoveRoleByName(UserRoleByNameRequest request, ServerCallContext context)
+    public override async Task<RemoveRoleByNameResponse> RemoveRoleByName(RemoveRoleByNameRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -249,12 +254,12 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new RemoveRoleByNameResponse { Data = MapAuthUserToProto(user) };
     }
 
     // ─── Permissions ──────────────────────────────────────────────────────────
 
-    public override async Task<ProtoUser> AddPermission(UserPermissionRequest request, ServerCallContext context)
+    public override async Task<AddPermissionResponse> AddPermission(AddPermissionRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -266,10 +271,10 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new AddPermissionResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> RemovePermission(UserPermissionRequest request, ServerCallContext context)
+    public override async Task<RemovePermissionResponse> RemovePermission(RemovePermissionRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -281,11 +286,11 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new RemovePermissionResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> DisableWholesalePermission(
-        GetUserRequest request, ServerCallContext context)
+    public override async Task<DisableWholesalePermissionResponse> DisableWholesalePermission(
+        DisableWholesalePermissionRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -303,12 +308,12 @@ public class TenantUserGrpcService(
             "Remove-" + UserPermissionTypes.ApplicationWholesaleDisabled));
         await tenantDb.SaveChangesAsync();
 
-        return MapAuthUserToProto(user);
+        return new DisableWholesalePermissionResponse { Data = MapAuthUserToProto(user) };
     }
 
     // ─── Account links ────────────────────────────────────────────────────────
 
-    public override async Task<ProtoUser> AddSalesAccount(UserAccountLinkRequest request, ServerCallContext context)
+    public override async Task<AddSalesAccountResponse> AddSalesAccount(AddSalesAccountRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -323,10 +328,10 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new AddSalesAccountResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> RemoveSalesAccount(UserAccountLinkRequest request, ServerCallContext context)
+    public override async Task<RemoveSalesAccountResponse> RemoveSalesAccount(RemoveSalesAccountRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -338,10 +343,10 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new RemoveSalesAccountResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> AddAgentAccount(UserAccountLinkRequest request, ServerCallContext context)
+    public override async Task<AddAgentAccountResponse> AddAgentAccount(AddAgentAccountRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -356,10 +361,10 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new AddAgentAccountResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> RemoveAgentAccount(UserAccountLinkRequest request, ServerCallContext context)
+    public override async Task<RemoveAgentAccountResponse> RemoveAgentAccount(RemoveAgentAccountRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var user = await userManager.Users
@@ -371,7 +376,7 @@ public class TenantUserGrpcService(
         if (!result.Succeeded)
             throw new RpcException(new Status(StatusCode.Internal, string.Join("; ", result.Errors.Select(e => e.Description))));
 
-        return MapAuthUserToProto(user);
+        return new RemoveAgentAccountResponse { Data = MapAuthUserToProto(user) };
     }
 
     // ─── Audits ───────────────────────────────────────────────────────────────
@@ -411,7 +416,7 @@ public class TenantUserGrpcService(
         return response;
     }
 
-    public override async Task<ProtoUserAudit> GetUserAudit(
+    public override async Task<GetUserAuditResponse> GetUserAudit(
         GetUserAuditRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
@@ -427,29 +432,32 @@ public class TenantUserGrpcService(
             .FirstOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Audit not found"));
 
-        return new ProtoUserAudit
+        return new GetUserAuditResponse
         {
-            Id        = item.Id,
-            PartyId   = item.PartyId,
-            Action    = item.Action.ToString(),
-            CreatedAt = item.CreatedOn.ToString("O"),
+            Data = new ProtoUserAudit
+            {
+                Id        = item.Id,
+                PartyId   = item.PartyId,
+                Action    = item.Action.ToString(),
+                CreatedAt = item.CreatedOn.ToString("O"),
+            }
         };
     }
 
     // ─── Payment Service ──────────────────────────────────────────────────────
 
-    public override async Task<PaymentServiceResponse> GetUserPaymentService(
-        GetUserRequest request, ServerCallContext context)
+    public override async Task<GetUserPaymentServiceResponse> GetUserPaymentService(
+        GetUserPaymentServiceRequest request, ServerCallContext context)
     {
         var item = await accountingSvc.GetPaymentServiceAccessForTenantAsync(request.PartyId, null, null);
-        return new PaymentServiceResponse
+        return new GetUserPaymentServiceResponse
         {
             Settings = JsonConvert.SerializeObject(item)
         };
     }
 
-    public override async Task<PaymentServiceResponse> UpdateUserPaymentService(
-        UpdatePaymentServiceRequest request, ServerCallContext context)
+    public override async Task<UpdateUserPaymentServiceResponse> UpdateUserPaymentService(
+        UpdateUserPaymentServiceRequest request, ServerCallContext context)
     {
         var accesses = JsonConvert.DeserializeObject<Bacera.Gateway.PaymentService.Accesses>(request.Spec)
             ?? throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid spec JSON"));
@@ -457,7 +465,7 @@ public class TenantUserGrpcService(
         await accountingSvc.SetPaymentServiceAccessAsync(request.PartyId, accesses);
 
         var updated = await accountingSvc.GetPaymentServiceAccessForTenantAsync(request.PartyId, null, null);
-        return new PaymentServiceResponse
+        return new UpdateUserPaymentServiceResponse
         {
             Settings = JsonConvert.SerializeObject(updated)
         };
@@ -465,7 +473,7 @@ public class TenantUserGrpcService(
 
     // ─── Profile / Status / Site ──────────────────────────────────────────────
 
-    public override async Task<ProtoUser> UpdateUserProfile(
+    public override async Task<UpdateUserProfileResponse> UpdateUserProfile(
         UpdateUserProfileRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
@@ -499,10 +507,10 @@ public class TenantUserGrpcService(
         authDb.Users.Update(user);
         await authDb.SaveChangesWithAuditAsync(request.PartyId);
 
-        return MapAuthUserToProto(user);
+        return new UpdateUserProfileResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> UpdateUserStatus(
+    public override async Task<UpdateUserStatusResponse> UpdateUserStatus(
         UpdateUserStatusRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
@@ -528,10 +536,10 @@ public class TenantUserGrpcService(
 
         var user = await authDb.Users
             .SingleAsync(x => x.TenantId == tenantId && x.PartyId == request.PartyId);
-        return MapAuthUserToProto(user);
+        return new UpdateUserStatusResponse { Data = MapAuthUserToProto(user) };
     }
 
-    public override async Task<ProtoUser> UpdateUserSite(
+    public override async Task<UpdateUserSiteResponse> UpdateUserSite(
         UpdateUserSiteRequest request, ServerCallContext context)
     {
         var party = await tenantDb.Parties.SingleOrDefaultAsync(x => x.Id == request.PartyId);
@@ -546,32 +554,35 @@ public class TenantUserGrpcService(
         var user = await authDb.Users
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.PartyId == request.PartyId);
         if (user == null) throw new RpcException(new Status(StatusCode.NotFound, "Auth user not found"));
-        return MapAuthUserToProto(user);
+        return new UpdateUserSiteResponse { Data = MapAuthUserToProto(user) };
     }
 
     // ─── Lock / Unlock ────────────────────────────────────────────────────────
 
-    public override async Task<ProtoUser> LockUser(GetUserRequest request, ServerCallContext context)
+    public override async Task<LockUserResponse> LockUser(LockUserRequest request, ServerCallContext context)
     {
         await userSvc.LockUserAsync(request.PartyId, GetPartyId(context));
-        return await GetUser(request, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new LockUserResponse { Data = result.Data };
     }
 
-    public override async Task<ProtoUser> UnlockUser(GetUserRequest request, ServerCallContext context)
+    public override async Task<UnlockUserResponse> UnlockUser(UnlockUserRequest request, ServerCallContext context)
     {
         await userSvc.UnlockUserAsync(request.PartyId, GetPartyId(context));
-        return await GetUser(request, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new UnlockUserResponse { Data = result.Data };
     }
 
-    public override async Task<ProtoUser> UnlockByQuiz(GetUserRequest request, ServerCallContext context)
+    public override async Task<UnlockByQuizResponse> UnlockByQuiz(UnlockByQuizRequest request, ServerCallContext context)
     {
         await userSvc.AllowVerificationQuizAsync(request.PartyId);
-        return await GetUser(request, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new UnlockByQuizResponse { Data = result.Data };
     }
 
     // ─── God Mode ─────────────────────────────────────────────────────────────
 
-    public override async Task<ProtoUser> EnableGodMode(GetUserRequest request, ServerCallContext context)
+    public override async Task<EnableGodModeResponse> EnableGodMode(EnableGodModeRequest request, ServerCallContext context)
     {
         var tenantId = tenantGetter.GetTenantId();
         var targetUser = await userManager.Users
@@ -591,13 +602,13 @@ public class TenantUserGrpcService(
 
         var proto = MapAuthUserToProto(targetUser);
         proto.Token = oneTimeKey;
-        return proto;
+        return new EnableGodModeResponse { Data = proto };
     }
 
     // ─── Addresses ────────────────────────────────────────────────────────────
 
-    public override async Task<ListAddressesResponse> ListUserAddresses(
-        ListAddressesRequest request, ServerCallContext context)
+    public override async Task<ListUserAddressesResponse> ListUserAddresses(
+        ListUserAddressesRequest request, ServerCallContext context)
     {
         var criteria = new Bacera.Gateway.Address.Criteria
         {
@@ -611,7 +622,7 @@ public class TenantUserGrpcService(
             .ToTenantPageModel()
             .ToListAsync();
 
-        var response = new ListAddressesResponse
+        var response = new ListUserAddressesResponse
         {
             Criteria = BuildMeta(criteria.Page, criteria.Size, criteria.Total)
         };
@@ -626,26 +637,29 @@ public class TenantUserGrpcService(
         return response;
     }
 
-    public override async Task<ProtoAddress> GetUserAddress(GetAddressRequest request, ServerCallContext context)
+    public override async Task<GetUserAddressResponse> GetUserAddress(GetUserAddressRequest request, ServerCallContext context)
     {
         var item = await tenantDb.Addresses
             .ToTenantDetailModel()
             .SingleOrDefaultAsync(x => x.Id == request.AddressId);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Address not found"));
 
-        return new ProtoAddress
+        return new GetUserAddressResponse
         {
-            Id       = item.Id,
-            HashId   = Bacera.Gateway.Address.HashEncode(item.Id),
-            PartyId  = item.PartyId,
-            Country  = item.Country ?? "",
-            Address_ = item.Name    ?? "",
+            Data = new ProtoAddress
+            {
+                Id       = item.Id,
+                HashId   = Bacera.Gateway.Address.HashEncode(item.Id),
+                PartyId  = item.PartyId,
+                Country  = item.Country ?? "",
+                Address_ = item.Name    ?? "",
+            }
         };
     }
 
     // ─── Migrate / Duplicate ──────────────────────────────────────────────────
 
-    public override async Task<ProtoUser> MigrateUser(MigrateUserRequest request, ServerCallContext context)
+    public override async Task<MigrateUserResponse> MigrateUser(MigrateUserRequest request, ServerCallContext context)
     {
         var currentTenantId = tenantGetter.GetTenantId();
         if (request.TenantId == currentTenantId)
@@ -654,10 +668,11 @@ public class TenantUserGrpcService(
         var (res, msg) = await userSvc.MigrateUserAsync(request.PartyId, request.TenantId);
         if (!res) throw new RpcException(new Status(StatusCode.Internal, msg?.Count > 0 ? string.Join("; ", msg) : "Migration failed"));
 
-        return await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new MigrateUserResponse { Data = result.Data };
     }
 
-    public override async Task<ProtoUser> DuplicateUser(DuplicateUserRequest request, ServerCallContext context)
+    public override async Task<DuplicateUserResponse> DuplicateUser(DuplicateUserRequest request, ServerCallContext context)
     {
         var currentTenantId = tenantGetter.GetTenantId();
         if (request.TenantId == currentTenantId)
@@ -667,43 +682,56 @@ public class TenantUserGrpcService(
             request.PartyId, request.TenantId, false, GetPartyId(context));
         if (!res) throw new RpcException(new Status(StatusCode.Internal, msg ?? "Duplication failed"));
 
-        return await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
+        return new DuplicateUserResponse { Data = result.Data };
     }
 
     // ─── Legacy info ──────────────────────────────────────────────────────────
 
-    public override async Task<LegacyInfoResponse> GetLegacyPersonalInfo(
-        GetUserRequest request, ServerCallContext context)
-        => await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationPersonalInfo);
+    public override async Task<GetLegacyPersonalInfoResponse> GetLegacyPersonalInfo(
+        GetLegacyPersonalInfoRequest request, ServerCallContext context)
+    {
+        var info = await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationPersonalInfo);
+        return new GetLegacyPersonalInfoResponse { Data = info };
+    }
 
-    public override async Task<LegacyInfoResponse> GetLegacyFinancialInfo(
-        GetUserRequest request, ServerCallContext context)
-        => await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationFinancialInfo);
+    public override async Task<GetLegacyFinancialInfoResponse> GetLegacyFinancialInfo(
+        GetLegacyFinancialInfoRequest request, ServerCallContext context)
+    {
+        var info = await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationFinancialInfo);
+        return new GetLegacyFinancialInfoResponse { Data = info };
+    }
 
-    public override async Task<LegacyInfoResponse> GetLegacyKycForm(
-        GetUserRequest request, ServerCallContext context)
-        => await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationKycForm);
+    public override async Task<GetLegacyKycFormResponse> GetLegacyKycForm(
+        GetLegacyKycFormRequest request, ServerCallContext context)
+    {
+        var info = await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationKycForm);
+        return new GetLegacyKycFormResponse { Data = info };
+    }
 
-    public override async Task<LegacyInfoResponse> GetLegacyKycCorrection(
-        GetUserRequest request, ServerCallContext context)
-        => await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationKycCorrection);
+    public override async Task<GetLegacyKycCorrectionResponse> GetLegacyKycCorrection(
+        GetLegacyKycCorrectionRequest request, ServerCallContext context)
+    {
+        var info = await GetLegacyInfo(request.PartyId, SupplementTypes.MigrationKycCorrection);
+        return new GetLegacyKycCorrectionResponse { Data = info };
+    }
 
     // ─── Social media ─────────────────────────────────────────────────────────
 
-    public override async Task<LegacyInfoResponse> GetSocialMediaInfo(
-        GetUserRequest request, ServerCallContext context)
+    public override async Task<GetSocialMediaInfoResponse> GetSocialMediaInfo(
+        GetSocialMediaInfoRequest request, ServerCallContext context)
     {
         var supplement = await tenantDb.Supplements
             .Where(x => x.RowId == request.PartyId && x.Type == (long)SupplementTypes.SocialMediaRecord)
             .SingleOrDefaultAsync();
 
-        if (supplement == null) return new LegacyInfoResponse { Data = "[]" };
+        if (supplement == null) return new GetSocialMediaInfoResponse { Data = "[]" };
 
-        return new LegacyInfoResponse { Data = supplement.Data ?? "[]" };
+        return new GetSocialMediaInfoResponse { Data = supplement.Data ?? "[]" };
     }
 
-    public override async Task<LegacyInfoResponse> UpdateSocialMediaInfo(
-        UpdateSocialMediaRequest request, ServerCallContext context)
+    public override async Task<UpdateSocialMediaInfoResponse> UpdateSocialMediaInfo(
+        UpdateSocialMediaInfoRequest request, ServerCallContext context)
     {
         var supplement = await tenantDb.Supplements
             .Where(x => x.RowId == request.PartyId && x.Type == (long)SupplementTypes.SocialMediaRecord)
@@ -734,17 +762,17 @@ public class TenantUserGrpcService(
         supplement.Data = JsonConvert.SerializeObject(data);
         await tenantDb.SaveChangesAsync();
 
-        return new LegacyInfoResponse { Data = supplement.Data };
+        return new UpdateSocialMediaInfoResponse { Data = supplement.Data };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private async Task<LegacyInfoResponse> GetLegacyInfo(long partyId, SupplementTypes type)
+    private async Task<string> GetLegacyInfo(long partyId, SupplementTypes type)
     {
         var supplement = await tenantDb.Supplements
             .Where(x => x.Type == (int)type && x.RowId == partyId)
             .SingleOrDefaultAsync();
-        return new LegacyInfoResponse { Data = supplement?.Data ?? "null" };
+        return supplement?.Data ?? "null";
     }
 
     private static PaginationMeta BuildMeta(int page, int size, int total)
@@ -810,19 +838,19 @@ public class TenantRoleGrpcService(
     RoleManager<ApplicationRole> roleManager)
     : TenantRoleService.TenantRoleServiceBase
 {
-    public override async Task<RolesResponse> ListRoles(EmptyRequest request, ServerCallContext context)
+    public override async Task<ListRolesResponse> ListRoles(ListRolesRequest request, ServerCallContext context)
     {
         var roles = await roleManager.Roles.OrderByDescending(x => x.Id).ToListAsync();
-        var response = new RolesResponse();
+        var response = new ListRolesResponse();
         response.Roles.AddRange(roles.Select(r => new ProtoRole { Id = r.Id, Name = r.Name ?? "" }));
         return response;
     }
 
-    public override async Task<ProtoRole> GetRole(GetRoleRequest request, ServerCallContext context)
+    public override async Task<GetRoleResponse> GetRole(GetRoleRequest request, ServerCallContext context)
     {
         var role = await authDb.Roles.FirstOrDefaultAsync(x => x.Id == request.Id);
         if (role == null) throw new RpcException(new Status(StatusCode.NotFound, "Role not found"));
-        return new ProtoRole { Id = role.Id, Name = role.Name ?? "" };
+        return new GetRoleResponse { Data = new ProtoRole { Id = role.Id, Name = role.Name ?? "" } };
     }
 }
 
@@ -833,9 +861,9 @@ public class TenantRoleGrpcService(
 /// </summary>
 public class TenantPermissionGrpcService : TenantPermissionService.TenantPermissionServiceBase
 {
-    public override Task<PermissionsResponse> ListPermissions(EmptyRequest request, ServerCallContext context)
+    public override Task<ListPermissionsResponse> ListPermissions(ListPermissionsRequest request, ServerCallContext context)
     {
-        var response = new PermissionsResponse();
+        var response = new ListPermissionsResponse();
         response.Permissions.AddRange(UserPermissionTypes.All.OrderBy(x => x));
         return Task.FromResult(response);
     }

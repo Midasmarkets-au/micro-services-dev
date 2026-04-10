@@ -52,14 +52,14 @@ public class TenantKycGrpcService(
         return response;
     }
 
-    public override async Task<ProtoKycForm> GetKyc(GetKycRequest request, ServerCallContext context)
+    public override async Task<GetKycResponse> GetKyc(GetKycRequest request, ServerCallContext context)
     {
         var item = await GetVerificationWithItem(request.PartyId);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "KYC not found"));
-        return MapToProto(item);
+        return new GetKycResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoKycForm> CreateKyc(CreateKycRequest request, ServerCallContext context)
+    public override async Task<CreateKycResponse> CreateKyc(CreateKycRequest request, ServerCallContext context)
     {
         var existing = await GetVerificationWithItem(request.PartyId);
         if (existing != null)
@@ -84,10 +84,10 @@ public class TenantKycGrpcService(
         };
         await tenantDb.Verifications.AddAsync(form);
         await tenantDb.SaveChangesAsync();
-        return MapToProto(form);
+        return new CreateKycResponse { Data = MapToProto(form) };
     }
 
-    public override async Task<ProtoKycForm> UpdateKyc(UpdateKycRequest request, ServerCallContext context)
+    public override async Task<UpdateKycResponse> UpdateKyc(UpdateKycRequest request, ServerCallContext context)
     {
         var item = await GetVerificationWithItem(request.PartyId);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "KYC not found"));
@@ -106,10 +106,10 @@ public class TenantKycGrpcService(
 
         tenantDb.Verifications.Update(item);
         await tenantDb.SaveChangesAsync();
-        return MapToProto(item);
+        return new UpdateKycResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoKycForm> AwaitingReview(GetKycRequest request, ServerCallContext context)
+    public override async Task<AwaitingReviewResponse> AwaitingReview(AwaitingReviewRequest request, ServerCallContext context)
     {
         var item = await tenantDb.Verifications
             .Where(x => x.Type == (int)VerificationTypes.KycForm && x.PartyId == request.PartyId)
@@ -120,32 +120,33 @@ public class TenantKycGrpcService(
         item.UpdatedOn = DateTime.UtcNow;
         tenantDb.Verifications.Update(item);
         await tenantDb.SaveChangesAsync();
-        return MapToProto(item);
+        return new AwaitingReviewResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoKycForm> SignKyc(UpdateKycRequest request, ServerCallContext context)
+    public override async Task<SignKycResponse> SignKyc(SignKycRequest request, ServerCallContext context)
     {
         var spec = JsonConvert.DeserializeObject<KycFormViewModel>(request.Spec)
             ?? new KycFormViewModel();
-        return await HandleKycForm(request.PartyId, spec, VerificationStatusTypes.AwaitingApprove, context);
+        var kycForm = await HandleKycForm(request.PartyId, spec, VerificationStatusTypes.AwaitingApprove, context);
+        return new SignKycResponse { Data = kycForm };
     }
 
-    public override async Task<ProtoKycForm> FinalizeKyc(UpdateKycRequest request, ServerCallContext context)
+    public override async Task<FinalizeKycResponse> FinalizeKyc(FinalizeKycRequest request, ServerCallContext context)
     {
         var spec = JsonConvert.DeserializeObject<KycFormViewModel>(request.Spec)
             ?? new KycFormViewModel();
-        var result = await HandleKycForm(request.PartyId, spec, VerificationStatusTypes.Approved, context);
+        var kycForm = await HandleKycForm(request.PartyId, spec, VerificationStatusTypes.Approved, context);
         await RecordHistory(request.PartyId, spec);
-        return result;
+        return new FinalizeKycResponse { Data = kycForm };
     }
 
-    public override async Task<KycHistoryResponse> GetKycHistory(GetKycRequest request, ServerCallContext context)
+    public override async Task<GetKycHistoryResponse> GetKycHistory(GetKycHistoryRequest request, ServerCallContext context)
     {
         var supplement = await tenantDb.Supplements
             .Where(x => x.Type == (int)SupplementTypes.KycFormHistory && x.RowId == request.PartyId)
             .SingleOrDefaultAsync();
 
-        var response = new KycHistoryResponse();
+        var response = new GetKycHistoryResponse();
         if (supplement == null) return response;
 
         var models = JsonConvert.DeserializeObject<List<KycFormViewModel>>(supplement.Data)
@@ -157,7 +158,7 @@ public class TenantKycGrpcService(
         return response;
     }
 
-    public override async Task<ProtoKycForm> RejectKyc(GetKycRequest request, ServerCallContext context)
+    public override async Task<RejectKycResponse> RejectKyc(RejectKycRequest request, ServerCallContext context)
     {
         var item = await tenantDb.Verifications
             .Where(x => x.Type == (int)VerificationTypes.KycForm && x.PartyId == request.PartyId)
@@ -168,13 +169,13 @@ public class TenantKycGrpcService(
         item.UpdatedOn = DateTime.UtcNow;
         tenantDb.Verifications.Update(item);
         await tenantDb.SaveChangesAsync();
-        return MapToProto(item);
+        return new RejectKycResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ComplianceSigResponse> GetComplianceSig(EmptyRequest request, ServerCallContext context)
+    public override async Task<GetComplianceSigResponse> GetComplianceSig(GetComplianceSigRequest request, ServerCallContext context)
     {
         // Returns the hardcoded compliance signature (matches original controller behaviour)
-        return new ComplianceSigResponse { Signature = GetVicSignature() };
+        return new GetComplianceSigResponse { Signature = GetVicSignature() };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

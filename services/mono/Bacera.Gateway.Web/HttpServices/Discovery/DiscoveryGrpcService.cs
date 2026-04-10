@@ -17,21 +17,21 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
 {
     // ─── News ─────────────────────────────────────────────────────────────────
 
-    public override async Task<LanguagesResponse> GetNewsLanguages(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetNewsLanguagesResponse> GetNewsLanguages(
+        GetNewsLanguagesRequest request, ServerCallContext context)
     {
         var languages = await cache.GetOrSetAsync(
             "website_public_news_languages",
             () => db.News.Select(e => e.Language).Distinct().ToListAsync(),
             TimeSpan.FromDays(7));
 
-        var response = new LanguagesResponse();
-        response.Languages.AddRange(languages.Where(l => l != null).Cast<string>());
-        return response;
+        var inner = new LanguagesResponse();
+        inner.Languages.AddRange(languages.Where(l => l != null).Cast<string>());
+        return new GetNewsLanguagesResponse { Data = inner };
     }
 
     public override async Task<ListNewsResponse> ListNews(
-        ListDiscoveryRequest request, ServerCallContext context)
+        ListNewsRequest request, ServerCallContext context)
     {
         var language = LanguageTypes.ParseCrmLanguage(
             string.IsNullOrEmpty(request.Language) ? LanguageTypes.English : request.Language);
@@ -76,7 +76,7 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
     // ─── Posts ────────────────────────────────────────────────────────────────
 
     public override async Task<ListPostsResponse> ListPosts(
-        ListDiscoveryRequest request, ServerCallContext context)
+        ListPostsRequest request, ServerCallContext context)
     {
         var language = LanguageTypes.ParseCrmLanguage(
             string.IsNullOrEmpty(request.Language) ? LanguageTypes.English : request.Language);
@@ -120,7 +120,7 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
         return response;
     }
 
-    public override async Task<ProtoPost> GetPost(GetPostRequest request, ServerCallContext context)
+    public override async Task<GetPostResponse> GetPost(GetPostRequest request, ServerCallContext context)
     {
         var id = Gateway.Post.HashDecode(request.HashId);
         var post = await db.Posts
@@ -131,33 +131,36 @@ public class DiscoveryGrpcService(WebsiteDbContext db, IMyCache cache)
         if (post == null)
             throw new RpcException(new Status(StatusCode.NotFound, "Post not found"));
 
-        return new ProtoPost
+        return new GetPostResponse
         {
-            HashId      = post.HashId,
-            Title       = post.Title ?? "",
-            Content     = post.Body ?? "",
-            Language    = post.LanguageCode ?? "",
-            PublishedAt = post.PublishTime?.ToString("O") ?? "",
+            Data = new ProtoPost
+            {
+                HashId      = post.HashId,
+                Title       = post.Title ?? "",
+                Content     = post.Body ?? "",
+                Language    = post.LanguageCode ?? "",
+                PublishedAt = post.PublishTime?.ToString("O") ?? "",
+            }
         };
     }
 
     // ─── Economic Calendar ────────────────────────────────────────────────────
 
-    public override async Task<LanguagesResponse> GetEconomicCalendarLanguages(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetEconomicCalendarLanguagesResponse> GetEconomicCalendarLanguages(
+        GetEconomicCalendarLanguagesRequest request, ServerCallContext context)
     {
         var languages = await cache.GetOrSetAsync(
             "website_public_economic_calendar_languages",
             () => db.EconomicCalendars.Select(e => e.Language).Distinct().ToListAsync(),
             TimeSpan.FromDays(7));
 
-        var response = new LanguagesResponse();
-        response.Languages.AddRange(languages.Where(l => l != null).Cast<string>());
-        return response;
+        var inner = new LanguagesResponse();
+        inner.Languages.AddRange(languages.Where(l => l != null).Cast<string>());
+        return new GetEconomicCalendarLanguagesResponse { Data = inner };
     }
 
     public override async Task<ListEconomicCalendarResponse> ListEconomicCalendar(
-        ListDiscoveryRequest request, ServerCallContext context)
+        ListEconomicCalendarRequest request, ServerCallContext context)
     {
         // Language is pinned to "en" matching original controller behavior
         const string language = "en";
