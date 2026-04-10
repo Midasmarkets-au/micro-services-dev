@@ -21,18 +21,23 @@ pub struct RsaKeyPair {
 }
 
 impl RsaKeyPair {
-    /// Load from PEM file or generate a new 2048-bit key pair.
-    pub fn load_or_generate(pem_path: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
-        let private_key = if let Some(path) = pem_path {
+    /// Load RSA key pair in priority order:
+    ///   1. `JWT_SECRET` env var — PEM content directly (preferred for K8s secrets)
+    ///   2. `RSA_PRIVATE_KEY_PATH` env var — path to a PEM file
+    ///   3. Ephemeral — generate a new key (not persisted, tokens invalidated on restart)
+    pub fn load_or_generate(pem_content: Option<&str>, pem_path: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let private_key = if let Some(pem) = pem_content {
+            info!("Loading RSA private key from JWT_SECRET env var");
+            RsaPrivateKey::from_pkcs8_pem(pem.trim())?
+        } else if let Some(path) = pem_path {
             if Path::new(path).exists() {
                 info!("Loading RSA private key from {}", path);
                 RsaPrivateKey::read_pkcs8_pem_file(path)?
             } else {
-                let key = Self::generate_and_save(path)?;
-                key
+                Self::generate_and_save(path)?
             }
         } else {
-            info!("No RSA_PRIVATE_KEY_PATH set — generating ephemeral RSA-2048 key pair (not persisted across restarts)");
+            info!("No JWT_SECRET or RSA_PRIVATE_KEY_PATH set — generating ephemeral RSA-2048 key pair (not persisted across restarts)");
             RsaPrivateKey::new(&mut OsRng, 2048)?
         };
 

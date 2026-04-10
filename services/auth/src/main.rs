@@ -427,6 +427,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let secure_cookie: bool = env("SECURE_COOKIE", "true")
         .parse()
         .unwrap_or(true);
+    let jwt_secret = std::env::var("JWT_SECRET").ok();
     let rsa_key_path = std::env::var("RSA_PRIVATE_KEY_PATH").ok();
     let redis_url = env("REDIS_URL", "redis://redis:6379");
     let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50002").parse()?;
@@ -439,7 +440,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let http_addr: SocketAddr = http_addr_str.parse()?;
 
     info!("Loading RSA key pair...");
-    let key_pair = RsaKeyPair::load_or_generate(rsa_key_path.as_deref())?;
+    let key_pair = RsaKeyPair::load_or_generate(jwt_secret.as_deref(), rsa_key_path.as_deref())?;
     info!("RSA key loaded, kid={}", key_pair.kid);
 
     info!(
