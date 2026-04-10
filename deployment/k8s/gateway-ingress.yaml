@@ -109,8 +109,8 @@ spec:
                 name: auth
                 port:
                   number: 9001
-          - path: /.well-known/jwks.json
-            pathType: Exact
+          - path: /\.well-known/
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: auth
@@ -149,14 +149,14 @@ spec:
                 name: auth
                 port:
                   number: 9001
-          - path: /.well-known/jwks.json
-            pathType: Exact
+          - path: /\.well-known/
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: auth
                 port:
                   number: 9001
-          - path: /(api|hub|live|swagger|.well-known/openid-configuration)/
+          - path: /(api|hub|live|swagger)/
             pathType: ImplementationSpecific
             backend:
               service:
@@ -187,8 +187,8 @@ spec:
                 name: auth
                 port:
                   number: 9001
-          - path: /.well-known/jwks.json
-            pathType: Exact
+          - path: /\.well-known/
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: auth
