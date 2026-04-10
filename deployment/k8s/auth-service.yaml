@@ -1,5 +1,7 @@
 # ============================================================================
-#  auth Service — ClusterIP，由 NGINX Ingress 暴露 /connect/token
+#  auth Service — ClusterIP
+#  9001: HTTP（/connect/token, /api/v2/auth/*, /.well-known/jwks.json）
+#  50006: gRPC（AuthValidationService，供 mono 调用 ValidateToken）
 # ============================================================================
 apiVersion: v1
 kind: Service
@@ -13,6 +15,10 @@ spec:
     - name: http
       port: 9001
       targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 50006
+      targetPort: grpc
       protocol: TCP
   selector:
     app: auth
