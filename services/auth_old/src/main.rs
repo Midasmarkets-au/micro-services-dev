@@ -287,6 +287,7 @@ fn build_database_url() -> String {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     load_env_file();
+
     let _tracing_guard = otel::init_tracing("auth");
 
     let database_url = build_database_url();
