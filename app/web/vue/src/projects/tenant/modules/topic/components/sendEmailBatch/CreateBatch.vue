@@ -1,5 +1,11 @@
 <template>
-  <el-drawer v-model="drawerRef" direction="rtl" size="90%">
+  <el-drawer
+    v-model="drawerRef"
+    direction="rtl"
+    size="90%"
+    @opened="onDrawerOpened"
+    @closed="onDrawerClosed"
+  >
     <template #header>
       <h4>Create Batch</h4>
     </template>
@@ -88,6 +94,7 @@
               </div>
               <div class="col-6">
                 <iframe
+                  class="content-preview-iframe"
                   :srcdoc="refreshHtml(item)"
                   width="100%"
                   height="100%"
@@ -115,7 +122,7 @@
   </el-drawer>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onBeforeUnmount } from "vue";
 import { LanguageTypes } from "@/core/types/LanguageTypes";
 import "jodit/build/jodit.min.css";
 import { JoditEditor } from "jodit-vue";
@@ -168,6 +175,62 @@ const onLanguageListChange = (langCode) => {
 const refreshHtml = (item) => {
   return item.content;
 };
+
+/*
+ * Jodit renders popups (link / image / etc.) on document.body, outside the
+ * el-drawer DOM.  ElFocusTrap detects focus leaving the drawer via a
+ * bubble-phase `focusout` handler on the drawer panel and steals focus back
+ * with setTimeout(0).  We prevent this by intercepting both `focusout` and
+ * `focusin` in the capture phase so the trap never sees them.
+ */
+let focusOverride: ((e: Event) => void) | null = null;
+
+const isJoditUi = (el: HTMLElement) =>
+  !!el.closest(
+    [
+      ".jodit-popup",
+      ".jodit_popup",
+      ".jodit-dialog",
+      ".jodit-toolbar-popup",
+      ".jodit-ui-popup",
+      '[role="popup"]',
+    ].join(",")
+  );
+
+const onDrawerOpened = () => {
+  focusOverride = (e: Event) => {
+    const fe = e as FocusEvent;
+    if (e.type === "focusout") {
+      const goingTo = fe.relatedTarget as HTMLElement | null;
+      if (goingTo && isJoditUi(goingTo)) {
+        e.stopPropagation();
+      }
+    } else {
+      const target = fe.target as HTMLElement | null;
+      if (target && isJoditUi(target)) {
+        e.stopPropagation();
+      }
+    }
+  };
+  document.addEventListener("focusout", focusOverride, true);
+  document.addEventListener("focusin", focusOverride, true);
+};
+
+const cleanupFocusOverride = () => {
+  if (focusOverride) {
+    document.removeEventListener("focusout", focusOverride, true);
+    document.removeEventListener("focusin", focusOverride, true);
+    focusOverride = null;
+  }
+};
+
+const onDrawerClosed = () => {
+  cleanupFocusOverride();
+};
+
+onBeforeUnmount(() => {
+  cleanupFocusOverride();
+});
 
 const submit = async () => {
   isLoading.value = true;
@@ -226,3 +289,9 @@ defineExpose({
   show,
 });
 </script>
+
+<style scoped>
+.content-preview-iframe {
+  pointer-events: none;
+}
+</style>

@@ -25,7 +25,7 @@ use tower_http::cors::CorsLayer;
 use tracing::info;
 
 use boardcast::api::v1::boardcast_service_server::{BoardcastService, BoardcastServiceServer};
-use boardcast::api::v1::{Event, PublishRequest, PublishResponse, SubscribeRequest};
+use boardcast::api::v1::{PublishRequest, PublishResponse, SubscribeRequest, SubscribeResponse};
 use boardcast::BroadcastBus;
 
 const FILE_DESCRIPTOR_SET: &[u8] =
@@ -59,7 +59,7 @@ impl BoardcastService for BoardcastServiceImpl {
     }
 
     type SubscribeStream =
-        Pin<Box<dyn Stream<Item = Result<Event, Status>> + Send + 'static>>;
+        Pin<Box<dyn Stream<Item = Result<SubscribeResponse, Status>> + Send + 'static>>;
 
     async fn subscribe(
         &self,
@@ -73,7 +73,7 @@ impl BoardcastService for BoardcastServiceImpl {
         let stream = BroadcastStream::new(rx).filter_map(move |msg| {
             let ch = channel.clone();
             match msg {
-                Ok(message) => Some(Ok(Event {
+                Ok(message) => Some(Ok(SubscribeResponse {
                     channel: ch,
                     message,
                     timestamp: Utc::now().timestamp(),

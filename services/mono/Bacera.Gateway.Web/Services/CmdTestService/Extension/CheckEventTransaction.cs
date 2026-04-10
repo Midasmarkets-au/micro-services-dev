@@ -113,7 +113,7 @@ public partial class CmdTestService
             $"""
              select ept."SourceContent"::jsonb ->> 'Ticket' as "Ticket", count(*) as "Count"
              from event."_EventShopPointTransaction" ept
-                      join trd."_TradeRebate" tr on tr."Ticket" = cast(ept."SourceContent"::jsonb ->> 'Ticket' as bigint)
+                      join trd.trade_rebate_k8s tr on tr.ticket = cast(ept."SourceContent"::jsonb ->> 'Ticket' as bigint)
              --where ept."EventPartyId" = 48
              group by ept."SourceContent"::jsonb ->> 'Ticket'
              having count(*) = 2
@@ -166,7 +166,7 @@ public partial class CmdTestService
             $"""
              select ept."SourceContent"::jsonb ->> 'Ticket' as "Ticket", count(*) as "Count"
              from event."_EventShopPointTransaction" ept
-                      join trd."_TradeRebate" tr on tr."Ticket" = cast(ept."SourceContent"::jsonb ->> 'Ticket' as bigint)
+                      join trd.trade_rebate_k8s tr on tr.ticket = cast(ept."SourceContent"::jsonb ->> 'Ticket' as bigint)
              --where ept."EventPartyId" = 48
              group by ept."SourceContent"::jsonb ->> 'Ticket'
              and ept."CreatedOn" <= {date}

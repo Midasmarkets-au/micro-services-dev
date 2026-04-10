@@ -37,7 +37,7 @@
         :src="getBackendMiniLogo['src']"
         :class="getBackendMiniLogo['class']"
       />
-      <span class="ps-2 fs-2" style="color: #000">MM</span>
+      <span class="ps-2 fs-2" style="color: #000">MDM</span>
     </router-link>
     <!--end::Logo image-->
     <!--begin::Sidebar toggle-->

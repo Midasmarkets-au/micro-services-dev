@@ -18,51 +18,51 @@ service TenantLeadService {
   // HTTP 路由由 MVC LeadController 处理（含 hasUtm/utms SQL 过滤逻辑）
   rpc ListLeads(ListLeadsRequest) returns (ListLeadsResponse) {}
   // 按 id 获取 Lead 详情（含已分配账户列表和操作评论记录）
-  rpc GetLead(GetLeadRequest) returns (LeadDetail) {
+  rpc GetLead(GetLeadRequest) returns (GetLeadResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/lead/{id}" };
   }
   // 创建新 Lead（手动录入潜在客户信息）
-  rpc CreateLead(CreateLeadRequest) returns (Lead) {
+  rpc CreateLead(CreateLeadRequest) returns (CreateLeadResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/lead", body: "spec" };
   }
   // 归档 Lead（标记为已处理，不再显示在活跃列表）
-  rpc ArchiveLead(GetLeadRequest) returns (Lead) {
+  rpc ArchiveLead(ArchiveLeadRequest) returns (ArchiveLeadResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/lead/{id}/archive" };
   }
   // 取消归档 Lead（恢复到活跃列表）
-  rpc UnarchiveLead(GetLeadRequest) returns (Lead) {
+  rpc UnarchiveLead(UnarchiveLeadRequest) returns (UnarchiveLeadResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/lead/{id}/unarchive" };
   }
   // 为 Lead 添加操作评论（记录跟进内容）
-  rpc AddLeadComment(AddLeadCommentRequest) returns (Lead) {
+  rpc AddLeadComment(AddLeadCommentRequest) returns (AddLeadCommentResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/lead/{id}/comment", body: "spec" };
   }
   // 将 Lead 分配给指定 Sales 账户（建立跟进关系）
-  rpc AssignLead(AssignLeadRequest) returns (Lead) {
+  rpc AssignLead(AssignLeadRequest) returns (AssignLeadResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/lead/{id}/assign/{assigned_account_uid}" };
   }
   // 取消 Lead 与指定 Sales 账户的分配关系
-  rpc UnassignLead(AssignLeadRequest) returns (Lead) {
+  rpc UnassignLead(UnassignLeadRequest) returns (UnassignLeadResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/lead/{id}/assign/{assigned_account_uid}" };
   }
   // 批量将多个 Lead 分配给同一 Sales 账户
-  rpc BulkAssignLeads(BulkAssignLeadsRequest) returns (OperationResponse) {
+  rpc BulkAssignLeads(BulkAssignLeadsRequest) returns (BulkAssignLeadsResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/lead/assign", body: "*" };
   }
   // 获取 Lead 自动分配设置（是否启用及目标 Sales 账户）
-  rpc GetAutoAssignInfo(EmptyRequest) returns (AutoAssignInfo) {
+  rpc GetAutoAssignInfo(GetAutoAssignInfoRequest) returns (GetAutoAssignInfoResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/lead/auto-assign/info" };
   }
   // 启用 Lead 自动分配功能（新注册用户 Lead 自动分配给指定 Sales）
-  rpc EnableAutoAssign(EmptyRequest) returns (AutoAssignInfo) {
+  rpc EnableAutoAssign(EnableAutoAssignRequest) returns (EnableAutoAssignResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/lead/auto-assign/enable" };
   }
   // 禁用 Lead 自动分配功能
-  rpc DisableAutoAssign(EmptyRequest) returns (AutoAssignInfo) {
+  rpc DisableAutoAssign(DisableAutoAssignRequest) returns (DisableAutoAssignResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/lead/auto-assign/disable" };
   }
   // 设置自动分配目标 Sales 账户（auto_assign_account_uid）
-  rpc SetAutoAssignee(SetAutoAssigneeRequest) returns (AutoAssignInfo) {
+  rpc SetAutoAssignee(SetAutoAssigneeRequest) returns (SetAutoAssigneeResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/lead/auto-assign/set-assignee", body: "*" };
   }
 }
@@ -138,6 +138,74 @@ message ListLeadsResponse {
 // 按 id 查询 Lead
 message GetLeadRequest {
   int64 id = 1;
+}
+
+message GetLeadResponse {
+  LeadDetail data = 1;
+}
+
+message CreateLeadResponse {
+  Lead data = 1;
+}
+
+message ArchiveLeadRequest {
+  int64 id = 1;
+}
+
+message ArchiveLeadResponse {
+  Lead data = 1;
+}
+
+message UnarchiveLeadRequest {
+  int64 id = 1;
+}
+
+message UnarchiveLeadResponse {
+  Lead data = 1;
+}
+
+message AddLeadCommentResponse {
+  Lead data = 1;
+}
+
+message AssignLeadResponse {
+  Lead data = 1;
+}
+
+message UnassignLeadRequest {
+  int64 id                   = 1; // Lead ID
+  int64 assigned_account_uid = 2; // 目标 Sales 账户 UID
+}
+
+message UnassignLeadResponse {
+  Lead data = 1;
+}
+
+message BulkAssignLeadsResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message GetAutoAssignInfoRequest {}
+
+message GetAutoAssignInfoResponse {
+  AutoAssignInfo data = 1;
+}
+
+message EnableAutoAssignRequest {}
+
+message EnableAutoAssignResponse {
+  AutoAssignInfo data = 1;
+}
+
+message DisableAutoAssignRequest {}
+
+message DisableAutoAssignResponse {
+  AutoAssignInfo data = 1;
+}
+
+message SetAutoAssigneeResponse {
+  AutoAssignInfo data = 1;
 }
 
 // 创建 Lead 请求

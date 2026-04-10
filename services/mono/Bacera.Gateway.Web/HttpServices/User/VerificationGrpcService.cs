@@ -66,7 +66,7 @@ public class TenantVerificationGrpcService(
         return response;
     }
 
-    public override async Task<ProtoVerification> GetVerification(
+    public override async Task<GetVerificationResponse> GetVerification(
         GetVerificationRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.Verifications
@@ -74,77 +74,98 @@ public class TenantVerificationGrpcService(
             .Include(x => x.Party)
             .SingleOrDefaultAsync(x => x.Id == request.Id);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Verification not found"));
-        return MapToProto(item);
+        return new GetVerificationResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoVerificationItem> GetVerificationItem(
+    public override async Task<GetVerificationItemResponse> GetVerificationItem(
         GetVerificationItemRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.VerificationItems
             .Where(x => x.VerificationId == request.Id && x.Id == request.ItemId)
             .SingleOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Verification item not found"));
-        return MapItemToProto(item);
+        return new GetVerificationItemResponse { Data = MapItemToProto(item) };
     }
 
-    public override async Task<VerificationItemListResponse> GetVerificationItemList(
-        GetVerificationRequest request, ServerCallContext context)
+    public override async Task<GetVerificationItemListResponse> GetVerificationItemList(
+        GetVerificationItemListRequest request, ServerCallContext context)
     {
         var items = await tenantCtx.VerificationItems
             .Where(x => x.VerificationId == request.Id)
             .OrderBy(x => x.Id)
             .ToListAsync();
 
-        var response = new VerificationItemListResponse();
+        var response = new GetVerificationItemListResponse();
         response.Items.AddRange(items.Select(MapItemToProto));
         return response;
     }
 
     // ─── Status transitions ───────────────────────────────────────────────────
 
-    public override async Task<ProtoVerification> SetUnderReview(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ChangeStatus(request.Id, VerificationStatusTypes.UnderReview, context);
+    public override async Task<SetUnderReviewResponse> SetUnderReview(
+        SetUnderReviewRequest request, ServerCallContext context)
+    {
+        var result = await ChangeStatus(request.Id, VerificationStatusTypes.UnderReview, context);
+        return new SetUnderReviewResponse { Data = result };
+    }
 
-    public override async Task<ProtoVerification> SetAwaitingApprove(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingApprove, context);
+    public override async Task<SetAwaitingApproveResponse> SetAwaitingApprove(
+        SetAwaitingApproveRequest request, ServerCallContext context)
+    {
+        var result = await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingApprove, context);
+        return new SetAwaitingApproveResponse { Data = result };
+    }
 
-    public override async Task<ProtoVerification> ApproveVerification(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ApproveWithTag(request.Id, false, context);
+    public override async Task<ApproveVerificationResponse> ApproveVerification(
+        ApproveVerificationRequest request, ServerCallContext context)
+    {
+        var result = await ApproveWithTag(request.Id, false, context);
+        return new ApproveVerificationResponse { Data = result };
+    }
 
-    public override async Task<ProtoVerification> DelayedApprove(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ApproveWithTag(request.Id, true, context);
+    public override async Task<DelayedApproveResponse> DelayedApprove(
+        DelayedApproveRequest request, ServerCallContext context)
+    {
+        var result = await ApproveWithTag(request.Id, true, context);
+        return new DelayedApproveResponse { Data = result };
+    }
 
-    public override async Task<ProtoVerification> SetAwaitingReview(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingReview, context);
+    public override async Task<SetAwaitingReviewResponse> SetAwaitingReview(
+        SetAwaitingReviewRequest request, ServerCallContext context)
+    {
+        var result = await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingReview, context);
+        return new SetAwaitingReviewResponse { Data = result };
+    }
 
-    public override async Task<ProtoVerification> RejectVerification(
-        GetVerificationRequest request, ServerCallContext context)
+    public override async Task<RejectVerificationResponse> RejectVerification(
+        RejectVerificationRequest request, ServerCallContext context)
     {
         var item = await tenantCtx.Verifications.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "Verification not found"));
 
         await UpdateStatus(item, VerificationStatusTypes.Rejected, context);
         await mediator.Publish(new VerificationRejectedEvent(item));
-        return MapToProto(item);
+        return new RejectVerificationResponse { Data = MapToProto(item) };
     }
 
-    public override async Task<ProtoVerification> SetAwaitingAddressVerify(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingAddressVerify, context);
+    public override async Task<SetAwaitingAddressVerifyResponse> SetAwaitingAddressVerify(
+        SetAwaitingAddressVerifyRequest request, ServerCallContext context)
+    {
+        var result = await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingAddressVerify, context);
+        return new SetAwaitingAddressVerifyResponse { Data = result };
+    }
 
-    public override async Task<ProtoVerification> SetAwaitingCodeVerify(
-        GetVerificationRequest request, ServerCallContext context)
-        => await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingCodeVerify, context);
+    public override async Task<SetAwaitingCodeVerifyResponse> SetAwaitingCodeVerify(
+        SetAwaitingCodeVerifyRequest request, ServerCallContext context)
+    {
+        var result = await ChangeStatus(request.Id, VerificationStatusTypes.AwaitingCodeVerify, context);
+        return new SetAwaitingCodeVerifyResponse { Data = result };
+    }
 
     // ─── Document operations ──────────────────────────────────────────────────
 
-    public override async Task<OperationResponse> RejectDocumentNotice(
-        GetVerificationRequest request, ServerCallContext context)
+    public override async Task<RejectDocumentNoticeResponse> RejectDocumentNotice(
+        RejectDocumentNoticeRequest request, ServerCallContext context)
     {
         var partyId = await tenantCtx.Verifications
             .Where(x => x.Id == request.Id)
@@ -152,11 +173,11 @@ public class TenantVerificationGrpcService(
             .SingleAsync();
 
         await mediator.Publish(new VerificationDocumentRejectedEvent(partyId));
-        return new OperationResponse { Success = true };
+        return new RejectDocumentNoticeResponse { Success = true };
     }
 
-    public override async Task<ProtoVerificationItem> RejectDocument(
-        RejectVerificationDocumentRequest request, ServerCallContext context)
+    public override async Task<RejectDocumentResponse> RejectDocument(
+        RejectDocumentRequest request, ServerCallContext context)
     {
         var verificationItem = tenantCtx.VerificationItems
             .Include(x => x.Verification)
@@ -191,11 +212,11 @@ public class TenantVerificationGrpcService(
         tenantCtx.Verifications.Update(verificationItem.Verification);
         await tenantCtx.SaveChangesAsync();
 
-        return MapItemToProto(verificationItem);
+        return new RejectDocumentResponse { Data = MapItemToProto(verificationItem) };
     }
 
-    public override async Task<ProtoVerificationItem> ApproveDocument(
-        VerificationDocumentRequest request, ServerCallContext context)
+    public override async Task<ApproveDocumentResponse> ApproveDocument(
+        ApproveDocumentRequest request, ServerCallContext context)
     {
         var supplement = tenantCtx.VerificationItems
             .Include(x => x.Verification)
@@ -228,11 +249,11 @@ public class TenantVerificationGrpcService(
         tenantCtx.Verifications.Update(supplement.Verification);
         await tenantCtx.SaveChangesAsync();
 
-        return MapItemToProto(supplement);
+        return new ApproveDocumentResponse { Data = MapItemToProto(supplement) };
     }
 
-    public override async Task<OperationResponse> DeleteDocument(
-        VerificationDocumentRequest request, ServerCallContext context)
+    public override async Task<DeleteDocumentResponse> DeleteDocument(
+        DeleteDocumentRequest request, ServerCallContext context)
     {
         var supplement = tenantCtx.VerificationItems
             .Include(x => x.Verification)
@@ -269,13 +290,13 @@ public class TenantVerificationGrpcService(
             await tenantCtx.SaveChangesAsync();
         }
 
-        return new OperationResponse { Success = true };
+        return new DeleteDocumentResponse { Success = true };
     }
 
     // ─── Mail code ────────────────────────────────────────────────────────────
 
-    public override async Task<MailCodeResponse> GetMailCode(
-        GetVerificationRequest request, ServerCallContext context)
+    public override async Task<GetMailCodeResponse> GetMailCode(
+        GetMailCodeRequest request, ServerCallContext context)
     {
         var verification = await tenantCtx.Verifications
             .Select(x => new { x.Id, x.PartyId })
@@ -290,15 +311,15 @@ public class TenantVerificationGrpcService(
             .FirstOrDefaultAsync();
         if (item == null) throw new RpcException(new Status(StatusCode.NotFound, "No mail code found"));
 
-        return new MailCodeResponse
+        return new GetMailCodeResponse
         {
             Code      = item.Code ?? "",
             ExpiresAt = item.ExpireOn?.ToString("O") ?? "",
         };
     }
 
-    public override async Task<OperationResponse> SendMailCode(
-        GetVerificationRequest request, ServerCallContext context)
+    public override async Task<SendMailCodeResponse> SendMailCode(
+        SendMailCodeRequest request, ServerCallContext context)
     {
         var verification = await tenantCtx.Verifications.SingleOrDefaultAsync(x => x.Id == request.Id);
         if (verification == null) throw new RpcException(new Status(StatusCode.NotFound, "Verification not found"));
@@ -308,7 +329,7 @@ public class TenantVerificationGrpcService(
 
         tenantCtx.AuthCodes.Add(item);
         await tenantCtx.SaveChangesAsync();
-        return new OperationResponse { Success = true, Message = item.Code ?? "" };
+        return new SendMailCodeResponse { Success = true, Message = item.Code ?? "" };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

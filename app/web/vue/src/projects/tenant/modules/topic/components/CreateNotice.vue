@@ -107,6 +107,20 @@
                 </div>
               </div>
             </el-form-item>
+            <el-form-item :label="$t('fields.category')" prop="category">
+              <el-select
+                v-model="detailForm.category"
+                style="width: 100%"
+                :teleported="false"
+              >
+                <el-option
+                  v-for="item in categorySelections"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </el-form-item>
           </div>
           <div class="modal-footer flex-center">
             <button
@@ -145,6 +159,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from "vue";
 import { TopicTypes } from "@/core/types/TopicTypes";
+import { TopicCategoryTypes } from "@/core/types/TopicCategoryTypes";
 import GlobalService from "@/projects/tenant/modules/topic/services/TopicService";
 import type { FormRules } from "element-plus";
 import { hideModal, showModal } from "@/core/helpers/dom";
@@ -179,6 +194,7 @@ const concatDates = (d1: Date, d2: Date) => {
 const detailForm = ref<any>({
   title: "",
   type: TopicTypes.Notice,
+  category: TopicCategoryTypes.Information,
   language: "en-us",
   content: "content",
   author: "system",
@@ -186,14 +202,20 @@ const detailForm = ref<any>({
   effectiveTo: concatDates(endDate.value, endTime.value),
 });
 
+const categorySelections = [
+  { label: "Activity", value: TopicCategoryTypes.Activity },
+  { label: "Information", value: TopicCategoryTypes.Information },
+];
+
 const noticeFormRules = reactive<FormRules>({
   title: [{ required: true, message: "Please input the Notice template key" }],
+  category: [{ required: true, message: "Please select category" }],
 });
 
 const createNotice = async () => {
   submited.value = true;
   await GlobalService.createNotice(detailForm.value);
-  emits("eventSubmit");
+  emits("eventSubmit", TopicTypes.Notice);
   submited.value = false;
   hide();
 };

@@ -92,7 +92,13 @@
               {{ $t("fields.openTime") }}
             </div>
           </template>
-          <TimeShow type="exactTime" :date-iso-string="item.openedOn" />
+          <!-- <TimeShow type="exactTime" :date-iso-string="item.openedOn" />
+          <br /> -->
+          <TimeShow
+            type="exactTimeGMT"
+            :date-iso-string="item.openedOn"
+            :gmt-option="{ isconvert: false, islocal: true }"
+          />
         </el-descriptions-item>
 
         <el-descriptions-item>
@@ -101,12 +107,20 @@
               {{ $t("fields.closeTime") }}
             </div>
           </template>
-          <TimeShow type="exactTime" :date-iso-string="item.closedOn" />
+          <!-- <TimeShow type="exactTime" :date-iso-string="item.closedOn" />
+          <br /> -->
+          <TimeShow
+            type="exactTimeGMT"
+            :date-iso-string="item.closedOn"
+            :gmt-option="{ isconvert: false, islocal: true }"
+          />
         </el-descriptions-item>
       </el-descriptions>
       <el-divider></el-divider>
       <div class="d-flex justify-content-between align-items-center">
-        <h4 class="mt-5">Rebate Target Accounts</h4>
+        <h4 class="mt-5">
+          Rebate Target Accounts<b style="color: #f1416c">(GMT+0)</b>
+        </h4>
         <div>
           <el-button
             type="primary"
@@ -152,22 +166,43 @@
           </tbody>
 
           <tbody v-else class="fw-semibold">
-            <tr v-for="(item, index) in item.rebates" :key="index">
-              <td><UserInfo :user="item.user" disable-comment-view /></td>
-              <td>{{ item.targetAccount.uid }}</td>
-              <td>{{ item.targetAccount.group }}</td>
+            <tr v-for="(rebateItem, index) in item.rebates" :key="index">
+              <td><UserInfo :user="rebateItem.user" disable-comment-view /></td>
+              <td>{{ rebateItem.targetAccount.uid }}</td>
+              <td>{{ rebateItem.targetAccount.group }}</td>
               <td>
                 <BalanceShow
-                  :balance="item.amount"
-                  :currency-id="item.currencyId"
+                  :balance="rebateItem.amount"
+                  :currency-id="rebateItem.currencyId"
                 />
               </td>
-              <td>{{ item.targetWalletId }}</td>
+              <td>{{ rebateItem.targetWalletId }}</td>
               <td>
-                <TimeShow type="exactTime" :date-iso-string="item.postedOn" />
+                存储时间：<TimeShow
+                  type="exactTimeGMT"
+                  :date-iso-string="rebateItem.postedOn"
+                  :gmt-option="{ isconvert: false, islocal: false }"
+                /><br />
+                转换时间：
+                <TimeShow
+                  type="exactTimeGMT"
+                  :date-iso-string="rebateItem.postedOn"
+                  :gmt-option="{ isconvert: true, islocal: true }"
+                />
               </td>
               <td>
-                <TimeShow type="exactTime" :date-iso-string="item.releasedOn" />
+                存储时间：
+                <TimeShow
+                  type="exactTime"
+                  :date-iso-string="rebateItem.releasedOn"
+                />
+                <br />
+                转换时间：
+                <TimeShow
+                  type="exactTimeGMT"
+                  :date-iso-string="rebateItem.releasedOn"
+                  :gmt-option="{ isconvert: true, islocal: true }"
+                />
               </td>
             </tr>
           </tbody>
@@ -237,6 +272,10 @@ import MsgPrompt from "@/core/plugins/MsgPrompt";
 import { Search, Promotion } from "@element-plus/icons-vue";
 import TenantGlobalInjectionKeys from "@/core/types/TenantGlobalInjectionKeys";
 import { ElNotification } from "element-plus";
+import {
+  convertToLocalTime,
+  convertToLocalGMT,
+} from "@/core/plugins/TimerService";
 const isLoading = ref(true);
 const checkLoading = ref(false);
 const modalRef = ref<InstanceType<typeof SimpleForm>>();
@@ -252,12 +291,43 @@ const platformName = computed(
 );
 const show = async (_item: any) => {
   modalRef.value?.show();
+
   try {
     isLoading.value = true;
     item.value = await RebateService.getTradeRebateDetails(_item.id);
     if (services.value === null) {
       services.value = await AccountService.getServices();
     }
+    item.value.tradeGMT = Array.isArray(item.value.tradeGMT)
+      ? item.value.tradeGMT
+      : [];
+    item.value.rebateGMT = Array.isArray(item.value.rebateGMT)
+      ? item.value.rebateGMT
+      : [];
+
+    item.value.tradeGMT.push(
+      convertToLocalGMT(item.value.openedOn, "America/Los_Angeles")
+    );
+    item.value.tradeGMT.push(
+      convertToLocalGMT(item.value.closedOn, "America/Los_Angeles")
+    );
+    if (item.value.rebates?.length > 0) {
+      item.value.rebateGMT.push(
+        convertToLocalGMT(item.value.rebates[0].postedOn, "America/Los_Angeles")
+      );
+      item.value.rebateGMT.push(
+        convertToLocalGMT(
+          item.value.rebates[0].releasedOn,
+          "America/Los_Angeles"
+        )
+      );
+    }
+    item.value.tradeGMT = item.value.tradeGMT.filter((gmt, index) => {
+      return item.value.tradeGMT.indexOf(gmt) === index;
+    });
+    item.value.rebateGMT = item.value.rebateGMT.filter((gmt, index) => {
+      return item.value.rebateGMT.indexOf(gmt) === index;
+    });
   } catch (e) {
     MsgPrompt.error(e);
   } finally {

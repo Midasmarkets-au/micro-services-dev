@@ -91,6 +91,11 @@
                 <div class="fv-help-block">
                   <ErrorMessage name="confirmPassword" />
                 </div>
+                <div
+                  class="fs-8 mt-2 text-warning bg-warning bg-opacity-10 px-3 py-2 rounded"
+                >
+                  {{ $t("tip.passwordUpdateWithdrawLock24h") }}
+                </div>
               </div>
             </div>
           </div>

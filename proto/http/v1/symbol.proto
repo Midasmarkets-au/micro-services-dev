@@ -19,19 +19,19 @@ service TenantSymbolService {
     option (google.api.http) = { get: "/api/v1/tenant/symbol" };
   }
   // 按 id 获取品种详情
-  rpc GetSymbol(GetSymbolRequest) returns (Symbol) {
+  rpc GetSymbol(GetSymbolRequest) returns (GetSymbolResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/symbol/{id}" };
   }
   // 创建新品种
-  rpc CreateSymbol(CreateSymbolRequest) returns (Symbol) {
+  rpc CreateSymbol(CreateSymbolRequest) returns (CreateSymbolResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/symbol", body: "*" };
   }
   // 更新品种信息（全量替换，body 字段名为 model）
-  rpc UpdateSymbol(UpdateSymbolRequest) returns (Symbol) {
+  rpc UpdateSymbol(UpdateSymbolRequest) returns (UpdateSymbolResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/symbol/{id}", body: "model" };
   }
   // 删除品种（不可恢复）
-  rpc DeleteSymbol(GetSymbolRequest) returns (OperationResponse) {
+  rpc DeleteSymbol(DeleteSymbolRequest) returns (DeleteSymbolResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/symbol/{id}" };
   }
   // 批量导入品种；已存在的品种会被跳过（返回 skipped 计数）
@@ -39,23 +39,23 @@ service TenantSymbolService {
     option (google.api.http) = { post: "/api/v1/tenant/symbol/batch", body: "*" };
   }
   // 按 id 列表批量删除品种
-  rpc BatchDeleteSymbols(BatchDeleteSymbolsRequest) returns (OperationResponse) {
+  rpc BatchDeleteSymbols(BatchDeleteSymbolsRequest) returns (BatchDeleteSymbolsResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/symbol/batch" };
   }
   // 获取品种分类列表；可按 type 过滤
-  rpc GetCategories(GetSymbolCategoriesRequest) returns (SymbolCategoriesResponse) {
+  rpc GetCategories(GetCategoriesRequest) returns (GetCategoriesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/symbol/categories" };
   }
   // 创建品种分类
-  rpc CreateCategory(CreateSymbolCategoryRequest) returns (SymbolCategory) {
+  rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/symbol/category", body: "*" };
   }
   // 更新品种分类（body 字段名为 model）
-  rpc UpdateCategory(UpdateSymbolCategoryRequest) returns (SymbolCategory) {
+  rpc UpdateCategory(UpdateCategoryRequest) returns (UpdateCategoryResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/symbol/category/{category_id}", body: "model" };
   }
   // 按 type + category_id 删除品种分类
-  rpc DeleteCategory(DeleteSymbolCategoryRequest) returns (OperationResponse) {
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/symbol/type/{type}/category/{category_id}" };
   }
 }
@@ -70,19 +70,19 @@ service TenantExchangeRateService {
     option (google.api.http) = { get: "/api/v1/tenant/exchange-rate" };
   }
   // 按 id 获取汇率详情
-  rpc GetExchangeRate(GetExchangeRateRequest) returns (ExchangeRate) {
+  rpc GetExchangeRate(GetExchangeRateRequest) returns (GetExchangeRateResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}" };
   }
   // 获取指定汇率的历史变动记录（分页）
-  rpc GetExchangeRateHistory(GetExchangeRateHistoryRequest) returns (ExchangeRateHistoryResponse) {
+  rpc GetExchangeRateHistory(GetExchangeRateHistoryRequest) returns (GetExchangeRateHistoryResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}/history" };
   }
   // 创建新货币对汇率
-  rpc CreateExchangeRate(CreateExchangeRateRequest) returns (ExchangeRate) {
+  rpc CreateExchangeRate(CreateExchangeRateRequest) returns (CreateExchangeRateResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/exchange-rate", body: "*" };
   }
   // 更新汇率（body 字段名为 spec）
-  rpc UpdateExchangeRate(UpdateExchangeRateRequest) returns (ExchangeRate) {
+  rpc UpdateExchangeRate(UpdateExchangeRateRequest) returns (UpdateExchangeRateResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/exchange-rate/{id}", body: "spec" };
   }
 }
@@ -132,6 +132,10 @@ message GetSymbolRequest {
   int32 id = 1;
 }
 
+message GetSymbolResponse {
+  Symbol data = 1;
+}
+
 // 创建品种请求
 message CreateSymbolRequest {
   string name        = 1; // 品种名称，应与 MT4/MT5 品种名一致
@@ -140,10 +144,27 @@ message CreateSymbolRequest {
   int32  type        = 4; // 品种类型枚举
 }
 
+message CreateSymbolResponse {
+  Symbol data = 1;
+}
+
 // 更新品种请求
 message UpdateSymbolRequest {
   int32             id    = 1;
   CreateSymbolRequest model = 2; // 全量替换字段
+}
+
+message UpdateSymbolResponse {
+  Symbol data = 1;
+}
+
+message DeleteSymbolRequest {
+  int32 id = 1;
+}
+
+message DeleteSymbolResponse {
+  bool   success = 1;
+  string message = 2;
 }
 
 // 批量导入品种请求
@@ -162,31 +183,49 @@ message BatchDeleteSymbolsRequest {
   repeated int32 ids = 1; // 待删除品种 ID 列表
 }
 
+message BatchDeleteSymbolsResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
 // 品种分类列表请求
-message GetSymbolCategoriesRequest {
+message GetCategoriesRequest {
   optional int32 type = 1; // 按 type 过滤；不传则返回所有分类
 }
 
-message SymbolCategoriesResponse {
+message GetCategoriesResponse {
   repeated SymbolCategory categories = 1;
 }
 
 // 创建分类请求
-message CreateSymbolCategoryRequest {
+message CreateCategoryRequest {
   string name = 1;
   int32  type = 2;
 }
 
+message CreateCategoryResponse {
+  SymbolCategory data = 1;
+}
+
 // 更新分类请求
-message UpdateSymbolCategoryRequest {
-  int32                       category_id = 1;
-  CreateSymbolCategoryRequest model       = 2;
+message UpdateCategoryRequest {
+  int32                 category_id = 1;
+  CreateCategoryRequest model       = 2;
+}
+
+message UpdateCategoryResponse {
+  SymbolCategory data = 1;
 }
 
 // 删除分类请求
-message DeleteSymbolCategoryRequest {
+message DeleteCategoryRequest {
   int32 type        = 1; // 分类类型
   int32 category_id = 2; // 分类 ID
+}
+
+message DeleteCategoryResponse {
+  bool   success = 1;
+  string message = 2;
 }
 
 // 汇率列表请求
@@ -206,6 +245,10 @@ message GetExchangeRateRequest {
   int64 id = 1;
 }
 
+message GetExchangeRateResponse {
+  ExchangeRate data = 1;
+}
+
 // 汇率历史查询请求
 message GetExchangeRateHistoryRequest {
   int64             id         = 1; // 汇率记录 ID
@@ -213,7 +256,7 @@ message GetExchangeRateHistoryRequest {
 }
 
 // 汇率历史响应
-message ExchangeRateHistoryResponse {
+message GetExchangeRateHistoryResponse {
   repeated ExchangeRateHistoryItem items = 1;
 }
 
@@ -230,8 +273,16 @@ message CreateExchangeRateRequest {
   double rate          = 3; // 汇率值
 }
 
+message CreateExchangeRateResponse {
+  ExchangeRate data = 1;
+}
+
 // 更新汇率请求
 message UpdateExchangeRateRequest {
   int64                     id   = 1;
   CreateExchangeRateRequest spec = 2;
+}
+
+message UpdateExchangeRateResponse {
+  ExchangeRate data = 1;
 }

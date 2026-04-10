@@ -10,8 +10,8 @@ use tracing::{debug, info};
 
 use idgen::api::v1::api_service_server::{ApiService, ApiServiceServer};
 use idgen::api::v1::{
-    GenerateIdRequest, GenerateIdResponse, HealthCheckRequest, HealthCheckResponse, HelloRequest,
-    HelloResponse,
+    CheckRequest, CheckResponse, GenerateIdRequest, GenerateIdResponse, SayHelloRequest,
+    SayHelloResponse,
 };
 use idgen::http_routes;
 use idgen::service;
@@ -29,15 +29,15 @@ pub struct ApiServiceImpl;
 impl ApiService for ApiServiceImpl {
     async fn say_hello(
         &self,
-        request: Request<HelloRequest>,
-    ) -> Result<Response<HelloResponse>, Status> {
+        request: Request<SayHelloRequest>,
+    ) -> Result<Response<SayHelloResponse>, Status> {
         Ok(Response::new(service::say_hello(request.into_inner())))
     }
 
     async fn check(
         &self,
-        request: Request<HealthCheckRequest>,
-    ) -> Result<Response<HealthCheckResponse>, Status> {
+        request: Request<CheckRequest>,
+    ) -> Result<Response<CheckResponse>, Status> {
         Ok(Response::new(service::check(request.into_inner())))
     }
 
@@ -57,18 +57,18 @@ async fn dispatch_http_get(
 ) -> Json<Value> {
     let value = match rpc {
         "SayHello" => {
-            let req = HelloRequest {
+            let req = SayHelloRequest {
                 name: params.get("name").cloned().unwrap_or_default(),
             };
             let res = service::say_hello(req);
             serde_json::json!({ "message": res.message })
         }
         "Check" => {
-            let res = service::check(HealthCheckRequest {});
+            let res = service::check(CheckRequest {});
             let status_str = match res.status {
-                1 => "SERVING",
-                2 => "NOT_SERVING",
-                _ => "UNKNOWN",
+                1 => "STATUS_SERVING",
+                2 => "STATUS_NOT_SERVING",
+                _ => "STATUS_UNSPECIFIED",
             };
             serde_json::json!({ "status": status_str })
         }

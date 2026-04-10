@@ -70,7 +70,7 @@ async fn process_message(
 
     let pool = ctx.tenant_pool(tenant_id).await?;
 
-    // Dedup check across all partitions of _TradeRebateK8s
+    // Dedup check across all partitions of trade_rebate_k8s
     if trade_rebate::exists(&pool, trade.ticket, trade.service_id).await? {
         msg.ack().await.ok();
         return Ok(());

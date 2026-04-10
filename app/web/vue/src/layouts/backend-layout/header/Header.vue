@@ -130,7 +130,7 @@ export default defineComponent({
       jp: "#f6c23e",
     };
     const siteColor = siteColors[user.tenancy];
-    window.document.title = " Backend" || "MM";
+    window.document.title = " Backend" || "MDM";
     return {
       layout,
       headerWidthFluid,

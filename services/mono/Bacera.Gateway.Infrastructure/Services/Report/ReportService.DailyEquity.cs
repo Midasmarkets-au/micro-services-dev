@@ -210,25 +210,25 @@ WITH
     -- ============================================
     margin_in_deposit AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(d."Amount") AS total_amount
-        FROM core."_Matter" m
-        JOIN acct."_Deposit" d ON d."Id" = m."Id"
+        FROM core.matter_k8s m
+        JOIN acct."_Deposit" d ON d."Id" = m.id
         JOIN client_accounts ca ON d."TargetAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m."StateId" IN (350, 351)
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+        WHERE m.state_id IN (350, 351)
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
     margin_in_acc2acc AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core."_Matter" m
-        JOIN acct."_Transaction" t ON t."Id" = m."Id"
+        FROM core.matter_k8s m
+        JOIN acct."_Transaction" t ON t."Id" = m.id
         JOIN client_accounts ca ON t."TargetAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m."StateId" = 250
+        WHERE m.state_id = 250
           AND t."SourceAccountType" = 2
           AND t."TargetAccountType" = 2
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -248,16 +248,16 @@ WITH
     margin_out_withdrawal AS (
         WITH withdrawal_first_approval AS (
             SELECT 
-                a."MatterId",
-                MIN(a."PerformedOn") AS first_approval_time
-            FROM core."_Activity" a
-            WHERE a."ToStateId" = 420
-            GROUP BY a."MatterId"
+                a.matter_id,
+                MIN(a.performed_on) AS first_approval_time
+            FROM core.activity_k8s a
+            WHERE a.to_state_id = 420
+            GROUP BY a.matter_id
         )
         SELECT ca.sales_code, ca."CurrencyId", SUM(w."Amount") AS total_amount
-        FROM core."_Matter" m
-        JOIN acct."_Withdrawal" w ON w."Id" = m."Id"
-        JOIN withdrawal_first_approval wfa ON wfa."MatterId" = m."Id"
+        FROM core.matter_k8s m
+        JOIN acct."_Withdrawal" w ON w."Id" = m.id
+        JOIN withdrawal_first_approval wfa ON wfa.matter_id = m.id
         JOIN client_accounts ca ON w."SourceAccountId" = ca.account_id
         CROSS JOIN params p
         WHERE w."SourceAccountId" IS NOT NULL
@@ -268,14 +268,14 @@ WITH
 
     margin_out_acc2acc AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core."_Matter" m
-        JOIN acct."_Transaction" t ON t."Id" = m."Id"
+        FROM core.matter_k8s m
+        JOIN acct."_Transaction" t ON t."Id" = m.id
         JOIN client_accounts ca ON t."SourceAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m."StateId" = 250
+        WHERE m.state_id = 250
           AND t."SourceAccountType" = 2
           AND t."TargetAccountType" = 2
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -295,11 +295,11 @@ WITH
     wallet_margin_out AS (
         WITH wallet_withdrawal_first_approval AS (
             SELECT 
-                a."MatterId",
-                MIN(a."PerformedOn") AS first_approval_time
-            FROM core."_Activity" a
-            WHERE a."ToStateId" = 420
-            GROUP BY a."MatterId"
+                a.matter_id,
+                MIN(a.performed_on) AS first_approval_time
+            FROM core.activity_k8s a
+            WHERE a.to_state_id = 420
+            GROUP BY a.matter_id
         ),
         wallet_withdrawal_with_sales AS (
             SELECT DISTINCT ON (wd."Id")
@@ -308,9 +308,9 @@ WITH
                 wd."Amount",
                 COALESCE(sa."Code", 'NO_SALES') AS sales_code,
                 wfa.first_approval_time
-            FROM core."_Matter" m
-            JOIN acct."_Withdrawal" wd ON wd."Id" = m."Id"
-            JOIN wallet_withdrawal_first_approval wfa ON wfa."MatterId" = m."Id"
+            FROM core.matter_k8s m
+            JOIN acct."_Withdrawal" wd ON wd."Id" = m.id
+            JOIN wallet_withdrawal_first_approval wfa ON wfa.matter_id = m.id
             JOIN acct."_Wallet" w ON wd."SourceWalletId" = w."Id"
             LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
                 AND a."Role" IN (300, 400)
@@ -335,14 +335,14 @@ WITH
     -- ============================================
     transfer_in_acc AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core."_Matter" m
-        JOIN acct."_Transaction" t ON t."Id" = m."Id"
+        FROM core.matter_k8s m
+        JOIN acct."_Transaction" t ON t."Id" = m.id
         JOIN client_accounts ca ON t."TargetAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m."StateId" = 250
+        WHERE m.state_id = 250
           AND t."SourceAccountType" = 1
           AND t."TargetAccountType" = 2
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -351,14 +351,14 @@ WITH
     -- ============================================
     transfer_out_acc AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core."_Matter" m
-        JOIN acct."_Transaction" t ON t."Id" = m."Id"
+        FROM core.matter_k8s m
+        JOIN acct."_Transaction" t ON t."Id" = m.id
         JOIN client_accounts ca ON t."SourceAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m."StateId" = 250
+        WHERE m.state_id = 250
           AND t."SourceAccountType" = 2
           AND t."TargetAccountType" = 1
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -374,16 +374,16 @@ WITH
                 t."CurrencyId" AS target_currency_id,
                 t."Amount",
                 COALESCE(sa."Code", 'NO_SALES') AS sales_code
-            FROM core."_Matter" m
-            JOIN acct."_Transaction" t ON t."Id" = m."Id"
+            FROM core.matter_k8s m
+            JOIN acct."_Transaction" t ON t."Id" = m.id
             JOIN acct."_Wallet" w ON t."SourceAccountId" = w."Id"
             LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
                 AND a."Role" IN (300, 400)
                 AND a."CurrencyId" = w."CurrencyId"  -- Match wallet currency to get correct sales code
             LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
             CROSS JOIN params p
-            WHERE m."StateId" = 250 AND t."SourceAccountType" = 1
-              AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+            WHERE m.state_id = 250 AND t."SourceAccountType" = 1
+              AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
             ORDER BY t."Id", a."Id" -- Pick first account if multiple exist for same party
         )
         SELECT
@@ -413,16 +413,16 @@ WITH
                 t."CurrencyId" AS source_currency_id,
                 t."Amount",
                 COALESCE(sa."Code", 'NO_SALES') AS sales_code
-            FROM core."_Matter" m
-            JOIN acct."_Transaction" t ON t."Id" = m."Id"
+            FROM core.matter_k8s m
+            JOIN acct."_Transaction" t ON t."Id" = m.id
             JOIN acct."_Wallet" w ON t."TargetAccountId" = w."Id"
             LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
                 AND a."Role" IN (300, 400)
                 AND a."CurrencyId" = w."CurrencyId"  -- Match wallet currency to get correct sales code
             LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
             CROSS JOIN params p
-            WHERE m."StateId" = 250 AND t."TargetAccountType" = 1
-              AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+            WHERE m.state_id = 250 AND t."TargetAccountType" = 1
+              AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
             ORDER BY t."Id", a."Id" -- Pick first account if multiple exist for same party
         )
         SELECT
@@ -443,7 +443,7 @@ WITH
     credit_adjust AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(ar."Amount") AS total_amount
         FROM trd."_AdjustRecord" ar
-        JOIN client_accounts ca ON ar."AccountId" = ca.account_id
+        JOIN client_accounts ca ON ar.account_id = ca.account_id
         CROSS JOIN params p
         WHERE ar."Type" = 2 AND ar."Status" = 2
           AND ar."UpdatedOn" >= p.fromDT AND ar."UpdatedOn" < p.toDT
@@ -456,7 +456,7 @@ WITH
     balance_adjust AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(ar."Amount") AS total_amount
         FROM trd."_AdjustRecord" ar
-        JOIN client_accounts ca ON ar."AccountId" = ca.account_id
+        JOIN client_accounts ca ON ar.account_id = ca.account_id
         CROSS JOIN params p
         WHERE ar."Type" IN (1, 3) AND ar."Status" = 2
           AND ar."UpdatedOn" >= p.fromDT AND ar."UpdatedOn" < p.toDT
@@ -478,7 +478,7 @@ WITH
             END AS sales_code,
             SUM(wa."Amount") AS total_amount
         FROM acct."_WalletAdjust" wa
-        JOIN core."_Matter" m ON wa."Id" = m."Id"
+        JOIN core.matter_k8s m ON wa."Id" = m.id
         JOIN acct."_Wallet" w ON wa."WalletId" = w."Id"
         -- Try to find Sales account (Role 100)
         LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
@@ -487,9 +487,9 @@ WITH
         -- Get the SalesAccountId for clients
         LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."StateId" = 750  -- WalletAdjustCompleted
+        WHERE m.state_id = 750  -- WalletAdjustCompleted
           AND w."CurrencyId" = 840  -- USD Wallet only
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY 
             CASE
                 WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
@@ -505,22 +505,22 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 840 THEN wt."Amount"
-                WHEN w."CurrencyId" = 841 THEN wt."Amount" / 100
-                ELSE wt."Amount"
+                WHEN w."CurrencyId" = 840 THEN wt.amount
+                WHEN w."CurrencyId" = 841 THEN wt.amount / 100
+                ELSE wt.amount
             END) AS total_amount
-        FROM acct."_WalletTransaction" wt
-        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
-        JOIN trd."_Rebate" r ON r."Id" = m."Id"
-        JOIN trd."_TradeRebate" tr ON r."TradeRebateId" = tr."Id"
-        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
-        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
+        FROM acct.wallet_transaction_k8s wt
+        JOIN core.matter_k8s m ON wt.matter_id = m.id
+        JOIN trd.rebate_k8s r ON r.id = m.id
+        JOIN trd.trade_rebate_k8s tr ON r.trade_rebate_id = tr.id
+        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
+        JOIN trd."_Account" aa ON r.account_id = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."Type" = 500 AND m."StateId" = 550
-          AND tr."CurrencyId" = 840
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
-          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr."ClosedOn" >= p.closedOnFrom AND tr."ClosedOn" <= p.closedOnTo""" : "")}
+        WHERE m.type = 500 AND m.state_id = 550
+          AND tr.currency_id = 840
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr.closed_on >= p.closedOnFrom AND tr.closed_on <= p.closedOnTo""" : "")}
         GROUP BY sa."Code"
     ),
 
@@ -531,22 +531,22 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 841 THEN wt."Amount"
-                WHEN w."CurrencyId" = 840 THEN wt."Amount" * 100
-                ELSE wt."Amount"
+                WHEN w."CurrencyId" = 841 THEN wt.amount
+                WHEN w."CurrencyId" = 840 THEN wt.amount * 100
+                ELSE wt.amount
             END) AS total_amount
-        FROM acct."_WalletTransaction" wt
-        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
-        JOIN trd."_Rebate" r ON r."Id" = m."Id"
-        JOIN trd."_TradeRebate" tr ON r."TradeRebateId" = tr."Id"
-        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
-        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
+        FROM acct.wallet_transaction_k8s wt
+        JOIN core.matter_k8s m ON wt.matter_id = m.id
+        JOIN trd.rebate_k8s r ON r.id = m.id
+        JOIN trd.trade_rebate_k8s tr ON r.trade_rebate_id = tr.id
+        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
+        JOIN trd."_Account" aa ON r.account_id = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."Type" = 500 AND m."StateId" = 550
-          AND tr."CurrencyId" = 841
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
-          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr."ClosedOn" >= p.closedOnFrom AND tr."ClosedOn" <= p.closedOnTo""" : "")}
+        WHERE m.type = 500 AND m.state_id = 550
+          AND tr.currency_id = 841
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr.closed_on >= p.closedOnFrom AND tr.closed_on <= p.closedOnTo""" : "")}
         GROUP BY sa."Code"
     ),
 
@@ -557,20 +557,20 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 840 THEN wt."Amount"
-                WHEN w."CurrencyId" = 841 THEN wt."Amount" / 100
-                ELSE wt."Amount"
+                WHEN w."CurrencyId" = 840 THEN wt.amount
+                WHEN w."CurrencyId" = 841 THEN wt.amount / 100
+                ELSE wt.amount
             END) AS total_amount
-        FROM acct."_WalletTransaction" wt
-        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
-        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
-        JOIN trd."_Rebate" r ON r."Id" = m."Id"
-        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
+        FROM acct.wallet_transaction_k8s wt
+        JOIN core.matter_k8s m ON wt.matter_id = m.id
+        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
+        JOIN trd.rebate_k8s r ON r.id = m.id
+        JOIN trd."_Account" aa ON r.account_id = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m."Type" = 500
-          AND m."StateId" = 550
-          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+        WHERE m.type = 500
+          AND m.state_id = 550
+          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
         GROUP BY sa."Code"
     ),
 

@@ -16,41 +16,41 @@ service TenantReportService {
   // HTTP 路由由 MVC ReportController 处理，返回完整 ReportRequest 实体（含 name/generatedOn/expireOn/query/isFromApi）
   rpc ListReportRequests(ListReportRequestsRequest) returns (ListReportRequestsResponse) {}
   // 按 id 获取单条报表请求详情（含 file_url 下载链接）
-  rpc GetReportRequest(GetReportRequestRequest) returns (ReportRequest) {
+  rpc GetReportRequest(GetReportRequestRequest) returns (GetReportRequestResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/report/request/{id}" };
   }
   // 获取指定报表类型（type）的查询样本（JSON 格式），用于前端填写查询参数
-  rpc GetQuerySample(GetQuerySampleRequest) returns (QuerySampleResponse) {
+  rpc GetQuerySample(GetQuerySampleRequest) returns (GetQuerySampleResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/report/query/{type}/sample" };
   }
   // 预览报表查询结果（不生成文件），body 字段为 query（JSON 字符串）
-  rpc PreviewQuery(PreviewQueryRequest) returns (QueryPreviewResponse) {
+  rpc PreviewQuery(PreviewQueryRequest) returns (PreviewQueryResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/query/{type}/preview", body: "*" };
   }
   // 创建报表请求，异步生成报表文件（status 会从 pending → completed）
-  rpc CreateReportRequest(CreateReportRequestRequest) returns (ReportRequest) {
+  rpc CreateReportRequest(CreateReportRequestRequest) returns (CreateReportRequestResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request", body: "*" };
   }
   // HTTP 路由由 MVC ReportController.RegenRequest 处理（需要 GetPartyId() MVC context）
-  rpc RegenReport(GetReportRequestRequest) returns (ReportRequest) {}
+  rpc RegenReport(RegenReportRequest) returns (RegenReportResponse) {}
   // 创建并立即返回下载 URL（不持久化 ReportRequest 记录）
-  rpc DownloadReport(CreateReportRequestRequest) returns (DownloadReportResponse) {
+  rpc DownloadReport(DownloadReportRequest) returns (DownloadReportResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/download", body: "*" };
   }
   // 创建权益报表；configuration 为 JSON 格式的 ReportConfiguration 对象
-  rpc CreateEquityReport(CreateEquityReportRequest) returns (ReportRequest) {
+  rpc CreateEquityReport(CreateEquityReportRequest) returns (CreateEquityReportResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/equity", body: "*" };
   }
   // 同步执行报表生成任务（调试用，绕过 Hangfire 队列直接处理）
-  rpc SimulateJob(CreateReportRequestRequest) returns (ReportRequest) {
+  rpc SimulateJob(SimulateJobRequest) returns (SimulateJobResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/download/simulate-job", body: "*" };
   }
   // 生成权益报表 HTML 预览（不持久化，直接返回 HTML 字符串）
-  rpc GetEquityReportHtml(CreateEquityReportRequest) returns (EquityReportHtmlResponse) {
+  rpc GetEquityReportHtml(GetEquityReportHtmlRequest) returns (GetEquityReportHtmlResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/html", body: "*" };
   }
   // 获取权益报表所需的登录数据（按账户组和名称分组）
-  rpc GetEquityReportLogins(CreateEquityReportRequest) returns (EquityReportLoginsResponse) {
+  rpc GetEquityReportLogins(GetEquityReportLoginsRequest) returns (GetEquityReportLoginsResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/logins", body: "*" };
   }
 }
@@ -65,15 +65,15 @@ service TenantAccountReportService {
     option (google.api.http) = { get: "/api/v1/tenant/account-report" };
   }
   // 预览账户报表 HTML 内容（适合在界面中内嵌预览）
-  rpc PreviewAccountReport(GetAccountReportRequest) returns (AccountReportPreviewResponse) {
+  rpc PreviewAccountReport(PreviewAccountReportRequest) returns (PreviewAccountReportResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/account-report/{id}/preview" };
   }
   // 向指定邮箱发送账户报表（spec 中含 email 和 subject）
-  rpc SendAccountReport(SendAccountReportRequest) returns (OperationResponse) {
+  rpc SendAccountReport(SendAccountReportRequest) returns (SendAccountReportResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/account-report/{id}/send-report", body: "spec" };
   }
   // 获取今日账户报表发送进度（total / sent / pending）
-  rpc GetTodayStatus(EmptyRequest) returns (AccountReportTodayStatusResponse) {
+  rpc GetTodayStatus(GetTodayStatusRequest) returns (GetTodayStatusResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/account-report/today-status" };
   }
 }
@@ -110,6 +110,10 @@ message GetReportRequestRequest {
   int64 id = 1;
 }
 
+message GetReportRequestResponse {
+  ReportRequest data = 1;
+}
+
 // 查询样本请求（按报表类型获取示例 JSON）
 message GetQuerySampleRequest {
   int32 type = 1; // 报表类型枚举值
@@ -118,6 +122,10 @@ message GetQuerySampleRequest {
 // 查询样本响应
 message QuerySampleResponse {
   string sample = 1; // JSON 字符串，展示该报表类型的参数示例
+}
+
+message GetQuerySampleResponse {
+  QuerySampleResponse data = 1;
 }
 
 // 查询预览请求
@@ -131,10 +139,41 @@ message QueryPreviewResponse {
   string data = 1; // JSON 字符串，预览数据（前 N 行结果）
 }
 
+// PreviewQuery RPC 响应包装（buf：RPC 名与响应类型一致）
+message PreviewQueryResponse {
+  QueryPreviewResponse data = 1;
+}
+
 // 创建报表请求
 message CreateReportRequestRequest {
   int32  type       = 1; // 报表类型
   string parameters = 2; // JSON 查询参数字符串（与 QuerySample 结构一致）
+}
+
+message CreateReportRequestResponse {
+  ReportRequest data = 1;
+}
+
+message RegenReportRequest {
+  int64 id = 1;
+}
+
+message RegenReportResponse {
+  ReportRequest data = 1;
+}
+
+message DownloadReportRequest {
+  int32  type       = 1; // 报表类型
+  string parameters = 2; // JSON 查询参数字符串（与 CreateReportRequestRequest 一致）
+}
+
+message SimulateJobRequest {
+  int32  type       = 1; // 报表类型
+  string parameters = 2; // JSON 查询参数字符串（与 CreateReportRequestRequest 一致）
+}
+
+message SimulateJobResponse {
+  ReportRequest data = 1;
 }
 
 // 立即下载响应
@@ -147,6 +186,26 @@ message DownloadReportResponse {
 // 创建权益报表请求
 message CreateEquityReportRequest {
   string configuration = 1; // JSON 格式的 ReportConfiguration，包含账户、日期等配置
+}
+
+message CreateEquityReportResponse {
+  ReportRequest data = 1;
+}
+
+message GetEquityReportHtmlRequest {
+  string configuration = 1; // 与 CreateEquityReportRequest 一致
+}
+
+message GetEquityReportHtmlResponse {
+  EquityReportHtmlResponse data = 1;
+}
+
+message GetEquityReportLoginsRequest {
+  string configuration = 1; // 与 CreateEquityReportRequest 一致
+}
+
+message GetEquityReportLoginsResponse {
+  EquityReportLoginsResponse data = 1;
 }
 
 // 权益报表 HTML 预览响应
@@ -191,15 +250,28 @@ message GetAccountReportRequest {
   int64 id = 1;
 }
 
+message PreviewAccountReportRequest {
+  int64 id = 1; // 与 GetAccountReportRequest 一致
+}
+
 // 账户报表 HTML 预览响应
 message AccountReportPreviewResponse {
   string html_content = 1; // 可直接内嵌到 iframe 或弹窗的 HTML 字符串
+}
+
+message PreviewAccountReportResponse {
+  AccountReportPreviewResponse data = 1;
 }
 
 // 发送账户报表请求
 message SendAccountReportRequest {
   int64                       id   = 1; // 报表记录 ID
   AccountReportSendEmailSpec  spec = 2;
+}
+
+message SendAccountReportResponse {
+  bool   success = 1; // 与 OperationResponse 字段一致
+  string message = 2;
 }
 
 // 发送邮件配置
@@ -213,4 +285,10 @@ message AccountReportTodayStatusResponse {
   int32 total   = 1; // 今日生成报表总数
   int32 sent    = 2; // 已发送数量
   int32 pending = 3; // 待发送数量
+}
+
+message GetTodayStatusRequest {}
+
+message GetTodayStatusResponse {
+  AccountReportTodayStatusResponse data = 1;
 }

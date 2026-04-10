@@ -103,29 +103,29 @@ public partial class CmdTestService
 
         await connection.ExecuteAsync(
             $"""
-             update trd."_TradeRebate"
-             set "Status" = {(int)TradeRebateStatusTypes.PendingResend}
-             where "Id" in (select tr."Id"
-                            from trd."_TradeRebate" tr
-                                     left join trd."_Rebate" r on r."TradeRebateId" = tr."Id"
-                            where tr."Status" = {(int)TradeRebateStatusTypes.SkippedWithOpenCloseTimeLessThanOneMinute}
-                              and "Ticket" in ({string.Join(',', tickets)})
-                              and r."Id" is null);
+             update trd.trade_rebate_k8s
+             set status = {(int)TradeRebateStatusTypes.PendingResend}
+             where id in (select tr.id
+                            from trd.trade_rebate_k8s tr
+                                     left join trd.rebate_k8s r on r.trade_rebate_id = tr.id
+                            where tr.status = {(int)TradeRebateStatusTypes.SkippedWithOpenCloseTimeLessThanOneMinute}
+                              and ticket in ({string.Join(',', tickets)})
+                              and r.id is null);
              """
         );
 
         // execute the following when rebates from above trades are generated!!!!!!!!
         await connection.ExecuteAsync(
             $"""
-             update core."_Matter"
-             set "StateId" = {(int)StateTypes.RebateOnHold}
-             where "Id" in (select r."Id"
-                            from trd."_Rebate" r
-                                     join core."_Matter" m on r."Id" = m."Id"
-                                     join trd."_TradeRebate" tr on tr."Id" = r."TradeRebateId"
-                            where m."StateId" <> {(int)StateTypes.RebateCompleted}
-                              and r."TradeRebateId" is not null
-                              and tr."Ticket" IN ({string.Join(',', tickets)}))
+             update core.matter_k8s
+             set state_id = {(int)StateTypes.RebateOnHold}
+             where id in (select r.id
+                            from trd.rebate_k8s r
+                                     join core.matter_k8s m on r.id = m.id
+                                     join trd.trade_rebate_k8s tr on tr.id = r.trade_rebate_id
+                            where m.state_id <> {(int)StateTypes.RebateCompleted}
+                              and r.trade_rebate_id is not null
+                              and tr.ticket IN ({string.Join(',', tickets)}))
              """
         );
     }

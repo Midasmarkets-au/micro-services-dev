@@ -6,7 +6,10 @@ use tracing::error;
 
 use crate::generated::api::v1::{
     mono_callback_service_client::MonoCallbackServiceClient,
-    NotifyReportDoneRequest, TriggerJobRequest,
+    NotifyReportDoneRequest,
+    TriggerCalculateRebateRequest,
+    TriggerReleaseRebateRequest,
+    TriggerCryptoMonitorRequest,
 };
 
 #[derive(Clone)]
@@ -58,9 +61,7 @@ impl MonoCallbackClient {
     /// Trigger CalculateRebate job in mono.
     /// Fire-and-forget: errors are logged but not propagated.
     pub async fn trigger_calculate_rebate(&self) {
-        if let Err(e) = self.try_trigger(|mut c| async move {
-            c.trigger_calculate_rebate(TriggerJobRequest { tenant_id: 0 }).await
-        }).await {
+        if let Err(e) = self.try_trigger_calculate_rebate().await {
             error!("Failed to trigger CalculateRebate in mono: {}", e);
         }
     }
@@ -68,9 +69,7 @@ impl MonoCallbackClient {
     /// Trigger ReleaseRebate job in mono.
     /// Fire-and-forget: errors are logged but not propagated.
     pub async fn trigger_release_rebate(&self) {
-        if let Err(e) = self.try_trigger(|mut c| async move {
-            c.trigger_release_rebate(TriggerJobRequest { tenant_id: 0 }).await
-        }).await {
+        if let Err(e) = self.try_trigger_release_rebate().await {
             error!("Failed to trigger ReleaseRebate in mono: {}", e);
         }
     }
@@ -78,23 +77,29 @@ impl MonoCallbackClient {
     /// Trigger CryptoMonitor job in mono.
     /// Fire-and-forget: errors are logged but not propagated.
     pub async fn trigger_crypto_monitor(&self) {
-        if let Err(e) = self.try_trigger(|mut c| async move {
-            c.trigger_crypto_monitor(TriggerJobRequest { tenant_id: 0 }).await
-        }).await {
+        if let Err(e) = self.try_trigger_crypto_monitor().await {
             error!("Failed to trigger CryptoMonitor in mono: {}", e);
         }
     }
 
-    async fn try_trigger<F, Fut>(&self, f: F) -> anyhow::Result<()>
-    where
-        F: FnOnce(MonoCallbackServiceClient<Channel>) -> Fut,
-        Fut: std::future::Future<Output = Result<tonic::Response<crate::generated::api::v1::TriggerJobResponse>, tonic::Status>>,
-    {
-        let channel = Channel::from_shared(self.endpoint.clone())?
-            .connect()
-            .await?;
-        let c = MonoCallbackServiceClient::new(channel);
-        f(c).await?;
+    async fn try_trigger_calculate_rebate(&self) -> anyhow::Result<()> {
+        let channel = Channel::from_shared(self.endpoint.clone())?.connect().await?;
+        let mut c = MonoCallbackServiceClient::new(channel);
+        c.trigger_calculate_rebate(TriggerCalculateRebateRequest { tenant_id: 0 }).await?;
+        Ok(())
+    }
+
+    async fn try_trigger_release_rebate(&self) -> anyhow::Result<()> {
+        let channel = Channel::from_shared(self.endpoint.clone())?.connect().await?;
+        let mut c = MonoCallbackServiceClient::new(channel);
+        c.trigger_release_rebate(TriggerReleaseRebateRequest { tenant_id: 0 }).await?;
+        Ok(())
+    }
+
+    async fn try_trigger_crypto_monitor(&self) -> anyhow::Result<()> {
+        let channel = Channel::from_shared(self.endpoint.clone())?.connect().await?;
+        let mut c = MonoCallbackServiceClient::new(channel);
+        c.trigger_crypto_monitor(TriggerCryptoMonitorRequest { tenant_id: 0 }).await?;
         Ok(())
     }
 }

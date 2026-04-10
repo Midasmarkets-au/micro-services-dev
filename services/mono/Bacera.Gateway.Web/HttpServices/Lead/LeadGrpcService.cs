@@ -87,18 +87,18 @@ public class TenantLeadGrpcService(
 
     // ─── Get detail ───────────────────────────────────────────────────────────
 
-    public override async Task<LeadDetail> GetLead(GetLeadRequest request, ServerCallContext context)
+    public override async Task<GetLeadResponse> GetLead(GetLeadRequest request, ServerCallContext context)
     {
         var item = await leadSvc.GetAsync(request.Id);
         if (item.IsEmpty())
             throw new RpcException(new Status(StatusCode.NotFound, "Lead not found"));
 
-        return MapToDetailProto(item);
+        return new GetLeadResponse { Data = MapToDetailProto(item) };
     }
 
     // ─── Create ───────────────────────────────────────────────────────────────
 
-    public override async Task<Http.V1.Lead> CreateLead(CreateLeadRequest request, ServerCallContext context)
+    public override async Task<CreateLeadResponse> CreateLead(CreateLeadRequest request, ServerCallContext context)
     {
         var spec = new M.CreateSpec
         {
@@ -112,28 +112,28 @@ public class TenantLeadGrpcService(
         };
 
         var entity = await leadSvc.CreateAsync(spec);
-        return MapEntityToProto(entity);
+        return new CreateLeadResponse { Data = MapEntityToProto(entity) };
     }
 
     // ─── Archive / Unarchive ──────────────────────────────────────────────────
 
-    public override async Task<Http.V1.Lead> ArchiveLead(GetLeadRequest request, ServerCallContext context)
+    public override async Task<ArchiveLeadResponse> ArchiveLead(ArchiveLeadRequest request, ServerCallContext context)
     {
         var ok = await leadSvc.Archive(request.Id, LeadIsArchivedTypes.Archived);
         if (!ok) throw new RpcException(new Status(StatusCode.Internal, "__LEAD_ARCHIVE_FAILED__"));
-        return await GetLeadEntityProto(request.Id);
+        return new ArchiveLeadResponse { Data = await GetLeadEntityProto(request.Id) };
     }
 
-    public override async Task<Http.V1.Lead> UnarchiveLead(GetLeadRequest request, ServerCallContext context)
+    public override async Task<UnarchiveLeadResponse> UnarchiveLead(UnarchiveLeadRequest request, ServerCallContext context)
     {
         var ok = await leadSvc.Archive(request.Id, LeadIsArchivedTypes.Unarchived);
         if (!ok) throw new RpcException(new Status(StatusCode.Internal, "__LEAD_ARCHIVE_FAILED__"));
-        return await GetLeadEntityProto(request.Id);
+        return new UnarchiveLeadResponse { Data = await GetLeadEntityProto(request.Id) };
     }
 
     // ─── Comment ──────────────────────────────────────────────────────────────
 
-    public override async Task<Http.V1.Lead> AddLeadComment(AddLeadCommentRequest request, ServerCallContext context)
+    public override async Task<AddLeadCommentResponse> AddLeadComment(AddLeadCommentRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var operatorName = await tenantDb.Parties
@@ -144,71 +144,71 @@ public class TenantLeadGrpcService(
         var content = $"Tenant-{operatorName}-Comment: " + request.Spec.Content;
         var ok = await leadSvc.AddComment(request.Id, content, partyId);
         if (!ok) throw new RpcException(new Status(StatusCode.Internal, "__LEAD_COMMENT_FAILED__"));
-        return await GetLeadEntityProto(request.Id);
+        return new AddLeadCommentResponse { Data = await GetLeadEntityProto(request.Id) };
     }
 
     // ─── Assign / Unassign ────────────────────────────────────────────────────
 
-    public override async Task<Http.V1.Lead> AssignLead(AssignLeadRequest request, ServerCallContext context)
+    public override async Task<AssignLeadResponse> AssignLead(AssignLeadRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var ok = await leadSvc.AssignOwnerAccount(request.Id, request.AssignedAccountUid, partyId);
         if (!ok) throw new RpcException(new Status(StatusCode.Internal, "__LEAD_ASSIGN_FAILED__"));
-        return await GetLeadEntityProto(request.Id);
+        return new AssignLeadResponse { Data = await GetLeadEntityProto(request.Id) };
     }
 
-    public override async Task<Http.V1.Lead> UnassignLead(AssignLeadRequest request, ServerCallContext context)
+    public override async Task<UnassignLeadResponse> UnassignLead(UnassignLeadRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var ok = await leadSvc.UnAssignOwnerAccount(request.Id, request.AssignedAccountUid, partyId);
         if (!ok) throw new RpcException(new Status(StatusCode.Internal, "__LEAD_ASSIGN_FAILED__"));
-        return await GetLeadEntityProto(request.Id);
+        return new UnassignLeadResponse { Data = await GetLeadEntityProto(request.Id) };
     }
 
-    public override async Task<OperationResponse> BulkAssignLeads(
+    public override async Task<BulkAssignLeadsResponse> BulkAssignLeads(
         BulkAssignLeadsRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var results = await Task.WhenAll(
             request.LeadIds.Select(id => leadSvc.AssignOwnerAccount(id, request.AssignedAccountUid, partyId)));
-        return new OperationResponse { Success = results.All(r => r), Message = $"{results.Count(r => r)}/{results.Length}" };
+        return new BulkAssignLeadsResponse { Success = results.All(r => r), Message = $"{results.Count(r => r)}/{results.Length}" };
     }
 
     // ─── Auto-assign ──────────────────────────────────────────────────────────
 
-    public override async Task<AutoAssignInfo> GetAutoAssignInfo(EmptyRequest request, ServerCallContext context)
+    public override async Task<GetAutoAssignInfoResponse> GetAutoAssignInfo(GetAutoAssignInfoRequest request, ServerCallContext context)
     {
         var info = await configSvc.GetAsync<M.AutoAssignInfo>(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo)
                    ?? new M.AutoAssignInfo();
-        return MapAutoAssign(info);
+        return new GetAutoAssignInfoResponse { Data = MapAutoAssign(info) };
     }
 
-    public override async Task<AutoAssignInfo> EnableAutoAssign(EmptyRequest request, ServerCallContext context)
+    public override async Task<EnableAutoAssignResponse> EnableAutoAssign(EnableAutoAssignRequest request, ServerCallContext context)
     {
         var info = await configSvc.GetAsync<M.AutoAssignInfo>(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo)
                    ?? new M.AutoAssignInfo();
         info.Enabled = true;
         await configSvc.SetAsync(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo, info);
-        return MapAutoAssign(info);
+        return new EnableAutoAssignResponse { Data = MapAutoAssign(info) };
     }
 
-    public override async Task<AutoAssignInfo> DisableAutoAssign(EmptyRequest request, ServerCallContext context)
+    public override async Task<DisableAutoAssignResponse> DisableAutoAssign(DisableAutoAssignRequest request, ServerCallContext context)
     {
         var info = await configSvc.GetAsync<M.AutoAssignInfo>(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo)
                    ?? new M.AutoAssignInfo();
         info.Enabled = false;
         await configSvc.SetAsync(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo, info);
-        return MapAutoAssign(info);
+        return new DisableAutoAssignResponse { Data = MapAutoAssign(info) };
     }
 
-    public override async Task<AutoAssignInfo> SetAutoAssignee(SetAutoAssigneeRequest request, ServerCallContext context)
+    public override async Task<SetAutoAssigneeResponse> SetAutoAssignee(SetAutoAssigneeRequest request, ServerCallContext context)
     {
         var info = await configSvc.GetAsync<M.AutoAssignInfo>(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo)
                    ?? new M.AutoAssignInfo();
         info.AutoAssignAccountUid = request.AutoAssignAccountUid;
         info.Enabled = request.Enabled;
         await configSvc.SetAsync(nameof(Public), 0, ConfigKeys.AutoAssignLeadInfo, info);
-        return MapAutoAssign(info);
+        return new SetAutoAssigneeResponse { Data = MapAutoAssign(info) };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
