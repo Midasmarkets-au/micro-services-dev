@@ -83,13 +83,33 @@ export const TimeZoneService = {
   },
 };
 
+export function convertToLocalTime(utcDate, dstTimeZone) {
+  const date = new Date(utcDate);
+  const isDST = checkIsDST(date, dstTimeZone);
+  const offsetHours = isDST ? 3 : 2;
+  return new Date(date.getTime() + offsetHours * 60 * 60 * 1000).toISOString();
+}
+export function convertToLocalGMT(
+  utcDate: string | null | undefined,
+  dstTimeZone: string
+) {
+  if (!utcDate) return "";
+  const date = new Date(utcDate);
+  const isDST = checkIsDST(date, dstTimeZone);
+  const offsetHours = isDST ? 3 : 2;
+  return offsetHours;
+}
+
+export function checkIsDST(date: Date, timeZone: string) {
+  return momentTimezone.tz(date, timeZone).isDST();
+}
 export function isDateInDST_US() {
   //store.state.AuthModule.config.utcEnabled
-  if (store.state.AuthModule.config?.HoursGapForMT5 == 3) {
-    return true;
-  } else {
-    return false;
-  }
+  // if (store.state.AuthModule.config?.HoursGapForMT5 == 3) {
+  //   return true;
+  // } else {
+  //   return false;
+  // }
   const now = momentTimezone.tz("America/New_York");
   const withoutDST = momentTimezone
     .tz(now, "America/New_York")

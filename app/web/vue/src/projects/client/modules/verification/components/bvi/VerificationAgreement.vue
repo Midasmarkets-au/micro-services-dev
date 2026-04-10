@@ -32,7 +32,7 @@
         <h4>{{ $t("title.electronicIdentityVerification") }}*</h4>
         <p class="text-gray mt-5 mb-10">
           {{ $t("tip.verificationAgreementElectronicIdentityVerification1") }}
-          <span>MM Co Ltd</span>
+          <span>MDM Co Ltd</span>
           {{ $t("tip.verificationAgreementElectronicIdentityVerification2") }}
         </p>
 

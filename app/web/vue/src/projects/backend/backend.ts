@@ -86,6 +86,6 @@ import AuthImage from "@/components/AuthImage.vue";
 app.component("AuthImage", AuthImage);
 
 store.registerModule("TenantModule", TenantStoreModule);
-window.document.title = process.env.VUE_APP_PAGE_TITLE || "MM";
+window.document.title = process.env.VUE_APP_PAGE_TITLE || "MDM";
 app.mount("#app");
 export default app;

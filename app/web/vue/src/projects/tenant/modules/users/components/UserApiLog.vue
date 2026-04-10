@@ -34,6 +34,9 @@
             <th class="">connectionId</th>
             <th class="">method</th>
             <th class="">url</th>
+            <th class="">Ip</th>
+            <th class="">createdOn</th>
+            <th class="">updatedOn</th>
             <th class="">action</th>
           </tr>
         </thead>
@@ -52,6 +55,7 @@
             <td>{{ item.connectionId }}</td>
             <td>{{ item.method }}</td>
             <td>{{ item.action }}</td>
+            <td>{{ item.ip }}</td>
             <td>
               <TimeShow type="exactTime" :date-iso-string="item.createdOn" />
             </td>

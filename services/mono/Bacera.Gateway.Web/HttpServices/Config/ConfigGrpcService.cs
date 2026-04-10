@@ -22,17 +22,17 @@ public class TenantConfigurationGrpcService(
 {
     // ─── Sites ────────────────────────────────────────────────────────────────
 
-    public override async Task<SitesResponse> GetSites(EmptyRequest request, ServerCallContext context)
+    public override async Task<GetSitesResponse> GetSites(GetSitesRequest request, ServerCallContext context)
     {
         var sites = await tenantDb.Sites.ToListAsync();
-        var response = new SitesResponse();
-        response.Sites.AddRange(sites.Select(s => new SiteItem
+        var inner = new SitesResponse();
+        inner.Sites.AddRange(sites.Select(s => new SiteItem
         {
             Id   = s.Id,
             Name = s.Name ?? "",
             Url  = "",   // Site entity does not carry a URL field
         }));
-        return response;
+        return new GetSitesResponse { Data = inner };
     }
 
     // ─── Configurations ───────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ public class TenantConfigurationGrpcService(
         return response;
     }
 
-    public override async Task<CategoryConfigResponse> GetCategoryConfig(
+    public override async Task<GetCategoryConfigResponse> GetCategoryConfig(
         GetCategoryConfigRequest request, ServerCallContext context)
     {
         var items = await tenantDb.Configurations
@@ -89,14 +89,14 @@ public class TenantConfigurationGrpcService(
             .ToTenantViewModel()
             .ToListAsync();
 
-        var response = new CategoryConfigResponse();
+        var inner = new CategoryConfigResponse();
         foreach (var item in items)
             if (item.Key != null)
-                response.Items[item.Key] = item.ValueString ?? "";
-        return response;
+                inner.Items[item.Key] = item.ValueString ?? "";
+        return new GetCategoryConfigResponse { Data = inner };
     }
 
-    public override async Task<ConfigValueResponse> GetConfigValue(
+    public override async Task<GetConfigValueResponse> GetConfigValue(
         GetConfigValueRequest request, ServerCallContext context)
     {
         var result = await GetViewModelAsync(request.Category, request.RowId, request.Key);
@@ -127,24 +127,26 @@ public class TenantConfigurationGrpcService(
         if (result == null)
             throw new RpcException(new Status(StatusCode.NotFound, "Config not found"));
 
-        return new ConfigValueResponse { Key = result.Key ?? "", Value = result.ValueString ?? "" };
+        var inner = new ConfigValueResponse { Key = result.Key ?? "", Value = result.ValueString ?? "" };
+        return new GetConfigValueResponse { Data = inner };
     }
 
-    public override async Task<ConfigValueResponse> UpdateConfigValue(
+    public override async Task<UpdateConfigValueResponse> UpdateConfigValue(
         UpdateConfigValueRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var category = ConfigCategoryTypes.ParseCategory(request.Category);
         await configSvc.SetAsync<object>(category, request.RowId, request.Key, request.Spec.Value, partyId);
         var value = await configSvc.GetRawValueAsync(category, request.RowId, request.Key);
-        return new ConfigValueResponse { Key = request.Key, Value = value ?? "" };
+        var inner = new ConfigValueResponse { Key = request.Key, Value = value ?? "" };
+        return new UpdateConfigValueResponse { Data = inner };
     }
 
-    public override Task<OperationResponse> DeleteConfigValue(
-        GetConfigValueRequest request, ServerCallContext context)
+    public override Task<DeleteConfigValueResponse> DeleteConfigValue(
+        DeleteConfigValueRequest request, ServerCallContext context)
     {
         // Delete is not supported — matches current controller behavior
-        return Task.FromResult(new OperationResponse
+        return Task.FromResult(new DeleteConfigValueResponse
         {
             Success = false,
             Message = "Delete is not supported right now",
@@ -153,45 +155,44 @@ public class TenantConfigurationGrpcService(
 
     // ─── Site-specific overrides ──────────────────────────────────────────────
 
-    public override async Task<OperationResponse> UpdateSiteDefaultEmail(
-        UpdateSiteStringValueRequest request, ServerCallContext context)
+    public override async Task<UpdateSiteDefaultEmailResponse> UpdateSiteDefaultEmail(
+        UpdateSiteDefaultEmailRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var ok = await configurationService.SetDefaultEmailAddressAsync(request.Spec?.Value ?? "", request.SiteId, partyId);
-        return new OperationResponse { Success = ok };
+        return new UpdateSiteDefaultEmailResponse { Success = ok };
     }
 
-    public override async Task<OperationResponse> UpdateSiteDefaultEmailDisplayName(
-        UpdateSiteStringValueRequest request, ServerCallContext context)
+    public override async Task<UpdateSiteDefaultEmailDisplayNameResponse> UpdateSiteDefaultEmailDisplayName(
+        UpdateSiteDefaultEmailDisplayNameRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var ok = await configurationService.SetDefaultEmailDisplayNameAsync(request.Spec?.Value ?? "", request.SiteId, partyId);
-        return new OperationResponse { Success = ok };
+        return new UpdateSiteDefaultEmailDisplayNameResponse { Success = ok };
     }
 
-    public override async Task<OperationResponse> UpdateSiteDefaultFundType(
-        UpdateSiteIntValueRequest request, ServerCallContext context)
+    public override async Task<UpdateSiteDefaultFundTypeResponse> UpdateSiteDefaultFundType(
+        UpdateSiteDefaultFundTypeRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var ok = await configurationService.SetDefaultFundTypeAsync(request.Spec?.Value ?? 0, request.SiteId, partyId);
-        return new OperationResponse { Success = ok };
+        return new UpdateSiteDefaultFundTypeResponse { Success = ok };
     }
 
-    public override async Task<OperationResponse> UpdateSiteDefaultTradeService(
-        UpdateSiteIntValueRequest request, ServerCallContext context)
+    public override async Task<UpdateSiteDefaultTradeServiceResponse> UpdateSiteDefaultTradeService(
+        UpdateSiteDefaultTradeServiceRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var ok = await configurationService.SetDefaultTradeServiceAsync(request.Spec?.Value ?? 0, request.SiteId, partyId);
-        return new OperationResponse { Success = ok };
+        return new UpdateSiteDefaultTradeServiceResponse { Success = ok };
     }
 
     // ─── Additional site / bulk endpoints ────────────────────────────────────
 
-    public override async Task<CategoryConfigResponse> GetSiteAllConfigs(
+    public override async Task<GetSiteAllConfigsResponse> GetSiteAllConfigs(
         GetSiteAllConfigsRequest request, ServerCallContext context)
     {
-        var items = await configurationService.GetAllConfigurationBySiteAsync(request.SiteId);
-        var response = new CategoryConfigResponse();
+        var inner = new CategoryConfigResponse();
         // GetAllConfigurationBySiteAsync returns ApplicationConfigure.AllSetting;
         // flatten all key→value pairs from its raw Configuration list
         var rawItems = await tenantDb.Configurations
@@ -200,45 +201,46 @@ public class TenantConfigurationGrpcService(
             .ToListAsync();
         foreach (var item in rawItems)
             if (item.Key != null)
-                response.Items[item.Key] = item.ValueString ?? "";
-        return response;
+                inner.Items[item.Key] = item.ValueString ?? "";
+        return new GetSiteAllConfigsResponse { Data = inner };
     }
 
-    public override async Task<AllConfigurationsResponse> GetAllConfigurations(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<GetAllConfigurationsResponse> GetAllConfigurations(
+        GetAllConfigurationsRequest request, ServerCallContext context)
     {
         var items = await tenantDb.Configurations
             .OrderBy(x => x.Key)
             .ToTenantViewModel()
             .ToListAsync();
 
-        var response = new AllConfigurationsResponse();
-        response.Data.AddRange(items.Select(c => new ConfigItem
+        var inner = new AllConfigurationsResponse();
+        inner.Data.AddRange(items.Select(c => new ConfigItem
         {
             Category = c.Category ?? "",
             RowId    = c.RowId,
             Key      = c.Key ?? "",
             Value    = c.ValueString ?? "",
         }));
-        return response;
+        return new GetAllConfigurationsResponse { Data = inner };
     }
 
-    public override async Task<OperationResponse> ReloadConfiguration(
-        EmptyRequest request, ServerCallContext context)
+    public override async Task<ReloadConfigurationResponse> ReloadConfiguration(
+        ReloadConfigurationRequest request, ServerCallContext context)
     {
         await configurationService.ResetCacheAsync();
         await configSvc.ResetCacheAsync();
-        return new OperationResponse { Success = true };
+        return new ReloadConfigurationResponse { Success = true };
     }
 
-    public override async Task<ConfigValueResponse> UpdateSiteConfig(
+    public override async Task<UpdateSiteConfigResponse> UpdateSiteConfig(
         UpdateSiteConfigRequest request, ServerCallContext context)
     {
         var partyId = GetPartyId(context);
         var category = ConfigCategoryTypes.ParseCategory(nameof(Public));
         await configSvc.SetAsync<object>(category, request.SiteId, request.Key, request.Spec.Value, partyId);
         var value = await configSvc.GetRawValueAsync(category, request.SiteId, request.Key);
-        return new ConfigValueResponse { Key = request.Key, Value = value ?? "" };
+        var inner = new ConfigValueResponse { Key = request.Key, Value = value ?? "" };
+        return new UpdateSiteConfigResponse { Data = inner };
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

@@ -18,23 +18,23 @@ service TenantMessageService {
     option (google.api.http) = { get: "/api/v1/tenant/message" };
   }
   // 按 id 获取单条站内信详情
-  rpc GetMessage(GetMessageRequest) returns (Message) {
+  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/message/{id}" };
   }
   // 创建新站内信（body 为完整 Message 字段）
-  rpc CreateMessage(CreateMessageRequest) returns (Message) {
+  rpc CreateMessage(CreateMessageRequest) returns (CreateMessageResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/message", body: "*" };
   }
   // 更新站内信（body 字段名为 spec）
-  rpc UpdateMessage(UpdateMessageRequest) returns (Message) {
+  rpc UpdateMessage(UpdateMessageRequest) returns (UpdateMessageResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/message/{id}", body: "spec" };
   }
   // 删除站内信
-  rpc DeleteMessage(GetMessageRequest) returns (OperationResponse) {
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/message/{id}" };
   }
   // 向指定账户发送弹窗消息（通过 SignalR 实时推送）
-  rpc SendPopupMessage(SendPopupMessageRequest) returns (OperationResponse) {
+  rpc SendPopupMessage(SendPopupMessageRequest) returns (SendPopupMessageResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/message/send-popup", body: "*" };
   }
 }
@@ -44,18 +44,18 @@ service TenantMessageService {
 
 // HTTP 路由全部由 MVC EmailController 处理，返回完整数据（含 SendBatchEmailInfo 全字段）
 service TenantEmailService {
-  rpc DebugEmail(DebugEmailRequest) returns (OperationResponse) {}
-  rpc SendToUser(SendToUserRequest) returns (OperationResponse) {}
-  rpc CreateBatch(CreateBatchRequest) returns (EmailBatch) {}
-  rpc GetBatchInfo(EmptyRequest) returns (EmailBatchInfoResponse) {}
-  rpc GetBatchDetail(EmptyRequest) returns (EmailBatchDetailResponse) {}
-  rpc TestBatch(TestBatchEmailRequest) returns (OperationResponse) {}
-  rpc ConfirmBatch(ConfirmBatchRequest) returns (OperationResponse) {}
-  rpc CheckSuppression(CheckSuppressionRequest) returns (SuppressionResponse) {}
-  rpc RemoveSuppression(SuppressionEmailRequest) returns (OperationResponse) {}
-  rpc AddSuppression(SuppressionEmailRequest) returns (OperationResponse) {}
-  rpc ListEmailTemplates(ListEmailTemplatesRequest) returns (ListTopicsResponse) {}
-  rpc GetBatchReceiverEmails(GetBatchReceiverEmailsRequest) returns (BatchReceiverEmailsResponse) {}
+  rpc DebugEmail(DebugEmailRequest) returns (DebugEmailResponse) {}
+  rpc SendToUser(SendToUserRequest) returns (SendToUserResponse) {}
+  rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
+  rpc GetBatchInfo(GetBatchInfoRequest) returns (GetBatchInfoResponse) {}
+  rpc GetBatchDetail(GetBatchDetailRequest) returns (GetBatchDetailResponse) {}
+  rpc TestBatch(TestBatchRequest) returns (TestBatchResponse) {}
+  rpc ConfirmBatch(ConfirmBatchRequest) returns (ConfirmBatchResponse) {}
+  rpc CheckSuppression(CheckSuppressionRequest) returns (CheckSuppressionResponse) {}
+  rpc RemoveSuppression(RemoveSuppressionRequest) returns (RemoveSuppressionResponse) {}
+  rpc AddSuppression(AddSuppressionRequest) returns (AddSuppressionResponse) {}
+  rpc ListEmailTemplates(ListEmailTemplatesRequest) returns (ListEmailTemplatesResponse) {}
+  rpc GetBatchReceiverEmails(GetBatchReceiverEmailsRequest) returns (GetBatchReceiverEmailsResponse) {}
 }
 
 // ─── Tenant Topic API (api/v1/tenant/topic) ──────────────────────────────────
@@ -67,39 +67,39 @@ service TenantTopicService {
   // HTTP 路由由 MVC TopicController 处理，返回完整 ResponseModel（含 contents/effectiveFrom/effectiveTo/updatedOn）
   rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse) {}
   // 按 id 获取 Topic（可指定 language 只返回该语言的内容）
-  rpc GetTopic(GetTopicRequest) returns (Topic) {
+  rpc GetTopic(GetTopicRequest) returns (GetTopicResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/topic/{id}" };
   }
   // 获取指定 Topic 已有的语言列表
-  rpc GetTopicLanguages(GetTopicIdRequest) returns (LanguagesResponse) {
+  rpc GetTopicLanguages(GetTopicLanguagesRequest) returns (GetTopicLanguagesResponse) {
     option (google.api.http) = { get: "/api/v1/tenant/topic/{id}/languages" };
   }
   // 创建新 Topic（body 为完整字段）
-  rpc CreateTopic(CreateTopicRequest) returns (Topic) {
+  rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/topic", body: "*" };
   }
   // 更新 Topic（body 字段名为 spec）
-  rpc UpdateTopic(UpdateTopicRequest) returns (Topic) {
+  rpc UpdateTopic(UpdateTopicRequest) returns (UpdateTopicResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/topic/{id}", body: "spec" };
   }
   // 将 Topic 移至废纸篓（软删，status 变更为 trash）
-  rpc MoveToTrash(GetTopicIdRequest) returns (Topic) {
+  rpc MoveToTrash(MoveToTrashRequest) returns (MoveToTrashResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/topic/{id}/move-to-trash" };
   }
   // 永久删除 Topic（不可恢复）
-  rpc DeleteTopic(GetTopicIdRequest) returns (OperationResponse) {
+  rpc DeleteTopic(DeleteTopicRequest) returns (DeleteTopicResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/topic/{id}" };
   }
   // 为 Topic 创建指定语言的内容
-  rpc CreateTopicContent(CreateTopicContentRequest) returns (TopicContent) {
+  rpc CreateTopicContent(CreateTopicContentRequest) returns (CreateTopicContentResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/topic/{id}/content", body: "*" };
   }
   // 更新 Topic 指定语言的内容
-  rpc UpdateTopicContent(UpdateTopicContentRequest) returns (TopicContent) {
+  rpc UpdateTopicContent(UpdateTopicContentRequest) returns (UpdateTopicContentResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/topic/{id}/content/{content_id}", body: "spec" };
   }
   // 删除 Topic 指定语言的内容
-  rpc DeleteTopicContent(DeleteTopicContentRequest) returns (OperationResponse) {
+  rpc DeleteTopicContent(DeleteTopicContentRequest) returns (DeleteTopicContentResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/topic/{id}/content/{content_id}" };
   }
 }
@@ -141,6 +141,162 @@ message TopicContent {
   int32  topic_id   = 2; // 关联 Topic ID
   string language   = 3; // 语言代码，如 "en"、"zh"
   string content    = 4; // 内容正文（HTML 或纯文本）
+}
+
+// ─── TenantMessageService RPC 包装 ───────────────────────────────────────────
+
+message GetMessageResponse {
+  Message data = 1;
+}
+
+message CreateMessageResponse {
+  Message data = 1;
+}
+
+message UpdateMessageResponse {
+  Message data = 1;
+}
+
+message DeleteMessageRequest {
+  int64 id = 1;
+}
+
+message DeleteMessageResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message SendPopupMessageResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ─── TenantEmailService RPC 包装 ─────────────────────────────────────────────
+
+message DebugEmailResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message SendToUserResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message CreateBatchResponse {
+  EmailBatch data = 1;
+}
+
+message GetBatchInfoRequest {}
+
+message GetBatchInfoResponse {
+  int32 recipient_count = 1; // 符合条件的收件人数量
+}
+
+message GetBatchDetailRequest {}
+
+message GetBatchDetailResponse {
+  repeated string emails = 1; // 收件人邮箱列表
+}
+
+message TestBatchRequest {
+  string test_email = 1; // 接收测试邮件的邮箱地址
+}
+
+message TestBatchResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ConfirmBatchResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message CheckSuppressionResponse {
+  bool   suppressed = 1; // true 表示该邮箱已退订
+  string reason     = 2; // 退订原因说明
+}
+
+message RemoveSuppressionRequest {
+  string email = 1;
+}
+
+message RemoveSuppressionResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message AddSuppressionRequest {
+  string email = 1;
+}
+
+message AddSuppressionResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ListEmailTemplatesResponse {
+  repeated Topic       data     = 1;
+  PaginationMeta       criteria = 2;
+}
+
+message GetBatchReceiverEmailsResponse {
+  repeated string emails = 1; // 当前页收件人邮箱列表
+  int32           total  = 2; // 符合条件的收件人总数
+  int32           page   = 3; // 当前页码
+}
+
+// ─── TenantTopicService RPC 包装 ─────────────────────────────────────────────
+
+message GetTopicResponse {
+  Topic data = 1;
+}
+
+message GetTopicLanguagesRequest {
+  int32 id = 1;
+}
+
+message GetTopicLanguagesResponse {
+  repeated string languages = 1; // 可用语言列表
+}
+
+message CreateTopicResponse {
+  Topic data = 1;
+}
+
+message UpdateTopicResponse {
+  Topic data = 1;
+}
+
+message MoveToTrashRequest {
+  int32 id = 1;
+}
+
+message MoveToTrashResponse {
+  Topic data = 1;
+}
+
+message DeleteTopicRequest {
+  int32 id = 1;
+}
+
+message DeleteTopicResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message CreateTopicContentResponse {
+  TopicContent data = 1;
+}
+
+message UpdateTopicContentResponse {
+  TopicContent data = 1;
+}
+
+message DeleteTopicContentResponse {
+  bool   success = 1;
+  string message = 2;
 }
 
 // ─── Message 相关消息 ──────────────────────────────────────────────────────────
@@ -208,21 +364,6 @@ message CreateBatchRequest {
   string target_criteria  = 2; // JSON 字符串，描述目标受众筛选条件
 }
 
-// 批量邮件收件人汇总
-message EmailBatchInfoResponse {
-  int32 recipient_count = 1; // 符合条件的收件人数量
-}
-
-// 批量邮件收件人详细列表（预检用）
-message EmailBatchDetailResponse {
-  repeated string emails = 1; // 收件人邮箱列表
-}
-
-// 测试批量邮件请求
-message TestBatchEmailRequest {
-  string test_email = 1; // 接收测试邮件的邮箱地址
-}
-
 // 确认发送批量邮件请求
 message ConfirmBatchRequest {
   int64 batch_id = 1; // 待发送的 EmailBatch ID
@@ -230,17 +371,6 @@ message ConfirmBatchRequest {
 
 // 退订检查请求
 message CheckSuppressionRequest {
-  string email = 1;
-}
-
-// 退订状态响应
-message SuppressionResponse {
-  bool   suppressed = 1; // true 表示该邮箱已退订
-  string reason     = 2; // 退订原因说明
-}
-
-// 退订名单操作请求（增/删）
-message SuppressionEmailRequest {
   string email = 1;
 }
 
@@ -254,13 +384,6 @@ message ListEmailTemplatesRequest {
 message GetBatchReceiverEmailsRequest {
   string spec = 1; // JSON 格式的 CreateSendTopicContentSpec
   int32  page = 2; // 页码（每页 100 条）
-}
-
-// 批量邮件收件人邮箱分页响应
-message BatchReceiverEmailsResponse {
-  repeated string emails = 1; // 当前页收件人邮箱列表
-  int32           total  = 2; // 符合条件的收件人总数
-  int32           page   = 3; // 当前页码
 }
 
 // ─── Topic 相关消息 ────────────────────────────────────────────────────────────
@@ -282,11 +405,6 @@ message ListTopicsResponse {
 message GetTopicRequest {
   int32           id       = 1;
   optional string language = 2; // 若指定，只返回该语言的 content；不指定返回所有
-}
-
-// 仅按 id 查询 Topic（不带语言参数）
-message GetTopicIdRequest {
-  int32 id = 1;
 }
 
 // 创建 Topic 请求

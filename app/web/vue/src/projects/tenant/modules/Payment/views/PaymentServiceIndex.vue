@@ -412,9 +412,14 @@ const getServices = async () => {
     platform.value = [
       ...new Set(services.value.map((service) => service.platform)),
     ];
-
     services.value = services.value.reduce((index, item) => {
-      var group = item.group == "" ? "System Manual" : item.group;
+      const cleanedGroup = (item.group ?? "")
+        .replace(/（.*?）|\(.*?\)/g, "")
+        .replace(/\s+/g, "")
+        .trim();
+      const group = item.isExLinkGlobal
+        ? "ExLink Global"
+        : cleanedGroup || "System Manual";
 
       if (index[group]) {
         index[group].push(item);
@@ -423,7 +428,6 @@ const getServices = async () => {
       }
       return index;
     }, {});
-    console.log("services.value", services.value);
 
     updateHistory.value = updatedBy.reduce((index, item) => {
       index[item.rowId] = {

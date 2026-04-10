@@ -14,4 +14,5 @@ export enum ReportRequestTypes {
   SalesRebateSumByAccountForTenant = 13,
   AccountSearchForTenant = 14,
   DailyEquityReport = 23,
+  MonthlyEquityReport = 24,
 }

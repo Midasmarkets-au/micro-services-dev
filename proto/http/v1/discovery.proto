@@ -14,27 +14,27 @@ import "http/v1/common.proto";
 
 service DiscoveryService {
   // 获取新闻可用语言列表（例如 "English"、"Chinese"）
-  rpc GetNewsLanguages(EmptyRequest) returns (LanguagesResponse) {
+  rpc GetNewsLanguages(GetNewsLanguagesRequest) returns (GetNewsLanguagesResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/news/languages" };
   }
   // 按语言分页查询新闻列表；language 默认 "English"
-  rpc ListNews(ListDiscoveryRequest) returns (ListNewsResponse) {
+  rpc ListNews(ListNewsRequest) returns (ListNewsResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/news" };
   }
   // 按语言分页查询文章列表
-  rpc ListPosts(ListDiscoveryRequest) returns (ListPostsResponse) {
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/post" };
   }
   // 按 hash_id 获取文章详情（hash_id 为路径参数）
-  rpc GetPost(GetPostRequest) returns (Post) {
+  rpc GetPost(GetPostRequest) returns (GetPostResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/post/{hash_id}" };
   }
   // 获取经济日历可用语言列表
-  rpc GetEconomicCalendarLanguages(EmptyRequest) returns (LanguagesResponse) {
+  rpc GetEconomicCalendarLanguages(GetEconomicCalendarLanguagesRequest) returns (GetEconomicCalendarLanguagesResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/economic-calendar/languages" };
   }
   // 按语言分页查询经济日历事件
-  rpc ListEconomicCalendar(ListDiscoveryRequest) returns (ListEconomicCalendarResponse) {
+  rpc ListEconomicCalendar(ListEconomicCalendarRequest) returns (ListEconomicCalendarResponse) {
     option (google.api.http) = { get: "/api/v1/discovery/economic-calendar" };
   }
 }
@@ -67,8 +67,35 @@ message EconomicCalendarItem {
   string language   = 4; // 内容语言
 }
 
-// 列表分页请求（Discovery 系列共用）
-message ListDiscoveryRequest {
+message GetNewsLanguagesRequest {}
+
+message GetNewsLanguagesResponse {
+  LanguagesResponse data = 1;
+}
+
+message ListNewsRequest {
+  string language = 1; // 内容语言过滤，默认 "English"
+  int32  page     = 2; // 页码，默认 1
+  int32  size     = 3; // 每页条数，默认 20
+}
+
+message ListPostsRequest {
+  string language = 1; // 内容语言过滤，默认 "English"
+  int32  page     = 2; // 页码，默认 1
+  int32  size     = 3; // 每页条数，默认 20
+}
+
+message GetPostResponse {
+  Post data = 1;
+}
+
+message GetEconomicCalendarLanguagesRequest {}
+
+message GetEconomicCalendarLanguagesResponse {
+  LanguagesResponse data = 1;
+}
+
+message ListEconomicCalendarRequest {
   string language = 1; // 内容语言过滤，默认 "English"
   int32  page     = 2; // 页码，默认 1
   int32  size     = 3; // 每页条数，默认 20

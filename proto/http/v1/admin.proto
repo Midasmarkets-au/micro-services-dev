@@ -15,9 +15,9 @@ import "http/v1/common.proto";
 // HTTP 路由全部由 MVC AuditController 处理，返回含 user/account 的完整格式
 service TenantAuditService {
   rpc ListAudits(ListAuditsRequest) returns (ListAuditsResponse) {}
-  rpc GetAudit(GetAuditRequest) returns (Audit) {}
-  rpc ListAccountChangeBalanceAudits(ListAuditsRequest) returns (ListAuditsResponse) {}
-  rpc GetHighDollarLatest(EmptyRequest) returns (ListAuditsResponse) {}
+  rpc GetAudit(GetAuditRequest) returns (GetAuditResponse) {}
+  rpc ListAccountChangeBalanceAudits(ListAccountChangeBalanceAuditsRequest) returns (ListAccountChangeBalanceAuditsResponse) {}
+  rpc GetHighDollarLatest(GetHighDollarLatestRequest) returns (GetHighDollarLatestResponse) {}
 }
 
 // ─── Tenant IP Blacklist API (api/v1/tenant/ip-black-list) ───────────────────
@@ -30,19 +30,19 @@ service TenantIpBlacklistService {
     option (google.api.http) = { get: "/api/v1/tenant/ip-black-list" };
   }
   // 新增 IP 黑名单条目
-  rpc CreateIpBlacklist(CreateIpBlacklistRequest) returns (IpBlacklistItem) {
+  rpc CreateIpBlacklist(CreateIpBlacklistRequest) returns (CreateIpBlacklistResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/ip-black-list", body: "*" };
   }
   // 更新 IP 黑名单条目（body 字段名为 spec）
-  rpc UpdateIpBlacklist(UpdateIpBlacklistRequest) returns (IpBlacklistItem) {
+  rpc UpdateIpBlacklist(UpdateIpBlacklistRequest) returns (UpdateIpBlacklistResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/{id}", body: "spec" };
   }
   // 删除 IP 黑名单条目
-  rpc DeleteIpBlacklist(GetIpBlacklistRequest) returns (OperationResponse) {
+  rpc DeleteIpBlacklist(DeleteIpBlacklistRequest) returns (DeleteIpBlacklistResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/ip-black-list/{id}" };
   }
   // 重载 IP 黑名单缓存（增删改后需调用此接口使变更立即生效）
-  rpc ReloadCache(EmptyRequest) returns (OperationResponse) {
+  rpc ReloadCache(ReloadCacheRequest) returns (ReloadCacheResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/reload-cache" };
   }
 }
@@ -56,19 +56,19 @@ service TenantUserBlacklistService {
     option (google.api.http) = { get: "/api/v1/tenant/user-black-list" };
   }
   // 新增用户邮箱黑名单条目
-  rpc CreateUserBlacklist(CreateUserBlacklistRequest) returns (UserBlacklistItem) {
+  rpc CreateUserBlacklist(CreateUserBlacklistRequest) returns (CreateUserBlacklistResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/user-black-list", body: "*" };
   }
   // 更新用户黑名单条目（body 字段名为 spec）
-  rpc UpdateUserBlacklist(UpdateUserBlacklistRequest) returns (UserBlacklistItem) {
+  rpc UpdateUserBlacklist(UpdateUserBlacklistRequest) returns (UpdateUserBlacklistResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/user-black-list/{id}", body: "spec" };
   }
   // 删除用户黑名单条目
-  rpc DeleteUserBlacklist(GetUserBlacklistRequest) returns (OperationResponse) {
+  rpc DeleteUserBlacklist(DeleteUserBlacklistRequest) returns (DeleteUserBlacklistResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/user-black-list/{id}" };
   }
   // 重新加载用户黑名单缓存（将数据库数据同步到 Redis）
-  rpc ReloadUserBlacklistCache(EmptyRequest) returns (OperationResponse) {
+  rpc ReloadUserBlacklistCache(ReloadUserBlacklistCacheRequest) returns (ReloadUserBlacklistCacheResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/user-black-list/reload-cache" };
   }
 }
@@ -86,14 +86,14 @@ service TenantApiLogService {
 
 // HTTP 路由由 MVC StatisticControllerV2 处理
 service TenantStatisticsService {
-  rpc GetOnlineAdmins(EmptyRequest) returns (OnlineAdminsResponse) {}
-  rpc GetOnlineUsers(EmptyRequest) returns (OnlineUsersResponse) {}
+  rpc GetOnlineAdmins(GetOnlineAdminsRequest) returns (GetOnlineAdminsResponse) {}
+  rpc GetOnlineUsers(GetOnlineUsersRequest) returns (GetOnlineUsersResponse) {}
 }
 
 // HTTP 路由由 MVC StatisticControllerV2 处理
-service TenantStatisticsServiceV2 {
-  rpc GetServers(EmptyRequest) returns (ServersResponse) {}
-  rpc GetServerMetrics(EmptyRequest) returns (ServerMetricsResponse) {}
+service TenantStatisticsV2Service {
+  rpc GetServers(GetServersRequest) returns (GetServersResponse) {}
+  rpc GetServerMetrics(GetServerMetricsRequest) returns (GetServerMetricsResponse) {}
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────
@@ -159,6 +159,31 @@ message GetAuditRequest {
   int64 id = 1;
 }
 
+message GetAuditResponse {
+  Audit data = 1;
+}
+
+// 账户余额变动审计列表（字段与 ListAuditsRequest / ListAuditsResponse 一致，独立类型以满足 RPC 唯一性）
+message ListAccountChangeBalanceAuditsRequest {
+  PaginationRequest pagination  = 1;
+  optional int64    account_id  = 2;
+  optional string   action      = 3;
+  optional string   date_from   = 4;
+  optional string   date_to     = 5;
+}
+
+message ListAccountChangeBalanceAuditsResponse {
+  repeated Audit data = 1;
+  PaginationMeta criteria = 2;
+}
+
+message GetHighDollarLatestRequest {}
+
+message GetHighDollarLatestResponse {
+  repeated Audit data = 1;
+  PaginationMeta criteria = 2;
+}
+
 // ─── IP Blacklist 相关消息 ────────────────────────────────────────────────────
 
 // IP 黑名单列表查询
@@ -193,6 +218,30 @@ message UpdateIpBlacklistRequest {
   optional bool            enabled = 3; // 是否启用，不传则保持原值
 }
 
+message CreateIpBlacklistResponse {
+  IpBlacklistItem data = 1;
+}
+
+message UpdateIpBlacklistResponse {
+  IpBlacklistItem data = 1;
+}
+
+message DeleteIpBlacklistRequest {
+  int64 id = 1;
+}
+
+message DeleteIpBlacklistResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ReloadCacheRequest {}
+
+message ReloadCacheResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
 // ─── User Blacklist 相关消息 ──────────────────────────────────────────────────
 
 // 用户邮箱黑名单列表查询
@@ -224,6 +273,30 @@ message CreateUserBlacklistRequest {
 message UpdateUserBlacklistRequest {
   int64                      id   = 1;
   CreateUserBlacklistRequest spec = 2;
+}
+
+message CreateUserBlacklistResponse {
+  UserBlacklistItem data = 1;
+}
+
+message UpdateUserBlacklistResponse {
+  UserBlacklistItem data = 1;
+}
+
+message DeleteUserBlacklistRequest {
+  int64 id = 1;
+}
+
+message DeleteUserBlacklistResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ReloadUserBlacklistCacheRequest {}
+
+message ReloadUserBlacklistCacheResponse {
+  bool   success = 1;
+  string message = 2;
 }
 
 // ─── API Log 相关消息 ─────────────────────────────────────────────────────────
@@ -298,23 +371,47 @@ message ServerMetric {
   string updated_at = 4; // 指标采集时间，ISO 8601 格式
 }
 
+message GetOnlineAdminsRequest {}
+
+message GetOnlineAdminsResponse {
+  OnlineAdminsResponse data = 1;
+}
+
+message GetOnlineUsersRequest {}
+
+message GetOnlineUsersResponse {
+  OnlineUsersResponse data = 1;
+}
+
+message GetServersRequest {}
+
+message GetServersResponse {
+  ServersResponse data = 1;
+}
+
+message GetServerMetricsRequest {}
+
+message GetServerMetricsResponse {
+  ServerMetricsResponse data = 1;
+}
+
 // ─── Tenant Admin RBAC API (api/v1/tenant/admin) ─────────────────────────────
 // 后台管理员账户、角色与权限管理：查询管理员列表、角色/权限 CRUD，
 // 以及用户角色/权限的切换（toggle）操作。
 
 // HTTP 路由全部由 MVC AdminController 处理
 service TenantAdminService {
-  rpc ListAdminUsers(EmptyRequest) returns (ListAdminUsersResponse) {}
-  rpc GetAdminUser(GetAdminUserRequest) returns (AdminUserDetail) {}
-  rpc ListAdminRoles(EmptyRequest) returns (AdminRolesResponse) {}
-  rpc GetAdminRole(GetAdminRoleRequest) returns (AdminRoleDetail) {}
-  rpc ListAdminPermissions(EmptyRequest) returns (AdminPermissionsResponse) {}
-  rpc CreateAdminPermission(CreatePermissionRequest) returns (AdminPermission) {}
-  rpc TogglePermission(TogglePermissionRequest) returns (OperationResponse) {}
-  rpc ToggleUserRole(ToggleUserRoleRequest) returns (OperationResponse) {}
-  rpc ToggleUserPermission(ToggleUserPermissionRequest) returns (OperationResponse) {}
-  rpc ToggleRolePermission(ToggleRolePermissionRequest) returns (OperationResponse) {}
-  rpc GetUserPermissionsByPartyId(GetPermissionsByPartyIdRequest) returns (UserPermissionsDetailResponse) {}
+  rpc ListAdminUsers(ListAdminUsersRequest) returns (ListAdminUsersResponse) {}
+  rpc GetAdminUser(GetAdminUserRequest) returns (GetAdminUserResponse) {}
+  rpc ListAdminRoles(ListAdminRolesRequest) returns (ListAdminRolesResponse) {}
+  rpc GetAdminRole(GetAdminRoleRequest) returns (GetAdminRoleResponse) {}
+  rpc ListAdminPermissions(ListAdminPermissionsRequest) returns (ListAdminPermissionsResponse) {}
+  rpc CreateAdminPermission(CreateAdminPermissionRequest) returns (CreateAdminPermissionResponse) {}
+  rpc TogglePermission(TogglePermissionRequest) returns (TogglePermissionResponse) {}
+  rpc ToggleUserRole(ToggleUserRoleRequest) returns (ToggleUserRoleResponse) {}
+  rpc ToggleUserPermission(ToggleUserPermissionRequest) returns (ToggleUserPermissionResponse) {}
+  rpc ToggleRolePermission(ToggleRolePermissionRequest) returns (ToggleRolePermissionResponse) {}
+  rpc GetUserPermissionsByPartyId(GetUserPermissionsByPartyIdRequest) returns (GetUserPermissionsByPartyIdResponse) {}
 }
 
 // ─── Admin RBAC 相关消息 ──────────────────────────────────────────────────────
@@ -395,13 +492,39 @@ message GetAdminRoleRequest {
   int64 id = 1;
 }
 
+message ListAdminUsersRequest {}
+
+message GetAdminUserResponse {
+  AdminUserDetail data = 1;
+}
+
+message ListAdminRolesRequest {}
+
+message ListAdminRolesResponse {
+  AdminRolesResponse data = 1;
+}
+
+message GetAdminRoleResponse {
+  AdminRoleDetail data = 1;
+}
+
+message ListAdminPermissionsRequest {}
+
+message ListAdminPermissionsResponse {
+  AdminPermissionsResponse data = 1;
+}
+
 // 创建权限请求（与 Permission.CreateSpec 对齐）
-message CreatePermissionRequest {
+message CreateAdminPermissionRequest {
   bool   auth     = 1; // 是否需要认证
   string action   = 2; // 路由 action，如 "GET:/api/v1/tenant/deposit"
   string method   = 3; // HTTP 方法
   string category = 4; // 权限分类
   string key      = 5; // 权限唯一 key
+}
+
+message CreateAdminPermissionResponse {
+  AdminPermission data = 1;
 }
 
 message TogglePermissionRequest {
@@ -423,6 +546,30 @@ message ToggleRolePermissionRequest {
   int64 permission_id = 2; // 权限 ID
 }
 
-message GetPermissionsByPartyIdRequest {
+message TogglePermissionResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ToggleUserRoleResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ToggleUserPermissionResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ToggleRolePermissionResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message GetUserPermissionsByPartyIdRequest {
   int64 party_id = 1; // 用户 party_id
+}
+
+message GetUserPermissionsByPartyIdResponse {
+  UserPermissionsDetailResponse data = 1;
 }

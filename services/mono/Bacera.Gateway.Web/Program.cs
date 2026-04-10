@@ -73,6 +73,7 @@ builder.Services.AddControllers()
         options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
         options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
         //options.SerializerSettings.Converters.Add(new StringEnumConverter());
+        options.SerializerSettings.Converters.Add(new Bacera.Gateway.Web.Converters.LongToStringConverter());
     });
 
 builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);
@@ -225,16 +226,16 @@ if (app.Environment.IsDevelopment())
     app.MapGrpcReflectionService();
 
 // HTTP REST endpoints mirroring proto's google.api.http annotations
-app.MapGet("/api/v1/health", () => Results.Ok(new { status = "SERVING" }));
+app.MapGet("/api/v1/health", () => Results.Ok(new { status = "STATUS_SERVING" }));
 app.MapGet("/api/v1/hello", (string? name) => Results.Ok(new { message = $"Hello, {(string.IsNullOrEmpty(name) ? "World" : name)}!" }));
 app.MapGet("/api/v1/generateid", async (Api.V1.ApiService.ApiServiceClient idgenClient, uint workID = 0) =>
 {
-    var reply = await idgenClient.GenerateIDAsync(new Api.V1.GenerateIDRequest { WorkID = workID });
+    var reply = await idgenClient.GenerateIDAsync(new Api.V1.GenerateIDRequest { WorkId = workID });
     return Results.Ok(new { id = reply.Id });
 });
 app.MapGet("/api/v1/rpc/test", async (Api.V1.ApiService.ApiServiceClient idgenClient, uint workId = 0) =>
 {
-    var reply = await idgenClient.GenerateIDAsync(new Api.V1.GenerateIDRequest { WorkID = workId });
+    var reply = await idgenClient.GenerateIDAsync(new Api.V1.GenerateIDRequest { WorkId = workId });
     return Results.Ok(new { id = reply.Id });
 });
 

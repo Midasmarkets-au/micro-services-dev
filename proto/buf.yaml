@@ -7,6 +7,8 @@ lint:
   except:
     - PACKAGE_VERSION_SUFFIX
     - PACKAGE_DIRECTORY_MATCH
+  ignore:
+    - google
 breaking:
   use:
     - FILE
