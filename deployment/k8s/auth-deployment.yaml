@@ -35,8 +35,11 @@ spec:
             - secretRef:
                 name: auth-env
           env:
+            # NOTE: HTTP_ADDR uses http:// prefix for .NET Kestrel compatibility.
+            # Rust auth binary reads this as a socket address (strips prefix in code).
+            # Remove http:// prefix after Rust image is live.
             - name: HTTP_ADDR
-              value: "[::]:9001"
+              value: "http://[::]:9001"
             - name: GRPC_ADDR
               value: "[::]:50006"
             - name: SECURE_COOKIE
@@ -56,14 +59,16 @@ spec:
               cpu: "200m"
           livenessProbe:
             httpGet:
-              path: /.well-known/jwks.json
+              # TODO: change to /.well-known/jwks.json after Rust image is live
+              path: /health
               port: 9001
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 3
           readinessProbe:
             httpGet:
-              path: /.well-known/jwks.json
+              # TODO: change to /.well-known/jwks.json after Rust image is live
+              path: /health
               port: 9001
             initialDelaySeconds: 5
             periodSeconds: 5
