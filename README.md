@@ -1,6 +1,6 @@
 # MM-Back
 
-Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth** (Rust OAuth2/JWT), **idgen** (Rust gRPC/HTTP ID generator), **boardcast** (Rust SSE + gRPC broadcast), **scheduler** (Rust background jobs), and **app/web/vue** (Vue 3 frontend — client & tenant portals).
+Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth** (Rust OAuth2/JWT, HTTP :9002, gRPC :50002), **idgen** (Rust gRPC/HTTP ID generator), **boardcast** (Rust SSE + gRPC broadcast), **scheduler** (Rust background jobs), and **app/web/vue** (Vue 3 frontend — client & tenant portals).
 
 ## Prerequisites
 
@@ -38,8 +38,7 @@ Monorepo backend containing multiple services: **mono** (.NET 8 gateway), **auth
 │   │   ├── Bacera.Gateway.TradingData/
 │   │   ├── Bacera.Gateway.Web/          # ASP.NET entry point
 │   │   └── proto/                       # Generated C# gRPC stubs
-│   ├── auth/                   # Rust — Auth service (Axum, HTTP :9001)
-│   ├── auth_rust/              # Rust — Auth service (Axum, separate workspace)
+│   ├── auth/                   # Rust — Auth service (Axum, HTTP :9002, gRPC :50002)
 │   ├── boardcast/              # Rust — SSE push + gRPC broadcast (HTTP :9003, gRPC :50003)
 │   └── scheduler/              # Rust — Background job processor (HTTP :9004, gRPC :50004)
 ├── tests/                      # .NET test projects
@@ -88,11 +87,13 @@ dotnet run --project services/mono/Bacera.Gateway.Web
 
 API starts on `http://localhost:5000`.
 
-#### auth — .NET 8 Auth Service
+#### auth — Rust OAuth2/JWT Auth Service
 
 ```bash
-dotnet run --project services/auth/Bacera.Gateway.Auth.csproj
+cargo run -p auth
 ```
+
+Exposes HTTP on `:9002` (`/connect/token`, `/api/v2/auth/*`, `/.well-known/jwks.json`) and gRPC on `:50002` (`AuthValidationService`).
 
 #### idgen — Rust ID Generator (gRPC + HTTP)
 
@@ -101,15 +102,6 @@ cargo run -p idgen
 ```
 
 Exposes gRPC on `:50001` and HTTP on `:8080`.
-
-#### auth_rust — Rust Auth Service
-
-> Note: `auth_rust` has its own Cargo workspace separate from the root workspace.
-
-```bash
-cd services/auth_rust
-cargo run
-```
 
 #### boardcast — Rust SSE + gRPC Broadcast Service
 
@@ -153,9 +145,7 @@ dotnet test
 # Rust tests (root workspace)
 cargo test -p idgen
 cargo test -p auth
-
-# Rust tests (auth_rust)
-cd services/auth_rust && cargo test
+cargo test -p scheduler
 ```
 
 ## Docker Build
@@ -184,6 +174,7 @@ This starts the full stack:
 
 | Container | Image | Port(s) | Description |
 |---|---|---|---|
+| `auth` | `bacera-auth:local` | `9002`, `50002` | Rust OAuth2/JWT auth service |
 | `gateway-web` | `bacera-gateway-web:local` | `9005`, `50005` | .NET 8 gateway (mono) |
 | `idgen` | `bacera-idgen:local` | `50001`, `8080` | Rust gRPC + HTTP ID generator |
 | `boardcast` | `bacera-boardcast:local` | `50003`, `9003` | Rust SSE push + gRPC broadcast |
