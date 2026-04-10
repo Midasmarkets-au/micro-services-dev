@@ -349,11 +349,11 @@
       <tr>
         <td class="kyc-label-col-2">
           <span
-            >Nature and purpose of the business relationship between MM and the
+            >Nature and purpose of the business relationship between MDM and the
             client</span
           >
           <br />
-          <span>MM与客户之间业务关系的性质和目的</span>
+          <span>MDM与客户之间业务关系的性质和目的</span>
         </td>
         <td class="kyc-input-col-3">********</td>
         <td class="kyc-label-col-2">

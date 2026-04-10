@@ -242,9 +242,9 @@
         style="border: 1px solid #f2f4f7; font-size: 14px; padding: 24px"
       >
         {{ $t("tip.socialMediaAuthorize_1") }}
-        <span>MM Co Ltd</span>
+        <span>MDM Co Ltd</span>
         {{ $t("tip.socialMediaAuthorize_2") }}
-        <span>MM Co Ltd</span>
+        <span>MDM Co Ltd</span>
         {{ $t("tip.socialMediaAuthorize_3") }}
       </div>
     </div>

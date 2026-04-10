@@ -42,7 +42,7 @@
 
       <div class="row">
         <div class="col-6">
-          <el-form-item label="MM Connect ID" prop="BCRConnectId">
+          <el-form-item label="MDM Connect ID" prop="BCRConnectId">
             <el-input v-model="item.connectId"></el-input>
           </el-form-item>
         </div>

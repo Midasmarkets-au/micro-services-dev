@@ -3,6 +3,7 @@
     class="method-card-wrapper"
     :class="{
       ['selected-method-card-active']: props.selectedGroup == props.groupName,
+      ['disabled-method-card']: !props.item.isActive,
     }"
     style="min-height: 160px"
   >
@@ -95,5 +96,19 @@ const props = defineProps<{
 .method-card-wrapper:hover {
   border: 1px dashed #000f32;
   cursor: pointer;
+}
+
+.disabled-method-card {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
+  background-color: #f0f0f0 !important;
+  border-color: #e0e0e0 !important;
+  user-select: none;
+
+  .method-content,
+  .range-label {
+    color: #b0b0b0;
+  }
 }
 </style>

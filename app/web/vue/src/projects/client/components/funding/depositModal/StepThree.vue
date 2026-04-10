@@ -295,10 +295,8 @@ const calculateTargetAmount = () => {
 const isExLinkGlobal = () => {
   const group = paymentRequireData.value.group || "";
   const name = paymentRequireData.value.paymentMethodName || "";
-  return (
-    group.toLowerCase().includes("exlink") ||
-    name.toLowerCase().includes("exlink")
-  );
+  console.log("group", group.toLowerCase().includes("exlink global"));
+  return group.toLowerCase().includes("exlink global");
 };
 
 const fetchExLinkCurrencyRates = async () => {
@@ -314,12 +312,13 @@ const fetchExLinkCurrencyRates = async () => {
     rateList.map((r: any) => [r.sourceCoinId, r.marketInPrice])
   );
 
-  paymentRequireData.value.groupInfo.currencyRates = currencies
-    .filter((c: any) => rateMap.has(c.currencyCoinId))
-    .map((c: any) => ({
-      currencyId: c.currencyCoinId,
-      rate: rateMap.get(c.currencyCoinId),
-    }));
+  paymentRequireData.value.groupInfo.currencyRates =
+    paymentRequireData.value.groupInfo.currencyRates
+      .filter((cr: any) => rateMap.has(cr.currencyId))
+      .map((cr: any) => ({
+        ...cr,
+        rate: rateMap.get(cr.currencyId),
+      }));
 };
 
 onMounted(async () => {
@@ -329,7 +328,6 @@ onMounted(async () => {
     paymentRequireData.value.groupInfo.requestKeys.filter(
       (item) => item !== "returnUrl" && item !== "currencyId"
     );
-
   if (isExLinkGlobal()) {
     try {
       await fetchExLinkCurrencyRates();

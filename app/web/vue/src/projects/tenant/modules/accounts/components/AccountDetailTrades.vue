@@ -4,13 +4,13 @@
     <div class="card-header">
       <div class="card-title">{{ $t("title.tradeHistory") }}</div>
       <div class="card-toolbar">
-        <el-button
+        <!-- <el-button
           type="primary"
           v-if="$can('SuperAdmin')"
           @click="showReport()"
         >
           {{ $t("title.activityReport") }}
-        </el-button>
+        </el-button> -->
       </div>
     </div>
     <div class="card-body py-4">

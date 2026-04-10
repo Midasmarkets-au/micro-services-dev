@@ -534,11 +534,11 @@
         style="border: 2px solid #808080"
       >
         {{ $t("tip.socialMediaAuthorize_1") }}
-        <span v-if="siteIdCheck">MM Co Ltd</span>
-        <span v-else>MM Co Ltd</span>
+        <span v-if="siteIdCheck">MDM Co Ltd</span>
+        <span v-else>MDM Co Ltd</span>
         {{ $t("tip.socialMediaAuthorize_2") }}
-        <span v-if="siteIdCheck">MM Co Ltd</span>
-        <span v-else>MM Co Ltd</span>
+        <span v-if="siteIdCheck">MDM Co Ltd</span>
+        <span v-else>MDM Co Ltd</span>
         {{ $t("tip.socialMediaAuthorize_3") }}
       </div>
 

@@ -726,10 +726,10 @@ const projectConfig = computed<PublicSetting>(
 const ServiceList = ref<any>([
   { label: "-- All --", value: "" },
   { label: "No Server", value: 0 },
-  { label: "MM-Real", value: 10 },
-  { label: "MM-Real", value: 20 },
-  { label: "MM-MT5 Real", value: 30 },
-  { label: "MM-MT5 Demo", value: 31 },
+  { label: "MDM-Real", value: 10 },
+  { label: "MDM-Real", value: 20 },
+  { label: "MDM-MT5 Real", value: 30 },
+  { label: "MDM-MT5 Demo", value: 31 },
 ]);
 const currencyOptions = ref([
   { label: "-- All --", value: "" },
