@@ -21,7 +21,6 @@ COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
 COPY services/scheduler/Cargo.toml ./services/scheduler/Cargo.toml
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
 COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
-COPY services/auth_rust/Cargo.toml ./services/auth_rust/Cargo.toml
 RUN for svc in idgen auth boardcast scheduler tools; do \
       mkdir -p services/$svc/src && printf 'fn main() {}' > services/$svc/src/main.rs; \
     done && \
@@ -42,7 +41,6 @@ COPY services/boardcast/Cargo.toml ./services/boardcast/Cargo.toml
 COPY services/scheduler/Cargo.toml ./services/scheduler/Cargo.toml
 COPY services/tools/Cargo.toml ./services/tools/Cargo.toml
 COPY services/otel/Cargo.toml ./services/otel/Cargo.toml
-COPY services/auth_rust/Cargo.toml ./services/auth_rust/Cargo.toml
 # Only deps change → this layer is cached
 RUN cargo chef cook --release --recipe-path recipe.json
 
