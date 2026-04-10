@@ -1,8 +1,8 @@
 # ============================================================================
 #  auth — Rust 认证服务
 #  镜像：docker build --target auth -t auth .
-#  端口：9001 (HTTP /connect/token, /api/v2/auth/*, /.well-known/jwks.json)
-#        50006 (gRPC AuthValidationService — mono 调用 ValidateToken)
+#  端口：9002 (HTTP /connect/token, /api/v2/auth/*, /.well-known/jwks.json)
+#        50002 (gRPC AuthValidationService — mono 调用 ValidateToken)
 #  依赖：postgres (portal_central), redis
 #  环境变量：由 Secret auth-env 注入
 # ============================================================================
@@ -28,20 +28,17 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 9001
+              containerPort: 9002
             - name: grpc
-              containerPort: 50006
+              containerPort: 50002
           envFrom:
             - secretRef:
                 name: auth-env
           env:
-            # NOTE: HTTP_ADDR uses http:// prefix for .NET Kestrel compatibility.
-            # Rust auth binary reads this as a socket address (strips prefix in code).
-            # Remove http:// prefix after Rust image is live.
             - name: HTTP_ADDR
-              value: "http://[::]:9001"
+              value: "[::]:9002"
             - name: GRPC_ADDR
-              value: "[::]:50006"
+              value: "[::]:50002"
             - name: SECURE_COOKIE
               value: "true"
             - name: MONO_GRPC_ADDR
@@ -60,14 +57,14 @@ spec:
           livenessProbe:
             httpGet:
               path: /.well-known/jwks.json
-              port: 9001
+              port: 9002
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 3
           readinessProbe:
             httpGet:
               path: /.well-known/jwks.json
-              port: 9001
+              port: 9002
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3

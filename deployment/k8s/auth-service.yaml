@@ -1,7 +1,7 @@
 # ============================================================================
 #  auth Service — ClusterIP
-#  9001: HTTP（/connect/token, /api/v2/auth/*, /.well-known/jwks.json）
-#  50006: gRPC（AuthValidationService，供 mono 调用 ValidateToken）
+#  9002: HTTP（/connect/token, /api/v2/auth/*, /.well-known/jwks.json）
+#  50002: gRPC（AuthValidationService，供 mono 调用 ValidateToken）
 # ============================================================================
 apiVersion: v1
 kind: Service
@@ -13,11 +13,11 @@ spec:
   type: ClusterIP
   ports:
     - name: http
-      port: 9001
+      port: 9002
       targetPort: http
       protocol: TCP
     - name: grpc
-      port: 50006
+      port: 50002
       targetPort: grpc
       protocol: TCP
   selector:

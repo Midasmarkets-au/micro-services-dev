@@ -7,11 +7,10 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 Multi-tenant trading/finance platform monorepo. Services split between .NET 8 and Rust, communicating internally via gRPC.
 
 - `services/mono` — .NET 8 ASP.NET Core gateway (main API, HTTP :9005, gRPC :50005)
-- `services/auth` — Rust (Axum) OAuth2/JWT token endpoint (HTTP :9001)
+- `services/auth` — Rust (Axum) OAuth2/JWT token endpoint (HTTP :9002, gRPC :50002)
 - `services/idgen` — Rust gRPC Snowflake ID generator (gRPC :50001)
 - `services/boardcast` — Rust SSE push + gRPC broadcast service (HTTP :9003, gRPC :50003)
 - `services/scheduler` — Rust background job processor using Apalis (HTTP :9004, gRPC :50004)
-- `services/auth_rust` — **Separate** Rust Cargo workspace (not part of root workspace)
 - `app/web/vue` — Vue 3 frontend (client, tenant, and backend-admin portals)
 - `proto/api/v1/` — Shared Protobuf definitions consumed by both .NET and Rust
 
@@ -45,12 +44,6 @@ cargo run -p boardcast
 cargo run -p scheduler
 ```
 
-### Rust (auth_rust — separate workspace)
-
-```bash
-cd services/auth_rust && cargo run
-```
-
 ### Vue frontend
 
 ```bash
@@ -76,8 +69,6 @@ cargo test -p idgen
 cargo test -p auth
 cargo test -p scheduler
 
-# Rust — auth_rust workspace
-cd services/auth_rust && cargo test
 ```
 
 ### Protobuf code generation
@@ -119,9 +110,11 @@ docker compose -f deployment/docker-compose.local.yml up -d   # Full stack
 ### Service Communication
 
 ```
-Internet → NGINX Ingress → mono (.NET) ──gRPC──► idgen      (Rust, :50001)
-                                        ──gRPC──► boardcast  (Rust, :50003)
-                                        ──gRPC──► scheduler  (Rust, :50004)
+Internet → NGINX Ingress → auth  (Rust, HTTP :9002, gRPC :50002)
+                         → mono (.NET) ──gRPC──► auth      (Rust, :50002)
+                                        ──gRPC──► idgen     (Rust, :50001)
+                                        ──gRPC──► boardcast (Rust, :50003)
+                                        ──gRPC──► scheduler (Rust, :50004)
                            scheduler ──gRPC──► mono (MonoCallbackGrpcService, :50005, for WS notifications)
 ```
 
@@ -182,6 +175,7 @@ mono uses Serilog with sinks for Seq (centralized log UI at `:5342`), Slack (`LO
 | `REDIS_PASSWORD` | mono | Redis auth |
 | `REDIS_CLUSTER_MODE` | mono | Enable cluster mode (disables admin commands) |
 | `JWT_SECRET` | auth | JWT signing key |
+| `AUTH_GRPC_ADDR` | mono | auth gRPC URL (default `http://auth:50002`) |
 | `IDGEN_GRPC_ADDR` | mono | idgen gRPC URL (default `http://idgen:50001`) |
 | `BOARDCAST_GRPC_ADDR` | mono | boardcast gRPC URL (default `http://boardcast:50003`) |
 | `SCHEDULER_GRPC_URL` | mono | scheduler gRPC URL (default `http://scheduler:50004`) |

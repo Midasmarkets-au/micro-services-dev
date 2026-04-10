@@ -429,10 +429,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(true);
     let rsa_key_path = std::env::var("RSA_PRIVATE_KEY_PATH").ok();
     let redis_url = env("REDIS_URL", "redis://redis:6379");
-    let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50006").parse()?;
+    let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50002").parse()?;
     let mono_grpc_addr = Some(env("MONO_GRPC_ADDR", "http://mono:50005"));
     // Strip optional http:// prefix for compatibility with .NET-style HTTP_ADDR values
-    let http_addr_raw = env("HTTP_ADDR", "[::]:9001");
+    let http_addr_raw = env("HTTP_ADDR", "[::]:9002");
     let http_addr_str = http_addr_raw
         .trim_start_matches("http://")
         .trim_start_matches("https://");
