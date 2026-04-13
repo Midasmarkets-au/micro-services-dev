@@ -9,7 +9,7 @@ use axum::{
 use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{cookie, redis_store, state::AppState};
+use crate::{cookie, redis_store, security, state::AppState};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -52,6 +52,11 @@ async fn send_login_code(
 ) -> Json<Value> {
     let email = req.email.trim().to_lowercase();
 
+    // Lockout check (shared with password grant)
+    if security::is_locked_out(&state.redis, &email).await {
+        return Json(json!({ "error": "__USER_IS_LOCKED_OUT__", "error_description": "Please contact customer service." }));
+    }
+
     // Verify user exists in our DB
     let users = match crate::db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
@@ -89,6 +94,11 @@ async fn confirm_login_code(
 ) -> (HeaderMap, Json<Value>) {
     let email = req.email.trim().to_lowercase();
 
+    // Lockout check before any DB work
+    if security::is_locked_out(&state.redis, &email).await {
+        return (HeaderMap::new(), Json(json!({ "error": "__USER_IS_LOCKED_OUT__", "error_description": "Please contact customer service." })));
+    }
+
     let users = match crate::db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
         Err(_) => {
@@ -119,8 +129,15 @@ async fn confirm_login_code(
     };
 
     if !code_valid {
+        let locked = security::record_failure(&state.redis, &email).await;
+        if locked {
+            return (HeaderMap::new(), Json(json!({ "error": "__USER_IS_LOCKED_OUT__", "error_description": "Please contact customer service." })));
+        }
         return (HeaderMap::new(), Json(json!({ "error": "invalid_grant", "error_description": "Invalid Code" })));
     }
+
+    // Clear lockout counter on successful code verification
+    security::clear_failures(&state.redis, &email).await;
 
     // Issue token
     let roles = crate::db::get_user_roles(&state.pool, user.id)

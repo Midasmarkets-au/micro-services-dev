@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package http.v1;
+
+option csharp_namespace = "Http.V1";
+option go_package = "proto/http/v1;httpv1";
+
+import "google/api/annotations.proto";
+
+// ============================================================================
+//  Auth HTTP API — 由 Rust auth 服务实现（HTTP :9002）
+//
+//  访问方式：
+//    公开端点  — 无需认证，直接调用
+//    认证端点  — 需在 Cookie 中携带 access_token 或 Authorization: Bearer <token>
+//
+//  access_token 通过 HttpOnly Cookie 下发，JSON body 中不含 token 值。
+// ============================================================================
+
+// ─── Auth Token Service ───────────────────────────────────────────────────────
+// OAuth2 登录、JWKS 公钥、登出、邮件验证码登录（全部公开）
+service AuthTokenService {
+
+  // OAuth2 token 端点（password / refresh_token / client_credentials grant）
+  // access_token 通过 Set-Cookie 下发，body 仅含 token_type / expires_in / refresh_token
+  rpc ConnectToken(ConnectTokenRequest) returns (ConnectTokenResponse) {
+    option (google.api.http) = { post: "/connect/token" body: "*" };
+  }
+
+  // RSA 公钥集合（JWKS），供外部验证 JWT 签名
+  rpc GetJwks(GetJwksRequest) returns (GetJwksResponse) {
+    option (google.api.http) = { get: "/.well-known/jwks.json" };
+  }
+
+  // 登出：清除 access_token Cookie，并从 Redis 撤销 refresh token
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/logout" body: "*" };
+  }
+
+  // 发送邮件登录验证码（6 位数字，有效期由 mono AuthCode 控制）
+  rpc SendLoginCode(SendLoginCodeRequest) returns (SendLoginCodeResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/token/code" body: "*" };
+  }
+
+  // 验证邮件登录码并签发 token（access_token 在 Cookie 中）
+  rpc ConfirmLoginCode(ConfirmLoginCodeRequest) returns (ConfirmLoginCodeResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/token/code/confirm" body: "*" };
+  }
+}
+
+// OAuth2 token 请求（实际走 form-encoded，此处描述等价字段）
+message ConnectTokenRequest {
+  string grant_type    = 1;  // "password" | "refresh_token" | "client_credentials"
+  string username      = 2;  // grant_type=password: 登录邮箱
+  string password      = 3;  // grant_type=password: 明文密码
+  string refresh_token = 4;  // grant_type=refresh_token
+  string client_id     = 5;  // grant_type=client_credentials
+  string tenant_id     = 6;  // 多租户账号时指定目标租户
+  string tf_code       = 7;  // 2FA 验证码（邮件码或 TOTP，可选）
+}
+
+message ConnectTokenResponse {
+  string token_type    = 1;  // "Bearer"
+  int64  expires_in    = 2;  // 有效期（秒）
+  string refresh_token = 3;  // refresh token（client_credentials 不含）
+  // access_token 通过 HttpOnly Cookie 下发，body 中不含
+}
+
+message GetJwksRequest {}
+
+message GetJwksResponse {
+  repeated JwkKey keys = 1;
+}
+
+message JwkKey {
+  string kty = 1;  // "RSA"
+  string alg = 2;  // "RS256"
+  string use = 3;  // "sig"
+  string kid = 4;  // key ID（公钥 SHA-256 前 4 字节 hex）
+  string n   = 5;  // Base64URL encoded RSA modulus
+  string e   = 6;  // Base64URL encoded RSA public exponent
+}
+
+message LogoutRequest {
+  string refresh_token = 1;  // 可选；提供时从 Redis 撤销对应 refresh token
+}
+
+message LogoutResponse {}
+
+message SendLoginCodeRequest {
+  string email = 1;
+}
+
+message SendLoginCodeResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ConfirmLoginCodeRequest {
+  string email = 1;
+  string code  = 2;
+}
+
+message ConfirmLoginCodeResponse {
+  string token_type    = 1;
+  int64  expires_in    = 2;
+  string refresh_token = 3;
+}
+
+// ─── Auth Password Service ────────────────────────────────────────────────────
+// 密码重置（两种流程）和密码修改
+service AuthPasswordService {
+
+  // 发送密码重置验证码（6 位数字码，通过邮件发送，防探测：用户不存在也返回 success=true）
+  rpc SendPasswordResetCode(SendPasswordResetCodeRequest) returns (SendPasswordResetCodeResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password-reset/code" body: "*" };
+  }
+
+  // 验证 6 位码并重置密码（同邮箱所有租户账号的 PasswordHash 同步更新）
+  rpc ConfirmPasswordResetCode(ConfirmPasswordResetCodeRequest) returns (ConfirmPasswordResetCodeResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password-reset/code/confirm" body: "*" };
+  }
+
+  // 发送密码重置链接邮件（UUID token，Redis 存储，1 小时有效）
+  rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password/forgot" body: "*" };
+  }
+
+  // 通过链接中的 UUID token 重置密码（token 单次消费）
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password/reset" body: "*" };
+  }
+
+  // 修改密码（需认证：Cookie access_token 或 Authorization: Bearer）
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/password/change" body: "*" };
+  }
+}
+
+message SendPasswordResetCodeRequest {
+  string email = 1;
+}
+
+message SendPasswordResetCodeResponse {
+  bool success = 1;
+}
+
+message ConfirmPasswordResetCodeRequest {
+  string email        = 1;
+  string code         = 2;  // 6 位数字验证码
+  string new_password = 3;
+}
+
+message ConfirmPasswordResetCodeResponse {
+  bool success = 1;
+}
+
+message ForgotPasswordRequest {
+  string email     = 1;
+  string reset_url = 2;  // 前端 base URL，mono 拼接 ?code={uuid_token} 后发邮件
+}
+
+message ForgotPasswordResponse {}  // 204 No Content
+
+message ResetPasswordRequest {
+  string email        = 1;
+  string code         = 2;  // UUID token（从邮件链接 ?code= 参数中取）
+  string new_password = 3;
+}
+
+message ResetPasswordResponse {}  // 204 No Content
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password     = 2;
+}
+
+message ChangePasswordResponse {}  // 204 No Content
+
+// ─── Auth 2FA Service ─────────────────────────────────────────────────────────
+// TOTP Authenticator 管理（均需 JWT 认证）
+service Auth2FAService {
+
+  // 获取（或首次生成）TOTP Authenticator 密钥，返回 Base32 secret 和 QR URI
+  // secret 持久化到 auth."_UserToken"（LoginProvider='[AspNetUserStoreProvider]', Name='AuthenticatorKey'）
+  rpc SetupAuthenticator(SetupAuthenticatorRequest) returns (SetupAuthenticatorResponse) {
+    option (google.api.http) = { get: "/api/v1/2fa/authenticator/setup" };
+  }
+
+  // 验证 TOTP 码（±2 步容错）并将 TwoFactorEnabled 置为 true
+  rpc VerifyAuthenticator(VerifyAuthenticatorRequest) returns (VerifyAuthenticatorResponse) {
+    option (google.api.http) = { post: "/api/v1/2fa/authenticator/verify" body: "*" };
+  }
+
+  // 启用 2FA（须先完成 SetupAuthenticator）
+  rpc Enable2FA(Enable2FARequest) returns (Enable2FAResponse) {
+    option (google.api.http) = { put: "/api/v1/2fa/enable" body: "*" };
+  }
+
+  // 禁用 2FA（须提供当前登录密码验证身份）
+  rpc Disable2FA(Disable2FARequest) returns (Disable2FAResponse) {
+    option (google.api.http) = { put: "/api/v1/2fa/disable" body: "*" };
+  }
+}
+
+message SetupAuthenticatorRequest {}
+
+message SetupAuthenticatorResponse {
+  string key    = 1;  // Base32 encoded TOTP secret（32 字符）
+  string qr_uri = 2;  // otpauth://totp/Bacera.Identity:{email}?secret=...&issuer=Bacera.Identity&digits=6
+}
+
+message VerifyAuthenticatorRequest {
+  string code = 1;  // 6 位 TOTP 验证码
+}
+
+message VerifyAuthenticatorResponse {
+  bool success = 1;
+}
+
+message Enable2FARequest {}
+
+message Enable2FAResponse {}  // 204 No Content
+
+message Disable2FARequest {
+  string password = 1;  // 当前登录密码（用于身份核验）
+}
+
+message Disable2FAResponse {}  // 204 No Content

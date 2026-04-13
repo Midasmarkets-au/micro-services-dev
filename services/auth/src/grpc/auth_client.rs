@@ -3,7 +3,7 @@ use tracing::error;
 
 use crate::generated::api_v1::{
     GetRecentUserAgentsRequest, GetTwoFactorSettingRequest, SendAuthCodeRequest,
-    VerifyAuthCodeRequest, WriteLoginLogRequest,
+    SendPasswordResetEmailRequest, VerifyAuthCodeRequest, WriteLoginLogRequest,
     auth_service_client::AuthServiceClient,
 };
 
@@ -84,6 +84,25 @@ pub async fn verify_auth_code(
             error!("VerifyAuthCode gRPC error: {}", e);
             (false, "server_error".to_string())
         }
+    }
+}
+
+/// Send password reset email (fire-and-forget).
+pub async fn send_password_reset_email(
+    client: &mut MonoAuthClient,
+    tenant_id: i64,
+    email: &str,
+    reset_token: &str,
+    reset_url: &str,
+) {
+    let req = SendPasswordResetEmailRequest {
+        tenant_id,
+        email: email.to_string(),
+        reset_token: reset_token.to_string(),
+        reset_url: reset_url.to_string(),
+    };
+    if let Err(e) = client.send_password_reset_email(req).await {
+        error!("SendPasswordResetEmail gRPC error: {}", e);
     }
 }
 

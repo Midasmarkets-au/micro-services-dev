@@ -32,6 +32,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .out_dir(&generated_dir)
         .compile(&[&proto_file], &[&proto_root])?;
 
+    // Also compile http/v1/auth.proto for message type definitions (API contract)
+    let http_proto_file = proto_root.join("http/v1/auth.proto");
+    tonic_build::configure()
+        .build_server(false)
+        .build_client(false)
+        .out_dir(&generated_dir)
+        .compile(&[&http_proto_file], &[&proto_root])?;
+
     println!("cargo:rerun-if-changed={}", proto_file.display());
+    println!("cargo:rerun-if-changed={}", http_proto_file.display());
     Ok(())
 }

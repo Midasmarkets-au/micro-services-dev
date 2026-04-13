@@ -116,6 +116,13 @@ spec:
                 name: auth
                 port:
                   number: 9002
+          - path: /api/v1/2fa/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
           # 负向前瞻排除 /api/v1/event，该路径由 boardcast-event-ingress 处理
           - path: /(?!api/v1/event(/|$))(api|hub|live|swagger|.well-known/openid-configuration)/
             pathType: ImplementationSpecific
@@ -156,6 +163,13 @@ spec:
                 name: auth
                 port:
                   number: 9002
+          - path: /api/v1/2fa/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
           - path: /(api|hub|live|swagger)/
             pathType: ImplementationSpecific
             backend:
@@ -189,6 +203,13 @@ spec:
                   number: 9002
           - path: /\.well-known/
             pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /api/v1/2fa/
+            pathType: Prefix
             backend:
               service:
                 name: auth

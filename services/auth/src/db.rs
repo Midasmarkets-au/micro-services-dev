@@ -126,6 +126,78 @@ pub async fn get_user_roles(pool: &PgPool, user_id: i64) -> Result<Vec<String>, 
         .collect())
 }
 
+pub async fn update_password_hash(
+    pool: &PgPool,
+    user_id: i64,
+    hash: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(r#"UPDATE auth."_User" SET "PasswordHash" = $1 WHERE "Id" = $2"#)
+        .bind(hash)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn update_password_hash_by_email(
+    pool: &PgPool,
+    email: &str,
+    hash: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(r#"UPDATE auth."_User" SET "PasswordHash" = $1 WHERE LOWER("Email") = $2"#)
+        .bind(hash)
+        .bind(email)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn update_two_factor_enabled(
+    pool: &PgPool,
+    user_id: i64,
+    enabled: bool,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(r#"UPDATE auth."_User" SET "TwoFactorEnabled" = $1 WHERE "Id" = $2"#)
+        .bind(enabled)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn get_authenticator_key(
+    pool: &PgPool,
+    user_id: i64,
+) -> Result<Option<String>, sqlx::Error> {
+    let row: Option<(String,)> = sqlx::query_as(
+        r#"SELECT "Value" FROM auth."_UserToken"
+           WHERE "UserId" = $1
+             AND "LoginProvider" = '[AspNetUserStoreProvider]'
+             AND "Name" = 'AuthenticatorKey'"#,
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|(v,)| v))
+}
+
+pub async fn upsert_authenticator_key(
+    pool: &PgPool,
+    user_id: i64,
+    key: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"INSERT INTO auth."_UserToken" ("UserId", "LoginProvider", "Name", "Value")
+           VALUES ($1, '[AspNetUserStoreProvider]', 'AuthenticatorKey', $2)
+           ON CONFLICT ("UserId", "LoginProvider", "Name") DO UPDATE SET "Value" = EXCLUDED."Value""#,
+    )
+    .bind(user_id)
+    .bind(key)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn update_last_login(
     pool: &PgPool,
     user_id: i64,

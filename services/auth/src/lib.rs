@@ -1,8 +1,12 @@
 pub mod cookie;
 pub mod db;
+pub mod extractors;
 pub mod generated {
     pub mod api_v1 {
         include!("generated/api.v1.rs");
+    }
+    pub mod http_v1 {
+        include!("generated/http.v1.rs");
     }
 }
 pub mod grpc;
@@ -14,3 +18,4 @@ pub mod routes;
 pub mod security;
 pub mod state;
 pub mod token;
+pub mod totp;

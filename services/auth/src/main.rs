@@ -458,6 +458,8 @@ fn http_app(state: Arc<AppState>) -> Router {
         .route("/connect/token", post(connect_token))
         .route("/.well-known/jwks.json", get(jwks))
         .merge(routes::auth::router())
+        .merge(routes::password::router())
+        .merge(routes::twofa::router())
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

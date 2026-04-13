@@ -131,6 +131,29 @@ pub struct WriteLoginLogResponse {
     pub ok: bool,
 }
 /// ----------------------------------------------------------------------------
+///   SendPasswordResetEmail
+/// ----------------------------------------------------------------------------
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SendPasswordResetEmailRequest {
+    #[prost(int64, tag = "1")]
+    pub tenant_id: i64,
+    #[prost(string, tag = "2")]
+    pub email: ::prost::alloc::string::String,
+    /// auth 生成的 UUID，mono 拼接成 URL 后发送
+    #[prost(string, tag = "3")]
+    pub reset_token: ::prost::alloc::string::String,
+    /// 前端传来的 base URL，mono 拼接 ?code={token}
+    #[prost(string, tag = "4")]
+    pub reset_url: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SendPasswordResetEmailResponse {
+    #[prost(bool, tag = "1")]
+    pub sent: bool,
+}
+/// ----------------------------------------------------------------------------
 ///   IssueToken — mono 请求 auth 服务为指定用户签发 access token
 /// ----------------------------------------------------------------------------
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -547,6 +570,32 @@ pub mod auth_service_client {
                 .insert(GrpcMethod::new("api.v1.AuthService", "WriteLoginLog"));
             self.inner.unary(req, path, codec).await
         }
+        /// 发送密码重置邮件（auth 生成 reset_token，mono 拼接 URL 发送）
+        pub async fn send_password_reset_email(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SendPasswordResetEmailRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SendPasswordResetEmailResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.AuthService/SendPasswordResetEmail",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("api.v1.AuthService", "SendPasswordResetEmail"));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -843,6 +892,14 @@ pub mod auth_service_server {
             request: tonic::Request<super::WriteLoginLogRequest>,
         ) -> std::result::Result<
             tonic::Response<super::WriteLoginLogResponse>,
+            tonic::Status,
+        >;
+        /// 发送密码重置邮件（auth 生成 reset_token，mono 拼接 URL 发送）
+        async fn send_password_reset_email(
+            &self,
+            request: tonic::Request<super::SendPasswordResetEmailRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SendPasswordResetEmailResponse>,
             tonic::Status,
         >;
     }
@@ -1155,6 +1212,56 @@ pub mod auth_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = WriteLoginLogSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.AuthService/SendPasswordResetEmail" => {
+                    #[allow(non_camel_case_types)]
+                    struct SendPasswordResetEmailSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::SendPasswordResetEmailRequest>
+                    for SendPasswordResetEmailSvc<T> {
+                        type Response = super::SendPasswordResetEmailResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SendPasswordResetEmailRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::send_password_reset_email(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SendPasswordResetEmailSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

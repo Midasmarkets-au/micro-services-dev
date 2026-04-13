@@ -62,6 +62,30 @@ pub fn verify_hashed_password_v3(hashed_base64: &str, password: &str) -> bool {
     constant_time_eq(&actual_sub_key, expected_sub_key)
 }
 
+/// Generate an ASP.NET Identity V3 password hash (PBKDF2-HMAC-SHA256, 10000 iter, 16-byte salt).
+pub fn hash_password(password: &str) -> String {
+    use rsa::rand_core::{OsRng, RngCore};
+    let mut salt = [0u8; 16];
+    OsRng.fill_bytes(&mut salt);
+
+    let sub_key_len = 32usize;
+    let mut sub_key = vec![0u8; sub_key_len];
+    pbkdf2_hmac::<Sha256>(password.as_bytes(), &salt, 10_000, &mut sub_key);
+
+    let salt_len = salt.len() as u32;
+    let prf: u32 = 1; // HMAC-SHA256
+    let iterations: u32 = 10_000;
+
+    let mut buf = Vec::with_capacity(13 + salt.len() + sub_key_len);
+    buf.push(0x01u8);
+    buf.extend_from_slice(&prf.to_be_bytes());
+    buf.extend_from_slice(&iterations.to_be_bytes());
+    buf.extend_from_slice(&salt_len.to_be_bytes());
+    buf.extend_from_slice(&salt);
+    buf.extend_from_slice(&sub_key);
+    BASE64.encode(&buf)
+}
+
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;
