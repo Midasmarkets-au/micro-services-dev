@@ -20,7 +20,7 @@ namespace Bacera.Gateway.Web.HttpServices.Auth;
 public class AuthCallbackGrpcService(
     IServiceProvider serviceProvider,
     IBackgroundJobClient backgroundJobClient,
-    UserManager<ApplicationUser> userManager,
+    UserManager<Bacera.Gateway.Auth.User> userManager,
     ILogger<AuthCallbackGrpcService> logger)
     : AuthService.AuthServiceBase
 {
