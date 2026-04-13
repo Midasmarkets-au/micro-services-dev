@@ -10,17 +10,18 @@ use serde_json::{Value, json};
 
 use crate::{
     cookie, redis_store, security, state::AppState,
-    generated::http_v1::{
-        LogoutRequest, SendLoginCodeRequest, ConfirmLoginCodeRequest,
-        SendLoginCodeResponse, ConfirmLoginCodeResponse,
+    generated::{
+        http_v1::{LogoutRequest, SendLoginCodeRequest, ConfirmLoginCodeRequest,
+            SendLoginCodeResponse, ConfirmLoginCodeResponse},
+        http_routes::{LOGOUT_PATH, SEND_LOGIN_CODE_PATH, CONFIRM_LOGIN_CODE_PATH},
     },
 };
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/v2/auth/logout", post(logout))
-        .route("/api/v2/auth/token/code", post(send_login_code))
-        .route("/api/v2/auth/token/code/confirm", post(confirm_login_code))
+        .route(LOGOUT_PATH, post(logout))
+        .route(SEND_LOGIN_CODE_PATH, post(send_login_code))
+        .route(CONFIRM_LOGIN_CODE_PATH, post(confirm_login_code))
 }
 
 /// POST /api/v2/auth/logout

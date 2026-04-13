@@ -5,20 +5,26 @@ use serde_json::{Value, json};
 
 use crate::{
     db, extractors::AuthUser, password, redis_store, state::AppState,
-    generated::http_v1::{
-        SendPasswordResetCodeRequest, SendPasswordResetCodeResponse,
-        ConfirmPasswordResetCodeRequest, ConfirmPasswordResetCodeResponse,
-        ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest,
+    generated::{
+        http_v1::{
+            SendPasswordResetCodeRequest, SendPasswordResetCodeResponse,
+            ConfirmPasswordResetCodeRequest, ConfirmPasswordResetCodeResponse,
+            ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest,
+        },
+        http_routes::{
+            SEND_PASSWORD_RESET_CODE_PATH, CONFIRM_PASSWORD_RESET_CODE_PATH,
+            FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH, CHANGE_PASSWORD_PATH,
+        },
     },
 };
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/v2/auth/password-reset/code", post(send_password_reset_code))
-        .route("/api/v2/auth/password-reset/code/confirm", post(confirm_password_reset_code))
-        .route("/api/v2/auth/password/forgot", post(forgot_password))
-        .route("/api/v2/auth/password/reset", post(reset_password))
-        .route("/api/v2/auth/password/change", post(change_password))
+        .route(SEND_PASSWORD_RESET_CODE_PATH, post(send_password_reset_code))
+        .route(CONFIRM_PASSWORD_RESET_CODE_PATH, post(confirm_password_reset_code))
+        .route(FORGOT_PASSWORD_PATH, post(forgot_password))
+        .route(RESET_PASSWORD_PATH, post(reset_password))
+        .route(CHANGE_PASSWORD_PATH, post(change_password))
 }
 
 // ─── POST /api/v2/auth/password-reset/code ────────────────────────────────

@@ -10,12 +10,6 @@ option go_package = "api/v1";
 
 // ApiService 提供 gRPC 与 HTTP (gRPC-Web) 接口
 service ApiService {
-  // 简单问候
-  rpc SayHello(SayHelloRequest) returns (SayHelloResponse){
-    option (google.api.http) = {
-      get: "/api/v1/hello"
-    };
-  }
   // 健康检查
   rpc Check(CheckRequest) returns (CheckResponse){
     option (google.api.http) = {
@@ -28,16 +22,6 @@ service ApiService {
       get: "/api/v1/generateid"
     };
   }
-}
-
-// Hello 请求
-message SayHelloRequest {
-  string name = 1;
-}
-
-// Hello 响应
-message SayHelloResponse {
-  string message = 1;
 }
 
 // 健康检查请求

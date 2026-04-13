@@ -5,18 +5,24 @@ use serde_json::{Value, json};
 
 use crate::{
     db, extractors::AuthUser, password, state::AppState, totp,
-    generated::http_v1::{
-        VerifyAuthenticatorRequest, Disable2FaRequest,
-        SetupAuthenticatorResponse, VerifyAuthenticatorResponse,
+    generated::{
+        http_v1::{
+            VerifyAuthenticatorRequest, Disable2FaRequest,
+            SetupAuthenticatorResponse, VerifyAuthenticatorResponse,
+        },
+        http_routes::{
+            SETUP_AUTHENTICATOR_PATH, VERIFY_AUTHENTICATOR_PATH,
+            ENABLE_2FA_PATH, DISABLE_2FA_PATH,
+        },
     },
 };
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/v1/2fa/authenticator/setup", routing::get(setup_authenticator))
-        .route("/api/v1/2fa/authenticator/verify", routing::post(verify_authenticator))
-        .route("/api/v1/2fa/enable", routing::put(enable_2fa))
-        .route("/api/v1/2fa/disable", routing::put(disable_2fa))
+        .route(SETUP_AUTHENTICATOR_PATH, routing::get(setup_authenticator))
+        .route(VERIFY_AUTHENTICATOR_PATH, routing::post(verify_authenticator))
+        .route(ENABLE_2FA_PATH, routing::put(enable_2fa))
+        .route(DISABLE_2FA_PATH, routing::put(disable_2fa))
 }
 
 // ─── GET /api/v1/2fa/authenticator/setup ──────────────────────────────────

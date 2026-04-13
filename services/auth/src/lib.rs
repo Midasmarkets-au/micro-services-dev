@@ -8,6 +8,9 @@ pub mod generated {
     pub mod http_v1 {
         include!("generated/http.v1.rs");
     }
+    pub mod http_routes {
+        include!("generated/http_routes.rs");
+    }
 }
 pub mod grpc;
 pub mod hashids;
