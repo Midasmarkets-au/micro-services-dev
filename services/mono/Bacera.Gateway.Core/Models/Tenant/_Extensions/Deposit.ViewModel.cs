@@ -6,6 +6,13 @@ using M = Deposit;
 
 partial class Deposit
 {
+    /// <summary>Extra display hints for client deposit list (e.g. QR tunnel).</summary>
+    public sealed class ClientDepositInfo
+    {
+        /// <summary>Non-empty for <see cref="PaymentPlatformTypes.QrCodeTunnel"/> deposits (e.g. <c>qrcode</c>).</summary>
+        public string PayType { get; set; } = "";
+    }
+
     public sealed class ClientPageModel
     {
         [Newtonsoft.Json.JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
@@ -14,6 +21,10 @@ partial class Deposit
         [Newtonsoft.Json.JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
 
         public long PaymentMethodId { get; init; }
+
+        /// <summary>Payment method platform; used server-side to populate <see cref="Info"/>.</summary>
+        [Newtonsoft.Json.JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
+        public int Platform { get; set; }
 
         public string HashId => HashEncode(Id);
 
@@ -27,6 +38,8 @@ partial class Deposit
         public StateTypes StateId { get; set; }
         public DateTime CreatedOn { get; set; }
         public DateTime UpdatedOn { get; set; }
+
+        public ClientDepositInfo Info { get; set; } = new();
     }
 
     public sealed class StateChangeModel
@@ -56,6 +69,7 @@ public static class DepositViewModelExtensions
             Amount = x.Amount,
             CurrencyId = (CurrencyTypes)x.CurrencyId,
             PaymentMethodId = x.Payment.PaymentServiceId,
+            Platform = x.Payment.PaymentMethod.Platform,
             PaymentMethodGroupName = x.Payment.PaymentMethod.Group,
             PaymentMethodName = x.Payment.PaymentMethod.Name,
             PaymentStatus = (PaymentStatusTypes)x.Payment.Status,

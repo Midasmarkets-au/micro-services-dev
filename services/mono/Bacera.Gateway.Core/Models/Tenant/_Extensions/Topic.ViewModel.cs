@@ -12,6 +12,7 @@ partial class Topic
         public string HashId => HashEncode(Id);
         public short Type { get; set; }
         public string Title { get; set; } = null!;
+        public short Category { get; set; }
         public DateTime EffectiveFrom { get; set; }
         public DateTime EffectiveTo { get; set; }
         public Dictionary<string, TopicContent.ResponseModel> Contents { get; set; } = new();
@@ -28,6 +29,7 @@ public static class TopicViewModelExtension
             Id = x.Id,
             Type = x.Type,
             Title = x.Title,
+            Category = x.Category,
             EffectiveFrom = x.EffectiveFrom,
             EffectiveTo = x.EffectiveTo,
             Contents = language == null

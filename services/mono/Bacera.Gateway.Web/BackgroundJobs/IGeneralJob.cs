@@ -1,4 +1,4 @@
-﻿using Bacera.Gateway.Services;
+using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Email.ViewModel;
 
 namespace Bacera.Gateway.Web.BackgroundJobs;
@@ -57,6 +57,7 @@ public interface IGeneralJob
     Task<(bool, string)> TransactionWalletToWalletCreatedAsync(long tenantId, long id);
     Task<(bool, string)> TransactionCompleteAsync(long tenantId, long id);
     Task<(bool, string)> DepositCreatedAsync(long tenantId, long id);
+    Task<(bool, string)> DepositReceiptUploadedAsync(long tenantId, long depositId);
     Task<(bool, string)> DepositCompletedAsync(long tenantId, long id);
     Task<(bool, string)> WithdrawalCreatedAsync(long tenantId, long id);
     Task<(bool, string)> WithdrawalCompletedAsync(long tenantId, long id);

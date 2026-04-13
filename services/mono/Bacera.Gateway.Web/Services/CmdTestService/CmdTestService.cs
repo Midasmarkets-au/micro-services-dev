@@ -183,6 +183,9 @@ public partial class CmdTestService
                 case "test-close-trade-job":
                     await TestCloseTradeJob();
                     break;
+                case "test-twilio-sms":
+                    await TestTwilioSms();
+                    break;
                 default:
                     Console.WriteLine($"❌ [ERROR] Unknown test command: {testCommand}");
                     Console.WriteLine("Available test commands:");
@@ -213,6 +216,7 @@ public partial class CmdTestService
                     Console.WriteLine("  check-trade-stat - Check trade statistics");
                     Console.WriteLine("  test-auto-create-acc - Test auto create account");
                     Console.WriteLine("  test-close-trade-job - Test ExecuteCloseTradeJobAsync() (Daily Rebate Report)");
+                    Console.WriteLine("  test-twilio-sms - Test Twilio SMS verification (send and verify code)");
                     Console.WriteLine("  tt - Test utility functions");
                     break;
             }

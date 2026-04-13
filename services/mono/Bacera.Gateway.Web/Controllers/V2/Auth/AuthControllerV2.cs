@@ -1,4 +1,3 @@
-
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,7 +29,7 @@ using PhoneNumbers;
 namespace Bacera.Gateway.Web.Controllers.V2.Auth;
 
 [ApiController]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/" + VersionTypes.V2 + "/auth")]
 [Tags("Auth")]
 public partial class AuthControllerV2(
@@ -43,7 +42,8 @@ public partial class AuthControllerV2(
     IBackgroundJobClient backgroundJobClient,
     IHttpClientFactory clientFactory,
     MyDbContextPool myDbContextPool,
-    IMyCache myCache)
+    IMyCache myCache,
+    UserService userService)
     : BaseControllerV2
 {
     [AllowAnonymous]
@@ -276,34 +276,6 @@ public partial class AuthControllerV2(
     }
 
     [AllowAnonymous]
-    [HttpPost("logout")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public IActionResult Logout()
-    {
-        Identity.ApplyTokenResponseHandler.DeleteAccessTokenCookie(Response, Request.IsHttps);
-        return NoContent();
-    }
-
-    [AllowAnonymous]
-    [HttpPost("god-mode/exchange")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ExchangeGodModeKey([FromBody] ExchangeGodModeKeyRequest req)
-    {
-        var redisKey = $"godmode:key:{req.Key}";
-        logger.LogInformation("ExchangeGodModeKey: req.Key={Key}, redisKey={RedisKey}", req.Key, redisKey);
-        var token = await myCache.GetStringAsync(redisKey);
-        logger.LogInformation("ExchangeGodModeKey: token found={Found}", !string.IsNullOrEmpty(token));
-        if (string.IsNullOrEmpty(token))
-            return BadRequest(Result.Error("Invalid or expired key"));
-
-        await myCache.KeyDeleteAsync(redisKey);
-
-        Identity.ApplyTokenResponseHandler.AppendAccessTokenCookie(Response, token, 86400, Request.IsHttps);
-        return Ok(Result.Success("ok"));
-    }
-
-    [AllowAnonymous]
     [HttpPost("password/forgot")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -378,6 +350,7 @@ public partial class AuthControllerV2(
             }
         }
 
+        await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
         return NoContent();
     }
 
@@ -458,6 +431,7 @@ public partial class AuthControllerV2(
         {
             var token = await userMgr.GeneratePasswordResetTokenAsync(user);
             await userMgr.ResetPasswordAsync(user, token, data.Password);
+            await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
         }
 
         return NoContent();
@@ -570,5 +544,3 @@ public partial class AuthControllerV2(
     [GeneratedRegex("[^A-Z0-9]")]
     private static partial Regex ReferCodeRegex();
 }
-
-public record ExchangeGodModeKeyRequest(string Key);

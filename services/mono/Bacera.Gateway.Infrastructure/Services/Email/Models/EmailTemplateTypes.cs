@@ -1,4 +1,4 @@
-﻿namespace Bacera.Gateway.Services;
+namespace Bacera.Gateway.Services;
 
 // 登录注册部分
 // 1.	验证email url - ConfirmEmail
@@ -77,6 +77,8 @@ public static class EmailTemplateTypes
     public static string WithdrawalCancelledForClient => "WithdrawCancelled";
     public static string WithdrawalCancelledForAgentAndSales => "WithdrawCancelledForIBandSales";
 
+    public static string DepositReceiptUploaded => "DepositReceiptUploaded";
+    public static string DepositReceiptUploadedForIBandSales => "DepositReceiptUploadedForIBandSales";
     public static string DepositCompletedForClient => "DepositCompleted";
     public static string DepositCompletedForAgentAndSales => "DepositCompletedForIBandSales";
     public static string ReadOnlyCodeNotice => "ReadOnlyCodeNotice";

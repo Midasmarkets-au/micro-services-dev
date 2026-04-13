@@ -124,7 +124,9 @@ partial class Account : IEntity
                         continue;
                     }
 
-                    pool.Add(x => x.SearchText.ToLower().Contains(text.ToLower()));
+                    pool.Add(x => x.SearchText.ToLower().Contains(text.ToLower())
+                                 || x.Party.LastLoginIp.Contains(text)
+                                 || x.Party.RegisteredIp.Contains(text));
                 }
             }
 
@@ -257,8 +259,9 @@ partial class Account : IEntity
             pool.Add(x => x.CreatedOn <= To, To != null);
             pool.Add(x => x.ActiveOn != null, IsActive == true);
             pool.Add(x => x.ActiveOn == null, IsActive == false);
-            // pool.Add(x => x.SearchText.ToLower().Contains(SearchText!.ToLower()), SearchText != null);
-            pool.Add(x => x.SearchText.ToLower().Contains(SearchText!.ToLower()), SearchText != null);
+            pool.Add(x => x.SearchText.ToLower().Contains(SearchText!.ToLower())
+                         || x.Party.LastLoginIp.Contains(SearchText!)
+                         || x.Party.RegisteredIp.Contains(SearchText!), SearchText != null);
         }
     }
 }

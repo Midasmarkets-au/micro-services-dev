@@ -1,3 +1,4 @@
+using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Interfaces;
 using Bacera.Gateway.Services.Common;
@@ -5,6 +6,7 @@ using Bacera.Gateway.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Bacera.Gateway.Services;
 
@@ -79,6 +81,7 @@ public partial class DepositService(
                 PaymentPlatformTypes.Long77PayUsdt => ProcessLong77PayUsdtAsync,
                 PaymentPlatformTypes.PaymentAsiaRMB => ProcessPaymentAsiaRMBAsync,
                 PaymentPlatformTypes.Buzipay => ProcessBuzipayAsync,
+                PaymentPlatformTypes.QrCodeTunnel => ProcessQrCodeTunnelAsync,
 
                 PaymentPlatformTypes.Undefined =>
                     throw new Exception($"Invalid payment method {PaymentPlatformTypes.Undefined}"),
@@ -112,17 +115,30 @@ public partial class DepositService(
                 , result.PaymentNumber
                 , result.Reference);
 
+            if ((PaymentPlatformTypes)method.Platform == PaymentPlatformTypes.QrCodeTunnel
+                && !string.IsNullOrWhiteSpace(result.TransactionId))
+            {
+                var snap = new JObject
+                {
+                    ["qrTunnelTransactionId"] = result.TransactionId,
+                    ["qrTunnelCreateResponse"] = result.Info != null ? JToken.FromObject(result.Info) : null
+                };
+                payment.CallbackBody = snap.ToString(Formatting.None);
+                payment.UpdatedOn = DateTime.UtcNow;
+                await tenantCtx.SaveChangesAsync();
+            }
+
             var deposit = await CreateDepositAsync(account
                 , payment.Id
                 , amount
                 , operatorPartyId
                 , JsonConvert.SerializeObject(supplement));
 
-            result.DepositId = deposit.Id;
             await result.CreatedCbHandler(deposit);
             await transaction.CommitAsync();
             var user = await userSvc.GetPartyAsync(account.PartyId);
             result.Instruction = await paymentMethodSvc.GetInstructionAsync(method, user.Language);
+            result.DepositId = deposit.Id;
             return result;
         }
         catch (Exception e)

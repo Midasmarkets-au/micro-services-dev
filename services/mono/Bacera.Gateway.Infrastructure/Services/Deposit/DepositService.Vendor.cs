@@ -26,6 +26,7 @@ using Bacera.Gateway.Vendor.PaymentAsia;
 using Bacera.Gateway.Vendor.PayPal;
 using Bacera.Gateway.Vendor.Poli;
 using Bacera.Gateway.Vendor.Poli.Models;
+using Bacera.Gateway.Vendor.QrCodeTunnel;
 using Bacera.Gateway.Vendor.UnionePay;
 using Bacera.Gateway.Vendor.UsePay;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
@@ -936,5 +937,23 @@ public partial class DepositService
     {
         await Task.Delay(0);
         return DepositCreatedResponseModel.Fail("Not implemented");
+    }
+
+    private async Task<DepositCreatedResponseModel> ProcessQrCodeTunnelAsync(
+        PaymentMethod method
+        , Account account
+        , long exchangedAmount
+        , Dictionary<string, string> request)
+    {
+        var options = QrCodeTunnelOptions.FromJson(method.Configuration);
+        var client = new QrCodeTunnel.RequestClient
+        {
+            Amount = RoundUp(exchangedAmount / 100m),
+            PaymentNumber = Payment.GenerateNumber(),
+            Options = options,
+            Client = clientFactory.CreateClient(),
+            Logger = logger,
+        };
+        return await client.RequestAsync();
     }
 }

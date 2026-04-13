@@ -2547,6 +2547,89 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                     b.ToTable("_Currency", "acct");
                 });
 
+            modelBuilder.Entity("Bacera.Gateway.DailyEquitySnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AdditionalInfo")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Adjust")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<decimal>("Credit")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal>("CurrentEquity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("EstimatesNetPL")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Lots")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MarginIn")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("MarginOut")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("NetInOut")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("NewAcc")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("NewUser")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Office")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("PL")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PreviousEquity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Rebate")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("ReportDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ReportVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Transfer")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id")
+                        .HasName("_DailyEquitySnapshot_pk");
+
+                    b.HasIndex(new[] { "ReportDate", "ReportVersion", "Office", "Currency" }, "IX_DailyEquitySnapshot_Date_Version_Office_Currency")
+                        .IsUnique();
+
+                    b.ToTable("_DailyEquitySnapshot", "rpt");
+                });
+
             modelBuilder.Entity("Bacera.Gateway.Deposit", b =>
                 {
                     b.Property<long>("Id")
@@ -5997,6 +6080,11 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text")
                         .HasDefaultValueSql("''::text");
+
+                    b.Property<short>("Category")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)1);
 
                     b.Property<DateTime>("CreatedOn")
                         .ValueGeneratedOnAdd()

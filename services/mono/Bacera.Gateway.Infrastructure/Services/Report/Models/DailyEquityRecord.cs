@@ -45,7 +45,7 @@ public class DailyEquityRecord : ICanExportToCsv
     /// - "Total" rows show in Currency column instead of Office
     /// - Blank rows show completely empty (no zeros)
     /// </summary>
-    public string ToCsvGrouped(ref string? lastCurrency)
+    public string ToCsvGrouped(ref string? lastCurrency, string? currencyPrefix = null)
     {
         // For blank separator rows
         if (string.IsNullOrEmpty(Currency) && string.IsNullOrEmpty(Office))
@@ -53,32 +53,38 @@ public class DailyEquityRecord : ICanExportToCsv
             return ",,,,,,,,,,,,,,";
         }
 
+        var hasPrefix = !string.IsNullOrEmpty(currencyPrefix);
+        var displayCurrency = hasPrefix && Currency is "USD" or "USC"
+            ? $"{currencyPrefix}-{Currency}"
+            : Currency;
+
+        var values = $"{NewUser},{NewAcc}," +
+                     $"{FormatValue(PreviousEquity)},{FormatValue(CurrentEquity)}," +
+                     $"{FormatValue(MarginIn)},{FormatValue(MarginOut)},{FormatValue(Transfer)}," +
+                     $"{FormatValue(Credit)},{FormatValue(Adjust)},{FormatValue(Rebate)}," +
+                     $"{FormatValue(NetInOut)},{FormatValue(Lots)},{FormatValue(PL)},{FormatValue(EstimatesNetPL)}";
+
         // For Total rows - show in Currency column
         if (Office == "Total")
         {
             lastCurrency = null; // Reset for next group
-            return $"Total,," + 
-                   $"{NewUser},{NewAcc}," +
-                   $"{FormatValue(PreviousEquity)},{FormatValue(CurrentEquity)}," +
-                   $"{FormatValue(MarginIn)},{FormatValue(MarginOut)},{FormatValue(Transfer)}," +
-                   $"{FormatValue(Credit)},{FormatValue(Adjust)},{FormatValue(Rebate)}," +
-                   $"{FormatValue(NetInOut)},{FormatValue(Lots)},{FormatValue(PL)},{FormatValue(EstimatesNetPL)}";
+            var totalLabel = hasPrefix ? $"{displayCurrency} Total" : "Total";
+            return $"{totalLabel},,{values}";
         }
 
-        // For regular data rows - only show Currency on first row
-        string currencyDisplay = "";
+        // For regular data rows
+        string currencyCell = "";
         if (lastCurrency != Currency)
         {
-            currencyDisplay = Currency;
+            // Wallet rows with prefix: suppress currency header, show "{Office}-Wallet" in Office column
+            if (!(hasPrefix && Currency == "Wallet"))
+                currencyCell = displayCurrency;
             lastCurrency = Currency;
         }
 
-        return $"{currencyDisplay},{Office}," +
-               $"{NewUser},{NewAcc}," +
-               $"{FormatValue(PreviousEquity)},{FormatValue(CurrentEquity)}," +
-               $"{FormatValue(MarginIn)},{FormatValue(MarginOut)},{FormatValue(Transfer)}," +
-               $"{FormatValue(Credit)},{FormatValue(Adjust)},{FormatValue(Rebate)}," +
-               $"{FormatValue(NetInOut)},{FormatValue(Lots)},{FormatValue(PL)},{FormatValue(EstimatesNetPL)}";
+        var officeDisplay = hasPrefix && Currency == "Wallet" ? $"{Office}-Wallet" : Office;
+
+        return $"{currencyCell},{officeDisplay},{values}";
     }
 
     /// <summary>

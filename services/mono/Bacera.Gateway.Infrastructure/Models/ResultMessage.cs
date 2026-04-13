@@ -350,6 +350,7 @@ public static class ResultMessage
         public const string TargetWalletRequired = "__TARGET_WALLET_REQUIRED__";
         public const string FailedSendVerificationCode = "__FAILED_SEND_VERIFICATION_CODE__";
         public const string WithdrawalBlockedAfterEmailPhoneChange = "__WITHDRAWAL_BLOCKED_AFTER_EMAIL_PHONE_CHANGE__";
+        public const string WithdrawalBlockedAfterPasswordChange = "__WITHDRAWAL_BLOCKED_AFTER_PASSWORD_CHANGE__";
     }
 
     public static class TradeAccount

@@ -29,9 +29,16 @@ public class WalletTransactionRecord : ICanExportToCsv
 
     public long RebateTargetAccountUid { get; init; }
 
-    public static string Header()
-        =>
-            "wallet_id,transaction_id,client_name,fund_type,transaction_type,source_currency,source,currency,target,state,source_amount,amount,rebate_target_account_uid,created_on,released_on";
+    /// <summary>
+    /// MT5 server offset east of UTC. CSV GMT+0 columns are MT5 wall time minus this value.
+    /// </summary>
+    public int MtGmtOffsetHoursForCsv { get; set; } = 2;
+
+    public static string Header() => Header(2);
+
+    public static string Header(int mtGmtOffsetHours) =>
+        "wallet_id,transaction_id,client_name,fund_type,transaction_type,source_currency,source,currency,target,state,source_amount,amount,rebate_target_account_uid," +
+        $"CreatedOn GMT+0,CreatedOn GMT+{mtGmtOffsetHours},ReleasedOn GMT+0,ReleasedOn GMT+{mtGmtOffsetHours}";
 
     public string ToCsv()
     {
@@ -73,8 +80,13 @@ public class WalletTransactionRecord : ICanExportToCsv
             _ => string.Empty
         };
 
+        var off = MtGmtOffsetHoursForCsv;
+        var c0 = $"{CreatedOn.AddHours(-off):yyyy-MM-dd HH:mm:ss}";
+        var c = $"{CreatedOn:yyyy-MM-dd HH:mm:ss}";
+        var r0 = $"{ReleasedOn.AddHours(-off):yyyy-MM-dd HH:mm:ss}";
+        var r = $"{ReleasedOn:yyyy-MM-dd HH:mm:ss}";
         return
             $"\"{WalletId}\",\"{Id}\",\"{ClientName}\",\"{fundTypeName}\",\"{transactionTypeName}\",\"{sourceCurrencyName}\",\"{sourceName}\",\"{currencyName}\",\"{targetName}\"," +
-            $"\"{stateName}\",\"{(SourceAmount / 100).ToCentsFromScaled()}\",\"{(Amount / 100).ToCentsFromScaled()}\",\"{rebateTargetAccountName}\",\"{CreatedOn:yyyy-MM-dd HH:mm:ss}\",\"{ReleasedOn:yyyy-MM-dd HH:mm:ss}\"";
+            $"\"{stateName}\",\"{(SourceAmount / 100).ToCentsFromScaled()}\",\"{(Amount / 100).ToCentsFromScaled()}\",\"{rebateTargetAccountName}\",\"{c0}\",\"{c}\",\"{r0}\",\"{r}\"";
     }
 }

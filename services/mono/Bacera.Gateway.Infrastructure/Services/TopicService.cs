@@ -81,6 +81,7 @@ public class TopicService : ITopicService
         item.UpdatedOn = DateTime.UtcNow;
         item.Title = spec.Title ?? "Title";
         item.Type = (short)spec.Type;
+        if (spec.Category != null) item.Category = (short)spec.Category;
         if (spec.EffectiveFrom != null) item.EffectiveFrom = spec.EffectiveFrom!.Value;
         if (spec.EffectiveTo != null) item.EffectiveTo = spec.EffectiveTo!.Value;
 

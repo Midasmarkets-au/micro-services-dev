@@ -208,6 +208,9 @@ public class EventService(
         var tradeJson = JsonConvert.SerializeObject(new
             { trade.AccountNumber, trade.Ticket, trade.Volume, ServiceId = trade.TradeServiceId });
 
+        // 周三开仓+周四平仓(00:05后) 双倍积分
+        var pointDoubleMultiplier = trade.IsWednesdayOpenThursdayClose() ? 2 : 1;
+
         // var client
         var result = await ProcessTradeRewardAsync(eventId, tradeRebateId);
         var accountId = trade.AccountId.Value;
@@ -224,7 +227,7 @@ public class EventService(
                 // 客户积分计算：考虑USC汇率转换 1 volumn == 0.01 point for USD, 1 volumn == 0.0001 point for USC
                 var pointMultiplier = trade.CurrencyId == (int)CurrencyTypes.USC ? 0.01 : 1.0;
                 // 缩小100倍转换成手，原因是只需要模拟前端扩大100*100倍
-                var point = (long)((((decimal)trade.Volume) / 100m).ToScaledFromCents() * (decimal)pointMultiplier);
+                var point = (long)((((decimal)trade.Volume) / 100m).ToScaledFromCents() * (decimal)pointMultiplier) * pointDoubleMultiplier;
                 result &= await ChangePointAsync(selfEventPartyId, point, EventShopPointTransactionSourceTypes.Trade, tradeJson, accountId,
                     tradeRebateId);
             }
@@ -242,7 +245,7 @@ public class EventService(
                 // 代理积分计算：考虑USC汇率转换 1 volumn == 0.01 point for USD, 1 volumn == 0.0001 point for USC
                 var pointMultiplier = trade.CurrencyId == (int)CurrencyTypes.USC ? 0.01 : 1.0;
                 // 缩小100倍转换成手，原因是只需要模拟前端扩大100 * 100倍
-                var point = (long)((((decimal)trade.Volume) / 100m).ToScaledFromCents() * 0.3m * (decimal)pointMultiplier);
+                var point = (long)((((decimal)trade.Volume) / 100m).ToScaledFromCents() * 0.3m * (decimal)pointMultiplier) * pointDoubleMultiplier;
                 if (point > 0)
                 {
                     if (await CheckIfTransactionExistAsync(agentEventPartyId, directAgentId, EventShopPointTransactionSourceTypes.Trade, tradeJson))

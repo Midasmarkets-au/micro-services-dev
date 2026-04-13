@@ -1,4 +1,4 @@
-﻿#nullable disable
+#nullable disable
 using Bacera.Gateway.Core.Models.Tenant;
 using Microsoft.EntityFrameworkCore;
 
@@ -75,6 +75,8 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
     public virtual DbSet<CryptoTransaction> CryptoTransactions { get; set; }
 
     public virtual DbSet<Currency> Currencies { get; set; }
+
+    public virtual DbSet<DailyEquitySnapshot> DailyEquitySnapshots { get; set; }
 
     public virtual DbSet<Deposit> Deposits { get; set; }
 
@@ -668,38 +670,32 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
         modelBuilder.Entity<Activity>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("ix_activity_k8s_id");
+            entity.HasKey(e => e.Id).HasName("activities_pkey");
 
-            entity.ToTable("activity_k8s", "core");
+            entity.ToTable("_Activity", "core");
 
-            entity.HasIndex(e => e.ActionId, "ix_activity_k8s_action_id");
+            entity.HasIndex(e => e.ActionId, "IX_activities_action_id");
 
-            entity.HasIndex(e => e.OnStateId, "ix_activity_k8s_on_state_id");
+            entity.HasIndex(e => e.OnStateId, "IX_activities_on_state_id");
 
-            entity.HasIndex(e => e.PartyId, "ix_activity_k8s_party_id");
+            entity.HasIndex(e => e.PartyId, "IX_activities_party_id");
 
-            entity.HasIndex(e => e.ToStateId, "ix_activity_k8s_to_state_id");
+            entity.HasIndex(e => e.ToStateId, "IX_activities_to_state_id");
 
-            entity.HasIndex(e => e.MatterId, "ix_activity_k8s_matter_id");
+            entity.HasIndex(e => e.MatterId, "core_activities_matter_id_index");
 
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.MatterId).HasColumnName("matter_id");
-            entity.Property(e => e.ActionId).HasColumnName("action_id");
-            entity.Property(e => e.OnStateId).HasColumnName("on_state_id");
-            entity.Property(e => e.ToStateId).HasColumnName("to_state_id");
-            entity.Property(e => e.PartyId).HasColumnName("party_id");
-            entity.Property(e => e.PerformedOn).HasColumnName("performed_on").HasDefaultValueSql("now()");
-            entity.Property(e => e.Data).HasColumnName("data").HasMaxLength(255);
+            entity.Property(e => e.Data).HasMaxLength(255);
+            entity.Property(e => e.PerformedOn).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.Matter).WithMany(p => p.Activities)
                 .HasForeignKey(d => d.MatterId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_activity_k8s_matter_id");
+                .HasConstraintName("core_activities_matter_id_foreign");
 
             entity.HasOne(d => d.Party).WithMany(p => p.Activities)
                 .HasForeignKey(d => d.PartyId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_activity_k8s_party_id");
+                .HasConstraintName("core_activities_party_id_foreign");
         });
 
         modelBuilder.Entity<Address>(entity =>
@@ -1185,6 +1181,24 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
                 .IsFixedLength();
             entity.Property(e => e.Entity).HasMaxLength(64);
             entity.Property(e => e.Name).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<DailyEquitySnapshot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("_DailyEquitySnapshot_pk");
+
+            entity.ToTable("_DailyEquitySnapshot", "rpt");
+
+            entity.HasIndex(e => new { e.ReportDate, e.ReportVersion, e.Office, e.Currency },
+                "IX_DailyEquitySnapshot_Date_Version_Office_Currency")
+                .IsUnique();
+
+            entity.Property(e => e.ReportDate).HasColumnType("date");
+            entity.Property(e => e.ReportVersion).HasConversion<int>();
+            entity.Property(e => e.Office).HasMaxLength(64);
+            entity.Property(e => e.Currency).HasMaxLength(16);
+            entity.Property(e => e.AdditionalInfo).HasColumnType("text");
+            entity.Property(e => e.CreatedOn).HasDefaultValueSql("now()");
         });
 
         modelBuilder.Entity<Deposit>(entity =>
@@ -1867,35 +1881,30 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
         });
         modelBuilder.Entity<Matter>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("ix_matter_k8s_id");
+            entity.HasKey(e => e.Id).HasName("matters_pkey");
 
-            entity.ToTable("matter_k8s", "core");
+            entity.ToTable("_Matter", "core");
 
-            entity.HasIndex(e => e.Pid, "ix_matter_k8s_pid");
+            entity.HasIndex(e => e.Pid, "core_matters_pid_index");
 
-            entity.HasIndex(e => e.PostedOn, "ix_matter_k8s_posted_on");
+            entity.HasIndex(e => e.PostedOn, "core_matters_posted_at_index");
 
-            entity.HasIndex(e => e.StateId, "ix_matter_k8s_state_id");
+            entity.HasIndex(e => e.StateId, "core_matters_state_id_index");
 
-            entity.HasIndex(e => e.StatedOn, "ix_matter_k8s_stated_on");
+            entity.HasIndex(e => e.StatedOn, "core_matters_stated_at_index");
 
-            entity.HasIndex(e => e.Type, "ix_matter_k8s_type");
+            entity.HasIndex(e => e.Type, "core_matters_type_index");
 
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Pid).HasColumnName("pid");
-            entity.Property(e => e.Type).HasColumnName("type");
-            entity.Property(e => e.PostedOn).HasColumnName("posted_on");
-            entity.Property(e => e.StateId).HasColumnName("state_id");
-            entity.Property(e => e.StatedOn).HasColumnName("stated_on");
+            entity.Property(e => e.Id).HasIdentityOptions(10000L, null, null, null, null, null);
 
             entity.HasOne(d => d.PidNavigation).WithMany(p => p.InversePidNavigation)
                 .HasForeignKey(d => d.Pid)
-                .HasConstraintName("fk_matter_k8s_pid");
+                .HasConstraintName("core_matters_pid_foreign");
 
             entity.HasOne(d => d.TypeNavigation).WithMany(p => p.Matters)
                 .HasForeignKey(d => d.Type)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_matter_k8s_type");
+                .HasConstraintName("core_matters_type_foreign");
         });
 
         modelBuilder.Entity<MatterType>(entity =>
@@ -2451,60 +2460,52 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
         modelBuilder.Entity<Rebate>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("ix_rebate_k8s_id");
+            entity.HasKey(e => e.Id).HasName("rebates_pkey");
 
-            entity.ToTable("rebate_k8s", "trd");
+            entity.ToTable("_Rebate", "trd");
 
-            entity.HasIndex(e => e.FundType, "ix_rebate_k8s_fund_type");
+            entity.HasIndex(e => e.FundType, "IX__Rebate_FundType");
 
-            entity.HasIndex(e => e.HoldUntilOn, "ix_rebate_k8s_hold_until_on");
+            entity.HasIndex(e => e.HoldUntilOn, "_Rebate_HoldUntilOn_index");
 
-            entity.HasIndex(e => e.TradeRebateId, "ix_rebate_k8s_trade_rebate_id");
+            entity.HasIndex(e => e.TradeRebateId, "_Rebate_TradeRebateId_index");
 
-            entity.HasIndex(e => e.AccountId, "ix_rebate_k8s_account_id");
+            entity.HasIndex(e => e.AccountId, "trd_rebates_account_id_index");
 
-            entity.HasIndex(e => e.CurrencyId, "ix_rebate_k8s_currency_id");
+            entity.HasIndex(e => e.CurrencyId, "trd_rebates_currency_id_index");
 
-            entity.HasIndex(e => e.PartyId, "ix_rebate_k8s_party_id");
+            entity.HasIndex(e => e.PartyId, "trd_rebates_party_id_index");
 
-            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
-            entity.Property(e => e.PartyId).HasColumnName("party_id");
-            entity.Property(e => e.AccountId).HasColumnName("account_id");
-            entity.Property(e => e.FundType).HasColumnName("fund_type");
-            entity.Property(e => e.CurrencyId).HasColumnName("currency_id");
-            entity.Property(e => e.Amount).HasColumnName("amount");
-            entity.Property(e => e.TradeRebateId).HasColumnName("trade_rebate_id");
-            entity.Property(e => e.HoldUntilOn).HasColumnName("hold_until_on");
-            entity.Property(e => e.Information).HasColumnName("information");
+            entity.Property(e => e.Id).ValueGeneratedNever();
 
             entity.HasOne(d => d.Account).WithMany(p => p.Rebates)
                 .HasForeignKey(d => d.AccountId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_rebate_k8s_account_id");
+                .HasConstraintName("trd_rebates_account_id_foreign");
 
             entity.HasOne(d => d.Currency).WithMany(p => p.Rebates)
                 .HasForeignKey(d => d.CurrencyId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_rebate_k8s_currency_id");
+                .HasConstraintName("trd_rebates_currency_id_foreign");
 
             entity.HasOne(d => d.FundTypeNavigation).WithMany(p => p.Rebates)
                 .HasForeignKey(d => d.FundType)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_rebate_k8s_fund_type");
+                .HasConstraintName("_Rebate__FundType_Id_fk");
 
             entity.HasOne(d => d.IdNavigation).WithOne(p => p.Rebate)
                 .HasForeignKey<Rebate>(d => d.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_rebate_k8s_matter_id");
+                .HasConstraintName("trd_rebates_matter_id_foreign");
 
             entity.HasOne(d => d.Party).WithMany(p => p.Rebates)
                 .HasForeignKey(d => d.PartyId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_rebate_k8s_party_id");
+                .HasConstraintName("trd_rebates_party_id_foreign");
 
             entity.HasOne(d => d.TradeRebate).WithMany(p => p.Rebates)
                 .HasForeignKey(d => d.TradeRebateId)
-                .HasConstraintName("fk_rebate_k8s_trade_rebate_id");
+                .HasConstraintName("_Rebate__TradeRebate_Id_fk");
         });
 
         modelBuilder.Entity<RebateAgentRule>(entity =>
@@ -3050,6 +3051,7 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
             entity.Property(e => e.EffectiveFrom).HasDefaultValueSql("now()");
             entity.Property(e => e.EffectiveTo).HasDefaultValueSql("now()");
             entity.Property(e => e.Title).HasMaxLength(256);
+            entity.Property(e => e.Category).HasDefaultValue((short)1);
             entity.Property(e => e.UpdatedOn).HasDefaultValueSql("now()");
         });
 
@@ -3320,68 +3322,52 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
         modelBuilder.Entity<TradeRebate>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("ix_trade_rebate_k8s_id");
+            entity.HasKey(e => e.Id).HasName("_TradeRebate_pk");
 
-            entity.ToTable("trade_rebate_k8s", "trd");
+            entity.ToTable("_TradeRebate", "trd");
 
-            entity.HasIndex(e => e.CurrencyId, "ix_trade_rebate_k8s_currency_id");
+            entity.HasIndex(e => e.CurrencyId, "IX__TradeRebate_CurrencyId");
 
-            entity.HasIndex(e => e.AccountNumber, "ix_trade_rebate_k8s_account_number");
+            entity.HasIndex(e => e.AccountNumber, "_TradeRebate_AccountNumber_index");
 
-            entity.HasIndex(e => e.Action, "ix_trade_rebate_k8s_action");
+            entity.HasIndex(e => e.Action, "_TradeRebate_Action_index");
 
-            entity.HasIndex(e => e.Status, "ix_trade_rebate_k8s_status");
+            entity.HasIndex(e => e.Status, "_TradeRebate_Status_index");
 
-            entity.HasIndex(e => e.TimeStamp, "ix_trade_rebate_k8s_time_stamp");
+            entity.HasIndex(e => e.TimeStamp, "_TradeRebate_TimeStamp_index");
 
-            entity.HasIndex(e => e.AccountId, "ix_trade_rebate_k8s_account_id");
-            entity.HasIndex(e => e.ReferPath, "ix_trade_rebate_k8s_refer_path");
+            entity.HasIndex(e => e.AccountId, "_TradeRebate_AccountId_index");
+            entity.HasIndex(e => e.ReferPath, "_TradeRebate_ReferPath_index");
 
-            entity.HasIndex(e => new { e.TradeServiceId, e.Ticket, e.ClosedOn }, "ux_trade_rebate_k8s_ticket_service_closed")
+            entity.HasIndex(e => new { e.TradeServiceId, e.Ticket }, "_TradeRebate_TradeServiceId_Ticket_uindex")
                 .IsUnique();
 
-            entity.HasIndex(e => e.Commission, "ix_trade_rebate_k8s_commission");
-            entity.HasIndex(e => e.Swaps, "ix_trade_rebate_k8s_swaps");
-            entity.HasIndex(e => e.Profit, "ix_trade_rebate_k8s_profit");
+            entity.HasIndex(e => e.Commission, "_TradeRebate_Commission_index");
+            entity.HasIndex(e => e.Swaps, "_TradeRebate_Swaps_index");
+            entity.HasIndex(e => e.Profit, "_TradeRebate_Pl_index");
 
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.AccountId).HasColumnName("account_id");
-            entity.Property(e => e.TradeServiceId).HasColumnName("trade_service_id");
-            entity.Property(e => e.Ticket).HasColumnName("ticket");
-            entity.Property(e => e.AccountNumber).HasColumnName("account_number");
-            entity.Property(e => e.CurrencyId).HasColumnName("currency_id");
-            entity.Property(e => e.Volume).HasColumnName("volume");
-            entity.Property(e => e.Status).HasColumnName("status");
-            entity.Property(e => e.RuleType).HasColumnName("rule_type");
-            entity.Property(e => e.CreatedOn).HasColumnName("created_on").HasDefaultValueSql("now()");
-            entity.Property(e => e.UpdatedOn).HasColumnName("updated_on").HasDefaultValueSql("now()");
-            entity.Property(e => e.ClosedOn).HasColumnName("closed_on").HasDefaultValueSql("now()");
-            entity.Property(e => e.OpenedOn).HasColumnName("opened_on").HasDefaultValueSql("now()");
-            entity.Property(e => e.TimeStamp).HasColumnName("time_stamp");
-            entity.Property(e => e.Action).HasColumnName("action");
-            entity.Property(e => e.DealId).HasColumnName("deal_id").HasDefaultValue(0);
-            entity.Property(e => e.Symbol).HasColumnName("symbol").HasMaxLength(20);
-            entity.Property(e => e.ReferPath).HasColumnName("refer_path").HasDefaultValueSql("''::character varying");
-            entity.Property(e => e.Commission).HasColumnName("commission");
-            entity.Property(e => e.Swaps).HasColumnName("swaps");
-            entity.Property(e => e.OpenPrice).HasColumnName("open_price");
-            entity.Property(e => e.ClosePrice).HasColumnName("close_price");
-            entity.Property(e => e.Profit).HasColumnName("profit");
-            entity.Property(e => e.Reason).HasColumnName("reason");
+            entity.Property(e => e.Id).HasIdentityOptions(10000L, null, null, null, null, null);
+            entity.Property(e => e.ClosedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.CreatedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.OpenedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.Symbol).HasMaxLength(20);
+            entity.Property(e => e.ReferPath).HasDefaultValueSql("''::character varying");
+            entity.Property(e => e.UpdatedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.DealId).HasDefaultValue(0);
 
             entity.HasOne(d => d.Currency).WithMany(p => p.TradeRebates)
                 .HasForeignKey(d => d.CurrencyId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_trade_rebate_k8s_currency_id");
+                .HasConstraintName("_TradeRebate__Currency_Id_fk");
 
             entity.HasOne(d => d.Account).WithMany(p => p.TradeRebates)
                 .HasForeignKey(d => d.AccountId)
-                .HasConstraintName("fk_trade_rebate_k8s_account_id");
+                .HasConstraintName("_TradeRebate__Account_Id_fk");
 
             entity.HasOne(d => d.TradeService).WithMany(p => p.TradeRebates)
                 .HasForeignKey(d => d.TradeServiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_trade_rebate_k8s_trade_service_id");
+                .HasConstraintName("_TradeRebate__TradeService_Id_fk");
         });
 
         modelBuilder.Entity<TradeService>(entity =>
@@ -3676,38 +3662,33 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
         modelBuilder.Entity<WalletTransaction>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("ix_wallet_transaction_k8s_id");
+            entity.HasKey(e => e.Id).HasName("wallet_transactions_pkey");
 
-            entity.ToTable("wallet_transaction_k8s", "acct");
+            entity.ToTable("_WalletTransaction", "acct");
 
-            entity.HasIndex(e => e.InvoiceId, "ix_wallet_transaction_k8s_invoice_id");
+            entity.HasIndex(e => e.InvoiceId, "IX_wallet_transactions_invoice_id");
 
-            entity.HasIndex(e => e.MatterId, "ix_wallet_transaction_k8s_matter_id");
+            entity.HasIndex(e => e.MatterId, "_WalletTransaction_MatterId_index");
 
-            entity.HasIndex(e => e.WalletId, "ix_wallet_transaction_k8s_wallet_id");
+            entity.HasIndex(e => e.WalletId, "acct_wallet_transactions_wallet_id_index");
 
-            entity.Property(e => e.Id).HasColumnName("id").HasIdentityOptions(10000L, null, null, null, null, null);
-            entity.Property(e => e.WalletId).HasColumnName("wallet_id");
-            entity.Property(e => e.InvoiceId).HasColumnName("invoice_id");
-            entity.Property(e => e.MatterId).HasColumnName("matter_id");
-            entity.Property(e => e.PrevBalance).HasColumnName("prev_balance");
-            entity.Property(e => e.Amount).HasColumnName("amount");
-            entity.Property(e => e.CreatedOn).HasColumnName("created_on").HasDefaultValueSql("now()");
-            entity.Property(e => e.UpdatedOn).HasColumnName("updated_on").HasDefaultValueSql("now()");
+            entity.Property(e => e.Id).HasIdentityOptions(10000L, null, null, null, null, null);
+            entity.Property(e => e.CreatedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.UpdatedOn).HasDefaultValueSql("now()");
 
             entity.HasOne(d => d.Invoice).WithMany(p => p.WalletTransactions)
                 .HasForeignKey(d => d.InvoiceId)
-                .HasConstraintName("fk_wallet_transaction_k8s_invoice_id");
+                .HasConstraintName("acct_wallet_transactions_invoice_id_foreign");
 
             entity.HasOne(d => d.Matter).WithMany(p => p.WalletTransactions)
                 .HasForeignKey(d => d.MatterId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_wallet_transaction_k8s_matter_id");
+                .HasConstraintName("_WalletTransaction__Matter_Id_fk");
 
             entity.HasOne(d => d.Wallet).WithMany(p => p.WalletTransactions)
                 .HasForeignKey(d => d.WalletId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_wallet_transaction_k8s_wallet_id");
+                .HasConstraintName("acct_wallet_transactions_wallet_id_foreign");
         });
 
         modelBuilder.Entity<Withdrawal>(entity =>
