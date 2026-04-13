@@ -16,6 +16,9 @@ public class DepositCreatedResponseModel
     public string? Message { get; set; }
     public string? Reference { get; set; }
 
+    /// <summary>3rd-party QR tunnel <c>transactionId</c> (same as <see cref="Reference"/> when present).</summary>
+    public string? TransactionId { get; set; }
+
     public string? Instruction { get; set; }
 
     [JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
@@ -24,12 +27,12 @@ public class DepositCreatedResponseModel
     public object? Form { get; set; }
 
     [JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
-    public long DepositId { get; set; }
-
-    [JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
     public Func<Deposit, Task> CreatedCbHandler { get; set; } = deposit => Task.CompletedTask;
 
     public object? Info { get; set; }
+
+    [JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
+    public long DepositId { get; set; }
 
     public static DepositCreatedResponseModel Fail(string? message = null, bool showMessage = false)
         => new()

@@ -40,7 +40,18 @@ public partial class AcctService
             var setting = await cfgSvc.GetAsync<ApplicationConfigure.AutoCompleteTransactionAmountValue>(nameof(Public), 0,
                 ConfigKeys.AutoCompleteTransactionAmount);
 
-            if (setting?.Enabled == true)
+            // Convert transaction amount to USD for comparison with setting threshold
+            var comparableAmount = item.Amount; // (item.Amount / 100).ToCentsFromScaled();
+            if (item.CurrencyId != (int)CurrencyTypes.USD)
+            {
+                var exchangeRate = await GetExchangeRateAsync((CurrencyTypes)item.CurrencyId, CurrencyTypes.USD);
+                if (exchangeRate > 0)
+                {
+                    comparableAmount = (long)(comparableAmount * exchangeRate);
+                }
+            }
+            
+            if (setting?.Enabled == true && comparableAmount <= setting.Amount)
             {
                 await TransferFromWalletToAccountAsync(item, operatorPartyId);
                 TransitRaw(item, StateTypes.TransferCompleted, operatorPartyId, note);
@@ -123,7 +134,18 @@ public partial class AcctService
             var setting = await cfgSvc.GetAsync<ApplicationConfigure.AutoCompleteTransactionAmountValue>(nameof(Public), 0,
                 ConfigKeys.AutoCompleteTransactionAmount);
 
-            if (setting?.Enabled == true)
+            // Convert transaction amount to USD for comparison with setting threshold
+            var comparableAmount = item.Amount;
+            if (item.CurrencyId != (int)CurrencyTypes.USD)
+            {
+                var exchangeRateToUsd = await GetExchangeRateAsync((CurrencyTypes)item.CurrencyId, CurrencyTypes.USD);
+                if (exchangeRateToUsd > 0)
+                {
+                    comparableAmount = (long)(comparableAmount * exchangeRateToUsd);
+                }
+            }
+            
+            if (setting?.Enabled == true && comparableAmount <= setting.Amount)
             {
                 await TransferFromWalletToAccountWithConversionAsync(item, walletAmount, accountAmount, transactionAmount, operatorPartyId);
                 TransitRaw(item, StateTypes.TransferCompleted, operatorPartyId, note);
@@ -240,7 +262,18 @@ public partial class AcctService
 
             // Only auto-complete if enabled AND amount is within threshold
             // For amounts > threshold, let TransferCreatedEventHandler handle manager approval
-            if (setting?.Enabled == true && amount <= setting.Amount)
+            // Convert transaction amount to USD for comparison with setting threshold
+            var comparableAmount = item.Amount;
+            if (item.CurrencyId != (int)CurrencyTypes.USD)
+            {
+                var exchangeRate = await GetExchangeRateAsync((CurrencyTypes)item.CurrencyId, CurrencyTypes.USD);
+                if (exchangeRate > 0)
+                {
+                    comparableAmount = (long)(comparableAmount * exchangeRate);
+                }
+            }
+            
+            if (setting?.Enabled == true && comparableAmount <= setting.Amount)
             {
                 await TransferBetweenWalletAsync(item, operatorPartyId);
                 TransitRaw(item, StateTypes.TransferCompleted, operatorPartyId, note);

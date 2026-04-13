@@ -42,6 +42,7 @@ public enum PaymentPlatformTypes
     ChinaPay = 420,
     Crypto = 500,
     Buzipay = 650, // Credit card payment via Buzipay
+    QrCodeTunnel = 660,
     // ExLink = 330,
     // BankWire = 30,
     // UnionPay = 40,

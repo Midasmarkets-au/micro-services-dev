@@ -30,7 +30,12 @@ partial class ReportService
             closedOnTo);
 
         // Step 2: For USD and USC rows with AccountList, query MySQL for MT5 data
-        var mysqlResults = await QueryMySQLForDailyEquityAsync(postgresResults, fromDT.Value, toDT.Value, timeZoneOffset);
+        // For monthly reports (span > 25h), pass the original start date for MT5 range
+        DateTime? monthlyMt5Start = null;
+        if (closedOnFrom.HasValue && closedOnTo.HasValue && (closedOnTo.Value - closedOnFrom.Value).TotalHours > 25)
+            monthlyMt5Start = closedOnFrom.Value.Date;
+
+        var mysqlResults = await QueryMySQLForDailyEquityAsync(postgresResults, fromDT.Value, toDT.Value, timeZoneOffset, monthlyMt5Start);
 
         // Step 3: Merge results and calculate final values
         var finalRecords = MergeDailyEquityResults(postgresResults, mysqlResults);
@@ -161,16 +166,22 @@ WITH
         FROM (
             SELECT DISTINCT ON (wds."WalletId")
                 CASE
-                    WHEN a."Role" = 100 THEN a."Code"  -- For Sales, use their own code
-                    ELSE COALESCE(sa."Code", 'NO_SALES')  -- For others, use SalesAccountId code
+                    WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
+                    WHEN sa."Code" IS NOT NULL THEN sa."Code"
+                    ELSE 'NO_SALES'
                 END AS sales_code,
                 wds."Balance" / 1000000.0 AS balance
             FROM acct."_WalletDailySnapshot" wds
             JOIN acct."_Wallet" w ON wds."WalletId" = w."Id"
-            LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
-                AND a."Role" IN (100, 300, 400)  -- Include Sales, Agent, and Client
-                AND a."CurrencyId" = 840  -- Match USD wallet currency
-            LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
+            LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
+            LEFT JOIN (
+                SELECT DISTINCT ON ("PartyId")
+                    "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
+                FROM trd."_Account"
+                WHERE "Role" IN (300, 400)
+                ORDER BY "PartyId", "Role"
+            ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
+            LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
             WHERE w."CurrencyId" = 840
               AND wds."SnapshotDate"::date = p.prevDT::date
@@ -187,16 +198,22 @@ WITH
         FROM (
             SELECT DISTINCT ON (wds."WalletId")
                 CASE
-                    WHEN a."Role" = 100 THEN a."Code"  -- For Sales, use their own code
-                    ELSE COALESCE(sa."Code", 'NO_SALES')  -- For others, use SalesAccountId code
+                    WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
+                    WHEN sa."Code" IS NOT NULL THEN sa."Code"
+                    ELSE 'NO_SALES'
                 END AS sales_code,
                 wds."Balance" / 1000000.0 AS balance
             FROM acct."_WalletDailySnapshot" wds
             JOIN acct."_Wallet" w ON wds."WalletId" = w."Id"
-            LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
-                AND a."Role" IN (100, 300, 400)  -- Include Sales, Agent, and Client
-                AND a."CurrencyId" = 840  -- Match USD wallet currency
-            LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
+            LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
+            LEFT JOIN (
+                SELECT DISTINCT ON ("PartyId")
+                    "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
+                FROM trd."_Account"
+                WHERE "Role" IN (300, 400)
+                ORDER BY "PartyId", "Role"
+            ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
+            LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
             WHERE w."CurrencyId" = 840
               AND wds."SnapshotDate"::date = p.currDT::date
@@ -209,26 +226,39 @@ WITH
     -- 4. Margin In (Deposit + Account→Account 接收方)
     -- ============================================
     margin_in_deposit AS (
+        WITH deposit_first_completion AS (
+            SELECT 
+                a."MatterId",
+                MIN(a."PerformedOn") AS first_completion_time
+            FROM core."_Activity" a
+            WHERE a."ToStateId" IN (345, 350) -- DepositCallbackCompleted or DepositCompleted
+            GROUP BY a."MatterId"
+        )
         SELECT ca.sales_code, ca."CurrencyId", SUM(d."Amount") AS total_amount
-        FROM core.matter_k8s m
-        JOIN acct."_Deposit" d ON d."Id" = m.id
+        FROM deposit_first_completion dfc
+        JOIN acct."_Deposit" d ON d."Id" = dfc."MatterId"
         JOIN client_accounts ca ON d."TargetAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m.state_id IN (350, 351)
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+        WHERE dfc.first_completion_time >= p.fromDT 
+          AND dfc.first_completion_time < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
     margin_in_acc2acc AS (
-        SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core.matter_k8s m
-        JOIN acct."_Transaction" t ON t."Id" = m.id
+        SELECT ca.sales_code, ca."CurrencyId",
+        SUM(CASE
+            WHEN ca."CurrencyId" = 841 AND t."CurrencyId" = 840 THEN t."Amount" * 100
+            WHEN ca."CurrencyId" = 840 AND t."CurrencyId" = 841 THEN t."Amount" / 100
+            ELSE t."Amount"
+        END) AS total_amount
+        FROM core."_Matter" m
+        JOIN acct."_Transaction" t ON t."Id" = m."Id"
         JOIN client_accounts ca ON t."TargetAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m.state_id = 250
+        WHERE m."StateId" = 250
           AND t."SourceAccountType" = 2
           AND t."TargetAccountType" = 2
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -248,16 +278,16 @@ WITH
     margin_out_withdrawal AS (
         WITH withdrawal_first_approval AS (
             SELECT 
-                a.matter_id,
-                MIN(a.performed_on) AS first_approval_time
-            FROM core.activity_k8s a
-            WHERE a.to_state_id = 420
-            GROUP BY a.matter_id
+                a."MatterId",
+                MIN(a."PerformedOn") AS first_approval_time
+            FROM core."_Activity" a
+            WHERE a."ToStateId" = 420
+            GROUP BY a."MatterId"
         )
         SELECT ca.sales_code, ca."CurrencyId", SUM(w."Amount") AS total_amount
-        FROM core.matter_k8s m
-        JOIN acct."_Withdrawal" w ON w."Id" = m.id
-        JOIN withdrawal_first_approval wfa ON wfa.matter_id = m.id
+        FROM core."_Matter" m
+        JOIN acct."_Withdrawal" w ON w."Id" = m."Id"
+        JOIN withdrawal_first_approval wfa ON wfa."MatterId" = m."Id"
         JOIN client_accounts ca ON w."SourceAccountId" = ca.account_id
         CROSS JOIN params p
         WHERE w."SourceAccountId" IS NOT NULL
@@ -267,15 +297,20 @@ WITH
     ),
 
     margin_out_acc2acc AS (
-        SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core.matter_k8s m
-        JOIN acct."_Transaction" t ON t."Id" = m.id
+        SELECT ca.sales_code, ca."CurrencyId",
+        SUM(CASE
+            WHEN ca."CurrencyId" = 841 AND t."CurrencyId" = 840 THEN t."Amount" * 100
+            WHEN ca."CurrencyId" = 840 AND t."CurrencyId" = 841 THEN t."Amount" / 100
+            ELSE t."Amount"
+        END) AS total_amount
+        FROM core."_Matter" m
+        JOIN acct."_Transaction" t ON t."Id" = m."Id"
         JOIN client_accounts ca ON t."SourceAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m.state_id = 250
+        WHERE m."StateId" = 250
           AND t."SourceAccountType" = 2
           AND t."TargetAccountType" = 2
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -295,32 +330,41 @@ WITH
     wallet_margin_out AS (
         WITH wallet_withdrawal_first_approval AS (
             SELECT 
-                a.matter_id,
-                MIN(a.performed_on) AS first_approval_time
-            FROM core.activity_k8s a
-            WHERE a.to_state_id = 420
-            GROUP BY a.matter_id
+                a."MatterId",
+                MIN(a."PerformedOn") AS first_approval_time
+            FROM core."_Activity" a
+            WHERE a."ToStateId" = 420
+            GROUP BY a."MatterId"
         ),
         wallet_withdrawal_with_sales AS (
             SELECT DISTINCT ON (wd."Id")
                 wd."Id" AS withdrawal_id,
                 w."CurrencyId",
                 wd."Amount",
-                COALESCE(sa."Code", 'NO_SALES') AS sales_code,
+                CASE
+                    WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
+                    WHEN sa."Code" IS NOT NULL THEN sa."Code"
+                    ELSE 'NO_SALES'
+                END AS sales_code,
                 wfa.first_approval_time
-            FROM core.matter_k8s m
-            JOIN acct."_Withdrawal" wd ON wd."Id" = m.id
-            JOIN wallet_withdrawal_first_approval wfa ON wfa.matter_id = m.id
+            FROM core."_Matter" m
+            JOIN acct."_Withdrawal" wd ON wd."Id" = m."Id"
+            JOIN wallet_withdrawal_first_approval wfa ON wfa."MatterId" = m."Id"
             JOIN acct."_Wallet" w ON wd."SourceWalletId" = w."Id"
-            LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
-                AND a."Role" IN (300, 400)
-                AND a."CurrencyId" = w."CurrencyId"  -- Match currency to avoid wrong account
-            LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
+            LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
+            LEFT JOIN (
+                SELECT DISTINCT ON ("PartyId")
+                    "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
+                FROM trd."_Account"
+                WHERE "Role" IN (300, 400)
+                ORDER BY "PartyId", "Role"
+            ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
+            LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
             WHERE wd."SourceAccountId" IS NULL
               AND wfa.first_approval_time >= p.fromDT 
               AND wfa.first_approval_time < p.toDT
-            ORDER BY wd."Id", a."Id" -- Pick first account if multiple exist
+            ORDER BY wd."Id"
         )
         SELECT
             sales_code,
@@ -335,14 +379,14 @@ WITH
     -- ============================================
     transfer_in_acc AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core.matter_k8s m
-        JOIN acct."_Transaction" t ON t."Id" = m.id
+        FROM core."_Matter" m
+        JOIN acct."_Transaction" t ON t."Id" = m."Id"
         JOIN client_accounts ca ON t."TargetAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m.state_id = 250
+        WHERE m."StateId" = 250
           AND t."SourceAccountType" = 1
           AND t."TargetAccountType" = 2
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -351,14 +395,14 @@ WITH
     -- ============================================
     transfer_out_acc AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(t."Amount") AS total_amount
-        FROM core.matter_k8s m
-        JOIN acct."_Transaction" t ON t."Id" = m.id
+        FROM core."_Matter" m
+        JOIN acct."_Transaction" t ON t."Id" = m."Id"
         JOIN client_accounts ca ON t."SourceAccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE m.state_id = 250
+        WHERE m."StateId" = 250
           AND t."SourceAccountType" = 2
           AND t."TargetAccountType" = 1
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
 
@@ -373,18 +417,27 @@ WITH
                 w."CurrencyId",
                 t."CurrencyId" AS target_currency_id,
                 t."Amount",
-                COALESCE(sa."Code", 'NO_SALES') AS sales_code
-            FROM core.matter_k8s m
-            JOIN acct."_Transaction" t ON t."Id" = m.id
+                CASE
+                    WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
+                    WHEN sa."Code" IS NOT NULL THEN sa."Code"
+                    ELSE 'NO_SALES'
+                END AS sales_code
+            FROM core."_Matter" m
+            JOIN acct."_Transaction" t ON t."Id" = m."Id"
             JOIN acct."_Wallet" w ON t."SourceAccountId" = w."Id"
-            LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
-                AND a."Role" IN (300, 400)
-                AND a."CurrencyId" = w."CurrencyId"  -- Match wallet currency to get correct sales code
-            LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
+            LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
+            LEFT JOIN (
+                SELECT DISTINCT ON ("PartyId")
+                    "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
+                FROM trd."_Account"
+                WHERE "Role" IN (300, 400)
+                ORDER BY "PartyId", "Role"
+            ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
+            LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
-            WHERE m.state_id = 250 AND t."SourceAccountType" = 1
-              AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
-            ORDER BY t."Id", a."Id" -- Pick first account if multiple exist for same party
+            WHERE m."StateId" = 250 AND t."SourceAccountType" = 1
+              AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+            ORDER BY t."Id"
         )
         SELECT
             sales_code,
@@ -412,18 +465,27 @@ WITH
                 w."CurrencyId",
                 t."CurrencyId" AS source_currency_id,
                 t."Amount",
-                COALESCE(sa."Code", 'NO_SALES') AS sales_code
-            FROM core.matter_k8s m
-            JOIN acct."_Transaction" t ON t."Id" = m.id
+                CASE
+                    WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
+                    WHEN sa."Code" IS NOT NULL THEN sa."Code"
+                    ELSE 'NO_SALES'
+                END AS sales_code
+            FROM core."_Matter" m
+            JOIN acct."_Transaction" t ON t."Id" = m."Id"
             JOIN acct."_Wallet" w ON t."TargetAccountId" = w."Id"
-            LEFT JOIN trd."_Account" a ON w."PartyId" = a."PartyId" 
-                AND a."Role" IN (300, 400)
-                AND a."CurrencyId" = w."CurrencyId"  -- Match wallet currency to get correct sales code
-            LEFT JOIN trd."_Account" sa ON a."SalesAccountId" = sa."Id"
+            LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
+            LEFT JOIN (
+                SELECT DISTINCT ON ("PartyId")
+                    "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
+                FROM trd."_Account"
+                WHERE "Role" IN (300, 400)
+                ORDER BY "PartyId", "Role"
+            ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
+            LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
-            WHERE m.state_id = 250 AND t."TargetAccountType" = 1
-              AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
-            ORDER BY t."Id", a."Id" -- Pick first account if multiple exist for same party
+            WHERE m."StateId" = 250 AND t."TargetAccountType" = 1
+              AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+            ORDER BY t."Id"
         )
         SELECT
             sales_code,
@@ -443,9 +505,9 @@ WITH
     credit_adjust AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(ar."Amount") AS total_amount
         FROM trd."_AdjustRecord" ar
-        JOIN client_accounts ca ON ar.account_id = ca.account_id
+        JOIN client_accounts ca ON ar."AccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE ar."Type" = 2 AND ar."Status" = 2
+        WHERE ar."Type" = 2 AND ar."Status" = 20
           AND ar."UpdatedOn" >= p.fromDT AND ar."UpdatedOn" < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
@@ -456,9 +518,9 @@ WITH
     balance_adjust AS (
         SELECT ca.sales_code, ca."CurrencyId", SUM(ar."Amount") AS total_amount
         FROM trd."_AdjustRecord" ar
-        JOIN client_accounts ca ON ar.account_id = ca.account_id
+        JOIN client_accounts ca ON ar."AccountId" = ca.account_id
         CROSS JOIN params p
-        WHERE ar."Type" IN (1, 3) AND ar."Status" = 2
+        WHERE ar."Type" IN (1, 3) AND ar."Status" = 20
           AND ar."UpdatedOn" >= p.fromDT AND ar."UpdatedOn" < p.toDT
         GROUP BY ca.sales_code, ca."CurrencyId"
     ),
@@ -478,18 +540,24 @@ WITH
             END AS sales_code,
             SUM(wa."Amount") AS total_amount
         FROM acct."_WalletAdjust" wa
-        JOIN core.matter_k8s m ON wa."Id" = m.id
+        JOIN core."_Matter" m ON wa."Id" = m."Id"
         JOIN acct."_Wallet" w ON wa."WalletId" = w."Id"
         -- Try to find Sales account (Role 100)
         LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
         -- Try to find Client/Agent account (Role 300/400)
-        LEFT JOIN trd."_Account" a_client ON w."PartyId" = a_client."PartyId" AND a_client."Role" IN (300, 400)
+        LEFT JOIN (
+		    SELECT DISTINCT ON ("PartyId")
+			    "Id", "PartyId", "SalesAccountId", "Role"
+		    FROM trd."_Account"
+		    WHERE "Role" IN (300, 400)
+		    ORDER BY "PartyId", "Role"  -- explicit priority: 300 before 400
+	    ) a_client ON w."PartyId" = a_client."PartyId"
         -- Get the SalesAccountId for clients
         LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m.state_id = 750  -- WalletAdjustCompleted
-          AND w."CurrencyId" = 840  -- USD Wallet only
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+        WHERE m."StateId" = 750  -- WalletAdjustCompleted
+            AND w."CurrencyId" = 840  -- USD Wallet only
+            AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
         GROUP BY 
             CASE
                 WHEN a_sales."Code" IS NOT NULL THEN a_sales."Code"
@@ -505,22 +573,22 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 840 THEN wt.amount
-                WHEN w."CurrencyId" = 841 THEN wt.amount / 100
-                ELSE wt.amount
+                WHEN w."CurrencyId" = 840 THEN wt."Amount"
+                WHEN w."CurrencyId" = 841 THEN wt."Amount" / 100
+                ELSE wt."Amount"
             END) AS total_amount
-        FROM acct.wallet_transaction_k8s wt
-        JOIN core.matter_k8s m ON wt.matter_id = m.id
-        JOIN trd.rebate_k8s r ON r.id = m.id
-        JOIN trd.trade_rebate_k8s tr ON r.trade_rebate_id = tr.id
-        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
-        JOIN trd."_Account" aa ON r.account_id = aa."Id"
+        FROM acct."_WalletTransaction" wt
+        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
+        JOIN trd."_Rebate" r ON r."Id" = m."Id"
+        JOIN trd."_TradeRebate" tr ON r."TradeRebateId" = tr."Id"
+        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
+        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m.type = 500 AND m.state_id = 550
-          AND tr.currency_id = 840
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
-          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr.closed_on >= p.closedOnFrom AND tr.closed_on <= p.closedOnTo""" : "")}
+        WHERE m."Type" = 500 AND m."StateId" = 550
+          AND tr."CurrencyId" = 840
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr."ClosedOn" >= p.closedOnFrom AND tr."ClosedOn" <= p.closedOnTo""" : "")}
         GROUP BY sa."Code"
     ),
 
@@ -530,23 +598,19 @@ WITH
     rebate_usc AS (
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
-            SUM(CASE
-                WHEN w."CurrencyId" = 841 THEN wt.amount
-                WHEN w."CurrencyId" = 840 THEN wt.amount * 100
-                ELSE wt.amount
-            END) AS total_amount
-        FROM acct.wallet_transaction_k8s wt
-        JOIN core.matter_k8s m ON wt.matter_id = m.id
-        JOIN trd.rebate_k8s r ON r.id = m.id
-        JOIN trd.trade_rebate_k8s tr ON r.trade_rebate_id = tr.id
-        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
-        JOIN trd."_Account" aa ON r.account_id = aa."Id"
+            SUM(wt."Amount") AS total_amount
+        FROM acct."_WalletTransaction" wt
+        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
+        JOIN trd."_Rebate" r ON r."Id" = m."Id"
+        JOIN trd."_TradeRebate" tr ON r."TradeRebateId" = tr."Id"
+        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
+        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m.type = 500 AND m.state_id = 550
-          AND tr.currency_id = 841
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
-          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr.closed_on >= p.closedOnFrom AND tr.closed_on <= p.closedOnTo""" : "")}
+        WHERE m."Type" = 500 AND m."StateId" = 550
+          AND tr."CurrencyId" = 841
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
+          {(useClosingTime && closedOnFrom.HasValue && closedOnTo.HasValue ? """AND tr."ClosedOn" >= p.closedOnFrom AND tr."ClosedOn" <= p.closedOnTo""" : "")}
         GROUP BY sa."Code"
     ),
 
@@ -557,20 +621,20 @@ WITH
         SELECT
             COALESCE(sa."Code", 'NO_SALES') AS sales_code,
             SUM(CASE
-                WHEN w."CurrencyId" = 840 THEN wt.amount
-                WHEN w."CurrencyId" = 841 THEN wt.amount / 100
-                ELSE wt.amount
+                WHEN w."CurrencyId" = 840 THEN wt."Amount"
+                WHEN w."CurrencyId" = 841 THEN wt."Amount" / 100
+                ELSE wt."Amount"
             END) AS total_amount
-        FROM acct.wallet_transaction_k8s wt
-        JOIN core.matter_k8s m ON wt.matter_id = m.id
-        JOIN acct."_Wallet" w ON wt.wallet_id = w."Id"
-        JOIN trd.rebate_k8s r ON r.id = m.id
-        JOIN trd."_Account" aa ON r.account_id = aa."Id"
+        FROM acct."_WalletTransaction" wt
+        JOIN core."_Matter" m ON wt."MatterId" = m."Id"
+        JOIN acct."_Wallet" w ON wt."WalletId" = w."Id"
+        JOIN trd."_Rebate" r ON r."Id" = m."Id"
+        JOIN trd."_Account" aa ON r."AccountId" = aa."Id"
         LEFT JOIN trd."_Account" sa ON aa."SalesAccountId" = sa."Id"
         CROSS JOIN params p
-        WHERE m.type = 500
-          AND m.state_id = 550
-          AND m.stated_on >= p.fromDT AND m.stated_on < p.toDT
+        WHERE m."Type" = 500
+          AND m."StateId" = 550
+          AND m."StatedOn" >= p.fromDT AND m."StatedOn" < p.toDT
         GROUP BY sa."Code"
     ),
 
@@ -621,22 +685,19 @@ SELECT
         WHEN ac.currency_name = 'Wallet' THEN COALESCE(wce.total_balance, 0)
         ELSE 0
     END AS "CurrEquity",
-    CASE WHEN ac.currency_name IN ('Wallet', 'User') THEN 0 ELSE COALESCE(mi.total_amount, 0) / 1000000.0 END AS "MarginIn",
-    CASE
-        WHEN ac.currency_name = 'User' THEN 0
-        WHEN ac.currency_name = 'Wallet' THEN COALESCE(wmo.total_amount, 0) / 1000000.0
-        ELSE COALESCE(mo.total_amount, 0) / 1000000.0
-    END AS "MarginOut",
+    -- Transfer amounts merged into Margin In/Out
     CASE
         WHEN ac.currency_name = 'User' THEN 0
         WHEN ac.currency_name = 'Wallet' THEN COALESCE(tiw.total_amount, 0) / 1000000.0
-        ELSE COALESCE(ti.total_amount, 0) / 1000000.0
-    END AS "TransferIn",
+        ELSE (COALESCE(mi.total_amount, 0) + COALESCE(ti.total_amount, 0)) / 1000000.0
+    END AS "MarginIn",
     CASE
         WHEN ac.currency_name = 'User' THEN 0
-        WHEN ac.currency_name = 'Wallet' THEN COALESCE(tow.total_amount, 0) / 1000000.0
-        ELSE COALESCE(tro.total_amount, 0) / 1000000.0
-    END AS "TransferOut",
+        WHEN ac.currency_name = 'Wallet' THEN (COALESCE(wmo.total_amount, 0) + COALESCE(tow.total_amount, 0)) / 1000000.0
+        ELSE (COALESCE(mo.total_amount, 0) + COALESCE(tro.total_amount, 0)) / 1000000.0
+    END AS "MarginOut",
+    0 AS "TransferIn",
+    0 AS "TransferOut",
     CASE WHEN ac.currency_name IN ('Wallet', 'User') THEN 0 ELSE COALESCE(cr.total_amount, 0) / 1000000.0 END AS "Credit",
     -- UPDATED: Adjust now includes WalletAdjust for Wallet row
     CASE
@@ -719,7 +780,8 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         List<DailyEquityPostgresResult> postgresResults,
         DateTime from,
         DateTime to,
-        double timeZoneOffset)
+        double timeZoneOffset,
+        DateTime? monthlyMt5Start = null)
     {
         var mysqlResults = new List<DailyEquityMysqlResult>();
 
@@ -738,10 +800,20 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         }
 
         var reportDate = to.Date; // Extract the report date
+        var isMultiDay = monthlyMt5Start.HasValue;
 
-        // 基于MT5 Server 的时区查询Mysql, 区间为当天 00:00:00 到 23:59:59, 不用减去时区偏移 
-        var mt5StartTime = new DateTime(reportDate.Year, reportDate.Month, reportDate.Day, 0, 0, 0, DateTimeKind.Utc);
-        var mt5EndTime = new DateTime(reportDate.Year, reportDate.Month, reportDate.Day, 23, 59, 59, DateTimeKind.Utc);
+        // 基于MT5 Server 的时区查询Mysql, 区间为当天 00:00:00 到 23:59:59, 不用减去时区偏移
+        DateTime mt5StartTime, mt5EndTime;
+        if (isMultiDay)
+        {
+            mt5StartTime = new DateTime(monthlyMt5Start.Value.Year, monthlyMt5Start.Value.Month, monthlyMt5Start.Value.Day, 0, 0, 0, DateTimeKind.Utc);
+            mt5EndTime = new DateTime(reportDate.Year, reportDate.Month, reportDate.Day, 23, 59, 59, DateTimeKind.Utc);
+        }
+        else
+        {
+            mt5StartTime = new DateTime(reportDate.Year, reportDate.Month, reportDate.Day, 0, 0, 0, DateTimeKind.Utc);
+            mt5EndTime = new DateTime(reportDate.Year, reportDate.Month, reportDate.Day, 23, 59, 59, DateTimeKind.Utc);
+        }
         
         // Convert to Unix timestamp
         var startTs = ((DateTimeOffset)mt5StartTime).ToUnixTimeSeconds();
@@ -751,7 +823,7 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         var dealsStart = mt5StartTime; //当天00:00:00
         var dealsEnd = mt5EndTime.AddSeconds(1); //Next day 00:00:00
 
-        logger.LogInformation($"[DailyEquity MT5 Query] ReportDate={reportDate:yyyy-MM-dd} (GMT+0), MT5 Range: {mt5StartTime:yyyy-MM-dd HH:mm:ss} to {mt5EndTime:yyyy-MM-dd HH:mm:ss} (GMT+0), StartTs={startTs}, EndTs={endTs}, CurrentUTC={DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
+        logger.LogInformation($"[DailyEquity MT5 Query] ReportDate={reportDate:yyyy-MM-dd}, MultiDay={isMultiDay}, MT5 Range: {mt5StartTime:yyyy-MM-dd HH:mm:ss} to {mt5EndTime:yyyy-MM-dd HH:mm:ss}, StartTs={startTs}, EndTs={endTs}, CurrentUTC={DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}");
 
         foreach (var serviceGroup in accountGroups)
         {
@@ -771,13 +843,13 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
 
                 if (!mt5DailyAvailabilityCheck)
                 {
-                    logger.LogWarning($"⚠️ [DailyEquity MT5] NO mt5_daily DATA AVAILABLE for ServiceId={serviceId}, DateRange={reportDate:yyyy-MM-dd}. MT5 daily aggregation may not have completed yet. Report will show zero equity values. Current UTC: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}, Expected data timestamp range: {startTs} to {endTs}");
+                    logger.LogWarning($"[DailyEquity MT5] NO mt5_daily DATA AVAILABLE for ServiceId={serviceId}, ReportDate={reportDate:yyyy-MM-dd}. MT5 daily aggregation may not have completed yet. Report will show zero equity values. Current UTC: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}, Expected data timestamp range: {startTs} to {endTs}");
                     logger.LogWarning($"💡 [DailyEquity MT5] SOLUTION: Wait 1-2 hours after midnight (MT5 GMT+2) and regenerate the report, OR adjust job schedule to run later (e.g., 23:00 UTC instead of 21:10 UTC)");
                     // Continue processing but all equity values will be 0
                 }
                 else
                 {
-                    logger.LogInformation($"✓ [DailyEquity MT5] mt5_daily data IS available for ServiceId={serviceId}, DateRange={reportDate:yyyy-MM-dd}");
+                    logger.LogInformation($"[DailyEquity MT5] mt5_daily data IS available for ServiceId={serviceId}, ReportDate={reportDate:yyyy-MM-dd}");
                 }
 
                 foreach (var pgResult in serviceGroup)
@@ -810,26 +882,65 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                         logger.LogWarning($"⚠️ [DailyEquity MySQL] NO RECORDS found for Office={pgResult.Office}, Currency={pgResult.Currency}. Accounts={string.Join(",", accountNumbers)}, Timestamp range={startTs} to {endTs}. This will result in zero equity values.");
                     }
 
-                    // Query mt5_daily for Previous Equity, Current Equity, and P&L
-                    // Based on requirement doc (daily_equity_report_mysql.md):
-                    // - EquityPrevDay = 当日开盘净值 (Previous/Starting Equity)
-                    // - ProfitEquity = 当日收盘净值 (Current/Ending Equity)
-                    // - DailyProfit = 当日盈亏 (P&L)
-                    var dailyData = await mt5DbContext.Mt5Dailys
-                        .Where(d => accountNumbers.Contains(d.Login))
-                        .Where(d => d.Datetime >= startTs && d.Datetime <= endTs)
-                        .GroupBy(d => 1) // Group all results together
-                        .Select(g => new
+                    double previousEquity, currentEquity, dailyProfit;
+
+                    if (isMultiDay)
+                    {
+                        // Monthly: find actual first/last trading days (skips weekends, holidays, future dates)
+                        var firstTradingDayTs = await mt5DbContext.Mt5Dailys
+                            .Where(d => accountNumbers.Contains(d.Login))
+                            .Where(d => d.Datetime >= startTs && d.Datetime <= endTs)
+                            .MinAsync(d => (long?)d.Datetime);
+
+                        var lastTradingDayTs = await mt5DbContext.Mt5Dailys
+                            .Where(d => accountNumbers.Contains(d.Login))
+                            .Where(d => d.Datetime >= startTs && d.Datetime <= endTs)
+                            .MaxAsync(d => (long?)d.Datetime);
+
+                        if (firstTradingDayTs.HasValue && lastTradingDayTs.HasValue)
                         {
-                            PreviousEquity = g.Sum(d => d.EquityPrevDay),   // 开盘净值
-                            CurrentEquity = g.Sum(d => d.ProfitEquity),     // 收盘净值
-                            DailyProfit = g.Sum(d => d.DailyProfit)         // 盈亏
-                        })
-                        .FirstOrDefaultAsync();
-                    
-                    var previousEquity = dailyData?.PreviousEquity ?? 0;
-                    var currentEquity = dailyData?.CurrentEquity ?? 0;
-                    var dailyProfit = dailyData?.DailyProfit ?? 0;
+                            previousEquity = await mt5DbContext.Mt5Dailys
+                                .Where(d => accountNumbers.Contains(d.Login))
+                                .Where(d => d.Datetime == firstTradingDayTs.Value)
+                                .SumAsync(d => d.EquityPrevDay);
+
+                            currentEquity = await mt5DbContext.Mt5Dailys
+                                .Where(d => accountNumbers.Contains(d.Login))
+                                .Where(d => d.Datetime == lastTradingDayTs.Value)
+                                .SumAsync(d => d.ProfitEquity);
+                        }
+                        else
+                        {
+                            previousEquity = 0;
+                            currentEquity = 0;
+                        }
+
+                        dailyProfit = 0; // P&L is calculated by formula in MergeDailyEquityResults
+                    }
+                    else
+                    {
+                        // Query mt5_daily for Previous Equity, Current Equity, and P&L
+                        // Based on requirement doc (daily_equity_report_mysql.md):
+                        // - EquityPrevDay = 当日开盘净值 (Previous/Starting Equity)
+                        // - ProfitEquity = 当日收盘净值 (Current/Ending Equity)
+                        // - DailyProfit = 当日盈亏 (P&L)
+                        // Daily: single day — sum across accounts
+                        var dailyData = await mt5DbContext.Mt5Dailys
+                            .Where(d => accountNumbers.Contains(d.Login))
+                            .Where(d => d.Datetime >= startTs && d.Datetime <= endTs)
+                            .GroupBy(d => 1) // Group all results together
+                            .Select(g => new
+                            {
+                                PreviousEquity = g.Sum(d => d.EquityPrevDay),   // 开盘净值
+                                CurrentEquity = g.Sum(d => d.ProfitEquity),     // 收盘净值
+                                DailyProfit = g.Sum(d => d.DailyProfit)         // 盈亏
+                            })
+                            .FirstOrDefaultAsync();
+
+                        previousEquity = dailyData?.PreviousEquity ?? 0;
+                        currentEquity = dailyData?.CurrentEquity ?? 0;
+                        dailyProfit = dailyData?.DailyProfit ?? 0;
+                    }
 
                     // Query mt5_deals for Lots (closed trades only)
                     var lotsData = await mt5DbContext.Mt5Deals2025s
@@ -902,9 +1013,10 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                     record.PreviousEquity = mysqlData.PreviousEquity;
                     record.CurrentEquity = mysqlData.CurrentEquity;
                     record.Lots = mysqlData.Lots;
-                    record.PL = mysqlData.PL;
-                    
-                    logger.LogInformation($"[DailyEquity Merge] Office={pgResult.Office}, Currency={pgResult.Currency}, MySQL PrevEq={mysqlData.PreviousEquity}, CurrEq={mysqlData.CurrentEquity}, Lots={mysqlData.Lots}, PL={mysqlData.PL}");
+
+                    // Calculate Net In/Out first (needed for P&L formula)
+                    record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer;
+                    record.PL = record.CurrentEquity - record.PreviousEquity - record.NetInOut;
                 }
                 else
                 {
@@ -913,11 +1025,9 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                     record.CurrentEquity = 0;
                     record.Lots = 0;
                     record.PL = 0;
+                    record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer;
                     logger.LogWarning($"[DailyEquity Merge] No MySQL data found for Office={pgResult.Office}, Currency={pgResult.Currency}");
                 }
-
-                // Calculate Net In/Out for USD/USC
-                record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer;
 
                 // Calculate Estimates Net PL
                 record.EstimatesNetPL = record.PL + record.Rebate;
@@ -948,7 +1058,7 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                 record.CurrentEquity = pgResult.CurrEquity;
                 record.Lots = 0;
                 record.PL = 0;
-                record.NetInOut = record.Transfer + record.Adjust + record.Rebate;
+                record.NetInOut = record.MarginIn + record.MarginOut + record.Adjust + record.Rebate;
                 record.EstimatesNetPL = 0;
             }
             else if (pgResult.Currency == "User")
@@ -969,7 +1079,9 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         return GroupAndAddSubtotals(allRecords);
     }
 
-    private List<DailyEquityRecord> GroupAndAddSubtotals(List<DailyEquityRecord> records)
+    private List<DailyEquityRecord> GroupAndAddSubtotals(
+        List<DailyEquityRecord> records, string[]? customCurrencyOrder = null,
+        List<string>? officeOrder = null)
     {
         var finalRecords = new List<DailyEquityRecord>();
         
@@ -977,14 +1089,25 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         var userRecords = records.Where(r => r.Currency == "User").ToList();
         var newUserByOffice = userRecords.ToDictionary(r => r.Office, r => r.NewUser);
         
-        // Define the order: USD -> Wallet -> USC (User removed)
-        var currencyOrder = new[] { "USD", "Wallet", "USC" };
+        var currencyOrder = customCurrencyOrder ?? new[] { "USD", "Wallet", "USC" };
         
         foreach (var currency in currencyOrder)
         {
             var currencyRecords = records.Where(r => r.Currency == currency).ToList();
             if (!currencyRecords.Any())
                 continue;
+
+            if (officeOrder is { Count: > 0 })
+            {
+                currencyRecords = currencyRecords
+                    .OrderBy(r =>
+                    {
+                        var baseOffice = r.Office.Replace("-Wallet", "");
+                        var idx = officeOrder.IndexOf(baseOffice);
+                        return idx >= 0 ? idx : int.MaxValue;
+                    })
+                    .ToList();
+            }
 
             // Merge New User data from User records into the first row of each office
             foreach (var record in currencyRecords)
@@ -1061,6 +1184,275 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         }
 
         return finalRecords;
+    }
+
+    public List<DailyEquityPerOfficeRecord> AggregateByOffice(List<DailyEquityRecord> records)
+    {
+        var dataRecords = records
+            .Where(r => !string.IsNullOrEmpty(r.Office) && r.Office != "Total")
+            .ToList();
+
+        var grouped = dataRecords.GroupBy(r => r.Office);
+
+        var result = new List<DailyEquityPerOfficeRecord>();
+
+        foreach (var group in grouped.OrderBy(g => g.Key))
+        {
+            var office = new DailyEquityPerOfficeRecord { Office = group.Key };
+
+            foreach (var r in group)
+            {
+                decimal divisor = r.Currency == "USC" ? 100m : 1m;
+
+                office.PreviousEquity += Math.Round(r.PreviousEquity / divisor, 2);
+                office.CurrentEquity += Math.Round(r.CurrentEquity / divisor, 2);
+                office.MarginIn += Math.Round(r.MarginIn / divisor, 2);
+                office.MarginOut += Math.Round(r.MarginOut / divisor, 2);
+                office.Transfer += Math.Round(r.Transfer / divisor, 2);
+                office.Credit += Math.Round(r.Credit / divisor, 2);
+                office.Adjust += Math.Round(r.Adjust / divisor, 2);
+                office.Lots += Math.Round(r.Lots / divisor, 2);
+                office.PL += Math.Round(r.PL / divisor, 2);
+                office.EstimatesNetPL += Math.Round(r.EstimatesNetPL / divisor, 2);
+
+                // Wallet Rebate is already counted in USD/USC, skip to avoid double-counting
+                var rebate = r.Currency == "Wallet" ? 0m : r.Rebate;
+                office.Rebate += Math.Round(rebate / divisor, 2);
+
+                // Recalculate Wallet NetInOut without rebate for consistency
+                var netInOut = r.Currency == "Wallet"
+                    ? r.MarginIn + r.MarginOut + r.Adjust
+                    : r.NetInOut;
+                office.NetInOut += Math.Round(netInOut / divisor, 2);
+
+                if (r.Currency == "User")
+                    office.NewUser += r.NewUser;
+                else if (r.Currency is "USD" or "USC")
+                    office.NewAcc += r.NewAcc;
+            }
+
+            result.Add(office);
+        }
+
+        var total = new DailyEquityPerOfficeRecord
+        {
+            Office = "Total",
+            NewUser = result.Sum(r => r.NewUser),
+            NewAcc = result.Sum(r => r.NewAcc),
+            PreviousEquity = result.Sum(r => r.PreviousEquity),
+            CurrentEquity = result.Sum(r => r.CurrentEquity),
+            MarginIn = result.Sum(r => r.MarginIn),
+            MarginOut = result.Sum(r => r.MarginOut),
+            Transfer = result.Sum(r => r.Transfer),
+            Credit = result.Sum(r => r.Credit),
+            Adjust = result.Sum(r => r.Adjust),
+            Rebate = result.Sum(r => r.Rebate),
+            NetInOut = result.Sum(r => r.NetInOut),
+            Lots = result.Sum(r => r.Lots),
+            PL = result.Sum(r => r.PL),
+            EstimatesNetPL = result.Sum(r => r.EstimatesNetPL),
+        };
+        result.Add(total);
+
+        return result;
+    }
+
+    private static string ResolveOffice(string salesCode, OfficeMergeMapping mapping)
+    {
+        if (string.IsNullOrEmpty(salesCode))
+            return salesCode;
+
+        foreach (var kvp in mapping.PrefixMappings.OrderByDescending(k => k.Key.Length))
+        {
+            if (salesCode.StartsWith(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                return kvp.Value;
+        }
+
+        return salesCode;
+    }
+
+    public List<DailyEquityRecord> MergeRecordsByOfficeMapping(
+        List<DailyEquityRecord> records, OfficeMergeMapping mapping)
+    {
+        var dataRecords = records
+            .Where(r => !string.IsNullOrEmpty(r.Office) && r.Office != "Total"
+                        && !string.IsNullOrEmpty(r.Currency))
+            .ToList();
+
+        var merged = dataRecords
+            .GroupBy(r => new { Office = ResolveOffice(r.Office, mapping), r.Currency })
+            .Select(g => new DailyEquityRecord
+            {
+                Office = g.Key.Office,
+                Currency = g.Key.Currency,
+                NewUser = g.Sum(r => r.NewUser),
+                NewAcc = g.Sum(r => r.NewAcc),
+                PreviousEquity = g.Sum(r => r.PreviousEquity),
+                CurrentEquity = g.Sum(r => r.CurrentEquity),
+                MarginIn = g.Sum(r => r.MarginIn),
+                MarginOut = g.Sum(r => r.MarginOut),
+                Transfer = g.Sum(r => r.Transfer),
+                Credit = g.Sum(r => r.Credit),
+                Adjust = g.Sum(r => r.Adjust),
+                Rebate = g.Sum(r => r.Rebate),
+                NetInOut = g.Sum(r => r.NetInOut),
+                Lots = g.Sum(r => r.Lots),
+                PL = g.Sum(r => r.PL),
+                EstimatesNetPL = g.Sum(r => r.EstimatesNetPL)
+            })
+            .ToList();
+
+        // Wallet Rebate is already counted in USD/USC sections, zero it out to avoid
+        // double counting in the grand total (follows finance team convention).
+        foreach (var r in merged.Where(r => r.Currency == "Wallet"))
+        {
+            r.Rebate = 0;
+            r.NetInOut = r.MarginIn + r.MarginOut + r.Adjust;
+        }
+
+        foreach (var staticOffice in mapping.StaticOffices)
+        {
+            foreach (var currency in new[] { "USD", "USC", "Wallet", "User" })
+            {
+                if (!merged.Any(r => r.Office == staticOffice && r.Currency == currency))
+                {
+                    merged.Add(new DailyEquityRecord
+                    {
+                        Office = staticOffice,
+                        Currency = currency
+                    });
+                }
+            }
+        }
+
+        return GroupAndAddSubtotals(merged, new[] { "USD", "USC", "Wallet" },
+            mapping.OfficeOrder is { Count: > 0 } ? mapping.OfficeOrder : null);
+    }
+
+    /// <summary>
+    /// 从DailyEquitySnapshot表中聚合数据生成月度报告,这样保证月度数据 = 每日数据之和, 避免了CTE中AND条件边界导致的统计口径问题.
+    /// Build a monthly report by aggregating stored daily snapshots instead of re-running the CTE.
+    /// This guarantees monthly values = sum of daily values (no AND-condition boundary gaps).
+    /// </summary>
+    public async Task<List<DailyEquityRecord>> AggregateSnapshotsForMonthlyAsync(
+        DateTime from, DateTime to, EquityReportVersion reportVersion)
+    {
+        var fromDate = from.Date;
+        var toDate = to.Date;
+
+        var snapshots = await tenantDbContext.DailyEquitySnapshots
+            .Where(s => s.ReportDate >= fromDate && s.ReportDate <= toDate
+                        && s.ReportVersion == reportVersion)
+            .OrderBy(s => s.ReportDate)
+            .ToListAsync();
+
+        if (!snapshots.Any())
+        {
+            logger.LogWarning(
+                "[MonthlyFromSnapshots] No snapshots found for {From} to {To} v{Version}",
+                fromDate, toDate, reportVersion);
+            return new List<DailyEquityRecord>();
+        }
+
+        var firstDate = snapshots.Min(s => s.ReportDate);
+        var lastDate = snapshots.Max(s => s.ReportDate);
+        var snapshotDays = snapshots.Select(s => s.ReportDate).Distinct().Count();
+
+        logger.LogInformation(
+            "[MonthlyFromSnapshots] Aggregating {Days} days of snapshots ({First} to {Last}) for v{Version}",
+            snapshotDays, firstDate, lastDate, reportVersion);
+
+        var rawRecords = snapshots
+            .GroupBy(s => new { s.Office, s.Currency })
+            .Select(g => new DailyEquityRecord
+            {
+                Office = g.Key.Office,
+                Currency = g.Key.Currency,
+                NewUser = g.Sum(s => s.NewUser),
+                NewAcc = g.Sum(s => s.NewAcc),
+                PreviousEquity = g.Where(s => s.ReportDate == firstDate).Sum(s => s.PreviousEquity),
+                CurrentEquity = g.Where(s => s.ReportDate == lastDate).Sum(s => s.CurrentEquity),
+                MarginIn = g.Sum(s => s.MarginIn),
+                MarginOut = g.Sum(s => s.MarginOut),
+                Transfer = g.Sum(s => s.Transfer),
+                Credit = g.Sum(s => s.Credit),
+                Adjust = g.Sum(s => s.Adjust),
+                Rebate = g.Sum(s => s.Rebate),
+                NetInOut = g.Sum(s => s.NetInOut),
+                Lots = g.Sum(s => s.Lots),
+                PL = g.Sum(s => s.PL),
+                EstimatesNetPL = g.Sum(s => s.EstimatesNetPL)
+            })
+            .ToList();
+
+        return GroupAndAddSubtotals(rawRecords);
+    }
+
+    /// <summary>
+    /// Persist daily equity records to DailyEquitySnapshot table.
+    /// Uses delete-then-insert (upsert) keyed on ReportDate + ReportVersion.
+    /// </summary>
+    public async Task SaveDailyEquitySnapshotAsync(
+        List<DailyEquityRecord> records,
+        DateTime reportDate,
+        EquityReportVersion reportVersion)
+    {
+        var dataRecords = records
+            .Where(r => !string.IsNullOrEmpty(r.Office)
+                        && r.Office != "Total"
+                        && !string.IsNullOrEmpty(r.Currency))
+            .ToList();
+
+        if (!dataRecords.Any())
+        {
+            logger.LogWarning("[DailyEquitySnapshot] No data records to save for {ReportDate}", reportDate);
+            return;
+        }
+
+        var dateOnly = reportDate.Date;
+
+        var existing = await tenantDbContext.DailyEquitySnapshots
+            .Where(s => s.ReportDate == dateOnly && s.ReportVersion == reportVersion)
+            .ToListAsync();
+
+        if (existing.Any())
+        {
+            tenantDbContext.DailyEquitySnapshots.RemoveRange(existing);
+            logger.LogInformation(
+                "[DailyEquitySnapshot] Removed {Count} existing snapshots for {ReportDate} v{Version}",
+                existing.Count, dateOnly, reportVersion);
+        }
+
+        var now = DateTime.UtcNow;
+        var snapshots = dataRecords.Select(r => new DailyEquitySnapshot
+        {
+            ReportDate = dateOnly,
+            ReportVersion = reportVersion,
+            Office = r.Office,
+            Currency = r.Currency,
+            NewUser = r.NewUser,
+            NewAcc = r.NewAcc,
+            PreviousEquity = r.PreviousEquity,
+            CurrentEquity = r.CurrentEquity,
+            MarginIn = r.MarginIn,
+            MarginOut = r.MarginOut,
+            Transfer = r.Transfer,
+            Credit = r.Credit,
+            Adjust = r.Adjust,
+            Rebate = r.Rebate,
+            NetInOut = r.NetInOut,
+            Lots = r.Lots,
+            PL = r.PL,
+            EstimatesNetPL = r.EstimatesNetPL,
+            CreatedOn = now
+        }).ToList();
+
+        tenantDbContext.DailyEquitySnapshots.AddRange(snapshots);
+        await tenantDbContext.SaveChangesAsync();
+
+        logger.LogInformation(
+            "[DailyEquitySnapshot] Saved {Count} snapshots for {ReportDate} v{Version}",
+            snapshots.Count, dateOnly, reportVersion);
     }
 }
 

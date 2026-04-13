@@ -29,6 +29,8 @@ public partial class ReportService(
 {
     private long GetTenantId => tenantGetter.GetTenantId();
 
+    public Task<int> GetHoursGapAsync() => configSvc.GetHoursGapForMT5Async();
+
     // TODO: Move to MT4/MT5 database
     // public async Task<int> GenerateTradeList(TradeReportFilter model, string outputFileName)
     // {

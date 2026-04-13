@@ -1,7 +1,7 @@
-
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Acct;
+using Bacera.Gateway.Services.Common;
 using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.EventHandlers;
 using MediatR;
@@ -16,7 +16,7 @@ using M = Transaction;
 using MSG = ResultMessage.Transaction;
 
 [Tags("Tenant/Transaction")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class TransactionController(
     AccountingService accountingService,
     TradingService tradingService,
@@ -56,6 +56,7 @@ public class TransactionController(
     [HttpPut("auto-complete-setting")]
     public async Task<IActionResult> UpdateAutoCompleteTransactionSetting([FromBody] ApplicationConfigure.AutoCompleteTransactionAmountValue spec)
     {
+        spec.Amount = spec.Amount.ToScaledFromCents();
         await configSvc.SetAsync(nameof(Public), 0, ConfigKeys.AutoCompleteTransactionAmount, spec);
         return Ok(spec);
     }

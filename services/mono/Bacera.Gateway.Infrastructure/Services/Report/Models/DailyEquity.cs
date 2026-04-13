@@ -1,4 +1,4 @@
-﻿namespace Bacera.Gateway.Services.Report.Models;
+namespace Bacera.Gateway.Services.Report.Models;
 
 /// <summary>
 /// Daily Equity Report 模型（无对应数据库表，仅用于报告生成）
@@ -39,6 +39,11 @@ public class DailyEquity
         /// 仅当 UseClosingTime = true 时使用
         /// </summary>
         public DateTime? ClosedOnTo { get; set; }
+
+        /// <summary>
+        /// Whether to aggregate results by Office (one row per Office, all currencies summed)
+        /// </summary>
+        public bool? AggregateByOffice { get; set; }
 
         /// <summary>
         /// 配对报告的文件名（用于 UI 显示下载链接）

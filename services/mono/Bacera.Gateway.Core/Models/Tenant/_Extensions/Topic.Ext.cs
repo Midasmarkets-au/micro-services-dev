@@ -28,6 +28,7 @@ partial class Topic
         public string Author { get; set; } = string.Empty;
         public DateTime? EffectiveFrom { get; set; }
         public DateTime? EffectiveTo { get; set; }
+        public TopicCategoryTypes Category { get; set; } = TopicCategoryTypes.Activity;
     }
 
     public sealed class UpdateSpec
@@ -36,6 +37,7 @@ partial class Topic
         public TopicTypes Type { get; set; }
         public DateTime? EffectiveFrom { get; set; }
         public DateTime? EffectiveTo { get; set; }
+        public TopicCategoryTypes? Category { get; set; }
     }
 
     public sealed class ResponseModel
@@ -48,6 +50,8 @@ partial class Topic
         public DateTime EffectiveFrom { get; set; }
 
         public DateTime EffectiveTo { get; set; }
+
+        public short Category { get; set; }
 
 
         public Dictionary<string, TopicContent.ResponseModel> Contents { get; set; } = new();
@@ -66,6 +70,7 @@ public static class TopicExtension
         {
             Title = me.Title,
             Type = (short)me.Type,
+            Category = (short)me.Category,
             EffectiveFrom = me.EffectiveFrom ?? DateTime.MinValue,
             EffectiveTo = me.EffectiveTo ?? DateTime.MinValue,
             TopicContents =
@@ -88,6 +93,7 @@ public static class TopicExtension
             Id = x.Id,
             Type = x.Type,
             Title = x.Title,
+            Category = x.Category,
             EffectiveFrom = x.EffectiveFrom,
             EffectiveTo = x.EffectiveTo,
             Contents = language == null

@@ -1,4 +1,4 @@
-
+using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Interfaces;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Acct;
@@ -17,7 +17,7 @@ using M = Deposit;
 using MSG = ResultMessage.Deposit;
 
 [Tags("Client/Deposit")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class DepositController(
     IMediator mediator,
@@ -235,6 +235,62 @@ public class DepositController(
         
         var (result, msg) = await acctSvc.DepositCancelAsync(id, pid);
         return result ? NoContent() : BadRequest(Result.Error(msg));
+    }
+
+    /// <summary>
+    /// Get ExLink supported fiat currencies (获取 ExLink 支持的法币币种)
+    /// </summary>
+    [HttpGet("exlink/currencies")]
+    [ProducesResponseType(typeof(Vendor.ExLinkCashier.ExLinkCashier.SupportedCurrenciesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetExLinkSupportedCurrencies()
+    {
+        var paymentMethod = await tenantCtx.PaymentMethods
+            .Where(x => x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal)
+            .Where(x => x.DeletedOn == null && x.IsDeleted == false)
+            .FirstOrDefaultAsync();
+        if (paymentMethod == null)
+            return BadRequest(Result.Error("Payment method not found"));
+        try
+        {
+            var options = Vendor.ExLinkCashier.ExLinkCashierOptions.FromJson(paymentMethod.Configuration);
+            var result = await Vendor.ExLinkCashier.ExLinkCashier.QuerySupportedCurrenciesAsync(
+                options.Uid, options.SecretKey, new HttpClient(), logger);
+            return result == null ? BadRequest(Result.Error("Failed to retrieve supported currencies from ExLink")) : Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to query ExLink supported currencies");
+            return BadRequest(Result.Error($"Failed to query supported currencies: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Get ExLink exchange rates
+    /// </summary>
+    [HttpGet("exlink/exchange-rates")]
+    [ProducesResponseType(typeof(Vendor.ExLinkCashier.ExLinkCashier.ExchangeRateResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetExLinkExchangeRates()
+    {
+        var paymentMethod = await tenantCtx.PaymentMethods
+            .Where(x => x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal)
+            .Where(x => x.DeletedOn == null && x.IsDeleted == false)
+            .FirstOrDefaultAsync();
+        if (paymentMethod == null)
+            return BadRequest(Result.Error("Payment method not found"));
+        try
+        {
+            var options = Vendor.ExLinkCashier.ExLinkCashierOptions.FromJson(paymentMethod.Configuration);
+            var result = await Vendor.ExLinkCashier.ExLinkCashier.QueryExchangeRateAsync(
+                options.Uid, options.SecretKey, new HttpClient(), logger);
+            return result == null ? BadRequest(Result.Error("Failed to retrieve exchange rates from ExLink")) : Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to query ExLink exchange rates");
+            return BadRequest(Result.Error($"Failed to query exchange rates: {ex.Message}"));
+        }
     }
 
     private async Task TryExecutePayment(long id)

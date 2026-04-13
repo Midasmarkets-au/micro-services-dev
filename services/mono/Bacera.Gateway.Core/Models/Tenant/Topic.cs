@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Bacera.Gateway;
@@ -20,6 +20,8 @@ public partial class Topic
     public string Title { get; set; } = null!;
 
     public string AdditionalInformation { get; set; } = null!;
+
+    public short Category { get; set; }
 
     public virtual ICollection<TopicContent> TopicContents { get; set; } = new List<TopicContent>();
 }

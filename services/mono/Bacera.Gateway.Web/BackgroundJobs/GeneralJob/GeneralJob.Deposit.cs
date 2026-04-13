@@ -91,6 +91,86 @@ public partial class GeneralJob
         return (true, $"__EMAIL_SENT_TO__ {string.Join(", ", list)}");
     }
 
+    /// <summary>
+    /// 用户上传Ticket 需要邮件通知
+    /// </summary>
+    public async Task<(bool, string)> DepositReceiptUploadedAsync(long tenantId, long depositId)
+    {
+        using var scope = CreateTenantScopeByTenantIdAsync(tenantId);
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+        var sendMailSvc = scope.ServiceProvider.GetRequiredService<ISendMailService>();
+        var deposit = await ctx.Deposits
+            .Select(x => new
+            {
+                x.Id, x.PartyId, x.Amount, x.CurrencyId,
+                x.TargetAccountId
+            })
+            .SingleAsync(x => x.Id == depositId);
+        if (deposit.TargetAccountId == null) return (true, " __DEPOSIT_HAS_NO_TARGET_ACCOUNT__");
+
+        var account = await ctx.Accounts
+            .Select(x => new
+            {
+                x.Id, x.AccountNumber, x.Group,
+                SalesPartyId = x.SalesAccount != null ? x.SalesAccount.PartyId : 0,
+                AgentPartyId = x.AgentAccount != null ? x.AgentAccount.PartyId : 0
+            })
+            .SingleAsync(x => x.Id == deposit.TargetAccountId);
+
+        var parentPartyIds = new[] { account.SalesPartyId, account.AgentPartyId }.Distinct().ToList();
+
+        var users = await authDbContext.Users
+            .Where(x => x.TenantId == tenantId)
+            .Where(x => parentPartyIds.Contains(x.PartyId) || x.PartyId == deposit.PartyId)
+            .ToListAsync();
+
+        var selfUser = users.Single(x => x.PartyId == deposit.PartyId);
+        var parentUsers = users.Where(x => parentPartyIds.Contains(x.PartyId))
+            .DistinctBy(x => x.Email)
+            .ToList();
+
+        var model = new DepositReceiptUploadedViewModel
+        {
+            Email = selfUser.Email ?? string.Empty,
+            // In Development environment, Bcc to internal team for testing
+            BccEmails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
+                    ? new List<string> { "xinsong.rao@edgeark.com.au", "renjie.jiang@edgeark.com.au" }
+                    : null,
+            AccountNumber = account.AccountNumber,
+            Date = DateTime.UtcNow,
+            Group = account.Group,
+            NativeName = selfUser.GuessUserNativeName(),
+            FormattedAmount = $"{(deposit.Amount / 100d).ToCentsFromScaled():0.00}",
+            Currency = Enum.GetName(typeof(CurrencyTypes), deposit.CurrencyId) ?? string.Empty
+        };
+
+        await sendMailSvc.SendEmailWithTemplateAsync(model, selfUser.Language);
+        var list = new List<string?> { selfUser.Email };
+
+        //foreach (var parentUser in parentUsers)
+        //{
+        //    if (string.IsNullOrEmpty(parentUser.Email) || !parentUser.Email.Contains("@")) continue;
+        //    var parentModel = new DepositReceiptUploadedForIBandSalesViewModel
+        //    {
+        //        Email = parentUser.Email ?? string.Empty,
+        //        // In Development environment, Bcc to internal team for testing
+        //        BccEmails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
+        //            ? new List<string> { "renjie.jiang@edgeark.com.au" }
+        //            : null,
+        //        AccountNumber = account.AccountNumber,
+        //        Group = account.Group,
+        //        FormattedAmount = $"{(deposit.Amount / 100d).ToCentsFromScaled():0.00}",
+        //        Currency = Enum.GetName(typeof(CurrencyTypes), deposit.CurrencyId) ?? string.Empty,
+        //        NativeName = selfUser.GuessUserNativeName(),
+        //        Date = DateTime.UtcNow,
+        //    };
+        //    await sendMailSvc.SendEmailWithTemplateAsync(parentModel, parentUser.Language);
+        //    list.Add(parentUser.Email);
+        //}
+
+        return (true, $"__EMAIL_SENT_TO__ {string.Join(", ", list)}");
+    }
+
     public async Task<(bool, string)> DepositCompletedAsync(long tenantId, long depositId)
     {
         var updateAccountStatusTask = TryUpdateTradeAccountStatus(tenantId, depositId);

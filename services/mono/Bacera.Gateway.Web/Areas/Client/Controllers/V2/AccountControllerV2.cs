@@ -1,4 +1,3 @@
-
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
@@ -28,7 +27,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Account")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/account")]
 public class AccountControllerV2(
     TenantDbContext tenantCtx,
@@ -46,6 +45,7 @@ public class AccountControllerV2(
     MyDbContextPool pool,
     IMediator mediator,
     ISendMailService sendMailService,
+    IGeneralJob generalJob,
     ILogger<WalletControllerV2> logger)
     : ClientBaseControllerV2
 {
@@ -94,7 +94,7 @@ public class AccountControllerV2(
     /// </summary>
     /// <returns></returns>
     [HttpPost("demo")]
-    [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
     [ProducesResponseType(typeof(TradeDemoAccount.ClientResponseModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TradeDemoAccount>> DemoAccountCreate([FromBody] TradeDemoAccount.CreateSpecV2 spec)
@@ -177,9 +177,8 @@ public class AccountControllerV2(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [HttpGet("type/referral")]
-    public async Task<IActionResult> GetAccountTypesByReferralCode([FromQuery] string? code)
+    public async Task<IActionResult> GetAccountTypesByReferralCode([FromQuery] string code)
     {
-        if (string.IsNullOrEmpty(code)) return BadRequest(Result.Error("Invalid_referral_code"));
         var partyId = GetPartyId();
 
         var selfCodes = await tenantCtx.ReferralCodes
@@ -362,9 +361,8 @@ public class AccountControllerV2(
         var response = await depositSvc.CreateDepositForAccountAsync(method.Id, id, spec.Amount, spec.Request, spec.Note, GetPartyId());
         if (!response.IsSuccess) return BadRequest(response);
 
-        var deposit = await tenantCtx.Deposits.FindAsync(response.DepositId);
-        if (deposit != null)
-            await mediator.Publish(new DepositCreatedEvent(deposit));
+        var createdDeposit = await tenantCtx.Deposits.FindAsync(response.DepositId);
+        if (createdDeposit != null) await mediator.Publish(new DepositCreatedEvent(createdDeposit));
 
         return Ok(response);
     }
@@ -419,6 +417,15 @@ public class AccountControllerV2(
 
             await tenantCtx.Supplements.AddAsync(supplement);
             await tenantCtx.SaveChangesAsync();
+            // Comment coz not fully ready for prod yet
+            //try 
+            //{ 
+            //    await generalJob.DepositReceiptUploadedAsync(GetTenantId(), depositId); 
+            //}
+            //catch (Exception ex) 
+            //{ 
+            //    logger.LogError(ex, "Failed to send deposit receipt email for deposit {DepositId}", depositId); 
+            //}
             return Ok(new List<string> { result.Guid });
         }
 
@@ -427,6 +434,15 @@ public class AccountControllerV2(
         supplement.Data = JsonConvert.SerializeObject(receipts);
         tenantCtx.Supplements.Update(supplement);
         await tenantCtx.SaveChangesAsync();
+        // Comment coz not fully ready for prod yet
+        //try 
+        //{ 
+        //    await generalJob.DepositReceiptUploadedAsync(GetTenantId(), depositId); 
+        //}
+        //catch (Exception ex) 
+        //{ 
+        //    logger.LogError(ex, "Failed to send deposit receipt email for deposit {DepositId}", depositId); 
+        //}
         return Ok(receipts);
     }
 
@@ -492,6 +508,22 @@ public class AccountControllerV2(
         var (isValid, error) = spec.Validate();
         if (!isValid) return BadRequest(Result.Error(error));
 
+        var partyId = GetPartyId();
+
+        var hasRecentEmailOrPhoneChange = await userSvc.CheckRecentEmailOrPhoneChangeAsync(partyId);
+        if (hasRecentEmailOrPhoneChange)
+        {
+            logger.LogWarning("Withdrawal blocked due to recent email/phone change, PartyId: {PartyId}", partyId);
+            return BadRequest(Result.Error(MSG.WithdrawalBlockedAfterEmailPhoneChange));
+        }
+
+        var hasRecentPasswordChange = await userSvc.CheckRecentPasswordChangeAsync(partyId);
+        if (hasRecentPasswordChange)
+        {
+            logger.LogWarning("Withdrawal blocked due to recent password change, PartyId: {PartyId}", partyId);
+            return BadRequest(Result.Error(MSG.WithdrawalBlockedAfterPasswordChange));
+        }
+
         // Validate verification code
         if (string.IsNullOrWhiteSpace(spec.VerificationCode))
         {
@@ -516,6 +548,10 @@ public class AccountControllerV2(
 
         var method = await paymentMethodSvc.GetMethodByIdAsync(spec.PaymentMethodId);
         if (method == null) return BadRequest(Result.Error("Payment_method_not_found"));
+
+        var isEnabled = await paymentMethodSvc.IsAccountAccessEnabledAsync(id, method.Id);
+        if (!isEnabled) return BadRequest(Result.Error("Payment_method_not_enabled"));
+
         var hasSuccessWithdrawal = await tenantCtx.Withdrawals
             .Where(x => x.SourceAccountId == id)
             .Where(x => x.IdNavigation.StateId == (int)StateTypes.WithdrawalCompleted)
@@ -543,7 +579,6 @@ public class AccountControllerV2(
         {
             try
             {
-                var partyId = GetPartyId();
                 string walletAddress = spec.Request["walletAddress"];
                 var addressValid = await tenantCtx.PaymentInfos
                     .Where(x => x.PartyId == partyId)

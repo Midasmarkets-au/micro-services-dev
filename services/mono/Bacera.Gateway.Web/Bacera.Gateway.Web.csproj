@@ -15,6 +15,7 @@
         <PackageReference Include="AutoMapper" Version="13.0.1">
             <NoWarn>NU1608</NoWarn>
         </PackageReference>
+        <PackageReference Include="ClosedXML" Version="0.102.3" />
         <PackageReference Include="AWS.Logger.SeriLog" Version="3.2.0" />
         <PackageReference Include="AWSSDK.SQS" Version="3.7.300.52" />
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />

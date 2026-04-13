@@ -17,55 +17,55 @@ public class MetaTradeDataConverter : IDisposable
         _unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     }
 
-    public async Task<List<TradeTransaction>> GetTransactionsAsync(TradeAccount account, DateTime toDateTime,
-        int page = 0, int pageSize = 500,
-        string tableName = "MT4_TRADES")
-    {
-        var result = new List<TradeTransaction>();
-        var sql = buildQuery(account, toDateTime, page, pageSize, tableName);
-        await using var command = new MySqlCommand(sql, _connection);
-        await _connection.OpenAsync();
-        command.CommandTimeout = _commandTimeoutInSeconds;
-        await using (var reader = await command.ExecuteReaderAsync())
-        {
-            while (await reader.ReadAsync())
-            {
-                var item = readRow(reader);
-                item.TradeAccountId = account.Id;
-                item.ServiceId = account.ServiceId;
-                result.Add(item);
-            }
-        }
+    // public async Task<List<TradeTransaction>> GetTransactionsAsync(TradeAccount account, DateTime toDateTime,
+    //     int page = 0, int pageSize = 500,
+    //     string tableName = "MT4_TRADES")
+    // {
+    //     var result = new List<TradeTransaction>();
+    //     var sql = buildQuery(account, toDateTime, page, pageSize, tableName);
+    //     await using var command = new MySqlCommand(sql, _connection);
+    //     await _connection.OpenAsync();
+    //     command.CommandTimeout = _commandTimeoutInSeconds;
+    //     await using (var reader = await command.ExecuteReaderAsync())
+    //     {
+    //         while (await reader.ReadAsync())
+    //         {
+    //             var item = readRow(reader);
+    //             item.TradeAccountId = account.Id;
+    //             item.ServiceId = account.ServiceId;
+    //             result.Add(item);
+    //         }
+    //     }
 
-        await _connection.CloseAsync();
+    //     await _connection.CloseAsync();
 
-        return result;
-    }
+    //     return result;
+    // }
 
-    public async Task<List<TradeTransaction>> GetTransactionsByRangeAsync(DateTime from, DateTime to,
-        int page = 0, int pageSize = 500,
-        string tableName = "MT4_TRADES")
-    {
-        var result = new List<TradeTransaction>();
-        var sql = buildQueryForRange(from, to, page, pageSize, tableName);
-        await using var command = new MySqlCommand(sql, _connection);
-        command.CommandTimeout = _commandTimeoutInSeconds;
-        await _connection.OpenAsync();
-        await using (var reader = await command.ExecuteReaderAsync())
-        {
-            while (await reader.ReadAsync())
-            {
-                var item = readRow(reader);
-                item.TradeAccountId = 0;
-                item.ServiceId = 0;
-                result.Add(item);
-            }
-        }
+    // public async Task<List<TradeTransaction>> GetTransactionsByRangeAsync(DateTime from, DateTime to,
+    //     int page = 0, int pageSize = 500,
+    //     string tableName = "MT4_TRADES")
+    // {
+    //     var result = new List<TradeTransaction>();
+    //     var sql = buildQueryForRange(from, to, page, pageSize, tableName);
+    //     await using var command = new MySqlCommand(sql, _connection);
+    //     command.CommandTimeout = _commandTimeoutInSeconds;
+    //     await _connection.OpenAsync();
+    //     await using (var reader = await command.ExecuteReaderAsync())
+    //     {
+    //         while (await reader.ReadAsync())
+    //         {
+    //             var item = readRow(reader);
+    //             item.TradeAccountId = 0;
+    //             item.ServiceId = 0;
+    //             result.Add(item);
+    //         }
+    //     }
 
-        await _connection.CloseAsync();
+    //     await _connection.CloseAsync();
 
-        return result;
-    }
+    //     return result;
+    // }
 
     public async Task<int> CountTransactionByRangeAsync(DateTime from, DateTime to, string tableName = "MT4_TRADES")
     {
@@ -229,37 +229,37 @@ public class MetaTradeDataConverter : IDisposable
     private long getTimeSpan(DateTime toDateTime)
         => (long)(toDateTime - _unixEpoch).TotalSeconds;
 
-    private static TradeTransaction readRow(IDataRecord reader)
-        => new()
-        {
-            Ticket = reader.GetInt64(0),
-            AccountNumber = reader.GetInt64(1),
-            Symbol = reader.GetString(2),
-            Digits = reader.GetInt32(3),
-            Cmd = reader.GetInt32(4),
-            Volume = reader.GetInt32(5),
-            OpenAt = DateTime.SpecifyKind(reader.GetDateTime(6), DateTimeKind.Utc),
-            OpenPrice = reader.GetDouble(7),
-            Sl = reader.GetDouble(8),
-            Tp = reader.GetDouble(9),
-            CloseAt = DateTime.SpecifyKind(reader.GetDateTime(10), DateTimeKind.Utc),
-            ExpiresAt = DateTime.SpecifyKind(reader.GetDateTime(11), DateTimeKind.Utc),
-            Reason = reader.GetInt32(12),
-            ConvertRate = reader.GetDouble(13),
-            ConvertRate2 = reader.GetDouble(14),
-            Commission = reader.GetDouble(15),
-            CommissionAgent = reader.GetDouble(16),
-            Swaps = reader.GetDouble(17),
-            ClosePrice = reader.GetDouble(18),
-            Profit = reader.GetDouble(19),
-            Taxes = reader.GetDouble(20),
-            Comment = reader.GetString(21),
-            // InternalId = reader.GetInt32(22),
-            MarginRate = reader.GetDouble(23),
-            TimeStamp = reader.GetInt32(24),
-            ModifiedAt = DateTime.SpecifyKind(reader.GetDateTime(29), DateTimeKind.Utc),
-            Status = 0,
-        };
+    // private static TradeTransaction readRow(IDataRecord reader)
+    //     => new()
+    //     {
+    //         Ticket = reader.GetInt64(0),
+    //         AccountNumber = reader.GetInt64(1),
+    //         Symbol = reader.GetString(2),
+    //         Digits = reader.GetInt32(3),
+    //         Cmd = reader.GetInt32(4),
+    //         Volume = reader.GetInt32(5),
+    //         OpenAt = DateTime.SpecifyKind(reader.GetDateTime(6), DateTimeKind.Utc),
+    //         OpenPrice = reader.GetDouble(7),
+    //         Sl = reader.GetDouble(8),
+    //         Tp = reader.GetDouble(9),
+    //         CloseAt = DateTime.SpecifyKind(reader.GetDateTime(10), DateTimeKind.Utc),
+    //         ExpiresAt = DateTime.SpecifyKind(reader.GetDateTime(11), DateTimeKind.Utc),
+    //         Reason = reader.GetInt32(12),
+    //         ConvertRate = reader.GetDouble(13),
+    //         ConvertRate2 = reader.GetDouble(14),
+    //         Commission = reader.GetDouble(15),
+    //         CommissionAgent = reader.GetDouble(16),
+    //         Swaps = reader.GetDouble(17),
+    //         ClosePrice = reader.GetDouble(18),
+    //         Profit = reader.GetDouble(19),
+    //         Taxes = reader.GetDouble(20),
+    //         Comment = reader.GetString(21),
+    //         // InternalId = reader.GetInt32(22),
+    //         MarginRate = reader.GetDouble(23),
+    //         TimeStamp = reader.GetInt32(24),
+    //         ModifiedAt = DateTime.SpecifyKind(reader.GetDateTime(29), DateTimeKind.Utc),
+    //         Status = 0,
+    //     };
 
     public void Dispose()
     {

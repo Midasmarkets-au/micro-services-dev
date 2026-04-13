@@ -55,10 +55,11 @@ namespace Bacera.Gateway.Infrastructure.Data.Seeds
                 // New Midas Markets admin
                 //new AdminUserConfig { Email = "marketing@midasmkts.com", FirstName = "Marketing", LastName = "Admin", Password = "M@rk3t!ng#9X", Uid = 9019, PartyId = 19019 },
                 
-                // Viann Yeung admin
-                new AdminUserConfig { Email = "viann.yeung@midasmkts.com", FirstName = "Viann", LastName = "Yeung", Password = "V!@nnY3ung#9X", Uid = 9020, PartyId = 19020 }
+                // Viann Yeung admin (already seeded)
+                //new AdminUserConfig { Email = "viann.yeung@midasmkts.com", FirstName = "Viann", LastName = "Yeung", Password = "V!@nnY3ung#9X", Uid = 9020, PartyId = 19020 },
 
-                
+                // GZ Admin 3
+                new AdminUserConfig { Email = "gz-admin3@midasmkts.com", FirstName = "GZ", LastName = "Admin 3", Password = "Gz@dm!n3#8Xq", Uid = 9021, PartyId = 19021 }
             };
             return admins;
         }

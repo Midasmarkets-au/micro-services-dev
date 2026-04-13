@@ -2,7 +2,7 @@ using Bacera.Gateway.Auth;
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.Controllers;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +15,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/tradepassword")]
 [Tags("Tenant/Update passwords")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class TradePasswordController : BaseController
 {
     private readonly Tenancy _tenancy;
@@ -25,6 +25,7 @@ public class TradePasswordController : BaseController
     private readonly ITradePasswordValidationService _validationService;
     private readonly ITradingApiService _tradingApiService;
     private readonly ILogger<TradePasswordController> _logger;
+    private readonly UserService _userService;
     
     public TradePasswordController(
         Tenancy tenancy,
@@ -33,7 +34,8 @@ public class TradePasswordController : BaseController
         ITradePasswordEncryptionService encryptionService,
         ITradePasswordValidationService validationService,
         ITradingApiService tradingApiService,
-        ILogger<TradePasswordController> logger)
+        ILogger<TradePasswordController> logger,
+        UserService userService)
     {
         _tenancy = tenancy;
         _tenantCtx = tenantCtx;
@@ -42,6 +44,7 @@ public class TradePasswordController : BaseController
         _validationService = validationService;
         _tradingApiService = tradingApiService;
         _logger = logger;
+        _userService = userService;
     }
     
     /// <summary>
@@ -89,6 +92,8 @@ public class TradePasswordController : BaseController
             _logger.LogWarning("Failed to reset CRM password for user {UserId}: {Errors}", user.Id, errors);
             return BadRequest(Result.Error($"Failed to reset CRM password: {errors}"));
         }
+
+        await _userService.RecordPasswordChangeAuditAsync(account.PartyId, user.Id);
 
         // 记录到历史表
         await RecordPasswordHistoryAsync(account.Id, account.AccountNumber, PasswordTypes.CRM,

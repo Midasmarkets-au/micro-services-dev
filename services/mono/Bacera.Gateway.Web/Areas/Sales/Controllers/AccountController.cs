@@ -152,7 +152,7 @@ public class AccountController(
     }
 
     /// <summary>
-    /// Get IB Account Configuration (Default Level Setting)
+    /// Get Agent Configuration (Sales/Rep/IB - roles 100, 110, 300)
     /// </summary>
     /// <param name="salesUid"></param>
     /// <param name="agentUid"></param>
@@ -162,8 +162,17 @@ public class AccountController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAgentConfiguration(long salesUid, long agentUid)
     {
+        var agentRoles = new short[]
+        {
+            (short)AccountRoleTypes.Sales,
+            (short)AccountRoleTypes.Rep,
+            (short)AccountRoleTypes.Agent,
+        };
+
         var agentAccount = await tenantDbContext.Accounts
             .Where(x => x.Uid == agentUid)
+            .Where(x => agentRoles.Contains(x.Role))
+            .Where(x => x.Uid == salesUid || x.ReferPath.Contains(salesUid.ToString()))
             .SingleOrDefaultAsync();
         if (agentAccount == null) return NotFound();
 

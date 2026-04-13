@@ -1,4 +1,3 @@
-
 using Bacera.Gateway;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -22,7 +21,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Wallet")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/wallet")]
 public class WalletControllerV2(
@@ -115,6 +114,22 @@ public class WalletControllerV2(
         var (isValid, error) = spec.Validate();
         if (!isValid) return BadRequest(Result.Error(error));
 
+        var partyId = GetPartyId();
+
+        var hasRecentEmailOrPhoneChange = await userSvc.CheckRecentEmailOrPhoneChangeAsync(partyId);
+        if (hasRecentEmailOrPhoneChange)
+        {
+            logger.LogWarning("Withdrawal blocked due to recent email/phone change, PartyId: {PartyId}", partyId);
+            return BadRequest(Result.Error(MSG.WithdrawalBlockedAfterEmailPhoneChange));
+        }
+
+        var hasRecentPasswordChange = await userSvc.CheckRecentPasswordChangeAsync(partyId);
+        if (hasRecentPasswordChange)
+        {
+            logger.LogWarning("Withdrawal blocked due to recent password change, PartyId: {PartyId}", partyId);
+            return BadRequest(Result.Error(MSG.WithdrawalBlockedAfterPasswordChange));
+        }
+
         // Validate verification code
         if (string.IsNullOrWhiteSpace(spec.VerificationCode))
         {
@@ -137,11 +152,14 @@ public class WalletControllerV2(
         var method = await paymentMethodSvc.GetMethodByIdAsync(spec.PaymentMethodId);
         if (method == null) return BadRequest(Result.Error("Payment method not found"));
 
+        var id = Wallet.HashDecode(hashId);
+        var isEnabled = await paymentMethodSvc.IsWalletAccessEnabledAsync(id, method.Id);
+        if (!isEnabled) return BadRequest(Result.Error("Payment_method_not_enabled"));
+
         if (method.Platform == (short)PaymentPlatformTypes.USDT)
         {
             try
             {
-                var partyId = GetPartyId();
                 string walletAddress = spec.Request["walletAddress"];
                 var addressValid = await tenantCtx.PaymentInfos
                     .Where(x => x.PartyId == partyId)
@@ -157,8 +175,6 @@ public class WalletControllerV2(
         }
 
         spec.Amount = spec.Amount.ToScaledFromCents();
-
-        var id = Wallet.HashDecode(hashId);
         var isAmountValid = await withdrawalSvc.IsAmountValidForWalletWithdrawal(id, spec.Amount);
         if (!isAmountValid) return BadRequest(Result.Error("Amount not valid"));
 

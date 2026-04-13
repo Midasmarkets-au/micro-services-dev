@@ -22,6 +22,7 @@ using Bacera.Gateway.Vendor.Pay247;
 using Bacera.Gateway.Vendor.PaymentAsia;
 using Bacera.Gateway.Vendor.PayPal;
 using Bacera.Gateway.Vendor.SeaBipiPay;
+using Bacera.Gateway.Services.Twilio;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -29,6 +30,7 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
+using Twilio.Exceptions;
 
 namespace Bacera.Gateway.Web.Services;
 
@@ -2043,5 +2045,207 @@ public partial class CmdTestService
         });
 
         await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// Test Twilio SMS Verification service
+    /// Usage: dotnet run -- cmd test test-twilio-sms
+    /// </summary>
+    private async Task TestTwilioSms()
+    {
+        Console.WriteLine("🧪 Testing Twilio SMS Verification Service...");
+        Console.WriteLine("=====================================");
+        Console.WriteLine();
+
+        try
+        {
+            var accountSid = Environment.GetEnvironmentVariable("TWILIO_ACCOUNT_SID");
+            var authToken = Environment.GetEnvironmentVariable("TWILIO_AUTH_TOKEN");
+            var serviceSid = Environment.GetEnvironmentVariable("TWILIO_SERVICE_SID");
+
+            if (string.IsNullOrEmpty(accountSid) || 
+                string.IsNullOrEmpty(authToken) || 
+                string.IsNullOrEmpty(serviceSid))
+            {
+                Console.WriteLine("❌ ERROR: Twilio configuration missing!");
+                Console.WriteLine();
+                Console.WriteLine("Please ensure the following environment variables are set in .env file:");
+                Console.WriteLine("  • TWILIO_ACCOUNT_SID");
+                Console.WriteLine("  • TWILIO_AUTH_TOKEN");
+                Console.WriteLine("  • TWILIO_SERVICE_SID");
+                Console.WriteLine();
+                Console.WriteLine("Current values:");
+                Console.WriteLine($"  TWILIO_ACCOUNT_SID: {(string.IsNullOrEmpty(accountSid) ? "(not set)" : $"{accountSid[..10]}...{accountSid[^4..]}")}");
+                Console.WriteLine($"  TWILIO_AUTH_TOKEN: {(string.IsNullOrEmpty(authToken) ? "(not set)" : "********")}");
+                Console.WriteLine($"  TWILIO_SERVICE_SID: {(string.IsNullOrEmpty(serviceSid) ? "(not set)" : $"{serviceSid[..10]}...{serviceSid[^4..]}")}");
+                return;
+            }
+
+            Console.WriteLine("✅ Twilio Configuration:");
+            Console.WriteLine($"   Account SID: {accountSid[..10]}...{accountSid[^4..]}");
+            Console.WriteLine($"   Service SID: {serviceSid[..10]}...{serviceSid[^4..]}");
+            Console.WriteLine($"   Auth Token: ********** (hidden)");
+            Console.WriteLine();
+
+            var smsService = new TwilioSmsVerificationService(accountSid, authToken, serviceSid);
+
+            Console.Write("📱 Enter phone number to test (E.164 format, e.g. +8613800138000): ");
+            var testPhone = Console.ReadLine()?.Trim();
+
+            if (string.IsNullOrEmpty(testPhone))
+            {
+                Console.WriteLine("❌ Phone number is required");
+                return;
+            }
+
+            if (!testPhone.StartsWith("+"))
+            {
+                Console.WriteLine("⚠️  WARNING: Phone number should start with '+' (E.164 format)");
+                Console.Write("Continue anyway? (y/n): ");
+                var confirm = Console.ReadLine()?.Trim().ToLower();
+                if (confirm != "y")
+                {
+                    Console.WriteLine("❌ Test cancelled");
+                    return;
+                }
+            }
+
+            // Remove any spaces from phone number (common mistake)
+            testPhone = testPhone.Replace(" ", "").Replace("-", "");
+
+            var limitKey = $"test_sms_{DateTime.UtcNow.Ticks}";
+
+            Console.WriteLine();
+            Console.WriteLine($"📤 Sending verification code to: {testPhone}");
+            Console.WriteLine($"   Limit Key: {limitKey}");
+            Console.WriteLine($"   Max requests per minute: 2");
+            Console.WriteLine();
+            Console.WriteLine("💡 TRIAL ACCOUNT REMINDER:");
+            Console.WriteLine("   If using Twilio Trial account, this number must be verified at:");
+            Console.WriteLine("   https://console.twilio.com/us1/develop/phone-numbers/manage/verified");
+            Console.WriteLine();
+
+            bool success;
+            try
+            {
+                success = await smsService.Verification(testPhone, limitKey);
+            }
+            catch (Twilio.Exceptions.ApiException ex)
+            {
+                Console.WriteLine("❌ Twilio API Error:");
+                Console.WriteLine($"   Error: {ex.Message}");
+                Console.WriteLine();
+
+                if (ex.Message.Contains("unverified"))
+                {
+                    Console.WriteLine("🔧 SOLUTION:");
+                    Console.WriteLine($"   1. Visit: https://console.twilio.com/us1/develop/phone-numbers/manage/verified");
+                    Console.WriteLine($"   2. Click 'Verify a phone number'");
+                    Console.WriteLine($"   3. Enter: {testPhone}");
+                    Console.WriteLine($"   4. Complete the verification process");
+                    Console.WriteLine($"   5. Or upgrade to a paid account to send to any number");
+                    Console.WriteLine();
+                    Console.WriteLine("📝 Verified number format must be EXACTLY: {testPhone}");
+                    Console.WriteLine("   (no spaces, no dashes, with + and country code)");
+                }
+                else if (ex.Message.Contains("Invalid 'To' Phone Number"))
+                {
+                    Console.WriteLine("🔧 SOLUTION:");
+                    Console.WriteLine($"   The phone number format is invalid.");
+                    Console.WriteLine($"   Correct E.164 format: +[country code][number]");
+                    Console.WriteLine($"   Example for Australia: +61435863042");
+                    Console.WriteLine($"   Your input: {testPhone}");
+                }
+
+                throw;
+            }
+
+            if (success)
+            {
+                Console.WriteLine("✅ SMS sent successfully!");
+                Console.WriteLine("📱 Check your phone for the verification code");
+                Console.WriteLine();
+                Console.WriteLine("⏰ Code will expire in 10 minutes");
+                Console.WriteLine();
+
+                Console.Write("Enter the 6-digit code you received: ");
+                var code = Console.ReadLine()?.Trim();
+
+                if (string.IsNullOrEmpty(code))
+                {
+                    Console.WriteLine("❌ Code is required");
+                    return;
+                }
+
+                Console.WriteLine();
+                Console.WriteLine($"🔍 Verifying code: {code}");
+                Console.WriteLine();
+
+                var (isValid, verifiedPhone) = await smsService.VerificationCheck(testPhone, code);
+
+                if (isValid)
+                {
+                    Console.WriteLine("✅✅✅ VERIFICATION SUCCESS! ✅✅✅");
+                    Console.WriteLine($"   Verified Phone: {verifiedPhone}");
+                    Console.WriteLine($"   Code: {code}");
+                    Console.WriteLine();
+                    Console.WriteLine("🎉 Twilio SMS verification is working correctly!");
+                }
+                else
+                {
+                    Console.WriteLine("❌ VERIFICATION FAILED!");
+                    Console.WriteLine("   Possible reasons:");
+                    Console.WriteLine("   • Code is incorrect");
+                    Console.WriteLine("   • Code has expired (10 min timeout)");
+                    Console.WriteLine("   • Code was already used");
+                    Console.WriteLine("   • Phone number mismatch");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("📝 Testing rate limiting...");
+                Console.WriteLine($"   Attempting to send another SMS with same limit key: {limitKey}");
+
+                var success2 = await smsService.Verification(testPhone, limitKey);
+                if (success2)
+                {
+                    Console.WriteLine("✅ Second SMS sent (1/2 requests used)");
+                }
+
+                var success3 = await smsService.Verification(testPhone, limitKey);
+                if (!success3)
+                {
+                    Console.WriteLine("✅ Third SMS blocked by rate limiter (2/2 limit reached)");
+                    Console.WriteLine("   Rate limiting is working correctly!");
+                }
+                else
+                {
+                    Console.WriteLine("⚠️  Third SMS was sent (rate limiter might not be working)");
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ Failed to send SMS!");
+                Console.WriteLine();
+                Console.WriteLine("   Possible reasons:");
+                Console.WriteLine("   • Invalid phone number format");
+                Console.WriteLine("   • Twilio API credentials incorrect");
+                Console.WriteLine("   • Service SID not valid");
+                Console.WriteLine("   • Phone number not verified in Twilio trial account");
+                Console.WriteLine("   • Insufficient Twilio balance");
+                Console.WriteLine("   • Network connectivity issues");
+                Console.WriteLine();
+                Console.WriteLine("   Check Twilio Console logs: https://console.twilio.com/monitor/logs");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            Console.WriteLine($"   Stack Trace: {ex.StackTrace}");
+            _logger.LogError(ex, "TestTwilioSms failed");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("=====================================");
+        Console.WriteLine("✅ Twilio SMS Test Complete!");
     }
 }

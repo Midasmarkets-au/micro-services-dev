@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
 namespace Bacera.Gateway;
 
@@ -95,6 +95,8 @@ public class ApplicationConfigure
         public bool VerificationQuizEnabled { get; set; }
         public bool NewYearEvent { get; set; }
         public bool UTCEnabled { get; set; }
+        public bool PasswordChangedWithinLast24h { get; set; }
+        public bool EmailOrPhoneChangedWithinLast24h { get; set; }
 
         public Dictionary<string, string> ContactInfo { get; set; } = new();
         public DateTime RebateCalculateFrom { get; set; }

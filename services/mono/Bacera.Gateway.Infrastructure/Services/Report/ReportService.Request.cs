@@ -32,6 +32,7 @@ partial class ReportService
             ReportRequestTypes.AccountSearchForTenant => await ProcessAccountSearchForTenantRequestAsync(request),
             ReportRequestTypes.DemoAccount => await ProcessWeeklyDemoAccountRequestAsync(request),
             ReportRequestTypes.DailyEquity => await ProcessDailyEquityRequestAsync(request),
+            ReportRequestTypes.DailyEquityMonthly => await ProcessMonthlyDailyEquityRequestAsync(request),
             _ => new Tuple<ReportRequest, Medium?>(request, null)
         };
 
@@ -65,6 +66,7 @@ partial class ReportService
             ReportRequestTypes.SalesRebateSumByAccountForTenant => ValidateQuery<SalesRebate.Criteria>(request.Query),
             ReportRequestTypes.AccountSearchForTenant => ValidateQuery<Account.Criteria>(request.Query),
             ReportRequestTypes.DailyEquity => ValidateQuery<DailyEquity.Criteria>(request.Query),
+            ReportRequestTypes.DailyEquityMonthly => ValidateQuery<DailyEquity.Criteria>(request.Query),
             _ => false
         };
 
@@ -72,13 +74,8 @@ partial class ReportService
     {
         var criteria = JsonConvert.DeserializeObject<DailyEquity.Criteria>(request.Query, Utils.AppJsonSerializerSettings);
         if (criteria == null) return new Tuple<ReportRequest, Medium?>(request, null);
-        if (criteria.From == null || criteria.To == null)
-        {
-            logger.LogError("DailyEquity ReportRequest {Id} is missing From or To date in Query: {Query}", request.Id, request.Query);
-            return new Tuple<ReportRequest, Medium?>(request, null);
-        }
 
-        var hoursGap = await configSvc.GetHoursGapForMT5Async();
+        var hoursGap = await configSvc.GetHoursGapForMT5Async(criteria.From);
         
         // 时区转换: 用户输入的时间是GMT+x，需要转换为GMT+0 (PostgreSQL时区)
         // GMT+x 时间 - hoursGap小时 = GMT+0 时间
@@ -107,6 +104,35 @@ partial class ReportService
 
         var records = await DailyEquityReportQueryAsync(adjustedCriteria, hoursGap);
 
+        // Persist snapshot for later comparison with monthly report.
+        // Only save for single-day reports (<=25h span) to maintain daily granularity.
+        // Multi-day reports like "Sat-Mon" must NOT overwrite individual daily snapshots,
+        // otherwise the monthly aggregation would double-count weekend data.
+        var reportSpan = (criteria.To ?? DateTime.UtcNow) - (criteria.From ?? DateTime.UtcNow);
+        if (reportSpan.TotalHours <= 25)
+        {
+            try
+            {
+                var snapshotDate = ((criteria.To ?? DateTime.UtcNow).AddSeconds(-1)).Date;
+                var snapshotVersion = useClosingTime
+                    ? EquityReportVersion.ClosingTimeBased
+                    : EquityReportVersion.ReleasedTimeBased;
+                await SaveDailyEquitySnapshotAsync(records, snapshotDate, snapshotVersion);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "[DailyEquitySnapshot] Failed to save snapshot — report generation continues");
+            }
+        }
+        else
+        {
+            logger.LogInformation(
+                "[DailyEquitySnapshot] Skipping snapshot save for multi-day report ({Hours:F1}h span, {From} to {To})",
+                reportSpan.TotalHours, criteria.From, criteria.To);
+        }
+
+        var aggregateByOffice = criteria.AggregateByOffice == true;
+
         // Generate CSV file with Excel-like formatting
         var fileName = !string.IsNullOrEmpty(request.Name) 
             ? $"{request.Name.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv"
@@ -119,17 +145,42 @@ partial class ReportService
         // Write title row - use the 'To' date as report date (not From)
         // The report is FOR the period, so use the end date
         var reportDate = criteria.To?.ToString("yyyy-MM-dd") ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
-        await writer.WriteLineAsync($"Daily Equity Report {reportDate},,,,,,,,,,,,,,");
-        await writer.WriteLineAsync(""); // Blank line
-        
-        // Write CSV header
-        await writer.WriteLineAsync(DailyEquityRecord.Header());
-        
-        // Write CSV rows with enhanced formatting
-        string? lastCurrency = null;
-        foreach (var record in records)
+
+        if (aggregateByOffice)
         {
-            await writer.WriteLineAsync(record.ToCsvGrouped(ref lastCurrency));
+            var perOfficeRecords = AggregateByOffice(records);
+            await writer.WriteLineAsync($"Daily Equity Per Office {reportDate},,,,,,,,,,,,,");
+            await writer.WriteLineAsync(""); // Blank line
+
+            // Write CSV header
+            await writer.WriteLineAsync(DailyEquityPerOfficeRecord.Header());
+
+            // Write CSV rows with enhanced formatting
+            foreach (var record in perOfficeRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsv());
+            }
+        }
+        else
+        {
+            var mapping = await configSvc.GetDailyEquityOfficeMergeMappingAsync();
+            var perSalesRecords = mapping != null
+                ? MergeRecordsByOfficeMapping(records, mapping)
+                : records;
+
+            await writer.WriteLineAsync($"Daily Equity Report {reportDate},,,,,,,,,,,,,,");
+            await writer.WriteLineAsync(""); // Blank line
+        
+            // Write CSV header
+            await writer.WriteLineAsync(DailyEquityRecord.Header());
+        
+            // Write CSV rows with enhanced formatting
+            string? lastCurrency = null;
+            var currencyPrefix = mapping?.CurrencyPrefix;
+            foreach (var record in perSalesRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsvGrouped(ref lastCurrency, currencyPrefix));
+            }
         }
 
         writer.Close();
@@ -148,6 +199,113 @@ partial class ReportService
         await tenantDbContext.SaveChangesAsync();
         
         return new Tuple<ReportRequest, Medium?>(request, medium);
+    }
+
+    private async Task<Tuple<ReportRequest, Medium?>> ProcessMonthlyDailyEquityRequestAsync(ReportRequest request)
+    {
+        var criteria = JsonConvert.DeserializeObject<DailyEquity.Criteria>(request.Query, Utils.AppJsonSerializerSettings);
+        if (criteria == null) return new Tuple<ReportRequest, Medium?>(request, null);
+
+        var useClosingTime = request.IsFromApi == 0
+            ? true
+            : (criteria.UseClosingTime == true);
+
+        var reportVersion = useClosingTime
+            ? EquityReportVersion.ClosingTimeBased
+            : EquityReportVersion.ReleasedTimeBased;
+
+        // Use stored daily snapshots instead of re-running the CTE query.
+        // This guarantees monthly totals = sum of daily snapshots exactly.
+        var records = await AggregateSnapshotsForMonthlyAsync(
+            criteria.From!.Value, criteria.To!.Value, reportVersion);
+        var reportDateFrom = criteria.From?.ToString("yyyy-MM-dd") ?? "";
+        var reportDateTo = criteria.To?.ToString("yyyy-MM-dd") ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var reportDateRange = $"{reportDateFrom} - {reportDateTo}";
+        var now = DateTime.UtcNow;
+
+        // --- Report 1: Per-Sales ---
+        var mapping = await configSvc.GetDailyEquityOfficeMergeMappingAsync();
+        var perSalesRecords = mapping != null
+            ? MergeRecordsByOfficeMapping(records, mapping)
+            : records;
+
+        var perSalesFileName = !string.IsNullOrEmpty(request.Name)
+            ? $"{request.Name.Replace(" ", "_")}_{now:yyyyMMdd-HHmmss}.csv"
+            : $"daily_equity_monthly_report_{now:yyyyMMdd-HHmmss}.csv";
+
+        var perSalesTempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".csv");
+        await using (var writer = new StreamWriter(perSalesTempPath, false, new UTF8Encoding(true)))
+        {
+            await writer.WriteLineAsync($"Monthly Equity Report {reportDateRange},,,,,,,,,,,,,,");
+            await writer.WriteLineAsync("");
+            await writer.WriteLineAsync(DailyEquityRecord.Header());
+            string? lastCurrency = null;
+            var currencyPrefix = mapping?.CurrencyPrefix;
+            foreach (var record in perSalesRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsvGrouped(ref lastCurrency, currencyPrefix));
+            }
+        }
+
+        await using (var fileStream = new FileStream(perSalesTempPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var medium = await storageService.UploadFileAndSaveMediaAsync(
+                fileStream, perSalesFileName, ".csv", "report-request", request.Id,
+                "text/csv", 0, request.PartyId);
+            request.GeneratedOn = now;
+            request.FileName = medium.Guid;
+            tenantDbContext.ReportRequests.Update(request);
+            await tenantDbContext.SaveChangesAsync();
+        }
+
+        // --- Report 2: Per-Office ---
+        var perOfficeRecords = AggregateByOffice(records);
+
+        var perOfficeName = request.Name?.Contains("Per Office") == true
+            ? request.Name
+            : request.Name + " (Per Office)";
+
+        var perOfficeQueryDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(request.Query)
+                                 ?? new Dictionary<string, object>();
+        perOfficeQueryDict["aggregateByOffice"] = true;
+        var perOfficeQuery = JsonConvert.SerializeObject(perOfficeQueryDict, Utils.AppJsonSerializerSettings);
+
+        var companionRequest = new ReportRequest
+        {
+            PartyId = request.PartyId,
+            Type = request.Type,
+            Name = perOfficeName,
+            Query = perOfficeQuery,
+            IsFromApi = request.IsFromApi
+        };
+        tenantDbContext.ReportRequests.Add(companionRequest);
+        await tenantDbContext.SaveChangesAsync();
+
+        var perOfficeFileName = $"{perOfficeName.Replace(" ", "_")}_{now:yyyyMMdd-HHmmss}.csv";
+        var perOfficeTempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".csv");
+        await using (var writer = new StreamWriter(perOfficeTempPath, false, new UTF8Encoding(true)))
+        {
+            await writer.WriteLineAsync($"Monthly Equity Per Office {reportDateRange},,,,,,,,,,,,,");
+            await writer.WriteLineAsync("");
+            await writer.WriteLineAsync(DailyEquityPerOfficeRecord.Header());
+            foreach (var record in perOfficeRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsv());
+            }
+        }
+
+        await using (var fileStream = new FileStream(perOfficeTempPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var medium = await storageService.UploadFileAndSaveMediaAsync(
+                fileStream, perOfficeFileName, ".csv", "report-request", companionRequest.Id,
+                "text/csv", 0, companionRequest.PartyId);
+            companionRequest.GeneratedOn = now;
+            companionRequest.FileName = medium.Guid;
+            tenantDbContext.ReportRequests.Update(companionRequest);
+            await tenantDbContext.SaveChangesAsync();
+        }
+
+        return new Tuple<ReportRequest, Medium?>(request, null);
     }
 
     private Task<Tuple<ReportRequest, Medium?>> ProcessAccountSearchForTenantRequestAsync(ReportRequest request)
@@ -192,19 +350,22 @@ partial class ReportService
 
 
     private async Task<Tuple<ReportRequest, Medium?>> ProcessRebateRequestAsync(ReportRequest request)
-        => await ProcessRequestAsync<Rebate, Rebate.Criteria, RebateRecord>(
+    {
+        var parsedCriteria = JsonConvert.DeserializeObject<Rebate.Criteria>(request.Query, Utils.AppJsonSerializerSettings);
+        var hoursGapForHeader = await configSvc.GetHoursGapForMT5Async(parsedCriteria?.From);
+        var fileName = !string.IsNullOrEmpty(request.Name)
+            ? $"{request.Name.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv"
+            : $"rebate_report_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+        return await ProcessRequestAsync<Rebate, Rebate.Criteria, RebateRecord>(
             request,
-            // 使用报告名称作为文件名，如果没有则使用默认名称
-            !string.IsNullOrEmpty(request.Name) 
-                ? $"{request.Name.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv"
-                : $"rebate_report_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv",
+            fileName,
             async criteria =>
             {
                 var page = criteria.Page;
                 var size = criteria.Size;
                 var fromDT = criteria.From;
                 var toDT = criteria.To;
-                var hoursGap = await configSvc.GetHoursGapForMT5Async();
+                var hoursGap = hoursGapForHeader;
                 var fromDTMinus2H = fromDT?.AddHours(-hoursGap);
                 var toDTMinus2H = toDT?.AddHours(-hoursGap);
                 var stateId = criteria.StateId;
@@ -335,11 +496,13 @@ partial class ReportService
                     //和ClosedOn统一时区, 即GMT+2 
                     if (idToCreateOnDict.TryGetValue(rebateRecord.Id, out var createdOn))
                         rebateRecord.CreatedOn = createdOn.AddHours(hoursToAdd);
+                    rebateRecord.MtGmtOffsetHoursForCsv = hoursGapForHeader;
                 }
 
                 return rebateRecords;
-            }
-        );
+            },
+            RebateRecord.Header(hoursGapForHeader));
+    }
 
     private async Task<Tuple<ReportRequest, Medium?>> ProcessWalletOverviewForTenantRequestAsync(ReportRequest request)
         => await ProcessRequestAsync<Wallet, Wallet.Criteria, WalletOverviewRecord>(
@@ -461,7 +624,7 @@ partial class ReportService
                 else
                 {
                     // ORIGINAL VERSION: Use pre-generated snapshots at 22:00 from WalletDailySnapshots table
-                    var hoursGap = await configSvc.GetHoursGapForMT5Async();
+                    var hoursGap = await configSvc.GetHoursGapForMT5Async(criteria.SnapshotDate);
                     criteria.SnapshotDate = DateHelper.MinusMT5GMTHours(criteria.SnapshotDate, hoursGap);
 
                     logger.LogInformation("WalletDailySnapshot SnapshotTable - Adjusted SnapshotDate: {SnapshotDate}, HoursGap: {HoursGap}", 
@@ -580,14 +743,17 @@ partial class ReportService
 
     private async Task<Tuple<ReportRequest, Medium?>> ProcessWalletTransactionForTenantRequestAsync(
         ReportRequest request)
-        => await ProcessRequestAsync<WalletTransaction, WalletTransaction.Criteria, WalletTransactionRecord>(
+    {
+        var parsedCriteria = JsonConvert.DeserializeObject<WalletTransaction.Criteria>(request.Query, Utils.AppJsonSerializerSettings);
+        var hoursGapForHeader = await configSvc.GetHoursGapForMT5Async(parsedCriteria?.From);
+        return await ProcessRequestAsync<WalletTransaction, WalletTransaction.Criteria, WalletTransactionRecord>(
             request,
             $"wallet_transaction_report_{DateTime.UtcNow:yyyyMMdd-HHmms}.csv",
             async criteria =>
             {
                 var fromDT = criteria.From;
                 var toDT = criteria.To;
-                var hoursGap = await configSvc.GetHoursGapForMT5Async();
+                var hoursGap = hoursGapForHeader;
                 var fromDTMinus2H = fromDT?.AddHours(-hoursGap);
                 var toDTMinus2H = toDT?.AddHours(-hoursGap);
                 
@@ -893,6 +1059,9 @@ partial class ReportService
 
                 await FulfillClientNameAsync(items);
 
+                foreach (var item in items)
+                    item.MtGmtOffsetHoursForCsv = hoursGapForHeader;
+
                 // var withdrawals = items.Where(x => x.MatterType == MatterTypes.Withdrawal).ToList();
                 // var activities = await _tenantDbContext.Activities
                 //     .Where(x => withdrawals.Select(y => y.Id).Contains(x.MatterId))
@@ -924,7 +1093,9 @@ partial class ReportService
                 // }
 
                 return items;
-            });
+            },
+            WalletTransactionRecord.Header(hoursGapForHeader));
+    }
 
     private async Task<Tuple<ReportRequest, Medium?>> ProcessSalesRebateForTenantRequestAsync(ReportRequest request)
         => await ProcessRequestAsync<SalesRebate, SalesRebate.Criteria, SalesRebateRecord>(
@@ -932,7 +1103,7 @@ partial class ReportService
             $"sales_rebate_report_{DateTime.UtcNow:yyyyMMdd-HHmms}.csv",
             async criteria =>
             {
-                var hoursGap = await configSvc.GetHoursGapForMT5Async();
+                var hoursGap = await configSvc.GetHoursGapForMT5Async(criteria.From);
                 (criteria.From, criteria.To) = DateHelper.MinusMT5GMTHours(criteria.From, criteria.To, hoursGap);
 
                 var query = tenantDbContext.SalesRebates
@@ -994,7 +1165,8 @@ partial class ReportService
 
     private async Task<Tuple<ReportRequest, Medium?>> ProcessRequestAsync<T, TB, TBk>(ReportRequest request,
         string fileName,
-        Func<TB, Task<List<TBk>>> getItemsAsync)
+        Func<TB, Task<List<TBk>>> getItemsAsync,
+        string? csvHeaderOverride = null)
         where T : class, IEntity<long>
         where TB : Criteria<T>
         where TBk : ICanExportToCsv
@@ -1011,7 +1183,7 @@ partial class ReportService
         var tempFilePath = Path.Combine(tempDirectory, Path.GetRandomFileName() + ".csv");
         await using var writer = new StreamWriter(tempFilePath, false, new UTF8Encoding(true));
         // Write CSV content to the file
-        await writer.WriteLineAsync(TBk.Header());
+        await writer.WriteLineAsync(csvHeaderOverride ?? TBk.Header());
 
         while (true)
         {
