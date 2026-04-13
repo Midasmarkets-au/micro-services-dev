@@ -6,10 +6,15 @@ use axum::{
     http::HeaderMap,
     routing::post,
 };
-use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{cookie, redis_store, security, state::AppState};
+use crate::{
+    cookie, redis_store, security, state::AppState,
+    generated::http_v1::{
+        LogoutRequest, SendLoginCodeRequest, ConfirmLoginCodeRequest,
+        SendLoginCodeResponse, ConfirmLoginCodeResponse,
+    },
+};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -22,25 +27,17 @@ pub fn router() -> Router<Arc<AppState>> {
 /// Clears the access_token cookie and deletes the refresh token from Redis if provided.
 async fn logout(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     body: Option<Json<LogoutRequest>>,
 ) -> (HeaderMap, Json<Value>) {
-    // Delete refresh token from Redis if client sent it
     if let Some(Json(req)) = body {
-        if let Some(rt) = req.refresh_token {
-            redis_store::delete_refresh_token(&state.redis, &rt).await;
+        if !req.refresh_token.is_empty() {
+            redis_store::delete_refresh_token(&state.redis, &req.refresh_token).await;
         }
     }
 
-    let _ = headers; // suppress unused warning
     let mut resp_headers = HeaderMap::new();
     cookie::clear_token_cookie(&mut resp_headers);
     (resp_headers, Json(json!(null)))
-}
-
-#[derive(Deserialize)]
-struct LogoutRequest {
-    refresh_token: Option<String>,
 }
 
 /// POST /api/v2/auth/token/code
@@ -48,26 +45,26 @@ struct LogoutRequest {
 /// Rate limiting (60/hour) is enforced by mono's IsEmailValidToSendAsync.
 async fn send_login_code(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<SendCodeRequest>,
-) -> Json<Value> {
+    Json(req): Json<SendLoginCodeRequest>,
+) -> Json<SendLoginCodeResponse> {
     let email = req.email.trim().to_lowercase();
 
     // Lockout check (shared with password grant)
     if security::is_locked_out(&state.redis, &email).await {
-        return Json(json!({ "error": "__USER_IS_LOCKED_OUT__", "error_description": "Please contact customer service." }));
+        return Json(SendLoginCodeResponse { success: false, message: "Please contact customer service.".into() });
     }
 
     // Verify user exists in our DB
     let users = match crate::db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
-        Err(_) => return Json(json!({ "error": "server_error" })),
+        Err(_) => return Json(SendLoginCodeResponse { success: false, message: "server_error".into() }),
     };
     if users.is_empty() {
         // Don't reveal user existence; return success anyway (security best practice)
-        return Json(json!({ "success": true, "message": "Login code sent." }));
+        return Json(SendLoginCodeResponse { success: true, message: "Login code sent.".into() });
     }
     if users.len() > 1 {
-        return Json(json!({ "error": "Email login not allowed for multi-tenant accounts" }));
+        return Json(SendLoginCodeResponse { success: false, message: "Email login not allowed for multi-tenant accounts".into() });
     }
 
     let user = &users[0];
@@ -78,19 +75,14 @@ async fn send_login_code(
         crate::grpc::auth_client::send_auth_code(&mut client, user.tenant_id, &email, "Login").await;
     }
 
-    Json(json!({ "success": true, "message": "Login code sent." }))
-}
-
-#[derive(Deserialize)]
-struct SendCodeRequest {
-    email: String,
+    Json(SendLoginCodeResponse { success: true, message: "Login code sent.".into() })
 }
 
 /// POST /api/v2/auth/token/code/confirm
 /// Verifies the email code via mono gRPC, then issues JWT + cookie.
 async fn confirm_login_code(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<ConfirmCodeRequest>,
+    Json(req): Json<ConfirmLoginCodeRequest>,
 ) -> (HeaderMap, Json<Value>) {
     let email = req.email.trim().to_lowercase();
 
@@ -191,18 +183,10 @@ async fn confirm_login_code(
         state.secure_cookie,
     );
 
-    (
-        headers,
-        Json(json!({
-            "token_type": "Bearer",
-            "expires_in": token_result.expires_in,
-            "refresh_token": refresh_token,
-        })),
-    )
-}
-
-#[derive(Deserialize)]
-struct ConfirmCodeRequest {
-    email: String,
-    code: String,
+    let resp = ConfirmLoginCodeResponse {
+        token_type: "Bearer".into(),
+        expires_in: token_result.expires_in,
+        refresh_token,
+    };
+    (headers, Json(json!(resp)))
 }

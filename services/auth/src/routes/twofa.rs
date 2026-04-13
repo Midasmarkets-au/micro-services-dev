@@ -1,10 +1,15 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing};
-use serde::Deserialize;
 use serde_json::{Value, json};
 
-use crate::{db, extractors::AuthUser, password, state::AppState, totp};
+use crate::{
+    db, extractors::AuthUser, password, state::AppState, totp,
+    generated::http_v1::{
+        VerifyAuthenticatorRequest, Disable2FaRequest,
+        SetupAuthenticatorResponse, VerifyAuthenticatorResponse,
+    },
+};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -23,7 +28,6 @@ async fn setup_authenticator(
     let key = match db::get_authenticator_key(&state.pool, auth_user.user_id).await {
         Ok(Some(k)) => k,
         Ok(None) => {
-            // Generate and persist a new secret
             let new_key = totp::generate_secret();
             if let Err(e) = db::upsert_authenticator_key(&state.pool, auth_user.user_id, &new_key).await {
                 tracing::error!("upsert_authenticator_key failed: {}", e);
@@ -38,20 +42,16 @@ async fn setup_authenticator(
     };
 
     let qr_uri = totp::totp_uri(&key, &auth_user.email);
-    (StatusCode::OK, Json(json!({ "key": key, "qr_uri": qr_uri })))
+    let resp = SetupAuthenticatorResponse { key, qr_uri };
+    (StatusCode::OK, Json(json!(resp)))
 }
 
 // ─── POST /api/v1/2fa/authenticator/verify ────────────────────────────────
 
-#[derive(Deserialize)]
-struct VerifyTotpRequest {
-    code: String,
-}
-
 async fn verify_authenticator(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
-    Json(req): Json<VerifyTotpRequest>,
+    Json(req): Json<VerifyAuthenticatorRequest>,
 ) -> (StatusCode, Json<Value>) {
     let key = match db::get_authenticator_key(&state.pool, auth_user.user_id).await {
         Ok(Some(k)) => k,
@@ -72,7 +72,8 @@ async fn verify_authenticator(
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" })));
     }
 
-    (StatusCode::OK, Json(json!({ "success": true })))
+    let resp = VerifyAuthenticatorResponse { success: true };
+    (StatusCode::OK, Json(json!(resp)))
 }
 
 // ─── PUT /api/v1/2fa/enable ───────────────────────────────────────────────
@@ -81,7 +82,6 @@ async fn enable_2fa(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
 ) -> (StatusCode, Json<Value>) {
-    // Must have a key set up first
     match db::get_authenticator_key(&state.pool, auth_user.user_id).await {
         Ok(Some(_)) => {}
         Ok(None) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": "authenticator_not_setup" }))),
@@ -101,15 +101,10 @@ async fn enable_2fa(
 
 // ─── PUT /api/v1/2fa/disable ──────────────────────────────────────────────
 
-#[derive(Deserialize)]
-struct DisableTwoFaRequest {
-    password: String,
-}
-
 async fn disable_2fa(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,
-    Json(req): Json<DisableTwoFaRequest>,
+    Json(req): Json<Disable2FaRequest>,
 ) -> (StatusCode, Json<Value>) {
     let user = match db::find_user_by_id(&state.pool, auth_user.user_id).await {
         Ok(Some(u)) => u,

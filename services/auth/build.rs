@@ -33,10 +33,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .compile(&[&proto_file], &[&proto_root])?;
 
     // Also compile http/v1/auth.proto for message type definitions (API contract)
+    // type_attribute adds serde derives so generated types can be used directly
+    // as Axum Json<T> extractor request/response types.
     let http_proto_file = proto_root.join("http/v1/auth.proto");
     tonic_build::configure()
         .build_server(false)
         .build_client(false)
+        .type_attribute(".", "#[derive(serde::Deserialize, serde::Serialize)]")
+        .field_attribute(".", "#[serde(default)]")
         .out_dir(&generated_dir)
         .compile(&[&http_proto_file], &[&proto_root])?;
 
