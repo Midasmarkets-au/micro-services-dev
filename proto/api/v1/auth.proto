@@ -62,6 +62,9 @@ service AuthService {
 
   // 写入登录成功日志，同时更新 Party.LastLoginIp（fire-and-forget，允许失败）
   rpc WriteLoginLog(WriteLoginLogRequest) returns (WriteLoginLogResponse);
+
+  // 发送密码重置邮件（auth 生成 reset_token，mono 拼接 URL 发送）
+  rpc SendPasswordResetEmail(SendPasswordResetEmailRequest) returns (SendPasswordResetEmailResponse);
 }
 
 // ----------------------------------------------------------------------------
@@ -129,6 +132,20 @@ message WriteLoginLogRequest {
 
 message WriteLoginLogResponse {
   bool ok = 1;
+}
+
+// ----------------------------------------------------------------------------
+//  SendPasswordResetEmail
+// ----------------------------------------------------------------------------
+message SendPasswordResetEmailRequest {
+  int64  tenant_id   = 1;
+  string email       = 2;
+  string reset_token = 3;  // auth 生成的 UUID，mono 拼接成 URL 后发送
+  string reset_url   = 4;  // 前端传来的 base URL，mono 拼接 ?code={token}
+}
+
+message SendPasswordResetEmailResponse {
+  bool sent = 1;
 }
 
 // ----------------------------------------------------------------------------

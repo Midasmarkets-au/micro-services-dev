@@ -131,3 +131,35 @@ impl Jwks {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::OnceLock;
+
+    fn test_key_pair() -> &'static RsaKeyPair {
+        static KEY: OnceLock<RsaKeyPair> = OnceLock::new();
+        KEY.get_or_init(|| RsaKeyPair::load_or_generate(None, None).unwrap())
+    }
+
+    #[test]
+    fn test_kid_is_8_hex_chars() {
+        let kp = test_key_pair();
+        assert_eq!(kp.kid.len(), 8);
+        assert!(kp.kid.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_jwks_has_correct_fields() {
+        let kp = test_key_pair();
+        let jwks = Jwks::from_key_pair(kp);
+        assert_eq!(jwks.keys.len(), 1);
+        let key = &jwks.keys[0];
+        assert_eq!(key.kty, "RSA");
+        assert_eq!(key.alg, "RS256");
+        assert_eq!(key.use_, "sig");
+        assert_eq!(key.kid, kp.kid);
+        assert!(!key.n.is_empty());
+        assert!(!key.e.is_empty());
+    }
+}

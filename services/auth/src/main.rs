@@ -7,7 +7,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{Form, Json, Router, routing::get, routing::post};
 use chrono::Utc;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 use tracing::{error, info};
@@ -227,6 +227,11 @@ async fn handle_password_grant(
         _ => return error_response("invalid_request", "password is required"),
     };
 
+    // IP blacklist check
+    if db::is_ip_blocked(&state.pool, ip).await.unwrap_or(false) {
+        return error_response("access_denied", "__LOGIN_FAILED__");
+    }
+
     // Redis-based lockout check
     if security::is_locked_out(&state.redis, &email).await {
         return error_response("__USER_IS_LOCKED_OUT__", "Please contact customer service.");
@@ -355,7 +360,7 @@ async fn handle_password_grant(
     let party_id_hashed = hashids::encode_party_id(user.party_id);
     let display_name = user.guess_display_name();
 
-    let ua_hash = Some(security::md5_hash(user_agent));
+    let ua_hash = Some(token::hash_user_agent(user_agent));
 
     let params = token::TokenParams {
         user_id: user.id,
@@ -400,8 +405,9 @@ async fn handle_password_grant(
     // Fire-and-forget: update last login + write login log
     let pool = state.pool.clone();
     let user_id = user.id;
+    let ip_owned = ip.to_string();
     tokio::spawn(async move {
-        let _ = db::update_last_login(&pool, user_id, "").await;
+        let _ = db::update_last_login(&pool, user_id, &ip_owned).await;
     });
     if let Some(mono) = &state.mono_client {
         let mut client = mono.lock().await;
@@ -452,6 +458,8 @@ fn http_app(state: Arc<AppState>) -> Router {
         .route("/connect/token", post(connect_token))
         .route("/.well-known/jwks.json", get(jwks))
         .merge(routes::auth::router())
+        .merge(routes::password::router())
+        .merge(routes::twofa::router())
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

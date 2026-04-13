@@ -55,6 +55,32 @@ pub async fn delete_refresh_token(pool: &Pool, token: &str) {
     let _: Result<(), _> = conn.del(&key).await;
 }
 
+const PWD_RESET_TTL_SECS: u64 = 3600; // 1 hour
+
+/// Store a password reset token. Key: `auth:pwd_reset:{token}` → email
+pub async fn store_password_reset_token(
+    pool: &Pool,
+    token: &str,
+    email: &str,
+) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let key = format!("auth:pwd_reset:{}", token);
+    conn.set_ex::<_, _, ()>(&key, email, PWD_RESET_TTL_SECS)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Consume a password reset token (single-use). Returns the associated email.
+pub async fn consume_password_reset_token(
+    pool: &Pool,
+    token: &str,
+) -> Result<Option<String>, String> {
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let key = format!("auth:pwd_reset:{}", token);
+    let value: Option<String> = conn.get_del(&key).await.map_err(|e| e.to_string())?;
+    Ok(value)
+}
+
 /// Log a Redis error without propagating (fire-and-forget pattern).
 pub fn log_redis_error(op: &str, err: impl std::fmt::Display) {
     error!("Redis {} failed: {}", op, err);

@@ -8,6 +8,7 @@ using Bacera.Gateway.Web.BackgroundJobs;
 using Grpc.Core;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace Bacera.Gateway.Web.HttpServices.Auth;
 
@@ -19,6 +20,7 @@ namespace Bacera.Gateway.Web.HttpServices.Auth;
 public class AuthCallbackGrpcService(
     IServiceProvider serviceProvider,
     IBackgroundJobClient backgroundJobClient,
+    UserManager<ApplicationUser> userManager,
     ILogger<AuthCallbackGrpcService> logger)
     : AuthService.AuthServiceBase
 {
@@ -126,5 +128,29 @@ public class AuthCallbackGrpcService(
         }
 
         return new WriteLoginLogResponse { Ok = true };
+    }
+
+    public override async Task<SendPasswordResetEmailResponse> SendPasswordResetEmail(
+        SendPasswordResetEmailRequest request, ServerCallContext context)
+    {
+        try
+        {
+            var email = request.Email.Trim().ToLower();
+            var user = await userManager.FindByEmailAsync(email);
+            if (user == null)
+                return new SendPasswordResetEmailResponse { Sent = false };
+
+            var callbackUrl = $"{request.ResetUrl.TrimEnd('/')}?code={request.ResetToken}";
+            var model = new ResetPasswordViewModel(user.Email!, user.GuessUserName(), callbackUrl);
+            backgroundJobClient.Enqueue<IGeneralJob>(x =>
+                x.ResetPasswordAsync(request.TenantId, model, user.Language));
+
+            return new SendPasswordResetEmailResponse { Sent = true };
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "SendPasswordResetEmail failed for email={Email}", request.Email);
+            return new SendPasswordResetEmailResponse { Sent = false };
+        }
     }
 }

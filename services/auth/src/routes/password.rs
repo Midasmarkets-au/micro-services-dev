@@ -1,0 +1,213 @@
+use std::sync::Arc;
+
+use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
+use serde::Deserialize;
+use serde_json::{Value, json};
+use uuid::Uuid;
+
+use crate::{db, extractors::AuthUser, password, redis_store, state::AppState};
+
+pub fn router() -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/api/v2/auth/password-reset/code", post(send_password_reset_code))
+        .route("/api/v2/auth/password-reset/code/confirm", post(confirm_password_reset_code))
+        .route("/api/v2/auth/password/forgot", post(forgot_password))
+        .route("/api/v2/auth/password/reset", post(reset_password))
+        .route("/api/v2/auth/password/change", post(change_password))
+}
+
+// ─── POST /api/v2/auth/password-reset/code ────────────────────────────────
+
+#[derive(Deserialize)]
+struct SendResetCodeRequest {
+    email: String,
+}
+
+async fn send_password_reset_code(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<SendResetCodeRequest>,
+) -> Json<Value> {
+    let email = req.email.trim().to_lowercase();
+
+    let users = match db::find_users_by_email(&state.pool, &email).await {
+        Ok(u) => u,
+        Err(_) => return Json(json!({ "success": true })), // don't reveal errors
+    };
+    if users.is_empty() {
+        return Json(json!({ "success": true })); // don't reveal user existence
+    }
+
+    let user = &users[0];
+    if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+        crate::grpc::auth_client::send_auth_code(
+            &mut client, user.tenant_id, &email, "ResetPassword",
+        ).await;
+    }
+
+    Json(json!({ "success": true }))
+}
+
+// ─── POST /api/v2/auth/password-reset/code/confirm ────────────────────────
+
+#[derive(Deserialize)]
+struct ConfirmResetCodeRequest {
+    email: String,
+    code: String,
+    new_password: String,
+}
+
+async fn confirm_password_reset_code(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ConfirmResetCodeRequest>,
+) -> (StatusCode, Json<Value>) {
+    let email = req.email.trim().to_lowercase();
+
+    let users = match db::find_users_by_email(&state.pool, &email).await {
+        Ok(u) => u,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" }))),
+    };
+    if users.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "not_found" })));
+    }
+
+    let code_valid = if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+        let (valid, _) = crate::grpc::auth_client::verify_auth_code(
+            &mut client, users[0].tenant_id, &email, &req.code,
+        ).await;
+        valid
+    } else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" })));
+    };
+
+    if !code_valid {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_code" })));
+    }
+
+    let hash = password::hash_password(&req.new_password);
+    if let Err(e) = db::update_password_hash_by_email(&state.pool, &email, &hash).await {
+        tracing::error!("update_password_hash_by_email failed: {}", e);
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" })));
+    }
+
+    (StatusCode::OK, Json(json!({ "success": true })))
+}
+
+// ─── POST /api/v2/auth/password/forgot ────────────────────────────────────
+
+#[derive(Deserialize)]
+struct ForgotPasswordRequest {
+    email: String,
+    reset_url: String,
+}
+
+async fn forgot_password(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ForgotPasswordRequest>,
+) -> StatusCode {
+    let email = req.email.trim().to_lowercase();
+
+    let users = match db::find_users_by_email(&state.pool, &email).await {
+        Ok(u) => u,
+        Err(_) => return StatusCode::NO_CONTENT, // don't reveal errors
+    };
+    if users.is_empty() {
+        return StatusCode::NO_CONTENT; // don't reveal user existence
+    }
+
+    let reset_token = Uuid::new_v4().to_string();
+    if let Err(e) = redis_store::store_password_reset_token(&state.redis, &reset_token, &email).await {
+        tracing::error!("store_password_reset_token failed: {}", e);
+        return StatusCode::NO_CONTENT;
+    }
+
+    if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+        crate::grpc::auth_client::send_password_reset_email(
+            &mut client, users[0].tenant_id, &email, &reset_token, &req.reset_url,
+        ).await;
+    }
+
+    StatusCode::NO_CONTENT
+}
+
+// ─── POST /api/v2/auth/password/reset ─────────────────────────────────────
+
+#[derive(Deserialize)]
+struct ResetPasswordRequest {
+    email: String,
+    code: String,
+    new_password: String,
+}
+
+async fn reset_password(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ResetPasswordRequest>,
+) -> (StatusCode, Json<Value>) {
+    let email = req.email.trim().to_lowercase();
+
+    let stored_email = match redis_store::consume_password_reset_token(&state.redis, &req.code).await {
+        Ok(Some(e)) => e,
+        Ok(None) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_or_expired_code" }))),
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" }))),
+    };
+
+    if stored_email != email {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_or_expired_code" })));
+    }
+
+    let users = match db::find_users_by_email(&state.pool, &email).await {
+        Ok(u) => u,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" }))),
+    };
+    if users.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "not_found" })));
+    }
+
+    let hash = password::hash_password(&req.new_password);
+    if let Err(e) = db::update_password_hash_by_email(&state.pool, &email, &hash).await {
+        tracing::error!("update_password_hash_by_email failed: {}", e);
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" })));
+    }
+
+    (StatusCode::NO_CONTENT, Json(json!(null)))
+}
+
+// ─── POST /api/v2/auth/password/change ────────────────────────────────────
+
+#[derive(Deserialize)]
+struct ChangePasswordRequest {
+    current_password: String,
+    new_password: String,
+}
+
+async fn change_password(
+    State(state): State<Arc<AppState>>,
+    auth_user: AuthUser,
+    Json(req): Json<ChangePasswordRequest>,
+) -> (StatusCode, Json<Value>) {
+    let user = match db::find_user_by_id(&state.pool, auth_user.user_id).await {
+        Ok(Some(u)) => u,
+        Ok(None) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "not_found" }))),
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" }))),
+    };
+
+    let hash = match user.password_hash.as_deref() {
+        Some(h) if !h.is_empty() => h,
+        _ => return (StatusCode::BAD_REQUEST, Json(json!({ "error": "no_password_set" }))),
+    };
+
+    if !password::verify_hashed_password_v3(hash, &req.current_password) {
+        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_password" })));
+    }
+
+    let new_hash = password::hash_password(&req.new_password);
+    let email = user.email.as_deref().unwrap_or("").to_lowercase();
+    if let Err(e) = db::update_password_hash_by_email(&state.pool, &email, &new_hash).await {
+        tracing::error!("update_password_hash_by_email failed: {}", e);
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" })));
+    }
+
+    (StatusCode::NO_CONTENT, Json(json!(null)))
+}
