@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Services.Acct;
 using Bacera.Gateway.Services.Common;
@@ -14,7 +14,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Transaction")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = UserRoleTypesString.ClientOrTenantAdmin)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/transaction")]
 public class TransactionControllerV2(
     TenantDbContext tenantCtx,

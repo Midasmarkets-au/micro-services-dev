@@ -1,7 +1,6 @@
 import { Router } from "vue-router";
 import { Store } from "vuex";
 import { Actions } from "@/store/enums/StoreEnums";
-import JwtService from "@/core/services/JwtService";
 import ApiService from "@/core/services/ApiService";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 
@@ -106,7 +105,8 @@ export async function loginStart(
   redirectTo?: string
 ): Promise<void> {
   store.dispatch(Actions.LOGIN, login.data);
-  wsSignalR?.setup(JwtService.getToken());
+  // Token is in HttpOnly cookie — SignalR uses withCredentials to send it automatically
+  wsSignalR?.setup(null);
   wsSignalR?.connection?.start().catch((err) => console.warn("SignalR start failed:", err));
 
   // 优先级：自定义redirectTo > query.redirect > dashboard
@@ -151,7 +151,9 @@ export async function performLogin(
   const login = await ApiService.postToken("connect/token", urlParams).catch(
     ({ response }) => {
       if (response.data.error != undefined) {
-        errors = [response.data.error];
+        // Prefer error_description (contains semantic code like __LOGIN_FAILED__)
+        // over error (contains OAuth2 category like "invalid_grant")
+        errors = [response.data.error_description ?? response.data.error];
       } else {
         errors = response.data.errors;
       }

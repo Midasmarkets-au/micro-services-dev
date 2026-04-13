@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Vendor.MetaTrader;
 
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ using M = CopyTrade;
 [Area("Tenant")]
 [Tags("Tenant/Copy Trade")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/copy-trade")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 
 public class CopyTradeController : TenantBaseController
 {

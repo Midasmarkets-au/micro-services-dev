@@ -4,13 +4,13 @@ using Bacera.Gateway.Web.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using OpenIddict.Validation.AspNetCore;
+
 using M = Bacera.Gateway.Verification;
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Verification")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class VerificationController(
     TenantDbContext tenantCtx,
     UserService userSvc)

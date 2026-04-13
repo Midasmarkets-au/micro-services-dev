@@ -2,17 +2,24 @@ use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use tonic::{Request, Response, Status};
 
 use crate::generated::api_v1::{
+    IssueTokenRequest, IssueTokenResponse,
     ValidateTokenRequest, ValidateTokenResponse,
     auth_validation_service_server::{AuthValidationService, AuthValidationServiceServer},
 };
-use crate::token::Claims;
+use crate::token::{Claims, TokenParams, generate_access_token};
 
 pub struct AuthValidationServer {
+    pub private_der: Vec<u8>,
     pub public_der: Vec<u8>,
+    pub kid: String,
 }
 
-pub fn new_server(public_der: Vec<u8>) -> AuthValidationServiceServer<AuthValidationServer> {
-    AuthValidationServiceServer::new(AuthValidationServer { public_der })
+pub fn new_server(
+    private_der: Vec<u8>,
+    public_der: Vec<u8>,
+    kid: String,
+) -> AuthValidationServiceServer<AuthValidationServer> {
+    AuthValidationServiceServer::new(AuthValidationServer { private_der, public_der, kid })
 }
 
 #[tonic::async_trait]
@@ -48,6 +55,44 @@ impl AuthValidationService for AuthValidationServer {
                 roles: vec![],
                 error: e.to_string(),
             })),
+        }
+    }
+
+    async fn issue_token(
+        &self,
+        request: Request<IssueTokenRequest>,
+    ) -> Result<Response<IssueTokenResponse>, Status> {
+        let req = request.into_inner();
+        tracing::info!("IssueToken gRPC called: user_id={}, tenant_id={}", req.user_id, req.tenant_id);
+
+        let user_agent_hash = if req.user_agent.is_empty() {
+            None
+        } else {
+            Some(crate::token::hash_user_agent(&req.user_agent))
+        };
+
+        let params = TokenParams {
+            user_id: req.user_id,
+            tenant_id: req.tenant_id,
+            party_id_hashed: &req.party_id_hashed,
+            god_party_id: req.god_party_id,
+            display_name: &req.display_name,
+            email: &req.email,
+            roles: &req.roles,
+            two_factor_enabled: req.two_factor_enabled,
+            lifetime_secs: 86400,
+            user_agent_hash,
+            sales_account: if req.sales_account != 0 { Some(req.sales_account) } else { None },
+            agent_account: if req.agent_account != 0 { Some(req.agent_account) } else { None },
+            rep_account: if req.rep_account != 0 { Some(req.rep_account) } else { None },
+        };
+
+        match generate_access_token(&params, &self.private_der, &self.kid) {
+            Ok(result) => Ok(Response::new(IssueTokenResponse {
+                access_token: result.access_token,
+                expires_in: result.expires_in,
+            })),
+            Err(e) => Err(Status::internal(format!("token generation failed: {}", e))),
         }
     }
 }

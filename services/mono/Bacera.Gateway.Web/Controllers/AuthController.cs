@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Web.EventHandlers;
 using Bacera.Gateway.Web.Request;
@@ -31,7 +31,7 @@ using PhoneNumbers;
 namespace Bacera.Gateway.Web.Controllers;
 
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 [Tags("Auth")]
 public partial class AuthController(
     ILogger<AuthController> logger,

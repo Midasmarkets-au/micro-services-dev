@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Web.BackgroundJobs;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Auth Code")]
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/auto-code")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class AuthCodeController(TenantDbContext tenantCtx, IBackgroundJobClient client) : TenantBaseController
 {
     /// <summary>

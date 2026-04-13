@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Vendor.Magick;
@@ -17,7 +17,7 @@ using MSG = Bacera.Gateway.ResultMessage.Verification;
 namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 
 [Tags("Client/Verification")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class VerificationController(
     IMediator mediator,
     TenantDbContext tenantDbContext,

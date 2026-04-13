@@ -11,7 +11,7 @@ import i18n from "@/core/plugins/i18n";
 import Toast, { PluginOptions } from "vue-toastification";
 import "vue-toastification/dist/index.css";
 import ApiService from "@/core/services/ApiService";
-import JwtService from "@/core/services/JwtService";
+// import JwtService from "@/core/services/JwtService"; // token now in HttpOnly cookie
 import { initApexCharts } from "@/core/plugins/apexcharts";
 import { initInlineSvg } from "@/core/plugins/inline-svg";
 import { initVeeValidate } from "@/core/plugins/vee-validate";
@@ -142,7 +142,7 @@ initInlineSvg(app);
 initVeeValidate();
 
 const wsSignalR = createSignalR(process.env.VUE_APP_API_URL + "/hub/client");
-wsSignalR.setup(JwtService.getToken());
+wsSignalR.setup(null); // token in HttpOnly cookie, no need to pass explicitly
 
 app.use(wsSignalR);
 

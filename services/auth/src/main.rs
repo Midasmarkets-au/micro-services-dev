@@ -2,7 +2,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::extract::State;
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::{Form, Json, Router, routing::get, routing::post};
 use chrono::Utc;
 use serde::Deserialize;
@@ -36,11 +37,11 @@ struct TokenRequest {
     tf_code: Option<String>,
 }
 
-fn error_response(error: &str, description: &str) -> (HeaderMap, Json<Value>) {
+fn error_response(error: &str, description: &str) -> Response {
     (
-        HeaderMap::new(),
+        StatusCode::BAD_REQUEST,
         Json(json!({ "error": error, "error_description": description })),
-    )
+    ).into_response()
 }
 
 /// POST /connect/token — OAuth2 token endpoint.
@@ -50,12 +51,37 @@ fn error_response(error: &str, description: &str) -> (HeaderMap, Json<Value>) {
 /// (mirrors mono's ApplyTokenResponseHandler behaviour).
 async fn connect_token(
     State(state): State<Arc<AppState>>,
+    axum::extract::ConnectInfo(addr): axum::extract::ConnectInfo<SocketAddr>,
+    headers: axum::http::HeaderMap,
     Form(req): Form<TokenRequest>,
-) -> (HeaderMap, Json<Value>) {
+) -> Response {
     let grant_type = req.grant_type.as_deref().unwrap_or("");
+    info!(
+        grant_type,
+        username = req.username.as_deref().unwrap_or(""),
+        client_id = req.client_id.as_deref().unwrap_or(""),
+        "POST /connect/token"
+    );
+
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let referer = headers
+        .get("referer")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let ip = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| addr.ip().to_string());
 
     match grant_type {
-        "password" => handle_password_grant(&state, &req).await,
+        "password" => handle_password_grant(&state, &req, &ip, &user_agent, &referer).await,
         "client_credentials" => handle_client_credentials(&state, &req),
         "refresh_token" => handle_refresh_grant(&state, &req).await,
         _ => error_response(
@@ -65,7 +91,7 @@ async fn connect_token(
     }
 }
 
-fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> (HeaderMap, Json<Value>) {
+fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
     let client_id = req.client_id.clone().unwrap_or_default();
     let params = token::TokenParams {
         user_id: 0,
@@ -92,13 +118,16 @@ fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> (HeaderMap
                     "token_type": "Bearer",
                     "expires_in": t.expires_in,
                 })),
-            )
+            ).into_response()
         }
-        Err(e) => error_response("server_error", &e.to_string()),
+        Err(e) => {
+            tracing::error!("generate_access_token failed: {}", e);
+            error_response("server_error", &format!("RSA key invalid: {}", e))
+        }
     }
 }
 
-async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> (HeaderMap, Json<Value>) {
+async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> Response {
     let refresh_token = match req.refresh_token.as_deref() {
         Some(t) if !t.is_empty() => t,
         _ => return error_response("invalid_request", "refresh_token is required"),
@@ -179,10 +208,16 @@ async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> (HeaderMa
             "expires_in": token_result.expires_in,
             "refresh_token": new_refresh,
         })),
-    )
+    ).into_response()
 }
 
-async fn handle_password_grant(state: &AppState, req: &TokenRequest) -> (HeaderMap, Json<Value>) {
+async fn handle_password_grant(
+    state: &AppState,
+    req: &TokenRequest,
+    ip: &str,
+    user_agent: &str,
+    referer: &str,
+) -> Response {
     let email = match req.username.as_deref() {
         Some(e) if !e.is_empty() => e.trim().to_lowercase(),
         _ => return error_response("invalid_request", "username is required"),
@@ -225,7 +260,7 @@ async fn handle_password_grant(state: &AppState, req: &TokenRequest) -> (HeaderM
         return (
             HeaderMap::new(),
             Json(json!({ "tenantIds": tenant_ids, "hasMultipleTenants": true })),
-        );
+        ).into_response();
     }
 
     let user = match tenant_id {
@@ -260,30 +295,67 @@ async fn handle_password_grant(state: &AppState, req: &TokenRequest) -> (HeaderM
         return error_response("__USER_IS_LOCKED_OUT__", "Please contact customer service.");
     }
 
-    // 2FA gate — placeholder; full implementation in stage 3 (gRPC to mono)
-    if user.two_factor_enabled {
-        let code = req.tf_code.as_deref().unwrap_or("");
-        if code.is_empty() {
-            return (
-                HeaderMap::new(),
-                Json(json!({ "twoFactorRequired": true, "authenticator2FA": true })),
-            );
-        }
-    }
-
     let roles = db::get_user_roles(&state.pool, user.id)
         .await
         .unwrap_or_default();
 
+    let is_admin = roles.iter().any(|r| {
+        matches!(r.as_str(), "TenantAdmin" | "Admin" | "SuperAdmin")
+    });
+    let is_client = roles.contains(&"Client".to_string()) && !is_admin;
+
+    if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+
+        let login_code_enabled = grpc::auth_client::get_two_factor_setting(
+            &mut client, user.tenant_id, user.party_id,
+        ).await;
+
+        if login_code_enabled {
+            let ua_hash_str = security::md5_hash(&format!("{}.thebcr.com", user_agent));
+            let require_email_2fa = if is_client {
+                true
+            } else {
+                let recent = grpc::auth_client::get_recent_user_agents(
+                    &mut client, user.tenant_id, user.party_id, 3,
+                ).await;
+                !recent.iter().any(|ua| security::md5_hash(&format!("{}.thebcr.com", ua)) == ua_hash_str)
+            };
+
+            if require_email_2fa {
+                let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
+                if tf_code.is_empty() {
+                    grpc::auth_client::send_auth_code(
+                        &mut client, user.tenant_id, &email, "TwoFactor",
+                    ).await;
+                    return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "emailSent": true }))).into_response();
+                }
+                let (valid, err_code) = grpc::auth_client::verify_auth_code(
+                    &mut client, user.tenant_id, &email, &tf_code,
+                ).await;
+                if !valid {
+                    return error_response("invalid_grant", &err_code);
+                }
+            }
+        }
+
+        if is_admin && user.two_factor_enabled {
+            let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
+            if tf_code.is_empty() {
+                return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "authenticator2FA": true }))).into_response();
+            }
+        }
+    } else if user.two_factor_enabled {
+        let tf_code = req.tf_code.as_deref().unwrap_or("");
+        if tf_code.is_empty() {
+            return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "authenticator2FA": true }))).into_response();
+        }
+    }
+
     let party_id_hashed = hashids::encode_party_id(user.party_id);
     let display_name = user.guess_display_name();
 
-    // UserAgent hash from request header (best-effort)
-    let ua_hash = req
-        .tf_code
-        .as_deref()
-        .map(|_| None) // placeholder; real UA comes from HTTP header in stage 3
-        .unwrap_or(None);
+    let ua_hash = Some(security::md5_hash(user_agent));
 
     let params = token::TokenParams {
         user_id: user.id,
@@ -325,12 +397,23 @@ async fn handle_password_grant(state: &AppState, req: &TokenRequest) -> (HeaderM
     // Clear login failure counter on success
     security::clear_failures(&state.redis, &email).await;
 
-    // Fire-and-forget last login update
+    // Fire-and-forget: update last login + write login log
     let pool = state.pool.clone();
     let user_id = user.id;
     tokio::spawn(async move {
         let _ = db::update_last_login(&pool, user_id, "").await;
     });
+    if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+        grpc::auth_client::write_login_log(
+            &mut client,
+            user.tenant_id,
+            user.party_id,
+            ip,
+            user_agent,
+            referer,
+        ).await;
+    }
 
     let mut headers = HeaderMap::new();
     cookie::set_token_cookie(
@@ -348,7 +431,7 @@ async fn handle_password_grant(state: &AppState, req: &TokenRequest) -> (HeaderM
             "expires_in": token_result.expires_in,
             "refresh_token": refresh_token,
         })),
-    )
+    ).into_response()
 }
 
 fn validate_password_any(users: &[db::User], password: &str) -> bool {
@@ -455,23 +538,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|e| format!("Redis pool creation failed: {}", e))?;
     info!("Redis pool created for {}", redis_url);
 
+    let mono_client = if let Some(addr) = mono_grpc_addr {
+        match grpc::auth_client::connect(&addr).await {
+            Ok(c) => {
+                info!("Connected to mono gRPC at {}", addr);
+                Some(tokio::sync::Mutex::new(c))
+            }
+            Err(e) => {
+                tracing::warn!("Could not connect to mono gRPC at {}: {} (2FA will be skipped)", addr, e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let state = Arc::new(AppState {
         pool,
         redis,
         key_pair,
         access_token_lifetime,
         secure_cookie,
-        mono_grpc_addr,
+        mono_client,
     });
 
     let listener = tokio::net::TcpListener::bind(http_addr).await?;
     info!("Auth HTTP listening on http://{}", http_addr);
     info!("Auth gRPC listening on {}", grpc_addr);
 
-    let grpc_server = grpc::validate::new_server(state.key_pair.public_der.clone());
+    let grpc_server = grpc::validate::new_server(
+        state.key_pair.private_der.clone(),
+        state.key_pair.public_der.clone(),
+        state.key_pair.kid.clone(),
+    );
 
     tokio::select! {
-        res = axum::serve(listener, http_app(state)) => {
+        res = axum::serve(listener, http_app(state).into_make_service_with_connect_info::<SocketAddr>()) => {
             res?;
         }
         res = tonic::transport::Server::builder()

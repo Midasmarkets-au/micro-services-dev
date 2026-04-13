@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers.V2;
 [Area("Tenant")]
 [Tags("Tenant/Documents")]
 [Route("api/" + VersionTypes.V2 + "/[Area]/documents")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class DocumentsController(TenantDbContext tenantCtx, IStorageService storage, ILogger<DocumentsController> logger)
     : TenantBaseControllerV2
 {

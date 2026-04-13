@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Mvc;
 using Bacera.Gateway.Web.Controllers;
 using Bacera.Gateway.Web.Middleware;
@@ -13,7 +13,7 @@ namespace Bacera.Gateway.Web.Areas.Sales.Controllers;
 [Produces("application/json")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/{salesUid:long}/[controller]")]
 [ServiceFilter(typeof(SalesAreaFilter))]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class SalesBaseController : BaseController
 {
 }

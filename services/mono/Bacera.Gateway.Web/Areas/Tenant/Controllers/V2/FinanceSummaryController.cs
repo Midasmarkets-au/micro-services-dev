@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Services.Acct;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers.V2;
 [Area("Tenant")]
 [Tags("Tenant/Finance Summary")]
 [Route("api/" + VersionTypes.V2 + "/[Area]/finance")] 
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class FinanceSummaryController(AcctService acctService, ILogger<FinanceSummaryController> logger)
     : TenantBaseControllerV2
 {

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers.Event;
 
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 [Tags("Tenant/Event")]
 public partial class EventController(
     TenantDbContext tenantDbContext,

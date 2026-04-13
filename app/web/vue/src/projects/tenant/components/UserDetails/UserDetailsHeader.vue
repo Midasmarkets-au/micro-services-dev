@@ -202,16 +202,14 @@ const requestUserToken = async () => {
   requestUserTokenSubmitted.value = true;
   try {
     const res = await UserService.requestUserToken(partyId.value);
-    MsgPrompt.success(res.message).then(() => {
-      Clipboard.copy(
-        (process.env.VUE_APP_BASE_CDN_URL +
-          "/set-token?key=" +
-          res.token) as string
-      );
-      window.open(
-        process.env.VUE_APP_BASE_CDN_URL + "/set-token?key=" + res.token,
-        "_blank"
-      );
+    const godModeKey = res?.data?.token ?? res?.token;
+    const godModeUrl = process.env.VUE_APP_BASE_CDN_URL + "/set-token?key=" + godModeKey;
+    console.log("[god-mode] res=", JSON.stringify(res));
+    console.log("[god-mode] godModeKey=", godModeKey);
+    console.log("[god-mode] url=", godModeUrl);
+    MsgPrompt.success(res.message ?? res?.data?.message).then(() => {
+      Clipboard.copy(godModeUrl);
+      window.open(godModeUrl, "_blank");
     });
   } catch (error) {
     MsgPrompt.error(error);

@@ -30,6 +30,9 @@ public class AuthGrpcTokenValidator(
     public async ValueTask HandleAsync(ValidateTokenContext context)
     {
         var token = context.Token;
+        logger.LogInformation("AuthGrpcTokenValidator: token={TokenPreview} tokenTypes={Types}",
+            string.IsNullOrEmpty(token) ? "<empty>" : token[..Math.Min(20, token.Length)] + "…",
+            string.Join(",", context.ValidTokenTypes));
         if (string.IsNullOrEmpty(token))
             return;
 
@@ -70,5 +73,7 @@ public class AuthGrpcTokenValidator(
             identity.AddClaim(new Claim(OpenIddict.Abstractions.OpenIddictConstants.Claims.Role, role));
 
         context.Principal = new ClaimsPrincipal(identity);
+        // Short-circuit: skip OpenIddict's built-in local key validation (order 500)
+        context.HandleRequest();
     }
 }

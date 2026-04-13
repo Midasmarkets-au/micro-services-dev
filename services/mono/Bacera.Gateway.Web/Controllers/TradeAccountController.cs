@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Interfaces;
 using Bacera.Gateway.Web.Request;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,7 +10,7 @@ namespace Bacera.Gateway.Web.Controllers;
 
 [Tags("User Verification")]
 [Route("api/" + VersionTypes.V1 + "/trade-account/{tenantId:long}")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TradeAccountController(
     IServiceProvider serviceProvider,
     ILogger<TradeAccountController> logger)

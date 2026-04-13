@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using OpenIddict.Validation.AspNetCore;
+
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 using M = Bacera.Gateway.ReportRequest;
 
 [Tags("Tenant/Report")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class ReportController(TenantDbContext tenantCtx, ITenantGetter tenantGetter, IReportJob reportJob) : TenantBaseController
 {
     [HttpGet("request")]

@@ -68,22 +68,9 @@ async fn send_login_code(
     let user = &users[0];
 
     // Call mono gRPC to send the code
-    if let Some(mono_addr) = state.mono_grpc_addr.as_deref() {
-        match crate::grpc::auth_client::connect(mono_addr).await {
-            Ok(mut client) => {
-                crate::grpc::auth_client::send_auth_code(
-                    &mut client,
-                    user.tenant_id,
-                    &email,
-                    "Login",
-                )
-                .await;
-            }
-            Err(e) => {
-                tracing::error!("Failed to connect to mono gRPC: {}", e);
-                return Json(json!({ "error": "server_error", "error_description": "Failed to send code" }));
-            }
-        }
+    if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+        crate::grpc::auth_client::send_auth_code(&mut client, user.tenant_id, &email, "Login").await;
     }
 
     Json(json!({ "success": true, "message": "Login code sent." }))
@@ -118,25 +105,13 @@ async fn confirm_login_code(
     let user = &users[0];
 
     // Verify code via mono gRPC
-    let code_valid = if let Some(mono_addr) = state.mono_grpc_addr.as_deref() {
-        match crate::grpc::auth_client::connect(mono_addr).await {
-            Ok(mut client) => {
-                let (valid, _err) = crate::grpc::auth_client::verify_auth_code(
-                    &mut client,
-                    user.tenant_id,
-                    &email,
-                    &req.code,
-                )
-                .await;
-                valid
-            }
-            Err(e) => {
-                tracing::error!("mono gRPC connect error: {}", e);
-                return (HeaderMap::new(), Json(json!({ "error": "server_error" })));
-            }
-        }
+    let code_valid = if let Some(mono) = &state.mono_client {
+        let mut client = mono.lock().await;
+        let (valid, _err) = crate::grpc::auth_client::verify_auth_code(
+            &mut client, user.tenant_id, &email, &req.code,
+        ).await;
+        valid
     } else {
-        // No mono gRPC configured — reject (code verification requires mono)
         return (
             HeaderMap::new(),
             Json(json!({ "error": "server_error", "error_description": "MONO_GRPC_ADDR not configured" })),

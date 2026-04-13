@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Mvc;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,7 +8,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 using MSG = ResultMessage.Payment;
 
 [Tags("Tenant/Payment")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class PaymentController(AccountingService accountingService) : TenantBaseController
 {
     /// <summary>

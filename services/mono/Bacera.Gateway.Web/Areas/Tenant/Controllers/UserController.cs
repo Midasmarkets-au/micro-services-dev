@@ -4,14 +4,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using OpenIddict.Validation.AspNetCore;
+
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 using M = Bacera.Gateway.Auth.User;
 
 [Tags("Tenant/User")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class UserController(TenantDbContext tenantDbContext, AuthDbContext authDbContext) : TenantBaseController
 {
     [HttpGet]

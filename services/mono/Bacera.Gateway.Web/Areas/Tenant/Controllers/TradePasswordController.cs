@@ -2,7 +2,7 @@ using Bacera.Gateway.Auth;
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.Controllers;
-using OpenIddict.Validation.AspNetCore;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +15,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/tradepassword")]
 [Tags("Tenant/Update passwords")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TradePasswordController : BaseController
 {
     private readonly Tenancy _tenancy;

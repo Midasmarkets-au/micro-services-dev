@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using System.Security.Claims;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Services;
@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Admin")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class AdminController(
     UserService userService,
     AuthDbContext authDbContext,

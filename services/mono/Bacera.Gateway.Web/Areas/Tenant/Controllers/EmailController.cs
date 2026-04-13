@@ -8,14 +8,14 @@ using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using OpenIddict.Validation.AspNetCore;
+
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 using M = Bacera.Gateway.Topic;
 
 [Tags("Tenant/Email")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class EmailController(
     TenantDbContext tenantCtx,
     IBackgroundJobClient client,

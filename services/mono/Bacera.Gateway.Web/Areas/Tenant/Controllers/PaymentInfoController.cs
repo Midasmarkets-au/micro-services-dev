@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Services.Acct;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +13,7 @@ using M = PaymentInfo;
 [Area("Tenant")]
 [Tags("Tenant/Payment Info")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/payment-info")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class PaymentInfoController(TenantDbContext tenantCtx, AcctService acctSvc) : TenantBaseController
 {
     /// <summary>

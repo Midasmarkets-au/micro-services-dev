@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Amazon.Runtime.Internal.Util;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Crypto")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class CryptoController(TenantDbContext tenantCtx, CryptoService cryptoSvc, IMyCache cache) : TenantBaseController
 {
     /// <summary>

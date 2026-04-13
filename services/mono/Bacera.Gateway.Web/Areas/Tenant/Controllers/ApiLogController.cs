@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +8,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Api Log")]
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/api-log")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class ApiLogController(TenantDbContext tenantCtx) : TenantBaseController
 {
     [HttpGet]

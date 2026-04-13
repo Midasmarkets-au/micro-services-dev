@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
@@ -20,7 +20,7 @@ using MSG = ResultMessage.Account;
 [Area("Tenant")]
 [Tags("Tenant/Trade Account")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/trade-account")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TradeAccountController(
     IMediator mediator,
     ITenantGetter tenantGetter,

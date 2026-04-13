@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Tag")]
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/[controller]")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TagController(TagService tagService, TenantDbContext tenantCtx, IMyCache cache) : TenantBaseController
 {
     [HttpGet]

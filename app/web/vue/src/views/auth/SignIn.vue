@@ -162,7 +162,7 @@ const onSubmitLogin = async () => {
   var login = await ApiService.postToken("connect/token", params).catch(
     ({ response }) => {
       if (response.data.error != undefined) {
-        errors = [response.data.error];
+        errors = [response.data.error_description ?? response.data.error];
       } else {
         errors = response.data.errors;
       }

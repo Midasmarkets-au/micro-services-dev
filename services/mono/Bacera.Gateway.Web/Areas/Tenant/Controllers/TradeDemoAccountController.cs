@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +9,7 @@ using M = TradeDemoAccount;
 
 [Area("Tenant")]
 [Tags("Tenant/Trade Demo Account")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/" + VersionTypes.V1 + "/[Area]/trade-demo-account")]
 public class TradeDemoAccountController : TenantBaseController
 {

@@ -15,6 +15,9 @@ service AuthValidationService {
 
   // 验证 access token，返回解析后的 claims
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // 为指定用户签发 access token（god-mode、邮件验证码登录等场景）
+  rpc IssueToken(IssueTokenRequest) returns (IssueTokenResponse);
 }
 
 message ValidateTokenRequest {
@@ -126,4 +129,27 @@ message WriteLoginLogRequest {
 
 message WriteLoginLogResponse {
   bool ok = 1;
+}
+
+// ----------------------------------------------------------------------------
+//  IssueToken — mono 请求 auth 服务为指定用户签发 access token
+// ----------------------------------------------------------------------------
+message IssueTokenRequest {
+  int64           user_id            = 1;
+  int64           tenant_id          = 2;
+  string          party_id_hashed    = 3;
+  int64           god_party_id       = 4;   // 0 表示非 god-mode
+  string          display_name       = 5;
+  string          email              = 6;
+  repeated string roles              = 7;
+  bool            two_factor_enabled = 8;
+  string          user_agent         = 9;   // 原始 UA，auth 服务内部做 MD5
+  int64           sales_account      = 10;  // 0 表示无
+  int64           agent_account      = 11;
+  int64           rep_account        = 12;
+}
+
+message IssueTokenResponse {
+  string access_token  = 1;
+  int64  expires_in    = 2;
 }
