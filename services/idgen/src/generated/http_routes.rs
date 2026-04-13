@@ -2,7 +2,6 @@
 
 /// GET 路径与 RPC 方法名，由 proto 中 google.api.http 唯一决定。
 pub const HTTP_GET_ROUTES: &[(&str, &str)] = &[
-    ("/api/v1/hello", "SayHello"),
     ("/api/v1/health", "Check"),
     ("/api/v1/generateid", "GenerateID"),
 ];

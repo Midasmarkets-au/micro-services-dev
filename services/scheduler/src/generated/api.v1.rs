@@ -1141,20 +1141,6 @@ pub mod mono_callback_service_server {
         const NAME: &'static str = "api.v1.MonoCallbackService";
     }
 }
-/// Hello 请求
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SayHelloRequest {
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// Hello 响应
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SayHelloResponse {
-    #[prost(string, tag = "1")]
-    pub message: ::prost::alloc::string::String,
-}
 /// 健康检查请求
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1308,32 +1294,6 @@ pub mod api_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// 简单问候
-        pub async fn say_hello(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SayHelloRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::SayHelloResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/api.v1.ApiService/SayHello",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("api.v1.ApiService", "SayHello"));
-            self.inner.unary(req, path, codec).await
-        }
         /// 健康检查
         pub async fn check(
             &mut self,
@@ -1389,14 +1349,6 @@ pub mod api_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with ApiServiceServer.
     #[async_trait]
     pub trait ApiService: Send + Sync + 'static {
-        /// 简单问候
-        async fn say_hello(
-            &self,
-            request: tonic::Request<super::SayHelloRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::SayHelloResponse>,
-            tonic::Status,
-        >;
         /// 健康检查
         async fn check(
             &self,
@@ -1491,52 +1443,6 @@ pub mod api_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/api.v1.ApiService/SayHello" => {
-                    #[allow(non_camel_case_types)]
-                    struct SayHelloSvc<T: ApiService>(pub Arc<T>);
-                    impl<
-                        T: ApiService,
-                    > tonic::server::UnaryService<super::SayHelloRequest>
-                    for SayHelloSvc<T> {
-                        type Response = super::SayHelloResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SayHelloRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ApiService>::say_hello(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SayHelloSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/api.v1.ApiService/Check" => {
                     #[allow(non_camel_case_types)]
                     struct CheckSvc<T: ApiService>(pub Arc<T>);
