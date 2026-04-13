@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
-import { getDepositGroups, getDepositGroupInfo, postAccountDeposit } from '@/actions/deposit';
+import { getDepositGroups, getDepositGroupInfo, postAccountDeposit, postQrCodePaid } from '@/actions/deposit';
 import type {
   DepositGroup,
   DepositGroupInfo,
@@ -42,6 +42,68 @@ interface DepositModalProps {
 type Step = 1 | 2 | 3 | 4 | 5;
 
 const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId'];
+
+function getBase64ImageDataUrl(text?: string): string {
+  const value = text?.trim();
+  if (!value) return '';
+
+  if (/^data:image\/[a-zA-Z0-9.+-]+;base64,/i.test(value)) return value;
+
+  const compact = value.replace(/\s/g, '');
+  const isBase64 = /^[A-Za-z0-9+/]+={0,2}$/.test(compact);
+  const looksLikeImage =
+    /^(iVBORw0KGgo|\/9j\/|R0lGOD|UklGR)/.test(compact) && compact.length > 100;
+  if (!isBase64 || !looksLikeImage) return '';
+
+  let mime = 'image/png';
+  if (compact.startsWith('/9j/')) mime = 'image/jpeg';
+  else if (compact.startsWith('R0lGOD')) mime = 'image/gif';
+  else if (compact.startsWith('UklGR')) mime = 'image/webp';
+
+  return `data:${mime};base64,${compact}`;
+}
+
+function getStringField(obj: Record<string, unknown> | null | undefined, keys: string[]): string {
+  if (!obj || typeof obj !== 'object') return '';
+  for (const key of keys) {
+    const v = obj[key];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return '';
+}
+
+function extractQrTransactionId(response: DepositResponse): string {
+  const tryParse = (text?: string): string => {
+    const val = text?.trim();
+    if (!val) return '';
+    try {
+      const parsed = JSON.parse(val);
+      return (
+        getStringField(parsed, ['transactionId', 'transactionID']) ||
+        getStringField(parsed?.data, ['transactionId', 'transactionID'])
+      );
+    } catch {
+      const m = val.match(/transactionid\s*[:=]\s*["']?([a-zA-Z0-9_-]+)/i);
+      return m?.[1] || '';
+    }
+  };
+
+  const direct = getStringField(response as unknown as Record<string, unknown>, ['transactionId', 'transactionID']);
+  if (direct) return direct;
+
+  const fromText = tryParse(response.textForQrCode);
+  if (fromText) return fromText;
+
+  if (typeof response.form === 'string') {
+    const fromForm = tryParse(response.form as string);
+    if (fromForm) return fromForm;
+  } else if (response.form && typeof response.form === 'object') {
+    const fromFormObj = getStringField(response.form as unknown as Record<string, unknown>, ['transactionId', 'transactionID']);
+    if (fromFormObj) return fromFormObj;
+  }
+
+  return '';
+}
 
 export function DepositModal({ open, onOpenChange, account }: DepositModalProps) {
   const t = useTranslations('deposit');
@@ -70,6 +132,10 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
   const [targetAmount, setTargetAmount] = useState<number>(0);
 
+  // QrCode 支付确认
+  const [isPaidSubmitting, setIsPaidSubmitting] = useState(false);
+  const [isPaidConfirmed, setIsPaidConfirmed] = useState(false);
+
   // Step 1: 加载支付渠道
   useEffect(() => {
     if (open && account) {
@@ -97,6 +163,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       setAmountError('');
       setDepositResponse(null);
       setTargetAmount(0);
+      setIsPaidSubmitting(false);
+      setIsPaidConfirmed(false);
     }, 200);
   }, [onOpenChange]);
 
@@ -190,6 +258,30 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
     return true;
   }, [amount, amountError, visibleRequestKeys, dynamicFields]);
+
+  const qrCodeImageSrc = useMemo(
+    () => (depositResponse?.textForQrCode ? getBase64ImageDataUrl(depositResponse.textForQrCode) : ''),
+    [depositResponse?.textForQrCode]
+  );
+
+  const qrTransactionId = useMemo(
+    () => (depositResponse ? extractQrTransactionId(depositResponse) : ''),
+    [depositResponse]
+  );
+
+  const notifyPaid = useCallback(async () => {
+    if (isPaidConfirmed || !qrTransactionId) return;
+    setIsPaidSubmitting(true);
+    try {
+      const result = await execute(postQrCodePaid, qrTransactionId);
+      if (result.success) {
+        setIsPaidConfirmed(true);
+        showSuccess(t('guide.paidSuccess'));
+      }
+    } finally {
+      setIsPaidSubmitting(false);
+    }
+  }, [isPaidConfirmed, qrTransactionId, execute, showSuccess, t]);
 
   // Step 4: 提交入金
   const handleDeposit = useCallback(async () => {
@@ -510,54 +602,56 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       </span>
                     </div>
 
-                    {/* 支付渠道卡片 */}
-                    <div className="flex items-start gap-4 rounded-lg border border-border p-4">
-                      {selectedGroup?.logo && (
-                        <Image
-                          src={selectedGroup.logo}
-                          alt={selectedGroup.paymentMethodName}
-                          width={48}
-                          height={48}
-                          className="shrink-0 rounded"
-                        />
-                      )}
-                      <div className="flex flex-1 flex-col gap-1">
-                        <span className="text-base font-medium text-text-primary">
-                          {selectedGroup?.paymentMethodName}
-                        </span>
-                        <span className="text-xs text-text-secondary">
-                          {t('channel.arrival')}：{t('channel.instant')}
-                        </span>
-                        <span className="text-xs text-text-secondary">
-                          {t('channel.fee')}：{t('channel.noFee')}
-                        </span>
-                        <span className="text-xs text-text-secondary">
-                          {t('channel.processing')}：{'< 1'}{t('channel.hour')}
-                        </span>
-                      </div>
-                    </div>
-
                     {/* QrCode */}
                     {depositResponse.action === DepositActions.QrCode && depositResponse.textForQrCode && (
                       <div className="flex flex-col items-center gap-3">
-                        <p className="text-sm text-text-secondary">{t('guide.walletAddress')}</p>
-                        <code className="rounded bg-input-bg px-3 py-2 text-xs text-text-primary break-all">
-                          {depositResponse.textForQrCode}
-                        </code>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(depositResponse.textForQrCode || '');
-                            showSuccess(t('guide.copied'));
-                          }}
-                        >
-                          {t('guide.copyAddress')}
-                        </Button>
+                        {!qrTransactionId && (
+                          <p className="text-sm text-text-secondary">{t('guide.qrCodeNotice')}</p>
+                        )}
+
+                        {qrCodeImageSrc ? (
+                          <Image
+                            src={qrCodeImageSrc}
+                            alt="QR code"
+                            width={132}
+                            height={132}
+                            unoptimized
+                            className="rounded bg-white object-contain p-1.5"
+                          />
+                        ) : (
+                          <>
+                            <p className="text-sm text-text-secondary">{t('guide.walletAddress')}</p>
+                            <code className="rounded bg-input-bg px-3 py-2 text-xs text-text-primary break-all">
+                              {depositResponse.textForQrCode}
+                            </code>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                navigator.clipboard.writeText(depositResponse.textForQrCode || '');
+                                showSuccess(t('guide.copied'));
+                              }}
+                            >
+                              {t('guide.copyAddress')}
+                            </Button>
+                          </>
+                        )}
+
                         {depositResponse.message && (
-                          <p className="text-xs ">
+                          <p className="text-xs">
                             {t('guide.countdown', { minutes: depositResponse.message })}
                           </p>
+                        )}
+
+                        {qrTransactionId && (
+                          <Button
+                            variant="primary"
+                            disabled={isPaidSubmitting || isPaidConfirmed}
+                            loading={isPaidSubmitting}
+                            onClick={notifyPaid}
+                          >
+                            {isPaidConfirmed ? t('guide.paidConfirmed') : t('guide.completePayment')}
+                          </Button>
                         )}
                       </div>
                     )}

@@ -1218,7 +1218,11 @@
       "countdown": "Please complete payment within {minutes} minutes",
       "clickRedirect": "Please click the link to complete payment",
       "redirect": "Click to redirect",
-      "error": "Payment failed, please try again"
+      "error": "Payment failed, please try again",
+      "qrCodeNotice": "Please scan the QR code to complete payment",
+      "completePayment": "I have completed payment",
+      "paidConfirmed": "Payment confirmed",
+      "paidSuccess": "Payment confirmation submitted"
     },
     "error": {
       "amountRequired": "Please enter an amount",
