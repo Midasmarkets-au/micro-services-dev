@@ -76,9 +76,69 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::engine::general_purpose::STANDARD as BASE64;
+
+    /// Build a valid ASP.NET Identity V3 hash for testing.
+    fn make_v3_hash(password: &str, salt: &[u8], prf: u32, iterations: u32) -> String {
+        let sub_key_len = 32usize;
+        let mut sub_key = vec![0u8; sub_key_len];
+        match prf {
+            1 => pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, iterations, &mut sub_key),
+            2 => pbkdf2_hmac::<Sha512>(password.as_bytes(), salt, iterations, &mut sub_key),
+            _ => panic!("unsupported prf"),
+        }
+
+        let salt_len = salt.len() as u32;
+        let mut buf = Vec::with_capacity(13 + salt.len() + sub_key_len);
+        buf.push(0x01u8); // format marker
+        buf.extend_from_slice(&prf.to_be_bytes());
+        buf.extend_from_slice(&iterations.to_be_bytes());
+        buf.extend_from_slice(&salt_len.to_be_bytes());
+        buf.extend_from_slice(salt);
+        buf.extend_from_slice(&sub_key);
+        BASE64.encode(&buf)
+    }
 
     #[test]
     fn test_verify_empty_returns_false() {
         assert!(!verify_hashed_password_v3("", "password"));
+    }
+
+    #[test]
+    fn test_verify_correct_sha256() {
+        let salt = b"1234567890abcdef"; // 16 bytes
+        let hash = make_v3_hash("secret", salt, 1, 10_000);
+        assert!(verify_hashed_password_v3(&hash, "secret"));
+    }
+
+    #[test]
+    fn test_verify_wrong_password() {
+        let salt = b"1234567890abcdef";
+        let hash = make_v3_hash("secret", salt, 1, 10_000);
+        assert!(!verify_hashed_password_v3(&hash, "wrong"));
+    }
+
+    #[test]
+    fn test_verify_sha512() {
+        let salt = b"abcdef1234567890"; // 16 bytes
+        let hash = make_v3_hash("pass512", salt, 2, 10_000);
+        assert!(verify_hashed_password_v3(&hash, "pass512"));
+        assert!(!verify_hashed_password_v3(&hash, "wrong512"));
+    }
+
+    #[test]
+    fn test_verify_bad_format_marker() {
+        // Build a buffer with marker 0x00 instead of 0x01
+        let mut buf = vec![0x00u8; 45];
+        buf[0] = 0x00;
+        let encoded = BASE64.encode(&buf);
+        assert!(!verify_hashed_password_v3(&encoded, "any"));
+    }
+
+    #[test]
+    fn test_verify_short_data() {
+        // Only 10 bytes — shorter than minimum 13
+        let encoded = BASE64.encode(&[0x01u8; 10]);
+        assert!(!verify_hashed_password_v3(&encoded, "any"));
     }
 }

@@ -145,3 +145,106 @@ pub fn hash_user_agent(raw_ua: &str) -> String {
     let input = format!("{}.thebcr.com", raw_ua);
     format!("{:x}", md5::compute(input.as_bytes()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::OnceLock;
+    use crate::keys::RsaKeyPair;
+    use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
+    use rsa::pkcs1::EncodeRsaPublicKey as _;
+
+    fn test_key_pair() -> &'static RsaKeyPair {
+        static KEY: OnceLock<RsaKeyPair> = OnceLock::new();
+        KEY.get_or_init(|| RsaKeyPair::load_or_generate(None, None).unwrap())
+    }
+
+    fn base_params<'a>(_kp: &'a RsaKeyPair, roles: &'a [String]) -> TokenParams<'a> {
+        TokenParams {
+            user_id: 42,
+            tenant_id: 7,
+            party_id_hashed: "abc123",
+            god_party_id: 0,
+            display_name: "Test User",
+            email: "test@example.com",
+            roles,
+            two_factor_enabled: false,
+            lifetime_secs: 86400,
+            user_agent_hash: None,
+            sales_account: None,
+            agent_account: None,
+            rep_account: None,
+        }
+    }
+
+    #[test]
+    fn test_hash_user_agent() {
+        let result = hash_user_agent("Mozilla");
+        let expected = format!("{:x}", md5::compute("Mozilla.thebcr.com".as_bytes()));
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_refresh_token_is_uuid() {
+        let token = generate_refresh_token();
+        assert!(uuid::Uuid::parse_str(&token).is_ok());
+    }
+
+    #[test]
+    fn test_access_token_claims() {
+        let kp = test_key_pair();
+        let roles = vec!["Client".to_string()];
+        let params = base_params(kp, &roles);
+        let result = generate_access_token(&params, &kp.private_der, &kp.kid).unwrap();
+
+        // jsonwebtoken::DecodingKey::from_rsa_der expects PKCS#1 RSAPublicKey DER
+        let pub_pkcs1_der = kp.public_key.to_pkcs1_der().unwrap();
+        let decoding_key = DecodingKey::from_rsa_der(pub_pkcs1_der.as_bytes());
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.validate_aud = false;
+
+        let decoded = decode::<Claims>(&result.access_token, &decoding_key, &validation).unwrap();
+        let claims = decoded.claims;
+
+        assert_eq!(claims.sub, "42");
+        assert_eq!(claims.tenant_id, "7");
+        assert_eq!(claims.email, "test@example.com");
+        assert_eq!(claims.role, vec!["Client"]);
+        assert_eq!(claims.amr, Some("pwd".to_string()));
+        assert_eq!(claims.idp, "local");
+    }
+
+    #[test]
+    fn test_tenant_admin_lifetime() {
+        let kp = test_key_pair();
+        let roles = vec!["TenantAdmin".to_string()];
+        let params = base_params(kp, &roles);
+        let result = generate_access_token(&params, &kp.private_der, &kp.kid).unwrap();
+        assert_eq!(result.expires_in, TENANT_ADMIN_LIFETIME_SECS);
+    }
+
+    #[test]
+    fn test_non_admin_lifetime() {
+        let kp = test_key_pair();
+        let roles = vec!["Client".to_string()];
+        let params = base_params(kp, &roles);
+        let result = generate_access_token(&params, &kp.private_der, &kp.kid).unwrap();
+        assert_eq!(result.expires_in, 86400);
+    }
+
+    #[test]
+    fn test_two_factor_amr() {
+        let kp = test_key_pair();
+        let roles = vec!["Client".to_string()];
+        let mut params = base_params(kp, &roles);
+        params.two_factor_enabled = true;
+        let result = generate_access_token(&params, &kp.private_der, &kp.kid).unwrap();
+
+        let pub_pkcs1_der = kp.public_key.to_pkcs1_der().unwrap();
+        let decoding_key = DecodingKey::from_rsa_der(pub_pkcs1_der.as_bytes());
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.validate_aud = false;
+        let decoded = decode::<Claims>(&result.access_token, &decoding_key, &validation).unwrap();
+        assert_eq!(decoded.claims.amr, Some("mfa".to_string()));
+    }
+}
