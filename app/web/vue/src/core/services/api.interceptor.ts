@@ -1,5 +1,4 @@
 import { axiosInstance, axiosInstance2 } from "@/core/services/api.client";
-import { getLocalAccessToken } from "@/core/services/token.service";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 import store from "@/store";
 import { Actions } from "@/store/enums/StoreEnums";
@@ -9,13 +8,11 @@ import Can from "@/core/plugins/ICan";
 import { RoleTypes } from "@/core/types/RoleTypes";
 
 const handleRequestFulfilled = (config) => {
-  const token = getLocalAccessToken()?.access_token;
-  if (token) {
-    config.headers["Authorization"] = "Bearer " + token; // for Spring Boot back-end
-    if (!Can.cans([RoleTypes.TenantAdmin, RoleTypes.SuperAdmin])) {
-      setTimerForLogout();
-    }
-    // config.headers["x-access-token"] = token; // for Node.js Express back-end
+  // Token is delivered via HttpOnly cookie (set by auth service on login).
+  // The browser automatically attaches the cookie on every same-origin request,
+  // so no Authorization header is needed here.
+  if (!Can.cans([RoleTypes.TenantAdmin, RoleTypes.SuperAdmin])) {
+    setTimerForLogout();
   }
   return config;
 };

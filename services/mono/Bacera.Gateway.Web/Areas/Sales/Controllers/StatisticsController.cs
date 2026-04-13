@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.Controllers;
@@ -14,7 +14,7 @@ namespace Bacera.Gateway.Web.Areas.Sales.Controllers;
 [Area("Sales")]
 [Produces("application/json")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/[controller]")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class StatisticsController : BaseController
 {
     private readonly TenantDbContext _tenantDbContext;

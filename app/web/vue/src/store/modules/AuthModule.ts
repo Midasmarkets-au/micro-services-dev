@@ -1,11 +1,11 @@
 import ApiService from "@/core/services/ApiService";
-import JwtService from "@/core/services/JwtService";
 import { Actions, Mutations } from "@/store/enums/StoreEnums";
 
 import { Module, Action, Mutation, VuexModule } from "vuex-module-decorators";
 import { LanguageCodes } from "@/core/types/LanguageTypes";
 
 import {
+  getLocalAccessToken,
   removeLocalAccessToken,
   updateLocalAccessToken,
 } from "@/core/services/token.service";
@@ -56,7 +56,8 @@ export interface UserAuthInfo {
 export default class AuthModule extends VuexModule implements UserAuthInfo {
   errors = {};
   user = {} as User;
-  isAuthenticated = !!JwtService.getToken();
+  // Auth state is determined by calling /api/v1/user/me (cookie-based), not localStorage.
+  isAuthenticated = false;
   hasUserVerified2Fa =
     window.localStorage.getItem("hasUserVerified2Fa") === "true";
 
@@ -134,8 +135,6 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
   @Mutation
   [Mutations.SET_AUTH](data) {
     this.isAuthenticated = true;
-    // console.log(data);
-    JwtService.saveToken(data.access_token);
     updateLocalAccessToken(data);
   }
 
@@ -169,7 +168,6 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
 
   @Mutation
   [Mutations.PURGE_AUTH]() {
-    JwtService.destroyToken();
     removeLocalAccessToken();
     this.isAuthenticated = false;
     this.hasUserVerified2Fa = false;
@@ -281,14 +279,12 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
   async [Actions.VERIFY_AUTH]() {
     if (this.isAuthenticated && this.user.email != undefined) return true;
 
-    if (!JwtService.getToken()) {
-      this.context.commit(Mutations.PURGE_AUTH);
-      return false;
-    }
-
+    // Token is in HttpOnly cookie — cannot read it from JS.
+    // Attempt to fetch user info; a 401 response means the cookie is absent/expired.
     try {
       const meIdentity = await ClientGlobalService.getMeIdentity();
       this.context.commit(Mutations.SET_USER, meIdentity);
+      this.context.commit(Mutations.SET_AUTH, null);
 
       const config = await ClientGlobalService.getConfiguration();
       this.context.commit(Mutations.SET_CONFIG, config);
@@ -296,6 +292,7 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
       return true;
     } catch (error) {
       const response = (error as any).response;
+      if (!response) return false;
       this.context.commit(Mutations.SET_ERROR, response.data.message);
       if (
         response.data.errors &&
@@ -304,7 +301,6 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
         this.context.commit(Mutations.PURGE_TWOFA);
         return false;
       } else {
-        MsgPrompt.error("context: " + this.context);
         this.context.commit(Mutations.PURGE_AUTH);
         return false;
       }

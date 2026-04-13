@@ -1,14 +1,14 @@
 using Bacera.Gateway.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
+
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 using M = Bacera.Gateway.Topic;
 
 [Tags("Tenant/Topic")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TopicController(ITopicService topicSvc) : TenantBaseController
 {
     [HttpGet]

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.ViewModels.Tenant;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Tags("Tenant/Rebate Rule")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/rebate-direct-schema")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class RebateRuleController : TenantBaseController
 {
     private readonly TradingService _tradingSvc;

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Mvc;
 using Bacera.Gateway.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +10,7 @@ namespace Bacera.Gateway.Web.Areas.Admin.Controllers;
 [Area("Admin")]
 [Produces("application/json")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/[controller]")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class AdminBaseController : BaseController
 {
 }

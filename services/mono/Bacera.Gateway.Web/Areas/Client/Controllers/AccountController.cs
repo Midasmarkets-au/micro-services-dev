@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Web.BackgroundJobs;
@@ -11,7 +11,7 @@ using M = Bacera.Gateway.Account;
 namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 
 [Tags("Client/Account")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class AccountController(
     TradingService tradingService,

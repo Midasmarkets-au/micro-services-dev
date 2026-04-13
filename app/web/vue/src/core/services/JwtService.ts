@@ -1,25 +1,19 @@
-const ID_TOKEN_KEY = "id_token" as string;
+// Token is now stored as an HttpOnly cookie set by the auth service.
+// localStorage-based token storage is disabled — do not read/write tokens from JS.
 
-/**
- * @description get token form localStorage
- */
+// const ID_TOKEN_KEY = "id_token" as string;
+
 export const getToken = (): string | null => {
-  return window.localStorage.getItem(ID_TOKEN_KEY);
+  // return window.localStorage.getItem(ID_TOKEN_KEY);
+  return null;
 };
 
-/**
- * @description save token into localStorage
- * @param token: string
- */
-export const saveToken = (token: string): void => {
-  window.localStorage.setItem(ID_TOKEN_KEY, token);
+export const saveToken = (_token: string): void => {
+  // window.localStorage.setItem(ID_TOKEN_KEY, token);
 };
 
-/**
- * @description remove token form localStorage
- */
 export const destroyToken = (): void => {
-  window.localStorage.removeItem(ID_TOKEN_KEY);
+  // window.localStorage.removeItem(ID_TOKEN_KEY);
 };
 
 export default { getToken, saveToken, destroyToken };

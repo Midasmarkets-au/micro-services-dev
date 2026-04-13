@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.ViewModels.Tenant;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 using M = Lead;
 using MSG = ResultMessage.Lead;
 [Tags("Tenant/Lead")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class LeadController(TenantDbContext tenantDbContext, ILeadService leadSvc, ConfigService cfgSvc)
     : TenantBaseController
 {

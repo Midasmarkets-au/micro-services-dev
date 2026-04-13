@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Bacera.Gateway.Auth;
@@ -24,7 +24,7 @@ using Npgsql;
 namespace Bacera.Gateway.Web.Controllers;
 
 [Tags("User")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class UserController(
     UserManager<User> userManager,
     TenantDbContext tenantCtx,

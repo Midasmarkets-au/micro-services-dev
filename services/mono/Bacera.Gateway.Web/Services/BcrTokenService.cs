@@ -1,13 +1,10 @@
+using Api.V1;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.JsonWebTokens;
-using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
-using OpenIddict.Server;
 
 namespace Bacera.Gateway.Services;
 
@@ -17,8 +14,7 @@ namespace Bacera.Gateway.Services;
 ///   - 上帝模式 / 模拟登录  (UserController → GodMode)
 ///   - 多租户 token 切换  (AdminController → GetTokensForAllTenancies)
 ///
-/// 使用 OpenIddict 的签名凭证直接签发 JWT，
-/// claims 构建逻辑复用 PasswordGrantHandler.BuildPrincipal。
+/// 通过 gRPC 调用 Rust auth 服务签发 token，JWT 私钥仅在 auth 服务中保存。
 /// </summary>
 public class BcrTokenService(
     IOpenIddictApplicationManager appManager,
@@ -26,7 +22,8 @@ public class BcrTokenService(
     UserManager<User> userManager,
     AuthDbContext authDbContext,
     IHttpContextAccessor httpContextAccessor,
-    IOptionsMonitor<OpenIddictServerOptions> serverOptions)
+    AuthValidationService.AuthValidationServiceClient authGrpcClient,
+    ILogger<BcrTokenService> logger)
 {
     private const string DefaultClientId = "api";
 
@@ -35,7 +32,7 @@ public class BcrTokenService(
         long godPartyId = 0,
         string clientId = DefaultClientId)
     {
-        // ── 1. 解析 OpenIddict 应用 ──────────────────────────────────────────
+        // ── 1. 解析 OpenIddict 应用（仅用于获取 appId 存 refresh token）────
         var app = await appManager.FindByClientIdAsync(clientId)
                   ?? await appManager.FindByClientIdAsync(DefaultClientId)
                   ?? throw new InvalidOperationException($"OpenIddict client '{clientId}' not found.");
@@ -43,43 +40,38 @@ public class BcrTokenService(
         var appId = await appManager.GetIdAsync(app)
                     ?? throw new InvalidOperationException("Application has no Id.");
 
-        // ── 2. 确定 token 有效期 ─────────────────────────────────────────────
+        // ── 2. 收集用户信息 ──────────────────────────────────────────────────
+        var roles = await userManager.GetRolesAsync(user);
+        var userAgent = httpContextAccessor.HttpContext?.GetUserAgent() ?? "";
+
         var isTenantAdmin = await authDbContext.Users
             .Where(x => x.Id == user.Id)
             .AnyAsync(x => x.UserRoles.Any(y => y.ApplicationRole.Id <= 10));
 
+        // ── 3. 通过 gRPC 调用 auth 服务签发 token ───────────────────────────
+        var grpcReq = new IssueTokenRequest
+        {
+            UserId           = user.Id,
+            TenantId         = user.TenantId,
+            PartyIdHashed    = Party.HashEncode(user.PartyId),
+            GodPartyId       = godPartyId,
+            DisplayName      = user.GuessUserName(),
+            Email            = user.Email ?? "",
+            TwoFactorEnabled = user.TwoFactorEnabled,
+            UserAgent        = userAgent,
+        };
+        grpcReq.Roles.AddRange(roles);
+
+        logger.LogInformation("BcrTokenService: calling IssueToken gRPC for user {UserId}", user.Id);
+        var grpcResp = await authGrpcClient.IssueTokenAsync(grpcReq);
+        var accessToken = grpcResp.AccessToken;
+        logger.LogInformation("BcrTokenService: IssueToken returned, token empty={IsEmpty}", string.IsNullOrEmpty(accessToken));
         var accessTokenLifetime = isTenantAdmin
             ? TimeSpan.FromDays(3650)
-            : TimeSpan.FromHours(24);
+            : TimeSpan.FromSeconds(grpcResp.ExpiresIn > 0 ? grpcResp.ExpiresIn : 86400);
 
-        // ── 3. 构建 principal（复用 PasswordGrantHandler 的逻辑）────────────
-        var roles     = await userManager.GetRolesAsync(user);
-        var userAgent = httpContextAccessor.HttpContext?.GetUserAgent() ?? "";
-        var principal = PasswordGrantHandler.BuildPrincipal(user, godPartyId, roles, accessTokenLifetime, userAgent);
-
-        // ── 4. 签发 access token ─────────────────────────────────────────────
-        var options = serverOptions.CurrentValue;
-        var signingCredentials = options.SigningCredentials.FirstOrDefault()
-            ?? throw new InvalidOperationException("No signing credentials configured in OpenIddict.");
-
-        var now    = DateTimeOffset.UtcNow;
-        var issuer = options.Issuer?.AbsoluteUri ?? "https://localhost";
-
-        var descriptor = new SecurityTokenDescriptor
-        {
-            Issuer             = issuer,
-            Audience           = appId,
-            Subject            = principal.Identity as System.Security.Claims.ClaimsIdentity,
-            IssuedAt           = now.UtcDateTime,
-            NotBefore          = now.UtcDateTime,
-            Expires            = now.Add(accessTokenLifetime).UtcDateTime,
-            SigningCredentials = signingCredentials,
-            TokenType          = "at+jwt",
-        };
-
-        var accessToken = new JsonWebTokenHandler().CreateToken(descriptor);
-
-        // ── 5. 在 OpenIddict 存储中创建 refresh token 记录 ──────────────────
+        // ── 4. 在 OpenIddict 存储中创建 refresh token 记录 ──────────────────
+        var now = DateTimeOffset.UtcNow;
         var referenceId = Guid.NewGuid().ToString("N");
         await tokenManager.CreateAsync(new OpenIddictTokenDescriptor
         {

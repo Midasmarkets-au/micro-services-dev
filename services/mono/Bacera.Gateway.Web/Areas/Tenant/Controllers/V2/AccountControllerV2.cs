@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.DTO;
@@ -15,7 +15,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers.V2;
 [Area("Tenant")]
 [Tags("Tenant/Account")]
 [Route("api/" + VersionTypes.V2 + "/[Area]/account")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class AccountControllerV2(
     TenantDbContext tenantCtx,
     CentralDbContext centralCtx,

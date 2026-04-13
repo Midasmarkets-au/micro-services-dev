@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.Controllers;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Route("api/v1/admin/security")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class SecurityController : AdminBaseController
 {
     private readonly LoginSecurityService _loginSecurityService;

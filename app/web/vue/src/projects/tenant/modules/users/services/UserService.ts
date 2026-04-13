@@ -588,15 +588,13 @@ export default {
           const res = (
             await axios.post(prefix + "user/" + _partyId + "/god-mode")
           ).data;
-          Clipboard.copy(
-            (process.env.VUE_APP_URL +
-              "/set-token?key=" +
-              res.token) as string
-          );
-          window.open(
-            process.env.VUE_APP_URL + "/set-token?key=" + res.token,
-            "_blank"
-          );
+          const godModeKey = res?.data?.token ?? res?.token;
+          const godModeUrl = process.env.VUE_APP_URL + "/set-token?key=" + godModeKey;
+          console.log("[god-mode] res=", JSON.stringify(res));
+          console.log("[god-mode] godModeKey=", godModeKey);
+          console.log("[god-mode] url=", godModeUrl);
+          Clipboard.copy(godModeUrl);
+          window.open(godModeUrl, "_blank");
           clickCount = 0;
         }
         clickCount = 0;

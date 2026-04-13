@@ -15,7 +15,7 @@ import "vue-toastification/dist/index.css";
 
 //imports for app initialization
 import ApiService from "@/core/services/ApiService";
-import JwtService from "@/core/services/JwtService";
+// import JwtService from "@/core/services/JwtService"; // token now in HttpOnly cookie
 import { initApexCharts } from "@/core/plugins/apexcharts";
 import { initInlineSvg } from "@/core/plugins/inline-svg";
 import { initVeeValidate } from "@/core/plugins/vee-validate";
@@ -96,7 +96,7 @@ initInlineSvg(app);
 initVeeValidate();
 
 const wsSignalR = createSignalR(window["api"] + "/hub/client");
-wsSignalR.setup(JwtService.getToken());
+wsSignalR.setup(null); // token in HttpOnly cookie, no need to pass explicitly
 app.use(wsSignalR);
 
 import UserAvatar from "@/components/UserAvatar.vue";

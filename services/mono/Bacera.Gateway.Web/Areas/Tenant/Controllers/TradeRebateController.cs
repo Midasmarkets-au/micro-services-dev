@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Connection;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.ViewModels.Tenant;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Trade Rebate")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/trade-rebate")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TradeRebateController(
     TenantDbContext tenantDbContext,
     TenantDbConnection tenantCon,

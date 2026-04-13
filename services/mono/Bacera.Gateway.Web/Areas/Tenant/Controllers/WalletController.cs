@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.ViewModels.Tenant;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ using MSG = ResultMessage.Wallet;
 using MSGCommon = ResultMessage.Common;
 
 [Tags("Tenant/Wallet")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class WalletController(AccountingService accountingService, TenantDbContext tenantDbContext) : TenantBaseController
 {
     /// <summary>

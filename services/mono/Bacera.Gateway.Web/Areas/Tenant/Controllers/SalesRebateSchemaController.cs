@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Tags("Tenant/Sales Rebate")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/sales-rebate-schema")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class SalesRebateSchemaController(
     TenantDbContext tenantDbContext,
     AccountManageService accManageSvc

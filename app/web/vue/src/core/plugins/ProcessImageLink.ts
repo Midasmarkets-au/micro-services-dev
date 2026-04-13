@@ -1,7 +1,7 @@
-import JwtService from "@/core/services/JwtService";
-
 import store from "@/store";
 
+// Token is in HttpOnly cookie — browser sends it automatically with withCredentials requests.
+// No need to append access_token as a query param.
 export const getImageUrlWithToken = (guid: string) => {
   if (guid === "no-image") return "/images/no-image.png";
   if (guid === null || guid === "" || guid === "no-avatar") {
@@ -12,7 +12,7 @@ export const getImageUrlWithToken = (guid: string) => {
 
   return `${window["api"]}/api/v1/${
     roles && roles.includes("TenantAdmin") ? "tenant" : "client"
-  }/media/${guid}?access_token=${JwtService.getToken()}`;
+  }/media/${guid}`;
 };
 
 export const getImageUrl = (guid: string) => {

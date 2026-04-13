@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -14,7 +14,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.Event;
 
 [Tags("Client/Event")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/event")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/event")]
 public partial class EventController(

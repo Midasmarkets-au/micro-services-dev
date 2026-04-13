@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.ViewModels.Tenant;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 using M = Audit;
 
 [Tags("Tenant/Audit")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class AuditController(AuthDbContext authDbContext, TenantDbContext tenantDbContext) : TenantBaseController
 {
     [HttpGet]

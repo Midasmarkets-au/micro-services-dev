@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MSG = Bacera.Gateway.ResultMessage.RebateRule;
@@ -10,7 +10,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Tags("Tenant/Rebate Agent Rule")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/rebate-agent-rule")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class RebateAgentRuleController(
     TradingService tradingService,
     TenantDbContext tenantDbContext,

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Controllers;
 
 [Tags("User Verification")]
 [Route("api/" + VersionTypes.V1 + "/user/verification")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class VerificationController : BaseController
 {
     private readonly AuthDbContext _authDbContext;

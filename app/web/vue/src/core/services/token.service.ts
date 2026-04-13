@@ -1,26 +1,19 @@
+// Token is now stored as an HttpOnly cookie set by the auth service.
+// localStorage-based token storage is disabled — do not read/write tokens from JS.
+
 import { IJwtToken } from "@/core/models/JwtToken";
 
-const ID_TOKEN_KEY = "jwt_token" as string;
+// const ID_TOKEN_KEY = "jwt_token" as string;
 
-/**
- * @description get token form localStorage
- */
 export const getLocalAccessToken = (): IJwtToken | null => {
-  return JSON.parse(window.localStorage.getItem(ID_TOKEN_KEY) ?? "{}");
+  // return JSON.parse(window.localStorage.getItem(ID_TOKEN_KEY) ?? "{}");
+  return null;
 };
 
-/**
- * @description save token into localStorage
- * @TODO set expiration time
- * @param token: string
- */
-export const updateLocalAccessToken = (token: IJwtToken): void => {
-  window.localStorage.setItem(ID_TOKEN_KEY, JSON.stringify(token));
+export const updateLocalAccessToken = (_token: IJwtToken): void => {
+  // window.localStorage.setItem(ID_TOKEN_KEY, JSON.stringify(token));
 };
 
-/**
- * @description remove token form localStorage
- */
 export const removeLocalAccessToken = (): void => {
-  window.localStorage.removeItem(ID_TOKEN_KEY);
+  // window.localStorage.removeItem(ID_TOKEN_KEY);
 };

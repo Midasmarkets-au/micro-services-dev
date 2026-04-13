@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.BackgroundJobs;
@@ -17,7 +17,7 @@ using MSG = ResultMessage.Account;
 [Area("Client")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/trade-demo-account")]
 [Tags("Client/Trade Demo Account")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TradeDemoAccountController(TradingService tradingService, TenantDbContext tenantCtx, IMediator mediator)
     : ClientBaseController
 {

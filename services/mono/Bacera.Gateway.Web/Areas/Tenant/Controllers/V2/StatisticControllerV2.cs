@@ -5,7 +5,7 @@ using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using OpenIddict.Validation.AspNetCore;
+
 using StackExchange.Redis;
 
 // ReSharper disable AccessToDisposedClosure
@@ -14,7 +14,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers.V2;
 
 [Tags("Tenant/Statistic")]
 [Route("api/" + VersionTypes.V2 + "/[Area]/statistic")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class StatisticControllerV2(
     MybcrDbContext bcrCtx,
     IHttpClientFactory clientFactory,

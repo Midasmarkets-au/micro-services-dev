@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ namespace Bacera.Gateway.Web.Controllers;
 
 [ApiController]
 [Route("/api/configuration")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.Guest + "," + UserRoleTypesString.ClientOrTenantAdmin)]
 [Tags("Public/Configuration")]
 public class ConfigurationController(

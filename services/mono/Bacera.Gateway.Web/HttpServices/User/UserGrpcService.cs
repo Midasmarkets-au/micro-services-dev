@@ -597,8 +597,11 @@ public class TenantUserGrpcService(
 
         var res = await bcrTokenSvc.GetUserTokenAsync(targetUser, godPartyId: GetPartyId(context));
 
+        if (string.IsNullOrEmpty(res.AccessToken))
+            throw new RpcException(new Status(StatusCode.Internal, "IssueToken returned empty access token"));
+
         var oneTimeKey = Guid.NewGuid().ToString("N");
-        await cache.SetStringAsync($"godmode:key:{oneTimeKey}", res.AccessToken, TimeSpan.FromSeconds(30));
+        await cache.SetStringAsync($"godmode:key:{oneTimeKey}", res.AccessToken, TimeSpan.FromSeconds(60));
 
         var proto = MapAuthUserToProto(targetUser);
         proto.Token = oneTimeKey;

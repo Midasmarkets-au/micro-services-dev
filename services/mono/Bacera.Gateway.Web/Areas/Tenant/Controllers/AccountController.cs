@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using System.Dynamic;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
@@ -24,7 +24,7 @@ using MSG = Bacera.Gateway.ResultMessage.Account;
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Account")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public partial class AccountController(
     IMediator mediator,
     TradingService tradingService,

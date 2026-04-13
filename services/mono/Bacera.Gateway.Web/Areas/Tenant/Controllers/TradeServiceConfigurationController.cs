@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +14,7 @@ using M = TradeService;
 /// Manages MT5 Demo Account Prefixes and other TradeService configurations
 /// </summary>
 [Tags("Tenant/TradeService/Configuration")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TradeServiceConfigurationController : TenantBaseController
 {
     private readonly TenantDbContext _tenantDbContext;

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Amazon.Util.Internal.PlatformServices;
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Services.Acct;
@@ -18,7 +18,7 @@ using M = Withdrawal;
 using MSG = ResultMessage.Withdrawal;
 
 [Tags("Client/Withdrawal")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class WithdrawalController(
     IMediator mediator,

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using System;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Referral History")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class ReferralController(
     TenantDbContext tenantCtx,
     ReferralCodeService referralCodeSvc,
