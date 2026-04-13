@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using System.Security.Claims;
 using Bacera.Gateway.Web.WebSocket;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,7 +13,7 @@ namespace Bacera.Gateway.Web.Controllers;
 [ApiController]
 [Route("/api/status")]
 [Tags("Public/Status")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class StatusController : Controller
 {
     private readonly ITenantGetter _tenantGetter;

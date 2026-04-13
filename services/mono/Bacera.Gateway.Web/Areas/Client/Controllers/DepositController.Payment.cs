@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 // using Bacera.Gateway.Auth;
 // using Bacera.Gateway.Core.Types;
 // using Bacera.Gateway.DTO;
@@ -39,7 +39,7 @@ using OpenIddict.Validation.AspNetCore;
 // using M = Deposit;
 // using MSG = ResultMessage.Deposit;
 //
-// [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+// [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
 //     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 // partial class DepositController
 // {

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Mvc;
 using Bacera.Gateway.Web.Controllers;
 using Bacera.Gateway.Web.Middleware;
@@ -13,7 +13,7 @@ namespace Bacera.Gateway.Web.Areas.Agent.Controllers;
 [Produces("application/json")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/{agentUid:long}/[controller]")]
 [ServiceFilter(typeof(AgentAreaFilter))]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.IB)]
 public class AgentBaseController : BaseController
 {

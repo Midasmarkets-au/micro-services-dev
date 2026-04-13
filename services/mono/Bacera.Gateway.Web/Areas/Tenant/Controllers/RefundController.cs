@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.ViewModels.Tenant;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,7 +12,7 @@ using M = Refund;
 using MSG = ResultMessage.Refund;
 
 [Tags("Tenant/Refund")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class RefundController : TenantBaseController
 {
     private readonly AccountingService _accountingSvc;

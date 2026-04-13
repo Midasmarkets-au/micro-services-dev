@@ -2,6 +2,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use rsa::{
     RsaPrivateKey, RsaPublicKey,
     pkcs8::{DecodePrivateKey, EncodePrivateKey, LineEnding},
+    pkcs1::EncodeRsaPrivateKey,
     traits::PublicKeyParts,
     rand_core::OsRng,
 };
@@ -28,7 +29,27 @@ impl RsaKeyPair {
     pub fn load_or_generate(pem_content: Option<&str>, pem_path: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
         let private_key = if let Some(pem) = pem_content {
             info!("Loading RSA private key from JWT_SECRET env var");
-            RsaPrivateKey::from_pkcs8_pem(pem.trim())?
+            // Normalize: handle literal \n escape sequences, strip \r, then
+            // rebuild a canonical PEM with exactly 64-char lines so that
+            // from_pkcs8_pem succeeds regardless of how K8s injected the value.
+            let normalized = pem.replace("\\n", "\n").replace('\r', "");
+            let b64_raw: String = normalized
+                .lines()
+                .filter(|l| !l.trim().starts_with("-----") && !l.trim().is_empty())
+                .flat_map(|l| l.trim().chars())
+                .collect();
+            // Re-chunk into 64-char lines
+            let b64_chunked = b64_raw
+                .as_bytes()
+                .chunks(64)
+                .map(|c| std::str::from_utf8(c).unwrap())
+                .collect::<Vec<_>>()
+                .join("\n");
+            let canonical = format!(
+                "-----BEGIN PRIVATE KEY-----\n{}\n-----END PRIVATE KEY-----\n",
+                b64_chunked
+            );
+            RsaPrivateKey::from_pkcs8_pem(&canonical)?
         } else if let Some(path) = pem_path {
             if Path::new(path).exists() {
                 info!("Loading RSA private key from {}", path);
@@ -42,8 +63,10 @@ impl RsaKeyPair {
         };
 
         let public_key = RsaPublicKey::from(&private_key);
+        // jsonwebtoken::EncodingKey::from_rsa_der expects PKCS#1 DER (RSAPrivateKey),
+        // NOT PKCS#8 DER (PrivateKeyInfo). Use to_pkcs1_der() accordingly.
         let private_der = private_key
-            .to_pkcs8_der()?
+            .to_pkcs1_der()?
             .as_bytes()
             .to_vec();
         let public_der = {

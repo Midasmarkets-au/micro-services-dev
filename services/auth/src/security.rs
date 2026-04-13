@@ -1,6 +1,11 @@
 use deadpool_redis::{Pool, redis::AsyncCommands};
 use tracing::warn;
 
+/// MD5 hex digest — mirrors mono's `Utils.Md5Hash`.
+pub fn md5_hash(input: &str) -> String {
+    format!("{:x}", md5::compute(input.as_bytes()))
+}
+
 /// Redis-based login lockout mirroring mono's LoginSecurityService.
 ///
 /// Rules:

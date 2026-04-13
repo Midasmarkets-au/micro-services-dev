@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
@@ -28,7 +28,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Account")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/account")]
 public class AccountControllerV2(
     TenantDbContext tenantCtx,
@@ -94,7 +94,7 @@ public class AccountControllerV2(
     /// </summary>
     /// <returns></returns>
     [HttpPost("demo")]
-    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
+    [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.AllClient)]
     [ProducesResponseType(typeof(TradeDemoAccount.ClientResponseModel), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<TradeDemoAccount>> DemoAccountCreate([FromBody] TradeDemoAccount.CreateSpecV2 spec)

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -22,7 +22,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Wallet")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/wallet")]
 public class WalletControllerV2(

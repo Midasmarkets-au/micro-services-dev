@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
@@ -18,7 +18,7 @@ using MSG = Bacera.Gateway.ResultMessage.Transaction;
 namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 
 [Tags("Client/Transaction")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class TransactionController(
     IMediator mediator,

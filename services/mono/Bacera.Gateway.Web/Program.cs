@@ -37,12 +37,11 @@ builder.SetupAuthentication();
 builder.SetupIdentity();
 builder.SetupIdentityServer();
 // AddIdentity() overrides DefaultAuthenticateScheme/DefaultChallengeScheme to the Identity
-// cookie scheme. PostConfigure runs after all Configure calls so OpenIddict wins regardless
-// of registration order, ensuring API endpoints challenge with 401 not a cookie redirect.
+// cookie scheme. PostConfigure ensures JwtBearer wins so API endpoints return 401 not a redirect.
 builder.Services.PostConfigure<Microsoft.AspNetCore.Authentication.AuthenticationOptions>(options =>
 {
-    options.DefaultAuthenticateScheme = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme    = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme    = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
 });
 builder.Services.SetupDataProtection(builder.Configuration); // Add Data Protection with persistent key storage
 
@@ -221,6 +220,9 @@ app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Lead.TenantLeadGrpcService>()
 // No UseGrpcWeb: gRPC-Web is for browsers; tonic uses standard gRPC and is incompatible with gRPC-Web encoding.
 // AllowAnonymous: internal cluster call from scheduler, no JWT token.
 app.MapGrpcService<Bacera.Gateway.Web.Grpc.MonoCallbackGrpcService>().AllowAnonymous();
+
+// AuthService: called by the Rust auth service during login flow (2FA, login log, etc.)
+app.MapGrpcService<Bacera.Gateway.Web.HttpServices.Auth.AuthCallbackGrpcService>().AllowAnonymous();
 
 if (app.Environment.IsDevelopment())
     app.MapGrpcReflectionService();

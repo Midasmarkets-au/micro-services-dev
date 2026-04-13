@@ -130,6 +130,48 @@ pub struct WriteLoginLogResponse {
     #[prost(bool, tag = "1")]
     pub ok: bool,
 }
+/// ----------------------------------------------------------------------------
+///   IssueToken — mono 请求 auth 服务为指定用户签发 access token
+/// ----------------------------------------------------------------------------
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IssueTokenRequest {
+    #[prost(int64, tag = "1")]
+    pub user_id: i64,
+    #[prost(int64, tag = "2")]
+    pub tenant_id: i64,
+    #[prost(string, tag = "3")]
+    pub party_id_hashed: ::prost::alloc::string::String,
+    /// 0 表示非 god-mode
+    #[prost(int64, tag = "4")]
+    pub god_party_id: i64,
+    #[prost(string, tag = "5")]
+    pub display_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub email: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "7")]
+    pub roles: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(bool, tag = "8")]
+    pub two_factor_enabled: bool,
+    /// 原始 UA，auth 服务内部做 MD5
+    #[prost(string, tag = "9")]
+    pub user_agent: ::prost::alloc::string::String,
+    /// 0 表示无
+    #[prost(int64, tag = "10")]
+    pub sales_account: i64,
+    #[prost(int64, tag = "11")]
+    pub agent_account: i64,
+    #[prost(int64, tag = "12")]
+    pub rep_account: i64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IssueTokenResponse {
+    #[prost(string, tag = "1")]
+    pub access_token: ::prost::alloc::string::String,
+    #[prost(int64, tag = "2")]
+    pub expires_in: i64,
+}
 /// Generated client implementations.
 pub mod auth_validation_service_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -247,6 +289,32 @@ pub mod auth_validation_service_client {
                 .insert(
                     GrpcMethod::new("api.v1.AuthValidationService", "ValidateToken"),
                 );
+            self.inner.unary(req, path, codec).await
+        }
+        /// 为指定用户签发 access token（god-mode、邮件验证码登录等场景）
+        pub async fn issue_token(
+            &mut self,
+            request: impl tonic::IntoRequest<super::IssueTokenRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::IssueTokenResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.AuthValidationService/IssueToken",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("api.v1.AuthValidationService", "IssueToken"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -496,6 +564,14 @@ pub mod auth_validation_service_server {
             tonic::Response<super::ValidateTokenResponse>,
             tonic::Status,
         >;
+        /// 为指定用户签发 access token（god-mode、邮件验证码登录等场景）
+        async fn issue_token(
+            &self,
+            request: tonic::Request<super::IssueTokenRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::IssueTokenResponse>,
+            tonic::Status,
+        >;
     }
     /// ============================================================================
     ///  AuthValidationService — 由 auth service 实现，供 mono 调用验证 JWT
@@ -618,6 +694,53 @@ pub mod auth_validation_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = ValidateTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.AuthValidationService/IssueToken" => {
+                    #[allow(non_camel_case_types)]
+                    struct IssueTokenSvc<T: AuthValidationService>(pub Arc<T>);
+                    impl<
+                        T: AuthValidationService,
+                    > tonic::server::UnaryService<super::IssueTokenRequest>
+                    for IssueTokenSvc<T> {
+                        type Response = super::IssueTokenResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::IssueTokenRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthValidationService>::issue_token(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = IssueTokenSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

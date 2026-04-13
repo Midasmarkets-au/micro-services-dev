@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Web.EventHandlers;
@@ -14,7 +14,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Verification")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/verification")]
 public class VerificationControllerV2(
     TenantDbContext tenantDbContext,

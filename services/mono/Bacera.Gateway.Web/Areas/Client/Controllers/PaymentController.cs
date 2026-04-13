@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 //using MSG = ResultMessage.Payment;
 
 [Tags("Client/Payment")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class PaymentController(
     AccountingService accountingService,

@@ -1,7 +1,6 @@
 import { App } from "vue";
 import axios from "axios";
 import VueAxios from "vue-axios";
-import JwtService from "@/core/services/JwtService";
 import { AxiosResponse, AxiosRequestConfig } from "axios";
 
 /**
@@ -28,11 +27,9 @@ class ApiService {
 
   /**
    * @description set the default HTTP request headers
+   * Token is delivered via HttpOnly cookie — no Authorization header needed.
    */
   public static setHeader(): void {
-    ApiService.vueInstance.axios.defaults.headers.common[
-      "Authorization"
-    ] = `Bearer ${JwtService.getToken()}`;
     ApiService.vueInstance.axios.defaults.headers.common["Accept"] =
       "application/json";
   }

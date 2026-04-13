@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
@@ -15,7 +15,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Account Check")]
 [Area("Tenant")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/account-check")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class AccountCheckController(
     ITenantGetter tGetter,
     TenantDbContext tenantCtx,

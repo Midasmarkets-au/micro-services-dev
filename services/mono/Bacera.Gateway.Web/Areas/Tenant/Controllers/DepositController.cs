@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Acct;
@@ -19,7 +19,7 @@ using M = Deposit;
 using MSG = ResultMessage.Deposit;
 
 [Tags("Tenant/Deposit")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class DepositController(
     IMediator mediator,
     AccountingService accountingService,

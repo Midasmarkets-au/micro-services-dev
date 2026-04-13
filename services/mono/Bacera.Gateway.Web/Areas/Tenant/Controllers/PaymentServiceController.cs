@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Vendor;
@@ -24,7 +24,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Tags("Tenant/Payment Service")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/payment-service")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class PaymentServiceController(
     TenantDbContext tenantCtx,
     PaymentMethodService paymentMethodSvc,

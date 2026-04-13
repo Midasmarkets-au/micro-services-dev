@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Services.ChunkStorage;
 using Bacera.Gateway.Vendor.Magick;
 using Bacera.Gateway.Web.Controllers;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 [Tags("Client/Media")]
 [Area("Client")]
 [Route("api/" + VersionTypes.V2 + "/[Area]/media")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class MediumControllerV2(
     IStorageService storageService,
     IChunkStorageService chunkStorageSvc,

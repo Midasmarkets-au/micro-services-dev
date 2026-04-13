@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 using M = Topic;
 
 [Tags("Client/Topic")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TopicController : ClientBaseController
 {
     private readonly ITopicService _topicService;

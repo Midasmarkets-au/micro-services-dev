@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Acct;
@@ -16,7 +16,7 @@ using M = Transaction;
 using MSG = ResultMessage.Transaction;
 
 [Tags("Tenant/Transaction")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class TransactionController(
     AccountingService accountingService,
     TradingService tradingService,

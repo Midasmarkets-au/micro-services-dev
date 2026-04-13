@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Web.EventHandlers;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,7 +9,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Trade Account")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/trade-account")]
 public class TradeAccountControllerV2(TradingService tradingSvc): ClientBaseControllerV2

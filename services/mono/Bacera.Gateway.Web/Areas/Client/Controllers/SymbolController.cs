@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 
 [Tags("Client/Symbol")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class SymbolController(TenantDbContext dbContext) : ClientBaseController
 {

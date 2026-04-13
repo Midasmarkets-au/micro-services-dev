@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using HashidsNet;
@@ -11,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 
 [Tags("Tenant/Case")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class CaseController : TenantBaseController
 {
     private readonly TenantDbContext _ctx;

@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using M = Bacera.Gateway.ContactRequest;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Tags("Tenant/Contact")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 
 public class ContactController : TenantBaseController
 {

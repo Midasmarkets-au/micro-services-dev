@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +9,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 using M = Rebate;
 
 [Tags("Client/Rebate")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class RebateController(AccountingService accountingService, TenantDbContext tenantCtx)
     : ClientBaseController

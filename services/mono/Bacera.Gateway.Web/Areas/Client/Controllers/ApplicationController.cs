@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Interfaces;
 using Bacera.Gateway.Services;
@@ -17,7 +17,7 @@ using M = Application;
 using MSG = ResultMessage.Application;
 
 [Tags("Client/Application")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class ApplicationController(
     IMediator mediator,
     UserService userService,

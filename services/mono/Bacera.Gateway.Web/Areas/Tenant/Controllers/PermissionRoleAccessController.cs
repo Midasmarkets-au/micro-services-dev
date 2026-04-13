@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 /// </summary>
 [Tags("Tenant/Permission Role Access")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/permission-role-access")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = UserRoleTypesString.SuperAdmin)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.SuperAdmin)]
 public class PermissionRoleAccessController(AuthDbContext authDbContext) : TenantBaseController
 {
     /// <summary>

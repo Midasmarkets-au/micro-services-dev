@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +10,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Area("Tenant")]
 [Tags("Tenant/Rebate Schema Bundle")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/rebate-schema-bundle")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 public class RebateSchemaBundleController : TenantBaseController
 {
     private readonly TenantDbContext _tenantDbContext;

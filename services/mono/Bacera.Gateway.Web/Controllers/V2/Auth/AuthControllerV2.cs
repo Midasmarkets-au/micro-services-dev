@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,7 +30,7 @@ using PhoneNumbers;
 namespace Bacera.Gateway.Web.Controllers.V2.Auth;
 
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/" + VersionTypes.V2 + "/auth")]
 [Tags("Auth")]
 public partial class AuthControllerV2(
@@ -291,7 +291,9 @@ public partial class AuthControllerV2(
     public async Task<IActionResult> ExchangeGodModeKey([FromBody] ExchangeGodModeKeyRequest req)
     {
         var redisKey = $"godmode:key:{req.Key}";
+        logger.LogInformation("ExchangeGodModeKey: req.Key={Key}, redisKey={RedisKey}", req.Key, redisKey);
         var token = await myCache.GetStringAsync(redisKey);
+        logger.LogInformation("ExchangeGodModeKey: token found={Found}", !string.IsNullOrEmpty(token));
         if (string.IsNullOrEmpty(token))
             return BadRequest(Result.Error("Invalid or expired key"));
 

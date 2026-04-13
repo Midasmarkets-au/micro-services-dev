@@ -1,4 +1,4 @@
-using OpenIddict.Validation.AspNetCore;
+
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Utility;
 using Bacera.Gateway.Interfaces;
@@ -16,7 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
 [Area("Tenant")]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, Roles = UserRoleTypesString.SuperAdmin)]
+[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, Roles = UserRoleTypesString.SuperAdmin)]
 [Tags("Tenant/Super Admin")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/super-admin")]
 public class SuperAdminController(

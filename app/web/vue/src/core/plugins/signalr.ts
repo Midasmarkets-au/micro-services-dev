@@ -26,10 +26,8 @@ const createSignalR = (url: string): WSSignalR => ({
       console.log("ws disconnect");
     });
   },
-  setup(token: string | null | undefined) {
-    if (!token) {
-      return;
-    }
+  setup(_token: string | null | undefined) {
+    // Token is in HttpOnly cookie — withCredentials sends it automatically.
     this.connection = new HubConnectionBuilder()
       .withUrl(this.url, {
         withCredentials: true,
