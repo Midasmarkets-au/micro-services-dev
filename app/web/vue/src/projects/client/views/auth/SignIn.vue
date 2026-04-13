@@ -118,6 +118,7 @@
                   size="large"
                   tabindex="2"
                   type="text"
+                  autocomplete="one-time-code"
                 />
               </Field>
               <div class="fv-plugins-message-container">

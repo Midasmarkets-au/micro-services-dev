@@ -18,6 +18,7 @@ use auth::{
     password, redis_store, routes, security,
     state::AppState,
     token,
+    generated::http_routes::{CONNECT_TOKEN_PATH, GET_JWKS_PATH},
 };
 
 
@@ -455,8 +456,8 @@ async fn jwks(State(state): State<Arc<AppState>>) -> Json<Jwks> {
 
 fn http_app(state: Arc<AppState>) -> Router {
     Router::new()
-        .route("/connect/token", post(connect_token))
-        .route("/.well-known/jwks.json", get(jwks))
+        .route(CONNECT_TOKEN_PATH, post(connect_token))
+        .route(GET_JWKS_PATH, get(jwks))
         .merge(routes::auth::router())
         .merge(routes::password::router())
         .merge(routes::twofa::router())

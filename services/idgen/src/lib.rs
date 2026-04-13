@@ -22,18 +22,8 @@ pub mod service {
 
     use crate::api::v1::{
         GenerateIdRequest, GenerateIdResponse, CheckRequest, CheckResponse,
-        SayHelloRequest, SayHelloResponse, check_response::Status as HealthStatus,
+        check_response::Status as HealthStatus,
     };
-
-    /// 问候逻辑：根据 name 生成 message。
-    pub fn say_hello(req: SayHelloRequest) -> SayHelloResponse {
-        let message = if req.name.is_empty() {
-            "Hello14, World!".to_string()
-        } else {
-            format!("Hello13, {}!", req.name)
-        };
-        SayHelloResponse { message }
-    }
 
     /// 健康检查逻辑。
     pub fn check(_req: CheckRequest) -> CheckResponse {

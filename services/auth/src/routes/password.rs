@@ -1,40 +1,46 @@
 use std::sync::Arc;
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
-use serde::Deserialize;
 use serde_json::{Value, json};
-use uuid::Uuid;
 
-use crate::{db, extractors::AuthUser, password, redis_store, state::AppState};
+use crate::{
+    db, extractors::AuthUser, password, redis_store, state::AppState,
+    generated::{
+        http_v1::{
+            SendPasswordResetCodeRequest, SendPasswordResetCodeResponse,
+            ConfirmPasswordResetCodeRequest, ConfirmPasswordResetCodeResponse,
+            ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest,
+        },
+        http_routes::{
+            SEND_PASSWORD_RESET_CODE_PATH, CONFIRM_PASSWORD_RESET_CODE_PATH,
+            FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH, CHANGE_PASSWORD_PATH,
+        },
+    },
+};
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/v2/auth/password-reset/code", post(send_password_reset_code))
-        .route("/api/v2/auth/password-reset/code/confirm", post(confirm_password_reset_code))
-        .route("/api/v2/auth/password/forgot", post(forgot_password))
-        .route("/api/v2/auth/password/reset", post(reset_password))
-        .route("/api/v2/auth/password/change", post(change_password))
+        .route(SEND_PASSWORD_RESET_CODE_PATH, post(send_password_reset_code))
+        .route(CONFIRM_PASSWORD_RESET_CODE_PATH, post(confirm_password_reset_code))
+        .route(FORGOT_PASSWORD_PATH, post(forgot_password))
+        .route(RESET_PASSWORD_PATH, post(reset_password))
+        .route(CHANGE_PASSWORD_PATH, post(change_password))
 }
 
 // ─── POST /api/v2/auth/password-reset/code ────────────────────────────────
 
-#[derive(Deserialize)]
-struct SendResetCodeRequest {
-    email: String,
-}
-
 async fn send_password_reset_code(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<SendResetCodeRequest>,
-) -> Json<Value> {
+    Json(req): Json<SendPasswordResetCodeRequest>,
+) -> Json<SendPasswordResetCodeResponse> {
     let email = req.email.trim().to_lowercase();
 
     let users = match db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
-        Err(_) => return Json(json!({ "success": true })), // don't reveal errors
+        Err(_) => return Json(SendPasswordResetCodeResponse { success: true }), // don't reveal errors
     };
     if users.is_empty() {
-        return Json(json!({ "success": true })); // don't reveal user existence
+        return Json(SendPasswordResetCodeResponse { success: true }); // don't reveal user existence
     }
 
     let user = &users[0];
@@ -45,21 +51,14 @@ async fn send_password_reset_code(
         ).await;
     }
 
-    Json(json!({ "success": true }))
+    Json(SendPasswordResetCodeResponse { success: true })
 }
 
 // ─── POST /api/v2/auth/password-reset/code/confirm ────────────────────────
 
-#[derive(Deserialize)]
-struct ConfirmResetCodeRequest {
-    email: String,
-    code: String,
-    new_password: String,
-}
-
 async fn confirm_password_reset_code(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<ConfirmResetCodeRequest>,
+    Json(req): Json<ConfirmPasswordResetCodeRequest>,
 ) -> (StatusCode, Json<Value>) {
     let email = req.email.trim().to_lowercase();
 
@@ -91,16 +90,11 @@ async fn confirm_password_reset_code(
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "server_error" })));
     }
 
-    (StatusCode::OK, Json(json!({ "success": true })))
+    let resp = ConfirmPasswordResetCodeResponse { success: true };
+    (StatusCode::OK, Json(json!(resp)))
 }
 
 // ─── POST /api/v2/auth/password/forgot ────────────────────────────────────
-
-#[derive(Deserialize)]
-struct ForgotPasswordRequest {
-    email: String,
-    reset_url: String,
-}
 
 async fn forgot_password(
     State(state): State<Arc<AppState>>,
@@ -116,7 +110,7 @@ async fn forgot_password(
         return StatusCode::NO_CONTENT; // don't reveal user existence
     }
 
-    let reset_token = Uuid::new_v4().to_string();
+    let reset_token = uuid::Uuid::new_v4().to_string();
     if let Err(e) = redis_store::store_password_reset_token(&state.redis, &reset_token, &email).await {
         tracing::error!("store_password_reset_token failed: {}", e);
         return StatusCode::NO_CONTENT;
@@ -133,13 +127,6 @@ async fn forgot_password(
 }
 
 // ─── POST /api/v2/auth/password/reset ─────────────────────────────────────
-
-#[derive(Deserialize)]
-struct ResetPasswordRequest {
-    email: String,
-    code: String,
-    new_password: String,
-}
 
 async fn reset_password(
     State(state): State<Arc<AppState>>,
@@ -175,12 +162,6 @@ async fn reset_password(
 }
 
 // ─── POST /api/v2/auth/password/change ────────────────────────────────────
-
-#[derive(Deserialize)]
-struct ChangePasswordRequest {
-    current_password: String,
-    new_password: String,
-}
 
 async fn change_password(
     State(state): State<Arc<AppState>>,
