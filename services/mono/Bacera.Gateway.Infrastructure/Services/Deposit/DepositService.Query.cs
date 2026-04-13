@@ -23,6 +23,17 @@ namespace Bacera.Gateway.Services;
 
 public partial class DepositService
 {
-    public Task<List<Deposit.ClientPageModel>> QueryForClientAsync(Deposit.ClientCriteria criteria)
-        => tenantCtx.Deposits.PagedFilterBy(criteria).ToClientPageModel().ToListAsync();
+    public async Task<List<Deposit.ClientPageModel>> QueryForClientAsync(Deposit.ClientCriteria criteria)
+    {
+        var list = await tenantCtx.Deposits.PagedFilterBy(criteria).ToClientPageModel().ToListAsync();
+        foreach (var row in list)
+        {
+            row.Info = new Deposit.ClientDepositInfo
+            {
+                PayType = row.Platform == (int)PaymentPlatformTypes.QrCodeTunnel ? "qrcode" : ""
+            };
+        }
+
+        return list;
+    }
 }

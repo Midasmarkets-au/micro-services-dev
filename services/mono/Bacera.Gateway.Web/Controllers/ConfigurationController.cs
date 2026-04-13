@@ -1,5 +1,4 @@
-
-﻿using Bacera.Gateway.Services;
+using Bacera.Gateway.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,13 +8,14 @@ namespace Bacera.Gateway.Web.Controllers;
 
 [ApiController]
 [Route("/api/configuration")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.Guest + "," + UserRoleTypesString.ClientOrTenantAdmin)]
 [Tags("Public/Configuration")]
 public class ConfigurationController(
     // ConfigurationService configurationService,
     ConfigService cfgSvc,
     TenantDbContext tenantDbContext,
+    UserService userService,
     ILogger<ConfigurationController> logger)
     : BaseController
 {
@@ -28,9 +28,10 @@ public class ConfigurationController(
     // public async Task<IActionResult> Public([FromQuery] int site = 0)
     public async Task<IActionResult> Public()
     {
+        var partyId = GetPartyId();
+
         if (User.Identity is { IsAuthenticated: true })
         {
-            var partyId = GetPartyId();
             var party = await tenantDbContext.Parties.SingleOrDefaultAsync(x => x.Id == partyId);
             if (party == null)
             {
@@ -40,7 +41,9 @@ public class ConfigurationController(
         }
 
         // var data = await configurationService.GetPublicConfigurationBySiteAsync(site);
-        var data = await cfgSvc.GetPartyConfigurationBySiteAsync(GetPartyId());
+        var data = await cfgSvc.GetPartyConfigurationBySiteAsync(partyId);
+        data.PasswordChangedWithinLast24h = await userService.CheckRecentPasswordChangeAsync(partyId);
+        data.EmailOrPhoneChangedWithinLast24h = await userService.CheckRecentEmailOrPhoneChangeAsync(partyId);
         return Ok(data);
     }
 }

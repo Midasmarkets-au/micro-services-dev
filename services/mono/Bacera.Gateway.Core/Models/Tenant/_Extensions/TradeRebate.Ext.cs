@@ -1,8 +1,18 @@
-﻿namespace Bacera.Gateway;
+namespace Bacera.Gateway;
 
 partial class TradeRebate
 {
     public bool ClosedLessThanOneMinute() => ClosedOn - OpenedOn <= TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Opened on Wednesday and closed on the immediately following Thursday after 00:05 (MT5 server time).
+    /// Used for Event Shop double points promotion.
+    /// </summary>
+    public bool IsWednesdayOpenThursdayClose() =>
+        OpenedOn.DayOfWeek == DayOfWeek.Wednesday &&
+        ClosedOn.DayOfWeek == DayOfWeek.Thursday &&
+        ClosedOn.Date == OpenedOn.Date.AddDays(1) &&
+        ClosedOn.TimeOfDay >= TimeSpan.FromMinutes(5);
 
     public class SummaryResponseModel
     {

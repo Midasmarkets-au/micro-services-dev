@@ -182,17 +182,17 @@ public class ReportJob(
 
                 var requests = new List<ReportRequest>
                 {
-                // WalletDailySnapshot Version 1: Snapshot Table (22:00 GMT+2) - Original
-                ReportRequest.Build(validPartyId
-                    , ReportRequestTypes.WalletDailySnapshot
-                    , $"Wallet Daily Snapshot (UTC Time Based) {date:yyyy-MM-dd}"
-                    , JsonConvert.SerializeObject(new { snapshotDate = date, useMT5Time = false })),
+                    // WalletDailySnapshot Version 1: Snapshot Table (22:00 GMT+2) - Original
+                    ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.WalletDailySnapshot
+                        , $"Wallet Daily Snapshot (UTC Time Based) {date:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { snapshotDate = date, useMT5Time = false })),
 
-                // WalletDailySnapshot Version 2: Real-Time Balance (23:59:59 GMT+2) - New
-                ReportRequest.Build(validPartyId
-                    , ReportRequestTypes.WalletDailySnapshot
-                    , $"Wallet Daily Snapshot (MT5 Time Based) {date:yyyy-MM-dd}"
-                    , JsonConvert.SerializeObject(new { snapshotDate = date, useMT5Time = true })),
+                    // WalletDailySnapshot Version 2: Real-Time Balance (23:59:59 GMT+2) - New
+                    ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.WalletDailySnapshot
+                        , $"Wallet Daily Snapshot (MT5 Time Based) {date:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { snapshotDate = date, useMT5Time = true })),
 
                     // WalletTransactionForTenant 版本1：基于 MT5 ClosingTime（关仓时间）- Job入口，IsFromApi=0（默认）
                     new ReportRequest
@@ -238,7 +238,20 @@ public class ReportJob(
                         , ReportRequestTypes.DailyEquity
                         , $"Daily Equity Report (ReleasedTime Based) {date:yyyy-MM-dd}"
                         , JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc }, Utils.AppJsonSerializerSettings)
-                        , 1) // 标记为API入口，基于StatedOn分发时间
+                        , 1), // 标记为API入口，基于StatedOn分发时间
+
+                    // Daily Equity Per Office 版本1：基于 ClosedTime
+                    ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Office (MT5 ClosingTime Based) {date:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)),
+
+                    // Daily Equity Per Office 版本2：基于发放时间（ReleasedTime）
+                    ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Office (ReleasedTime Based) {date:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                        , 1)
                 };
 
                 // check if it is Tuesday
@@ -248,18 +261,33 @@ public class ReportJob(
                     var fromDate3Day = DateTime.SpecifyKind(date.AddDays(-4), DateTimeKind.Utc); // Friday 22:00 GMT+0
                     var toDate3Day = DateTime.SpecifyKind(date.AddDays(-1), DateTimeKind.Utc);   // Monday 22:00 GMT+0
                     
+                    var mondayDate = toDate3Day; // Monday — the last business day covered
+
                     // Daily Equity 版本1：基于 ClosedTime（关仓时间）- Job入口，IsFromApi=0（默认）
                     requests.Add(ReportRequest.Build(validPartyId
                         , ReportRequestTypes.DailyEquity
-                        , $"Daily Equity Report (Sat-Mon) (MT5 ClosingTime Based) {date:yyyy-MM-dd}"
+                        , $"Daily Equity Report (Sat-Mon) (MT5 ClosingTime Based) {mondayDate:yyyy-MM-dd}"
                         , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day }, Utils.AppJsonSerializerSettings)));
 
                     // Daily Equity 版本2：基于发放时间（ReleasedTime）- 设置为API入口，IsFromApi=1
                     requests.Add(ReportRequest.Build(validPartyId
                         , ReportRequestTypes.DailyEquity
-                        , $"Daily Equity Report (Sat-Mon) (ReleasedTime Based) {date:yyyy-MM-dd}"
+                        , $"Daily Equity Report (Sat-Mon) (ReleasedTime Based) {mondayDate:yyyy-MM-dd}"
                         , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day }, Utils.AppJsonSerializerSettings)
                         , 1)); // 标记为API入口，基于StatedOn分发时间
+
+                    // Daily Equity Per Office (Sat-Mon) 版本1：基于 ClosedTime
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Office (Sat-Mon) (MT5 ClosingTime Based) {mondayDate:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)));
+
+                    // Daily Equity Per Office (Sat-Mon) 版本2：基于发放时间（ReleasedTime）
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Office (Sat-Mon) (ReleasedTime Based) {mondayDate:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                        , 1));
                 }
 
                 // check if it is Friday
@@ -290,6 +318,32 @@ public class ReportJob(
                         , ReportRequestTypes.Rebate
                         , $"Rebate Monthly Record {date:yyyy-MM}"
                         , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date })));
+
+                    // Daily Equity Monthly Report 版本1：基于 ClosedTime（per sales）
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquityMonthly
+                        , $"Daily Equity Monthly Report (MT5 ClosingTime Based) {date:yyyy-MM}"
+                        , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date }, Utils.AppJsonSerializerSettings)));
+
+                    // Daily Equity Monthly Report 版本2：基于发放时间（ReleasedTime）（per sales）
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquityMonthly
+                        , $"Daily Equity Monthly Report (ReleasedTime Based) {date:yyyy-MM}"
+                        , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date }, Utils.AppJsonSerializerSettings)
+                        , 1));
+
+                    // Daily Equity Per Office Monthly 版本1：基于 ClosedTime
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquityMonthly
+                        , $"Daily Equity Per Office Monthly (MT5 ClosingTime Based) {date:yyyy-MM}"
+                        , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)));
+
+                    // Daily Equity Per Office Monthly 版本2：基于发放时间（ReleasedTime）
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquityMonthly
+                        , $"Daily Equity Per Office Monthly (ReleasedTime Based) {date:yyyy-MM}"
+                        , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                        , 1));
                 }
 
                 tenantCtx.ReportRequests.AddRange(requests);

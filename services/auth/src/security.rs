@@ -50,3 +50,18 @@ pub async fn clear_failures(pool: &Pool, email: &str) {
     let key = format!("auth:login_attempts:{}", email);
     let _: Result<(), _> = conn.del(&key).await;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_md5_hash_known_value() {
+        assert_eq!(md5_hash("hello"), "5d41402abc4b2a76b9719d911017c592");
+    }
+
+    #[test]
+    fn test_md5_hash_empty() {
+        assert_eq!(md5_hash(""), "d41d8cd98f00b204e9800998ecf8427e");
+    }
+}

@@ -1,4 +1,3 @@
-
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
@@ -15,7 +14,7 @@ namespace Bacera.Gateway.Web.Areas.Client.Controllers.V2;
 
 [Tags("Client/Payment Method")]
 [Area("Client")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [Route("api/" + VersionTypes.V2 + "/[Area]/payment-method")]
 public class PaymentMethodController(
     PaymentMethodService paymentMethodSvc,
@@ -86,22 +85,29 @@ public class PaymentMethodController(
         [FromQuery] CurrencyTypes? currencyId = null)
     {
         var accountId = await accManageSvc.GetAccountIdByUidAsync(accountUid);
-        var paymentMethodIds = await paymentMethodSvc.GetAccountAccessIdsAsync(accountId
+        var activeMethodIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(accountId
             , PaymentMethodTypes.Deposit
             , PaymentMethodStatusTypes.Active
-            , PaymentMethodAccessStatusTypes.Active);
+            , PaymentMethodAccessStatusTypes.Active))
+            .ToHashSet();
+
+        var allMethods = await paymentMethodSvc.GetMethodsAsync();
+        var depositMethods = allMethods
+            .Where(x => x.MethodType == PaymentMethodTypes.Deposit && x.Status == (int)PaymentMethodStatusTypes.Active)
+            .ToList();
 
         var dict = new Dictionary<string, PaymentMethod.ClientGroupModel>();
-        foreach (var methodId in paymentMethodIds)
+        foreach (var method in depositMethods)
         {
-            var method = await paymentMethodSvc.GetMethodByIdAsync(methodId);
-            if (method == null) continue;
             var currencies = method.GetAvailableCurrencies();
             if (currencyId != null && !currencies.Contains(currencyId.Value)) continue;
+            var isActive = activeMethodIds.Contains(method.Id);
 
             if (!dict.TryGetValue(method.Group, out var value))
             {
-                dict[method.Group] = method.ToClientGroupModel();
+                var model = method.ToClientGroupModel();
+                model.IsActive = isActive;
+                dict[method.Group] = model;
             }
             else
             {
@@ -110,13 +116,17 @@ public class PaymentMethodController(
                 value.InitialValue = method.InitialValue;
                 if (!string.IsNullOrEmpty(method.Logo))
                     value.Logo = method.Logo;
+                if (isActive)
+                    value.IsActive = true;
 
                 foreach (var currency in currencies)
                     value.AvailableCurrencies.Add(currency);
             }
         }
 
-        var result = dict.Values.ToList();
+        var result = dict.Values
+            .OrderByDescending(x => x.IsActive)
+            .ToList();
         foreach (var item in result)
         {
             if (string.IsNullOrEmpty(item.Logo)) item.Logo = $"/images/wallet/{item.Group}.png";
@@ -185,7 +195,7 @@ public class PaymentMethodController(
 
         var id = PaymentMethod.HashDecode(hashId);
         if (!await paymentMethodSvc.IsAccountAccessEnabledAsync(accountId, id))
-            return NotFound();
+            return BadRequest(Result.Error("Payment_method_not_enabled"));
 
         var method = await paymentMethodSvc.GetMethodByIdAsync(id);
         if (method == null) return NotFound();
@@ -212,31 +222,25 @@ public class PaymentMethodController(
     [HttpGet("account/{accountUid:long}/withdrawal")]
     public async Task<IActionResult> GetActiveAccountWithdrawAccessGrouped(long accountUid)
     {
-        // Check if email or phone was changed within last 24 hours
-        var partyId = GetPartyId();
-        var hasRecentEmailOrPhoneChange = await userService.CheckRecentEmailOrPhoneChangeAsync(partyId);
-        if (hasRecentEmailOrPhoneChange)
-        {
-            logger.LogWarning("Withdrawal blocked due to recent email/phone change, PartyId: {PartyId}", partyId);
-            return BadRequest(Result.Error(MSG.WithdrawalBlockedAfterEmailPhoneChange));
-        }
-
         var accountId = await accManageSvc.GetAccountIdByUidAsync(accountUid);
-        var paymentMethodIds = await paymentMethodSvc.GetAccountAccessIdsAsync(accountId, PaymentMethodTypes.Withdrawal,
-            PaymentMethodStatusTypes.Active, PaymentMethodAccessStatusTypes.Active);
+        var activeMethodIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(accountId, PaymentMethodTypes.Withdrawal,
+            PaymentMethodStatusTypes.Active, PaymentMethodAccessStatusTypes.Active))
+            .ToHashSet();
 
         var paymentMethods = await paymentMethodSvc.GetMethodsAsync();
         var result = paymentMethods
             .Where(x => x is { MethodType: PaymentMethodTypes.Withdrawal, Status: (int)PaymentMethodStatusTypes.Active })
-            .Where(x => paymentMethodIds.Contains(x.Id))
             .Select(x => new PaymentMethod.ClientNameModel
             {
                 Id = x.Id,
                 Name = x.Name,
                 Logo = x.Logo,
                 Range = new[] { x.MinValue, x.MaxValue },
-                InitialValue = x.InitialValue
-            }).ToList();
+                InitialValue = x.InitialValue,
+                IsActive = activeMethodIds.Contains(x.Id)
+            })
+            .OrderByDescending(x => x.IsActive)
+            .ToList();
 
         foreach (var item in result.Where(x => string.IsNullOrEmpty(x.Logo)))
         {
@@ -256,24 +260,43 @@ public class PaymentMethodController(
     public async Task<IActionResult> GetActiveWalletDepositAccessGrouped(string walletHashId)
     {
         var walletId = Wallet.HashDecode(walletHashId);
-        var paymentMethodIds = await paymentMethodSvc.GetWalletAccessIdsAsync(walletId, PaymentMethodTypes.Deposit, PaymentMethodStatusTypes.Active,
-            PaymentMethodAccessStatusTypes.Active);
+        var activeMethodIds = (await paymentMethodSvc.GetWalletAccessIdsAsync(walletId, PaymentMethodTypes.Deposit,
+            PaymentMethodStatusTypes.Active, PaymentMethodAccessStatusTypes.Active))
+            .ToHashSet();
+
         var paymentMethods = await paymentMethodSvc.GetMethodsAsync();
-        var result = paymentMethods
+        var depositMethods = paymentMethods
             .Where(x => x is { MethodType: PaymentMethodTypes.Deposit, Status: (int)PaymentMethodStatusTypes.Active })
-            .Where(x => paymentMethodIds.Contains(x.Id))
-            .GroupBy(x => x.Group)
-            .Select(x => new PaymentMethod.ClientGroupModel
-            {
-                Group = x.Key,
-                // Logo = x.First().Logo,
-                Logo = "/images/wallet/" + x.Key + ".png",
-                Range = [x.Min(y => y.MinValue), x.Max(y => y.MaxValue)],
-                AvailableCurrencies = x.SelectMany(y => y.GetAvailableCurrencies()).Distinct().ToHashSet()
-            })
             .ToList();
-        
-        return Ok(result);
+
+        var dict = new Dictionary<string, PaymentMethod.ClientGroupModel>();
+        foreach (var method in depositMethods)
+        {
+            var isActive = activeMethodIds.Contains(method.Id);
+            if (!dict.TryGetValue(method.Group, out var value))
+            {
+                dict[method.Group] = new PaymentMethod.ClientGroupModel
+                {
+                    Group = method.Group,
+                    Logo = "/images/wallet/" + method.Group + ".png",
+                    Range = [method.MinValue, method.MaxValue],
+                    AvailableCurrencies = method.GetAvailableCurrencies(),
+                    IsActive = isActive
+                };
+            }
+            else
+            {
+                value.Range[0] = Math.Min(value.Range[0], method.MinValue);
+                value.Range[1] = Math.Max(value.Range[1], method.MaxValue);
+                if (isActive)
+                    value.IsActive = true;
+
+                foreach (var currency in method.GetAvailableCurrencies())
+                    value.AvailableCurrencies.Add(currency);
+            }
+        }
+
+        return Ok(dict.Values.ToList());
     }
 
     /// <summary>
@@ -285,28 +308,24 @@ public class PaymentMethodController(
     [HttpGet("wallet/{walletHashId}/withdrawal")]
     public async Task<IActionResult> GetActiveWalletWithdrawAccessGrouped(string walletHashId)
     {
-        // Check if email or phone was changed within last 24 hours
-        var partyId = GetPartyId();
-        var hasRecentEmailOrPhoneChange = await userService.CheckRecentEmailOrPhoneChangeAsync(partyId);
-        if (hasRecentEmailOrPhoneChange)
-        {
-            logger.LogWarning("Withdrawal blocked due to recent email/phone change, PartyId: {PartyId}", partyId);
-            return BadRequest(Result.Error(MSG.WithdrawalBlockedAfterEmailPhoneChange));
-        }
-
         var walletId = Wallet.HashDecode(walletHashId);
-        var paymentMethodIds = await paymentMethodSvc.GetWalletAccessIdsAsync(walletId, PaymentMethodTypes.Withdrawal,
-            PaymentMethodStatusTypes.Active, PaymentMethodAccessStatusTypes.Active);
+        var activeMethodIds = (await paymentMethodSvc.GetWalletAccessIdsAsync(walletId, PaymentMethodTypes.Withdrawal,
+            PaymentMethodStatusTypes.Active, PaymentMethodAccessStatusTypes.Active))
+            .ToHashSet();
+
         var paymentMethods = await paymentMethodSvc.GetMethodsAsync();
         var result = paymentMethods
             .Where(x => x is { MethodType: PaymentMethodTypes.Withdrawal, Status: (int)PaymentMethodStatusTypes.Active })
-            .Where(x => paymentMethodIds.Contains(x.Id))
             .Select(x => new PaymentMethod.ClientNameModel
             {
                 Id = x.Id,
                 Name = x.Name,
-                Logo = x.Logo
-            }).ToList();
+                Logo = x.Logo,
+                IsActive = activeMethodIds.Contains(x.Id),
+                Range = new[] { x.MinValue, x.MaxValue }
+            })
+            .OrderByDescending(x => x.IsActive)
+            .ToList();
         
         foreach (var item in result)
         {

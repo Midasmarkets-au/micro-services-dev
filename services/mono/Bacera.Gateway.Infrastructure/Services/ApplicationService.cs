@@ -24,25 +24,23 @@ public class ApplicationService(
     public async Task<M> CreateApplication(long partyId, ApplicationTypes type, IApplicationSupplement supplement, long referenceId = 0,
         ApplicationStatusTypes status = ApplicationStatusTypes.AwaitingApproval)
     {
-        var currencyId = (supplement as Bacera.Gateway.ApplicationSupplement)?.CurrencyId;
-        // Validate USC Account: Only one USC account per user email
-        if (currencyId == (int)CurrencyTypes.USC)
+        // Skip one USC Account per user account validation for non-Account application types like ChangeLeverageDTO
+        if (supplement is ApplicationSupplement appSupplement)
         {
-            var party = await userSvc.GetPartyAsync(partyId);
-            if (string.IsNullOrWhiteSpace(party.Email))
+            var currencyId = appSupplement.CurrencyId;
+            if (currencyId == (int)CurrencyTypes.USC)
             {
-                // Return empty Application with error message in RejectedReason
-                var errorModel = new M { Id = 0, RejectedReason = "User email is required for USC account creation" };
-                return errorModel;
-            }
+                var party = await userSvc.GetPartyAsync(partyId);
+                if (string.IsNullOrWhiteSpace(party.Email))
+                {
+                    return new M { Id = 0, RejectedReason = "User email is required for USC account creation" };
+                }
 
-            // Check if user already has a USC account (by email), one user can only have one USC account
-            var hasUscAccount = await accountManageService.HasUscAccountByEmailAsync(party.Email);
-            if (hasUscAccount)
-            {
-                // Return empty Application with error message in RejectedReason
-                var errorModel = new M { Id = 0, RejectedReason = $"You already have a USC account. Only one USC account per user is allowed." };
-                return errorModel;
+                var hasUscAccount = await accountManageService.HasUscAccountByEmailAsync(party.Email);
+                if (hasUscAccount)
+                {
+                    return new M { Id = 0, RejectedReason = "You already have a USC account. Only one USC account per user is allowed." };
+                }
             }
         }
 

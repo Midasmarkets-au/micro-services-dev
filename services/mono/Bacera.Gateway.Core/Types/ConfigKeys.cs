@@ -64,6 +64,7 @@ public static class ConfigKeys
     public static string HoursGapForMT5 => "HoursGapForMT5";
     public static string PaymentCallbackToken => "PaymentCallbackToken";
     public static string EnforcePaymentCallbackToken => "EnforcePaymentCallbackToken";
+    public static string DailyEquityOfficeMergeMapping => "DailyEquityOfficeMergeMapping";
 
     public static List<string> PublicKeys =>
     [

@@ -720,7 +720,25 @@ public class RebateService(
         if (price.Bid != 0) return price.Bid;
 
         price = await GetMtPrice(serviceId, toCurrency + fromCurrency);
-        return price.Bid == 0 ? 1 : 1 / price.Bid;
+        if (price.Bid != 0) return 1 / price.Bid;
+
+        // Fallback: tenant ExchangeRate table when MT prices are unavailable
+        var rate = await ctx.ExchangeRates
+            .AsNoTracking()
+            .Where(x => x.FromCurrencyId == (int)from && x.ToCurrencyId == (int)to)
+            .Select(x => x.BuyingRate)
+            .FirstOrDefaultAsync();
+        if (rate > 0) return (double)rate;
+
+        var reverseRate = await ctx.ExchangeRates
+            .AsNoTracking()
+            .Where(x => x.FromCurrencyId == (int)to && x.ToCurrencyId == (int)from)
+            .Select(x => x.SellingRate)
+            .FirstOrDefaultAsync();
+        if (reverseRate > 0) return 1.0 / (double)reverseRate;
+
+        logger.LogWarning("No exchange rate found for {From} -> {To}, defaulting to 1", from, to);
+        return 1;
     }
 
     public async Task<bool> EnableReleaseRebateAsync(long timeInMinutes = 60)

@@ -1,5 +1,5 @@
-
 using System.Security.Claims;
+using Bacera.Gateway;
 using Bacera.Gateway.Web.WebSocket;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,7 @@ namespace Bacera.Gateway.Web.Controllers;
 [ApiController]
 [Route("/api/status")]
 [Tags("Public/Status")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class StatusController : Controller
 {
     private readonly ITenantGetter _tenantGetter;
@@ -85,6 +85,27 @@ public class StatusController : Controller
     [AllowAnonymous]
     [HttpGet("datetime")]
     public IActionResult Datetime() => Ok(new { Datetime = DateTime.UtcNow });
+
+    /// <summary>
+    /// Whether America/Los_Angeles is in daylight saving time at the given instant (defaults to server UTC now).
+    /// Matches server logic used for market-close windows (<see cref="Utils.IsCurrentDSTLosAngeles"/>).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("datetime/los-angeles-dst")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult LosAngelesDst([FromQuery] DateTime? utc = null)
+    {
+        var input = utc ?? DateTime.UtcNow;
+        var utcInstant = input.Kind switch
+        {
+            DateTimeKind.Utc => input,
+            DateTimeKind.Local => input.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(input, DateTimeKind.Utc)
+        };
+
+        var isDst = Utils.IsCurrentDSTLosAngeles(utcInstant);
+        return Ok(new { Utc = utcInstant, IsLosAngelesDst = isDst });
+    }
 
     /// <summary>
     /// Get Tenant scope for testing

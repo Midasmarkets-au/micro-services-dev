@@ -29,9 +29,16 @@ public class RebateRecord : ICanExportToCsv
     public DateTime CreatedOn { get; set; } // (CreatedOn is the time when the rebate is deposited into wallet)
     public string Information { get; init; } = string.Empty;
 
-    public static string Header() =>
-        "Ticket,Symbol,AccountNumber,AccountUid,ClientName,ClientCode,Currency,SourceCurrency,Volume,Amount,RateValue,PipsValue,CommissionValue,Rate,Pips,Commission,ClosedOn,CreatedOn,ReleasedOn";
+    /// <summary>
+    /// MT5 server offset east of UTC (e.g. 3 for GMT+3). <see cref="ToCsv"/> writes GMT+0 first as wall time minus this value; following columns stay MT5 wall time.
+    /// </summary>
+    public int MtGmtOffsetHoursForCsv { get; set; } = 2;
 
+    public static string Header() => Header(2);
+
+    public static string Header(int mtGmtOffsetHours) =>
+        "Ticket,Symbol,AccountNumber,AccountUid,ClientName,ClientCode,Currency,SourceCurrency,Volume,Amount,RateValue,PipsValue,CommissionValue,Rate,Pips,Commission," +
+        $"ClosedOn GMT+0,ClosedOn GMT+{mtGmtOffsetHours},CreatedOn GMT+0,CreatedOn GMT+{mtGmtOffsetHours},ReleasedOn GMT+0,ReleasedOn GMT+{mtGmtOffsetHours}";
 
     public string ToCsv()
     {
@@ -47,10 +54,18 @@ public class RebateRecord : ICanExportToCsv
         var currencyName = Enum.GetName(typeof(CurrencyTypes), CurrencyId) ?? string.Empty;
         var sourceCurrencyName = Enum.GetName(typeof(CurrencyTypes), SourceCurrencyId) ?? string.Empty;
 
+        var off = MtGmtOffsetHoursForCsv;
+        var co0 = $"{ClosedOn.AddHours(-off):yyyy-MM-dd HH:mm:ss}";
+        var co = $"{ClosedOn:yyyy-MM-dd HH:mm:ss}";
+        var cr0 = $"{CreatedOn.AddHours(-off):yyyy-MM-dd HH:mm:ss}";
+        var cr = $"{CreatedOn:yyyy-MM-dd HH:mm:ss}";
+        var rel0 = $"{ReleasedOn.AddHours(-off):yyyy-MM-dd HH:mm:ss}";
+        var rel = $"{ReleasedOn:yyyy-MM-dd HH:mm:ss}";
         return
             $"{Ticket},{Symbol},{AccountNumber},{AccountUid},\"{ClientName}\",{ClientCode}," +
             $"{currencyName},{sourceCurrencyName},{Volume / 100m},{(RebateValue / 100m).ToCentsFromScaled()},{RateValue / 100m},{PipsValue / 100m}," +
-            $"{CommissionValue / 100m},{Rate / 100m},{Pips / 100m},{Commission / 100m},{ClosedOn:yyyy-MM-dd HH:mm:ss},{CreatedOn:yyyy-MM-dd HH:mm:ss},{ReleasedOn:yyyy-MM-dd HH:mm:ss}";
+            $"{CommissionValue / 100m},{Rate / 100m},{Pips / 100m},{Commission / 100m}," +
+            $"{co0},{co},{cr0},{cr},{rel0},{rel}";
     }
 }
 

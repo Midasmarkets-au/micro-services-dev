@@ -1,7 +1,8 @@
-﻿using Bacera.Gateway.Core.Types;
+using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Interfaces;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Acct;
+using Bacera.Gateway.Services.Common;
 using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Hangfire;
@@ -35,11 +36,22 @@ public class TransferCreatedEventHandler(
         using var scope = serviceProvider.CreateTenantScope(_tenantId);
         var acctService = scope.ServiceProvider.GetRequiredService<AcctService>();
         
+        // Convert transaction amount to USD for comparison with setting threshold (which is in USD)
+        var comparableAmount = transaction.Amount;
+        if (transaction.CurrencyId != (int)CurrencyTypes.USD)
+        {
+            var exchangeRate = await acctService.GetExchangeRateAsync((CurrencyTypes)transaction.CurrencyId, CurrencyTypes.USD);
+            if (exchangeRate > 0)
+            {
+                comparableAmount = (long)(comparableAmount * exchangeRate);
+            }
+        }
+        
         if (transaction.IsBetweenTradeAccounts())
         {
             backgroundJobClient.Enqueue<IGeneralJob>(x => x.TransactionBetweenTradeAccountCreatedAsync(_tenantId, transaction.Id));
 
-            if (setting.Enabled && transaction.Amount <= setting.Amount)
+            if (setting.Enabled && comparableAmount <= setting.Amount)
             {
                 await acctService.CompleteTransactionAsync(transaction.Id);
             }
@@ -62,7 +74,7 @@ public class TransferCreatedEventHandler(
             }
 
             // Transaction is in TransferAwaitingApproval state
-            if (setting.Enabled && transaction.Amount <= setting.Amount)
+            if (setting.Enabled && comparableAmount <= setting.Amount)
             {
                 // Amount is within auto-approval threshold, complete it now
                 await acctService.CompleteTransactionAsync(transaction.Id);
@@ -70,6 +82,26 @@ public class TransferCreatedEventHandler(
             else
             {
                 // Amount exceeds threshold or auto-complete is disabled, requires manager approval
+                await sendMessageService.SendEventToManagerAsync(_tenantId, EventNotice.Build("__TRANSFER_CREATED__", transaction.Id));
+            }
+        }
+        else if (transaction.SourceAccountType == (short)TransactionAccountTypes.Wallet &&
+                 transaction.TargetAccountType == (short)TransactionAccountTypes.Account)
+        {
+            // Wallet → Trade Account transfer
+            // Check if transaction is already completed (auto-completed in CreateTransactionFromWalletToTradeAccountAsync)
+            if (transaction.IdNavigation.StateId == (int)StateTypes.TransferCompleted)
+            {
+                // Already completed, no action needed
+                return;
+            }
+
+            if (setting.Enabled && comparableAmount <= setting.Amount)
+            {
+                await acctService.CompleteTransactionAsync(transaction.Id);
+            }
+            else
+            {
                 await sendMessageService.SendEventToManagerAsync(_tenantId, EventNotice.Build("__TRANSFER_CREATED__", transaction.Id));
             }
         }

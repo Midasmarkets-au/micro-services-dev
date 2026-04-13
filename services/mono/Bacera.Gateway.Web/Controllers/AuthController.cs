@@ -1,4 +1,3 @@
-
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Web.EventHandlers;
 using Bacera.Gateway.Web.Request;
@@ -31,7 +30,7 @@ using PhoneNumbers;
 namespace Bacera.Gateway.Web.Controllers;
 
 [ApiController]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 [Tags("Auth")]
 public partial class AuthController(
     ILogger<AuthController> logger,
@@ -40,7 +39,8 @@ public partial class AuthController(
     CentralDbContext centralCtx,
     IServiceProvider serviceProvider,
     IHttpClientFactory httpClientFactory,
-    IOptions<IPInfoOptions> ipInfoOptions)
+    IOptions<IPInfoOptions> ipInfoOptions,
+    UserService userService)
     : BaseController
 {
     private const int Timeout = 10;
@@ -316,6 +316,8 @@ public partial class AuthController(
             }
         }
 
+        await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
+
         return NoContent();
     }
 
@@ -396,6 +398,7 @@ public partial class AuthController(
         {
             var token = await userMgr.GeneratePasswordResetTokenAsync(user);
             await userMgr.ResetPasswordAsync(user, token, data.Password);
+            await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
         }
 
         return NoContent();

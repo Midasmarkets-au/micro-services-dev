@@ -1,4 +1,5 @@
 using Bacera.Gateway.Core.Types;
+using Bacera.Gateway.Services.Report.Models;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
@@ -18,10 +19,20 @@ public class ConfigService(TenantDbContext tenantCtx, ITenantGetter getter, IMyC
         return defaultVal?.Value ?? 0;
     }
 
-    public async Task<int> GetHoursGapForMT5Async()
+    /// <summary>
+    /// According to LA DST, arrange the gap hours, if true use 3, otherwise use 2.
+    /// Uses <paramref name="referenceDate"/> to determine DST; falls back to <see cref="DateTime.UtcNow"/> when null.
+    /// </summary>
+    /// <returns>2 or 3</returns>
+    public Task<int> GetHoursGapForMT5Async(DateTime? referenceDate = null)
     {
-        var item = await GetAsync<ApplicationConfigure.IntValue>(nameof(Public), 0, ConfigKeys.HoursGapForMT5);
-        return item?.Value ?? 2; // Default to 2 hours if not configured
+        var hoursGap = Utils.IsCurrentDSTLosAngeles(referenceDate ?? DateTime.UtcNow) ? 3 : 2;
+        return Task.FromResult(hoursGap);
+    }
+
+    public async Task<OfficeMergeMapping?> GetDailyEquityOfficeMergeMappingAsync()
+    {
+        return await GetAsync<OfficeMergeMapping>("Public", 0, ConfigKeys.DailyEquityOfficeMergeMapping);
     }
 
     public async Task<string?> GetRawValueAsync(string category, long rowId, string key)

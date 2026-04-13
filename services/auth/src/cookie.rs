@@ -37,3 +37,37 @@ pub fn set_token_cookie(headers: &mut HeaderMap, token: &str, expires_in_secs: i
 pub fn clear_token_cookie(headers: &mut HeaderMap) {
     headers.insert(header::SET_COOKIE, build_clear_cookie());
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_cookie_secure() {
+        let val = build_set_cookie("tok123", 3600, true);
+        let s = val.to_str().unwrap();
+        assert!(s.contains("access_token=tok123"));
+        assert!(s.contains("Max-Age=3600"));
+        assert!(s.contains("Secure"));
+        assert!(s.contains("SameSite=None"));
+        assert!(s.contains("HttpOnly"));
+    }
+
+    #[test]
+    fn test_set_cookie_insecure() {
+        let val = build_set_cookie("tok456", 86400, false);
+        let s = val.to_str().unwrap();
+        assert!(s.contains("access_token=tok456"));
+        assert!(s.contains("SameSite=Lax"));
+        assert!(!s.contains("; Secure"));
+    }
+
+    #[test]
+    fn test_clear_cookie() {
+        let val = build_clear_cookie();
+        let s = val.to_str().unwrap();
+        assert!(s.contains("access_token="));
+        assert!(s.contains("Max-Age=0"));
+        assert!(s.contains("HttpOnly"));
+    }
+}

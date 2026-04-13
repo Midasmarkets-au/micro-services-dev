@@ -57,9 +57,13 @@ public static partial class Utils
 
     public static Regex PasswordHideRegex => MyRegex();
 
+    /// <summary>
+    /// Turn on and public to front-end as well.
+    /// All timezone rely on it
+    /// </summary>
     public static bool IsCurrentDSTLosAngeles(DateTime date)
         => TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles").IsDaylightSavingTime(date);
-    // => true;
+    // => false;
 
     public static bool IsWithinCloseMarketTime()
     {

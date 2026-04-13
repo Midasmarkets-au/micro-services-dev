@@ -29,6 +29,11 @@ public partial class PaymentMethod
         public DateTime UpdatedOn { get; set; }
         public int Sort { get; set; }
 
+        /// <summary>
+        /// True for currency-specific ExLink Global rows (e.g. "ExLink Global (PHP)"); false for the bare "ExLink Global" umbrella and non-ExLink methods. For tenant UI synthetic grouping.
+        /// </summary>
+        public bool IsExLinkGlobal { get; set; }
+
         [JsonIgnore] public string AvailableCurrenciesRaw { get; set; } = "";
 
         public HashSet<CurrencyTypes> AvailableCurrencies
@@ -94,6 +99,9 @@ public partial class PaymentMethod
         public HashSet<CurrencyTypes> AvailableCurrencies { get; set; } = [];
 
         public string PaymentMethodName { get; set; } = null!;
+
+        // true means the payment method has been set up for the account
+        public bool IsActive { get; set; }
     }
 
     public ClientGroupModel ToClientGroupModel() => new()
@@ -116,11 +124,19 @@ public partial class PaymentMethod
         public string Logo { get; set; } = null!;
         public long[] Range { get; set; } = [0, 0];
         public long InitialValue { get; set; } = 0;
+
+        // true means the payment method has been set up for the account
+        public bool IsActive { get; set; }
     }
 }
 
 public static class PaymentMethodViewModelExtension
 {
+    internal static bool IsExLinkGlobalCurrencySpecific(M x) =>
+        !string.IsNullOrEmpty(x.Group)
+        && x.Group.Contains("ExLink Global", StringComparison.OrdinalIgnoreCase)
+        && !string.Equals(x.Name?.Trim(), "ExLink Global", StringComparison.OrdinalIgnoreCase);
+
     public static IEnumerable<M.TenantPageModel> ToTenantPageModel(this IEnumerable<M> items)
         => items.Select(x => new M.TenantPageModel
         {
@@ -143,7 +159,8 @@ public static class PaymentMethodViewModelExtension
             UpdatedOn = x.UpdatedOn,
             Sort = x.Sort,
             AvailableCurrenciesRaw = x.AvailableCurrencies,
-            OperatorPartyId = x.OperatorPartyId
+            OperatorPartyId = x.OperatorPartyId,
+            IsExLinkGlobal = IsExLinkGlobalCurrencySpecific(x)
         });
 
 
