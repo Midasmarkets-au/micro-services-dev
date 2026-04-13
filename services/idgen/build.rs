@@ -78,6 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::configure()
         .build_server(true)
         .build_client(true)
+        .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .out_dir(&generated_dir)
         .file_descriptor_set_path(&descriptor_path)
         .compile(&compile_paths, &compile_includes)?;

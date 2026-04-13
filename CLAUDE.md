@@ -71,16 +71,6 @@ cargo test -p scheduler
 
 ```
 
-### Protobuf code generation
-
-```bash
-bash scripts/generate_proto.sh
-# macOS Apple Silicon (uses Rosetta for the C# plugin):
-bash scripts/grpc_csharp_plugin_rosetta.sh
-```
-
-On macOS, `protoc` and `grpc_csharp_plugin` paths are configured in `services/mono/Directory.Build.props` (`/opt/homebrew/bin/`).
-
 ### Database migrations (EF Core)
 
 ```bash

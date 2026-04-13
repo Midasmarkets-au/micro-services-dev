@@ -1,7 +1,7 @@
 //! gRPC 与 Axum HTTP 服务并行：实现 ApiService（gRPC），同时提供 HTTP API。
 
 use axum::{Json, Router, extract::Query, routing::get};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tonic::{Request, Response, Status};
@@ -9,10 +9,7 @@ use tower_http::cors::CorsLayer;
 use tracing::{debug, info};
 
 use idgen::api::v1::api_service_server::{ApiService, ApiServiceServer};
-use idgen::api::v1::{
-    CheckRequest, CheckResponse, GenerateIdRequest, GenerateIdResponse, SayHelloRequest,
-    SayHelloResponse,
-};
+use idgen::api::v1::{CheckRequest, CheckResponse, GenerateIdRequest, GenerateIdResponse};
 use idgen::http_routes;
 use idgen::service;
 
@@ -27,13 +24,6 @@ pub struct ApiServiceImpl;
 
 #[tonic::async_trait]
 impl ApiService for ApiServiceImpl {
-    async fn say_hello(
-        &self,
-        request: Request<SayHelloRequest>,
-    ) -> Result<Response<SayHelloResponse>, Status> {
-        Ok(Response::new(service::say_hello(request.into_inner())))
-    }
-
     async fn check(
         &self,
         request: Request<CheckRequest>,
@@ -56,32 +46,19 @@ async fn dispatch_http_get(
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<Value> {
     let value = match rpc {
-        "SayHello" => {
-            let req = SayHelloRequest {
-                name: params.get("name").cloned().unwrap_or_default(),
-            };
-            let res = service::say_hello(req);
-            serde_json::json!({ "message": res.message })
-        }
         "Check" => {
             let res = service::check(CheckRequest {});
-            let status_str = match res.status {
-                1 => "STATUS_SERVING",
-                2 => "STATUS_NOT_SERVING",
-                _ => "STATUS_UNSPECIFIED",
-            };
-            serde_json::json!({ "status": status_str })
+            json!(res)
         }
         "GenerateID" => {
             let work_id = params
                 .get("workid")
                 .and_then(|s| s.parse::<u32>().ok())
                 .unwrap_or(0);
-            let req = GenerateIdRequest { work_id };
-            let res = service::generate_id(req);
-            serde_json::json!({ "id": res.id })
+            let res = service::generate_id(GenerateIdRequest { work_id });
+            json!(res)
         }
-        _ => serde_json::json!({ "error": format!("unknown rpc : {}", rpc) }),
+        _ => json!({ "error": format!("unknown rpc: {}", rpc) }),
     };
     Json(value)
 }
