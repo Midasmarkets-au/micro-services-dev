@@ -37,6 +37,7 @@ interface AddLinkDialogProps {
   onClose: () => void;
   onSuccess: () => void;
   agentUid: number;
+  userName?: string;
 }
 
 interface RebateFormRow {
@@ -55,7 +56,7 @@ function getPCOptionLabel(tType: ReturnType<typeof useTranslations>, type: 'pips
   }
 }
 
-function AgentRebateTable({
+export function AgentRebateTable({
   account,
   productCategory,
   defaultLevelSetting,
@@ -343,7 +344,7 @@ function AgentRebateTable({
   );
 }
 
-function ClientPCForm({
+export function ClientPCForm({
   account,
   onRegister,
   t,
@@ -440,7 +441,7 @@ function ClientPCForm({
   );
 }
 
-export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkDialogProps) {
+export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid, userName }: AddLinkDialogProps) {
   const t = useTranslations('ib');
   const tType = useTranslations('type');
   const tAccount = useTranslations('accounts');
@@ -656,7 +657,7 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid }: AddLinkD
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="p-6! h-[700px]! overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{t('addLink.title')}</DialogTitle>
+          <DialogTitle>{t('addLink.title')}{userName ? ` - ${userName}` : ''}</DialogTitle>
           <DialogDescription className="sr-only">{t('addLink.title')}</DialogDescription>
         </DialogHeader>
 

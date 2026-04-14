@@ -131,7 +131,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               'input-field',
               sizeClass,
-              (shouldShowToggle || showClear) && 'pr-10',
+              shouldShowToggle && 'pr-10',
+              showClear && 'pr-11',
               error && 'error-border',
               className
             )}

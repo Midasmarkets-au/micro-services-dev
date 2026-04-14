@@ -470,6 +470,16 @@ input:-webkit-autofill:active {
   cursor: not-allowed;
 }
 
+/* 隐藏 number 输入框的浏览器原生 spinner，避免与清除按钮重叠 */
+.input-field[type='number']::-webkit-inner-spin-button,
+.input-field[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.input-field[type='number'] {
+  -moz-appearance: textfield;
+}
+
 /* 输入框标签 */
 .input-label {
   display: block;
