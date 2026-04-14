@@ -74,7 +74,7 @@ async fn poll_service_loop(ctx: AppContext, service_id: i32, tenant_pool: sqlx::
     loop {
         round += 1;
         // Every 12 hours clear dedup hash to prevent unbounded growth
-        if round % 43200 == 0 {
+        if round.is_multiple_of(43200) {
             if let Err(e) = ctx.cache.del(DEDUP_HASH_KEY).await {
                 warn!("TradeMonitor: failed to clear dedup cache: {:#}", e);
             }
@@ -190,4 +190,3 @@ fn build_meta_trade(
         swaps: Decimal::from_f64(closed.storage).unwrap_or(Decimal::ZERO),
     }
 }
-

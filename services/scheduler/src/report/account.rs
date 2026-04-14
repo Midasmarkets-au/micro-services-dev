@@ -88,17 +88,16 @@ pub async fn generate_account_to_send_confirmation_report(
                         positions.iter().map(|p| p.login).collect();
 
                     for (account_id, login, party_id) in unchecked {
-                        if logins_with_positions.contains(&login) {
-                            if insert_account_report_if_new(
+                        if logins_with_positions.contains(&login)
+                            && insert_account_report_if_new(
                                 tenant_pool,
                                 account_id,
                                 party_id,
                                 from,
                             )
                             .await?
-                            {
-                                count += 1;
-                            }
+                        {
+                            count += 1;
                         }
                     }
                 }
@@ -191,7 +190,9 @@ async fn generate_account_report_html(
     date: DateTime<Utc>,
 ) -> Result<String> {
     // Fetch trades for this account on the given date
-    let trades: Vec<(Option<i64>, Option<String>, Option<f64>, Option<f64>)> = sqlx::query_as(
+    type TradeRow = (Option<i64>, Option<String>, Option<f64>, Option<f64>);
+
+    let trades: Vec<TradeRow> = sqlx::query_as(
         r#"SELECT t."Ticket", t."Symbol", t."Profit", t."Volume"
            FROM trd."_TradeTransaction" t
            JOIN trd."_TradeAccount" ta ON ta."Id" = t."TradeAccountId"

@@ -220,7 +220,6 @@ async fn process_tenant(ctx: &AppContext, tenant_id: i64) -> Result<()> {
         .zip(requests.iter())
         .map(|(id, req)| {
             let ctx = ctx.clone();
-            let tenant_id = tenant_id;
             let req_type = req.r#type;
             let req_name = req.name.clone();
             tokio::spawn(async move {

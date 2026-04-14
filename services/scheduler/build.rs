@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 proto_root.join("api/v1/scheduler.proto"),
                 proto_root.join("api/v1/service.proto"),
             ],
-            &[proto_root.clone()],
+            std::slice::from_ref(&proto_root),
         )?;
 
     println!("cargo:rerun-if-changed=../../proto/api/v1/scheduler.proto");

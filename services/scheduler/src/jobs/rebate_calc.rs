@@ -574,11 +574,8 @@ async fn generate_allocation_rebates(
         let mut schema_cid: i32 = 0;
         let mut schema_r = Decimal::ZERO;
 
-        let (schema_rate_val, combined_val) = if next_agent.is_none() || is_last {
-            calculate_last_allocation_rebate(&mut remain)
-        } else {
+        let (schema_rate_val, combined_val) = if let Some(next) = next_agent.filter(|_| !is_last) {
             // Get schema item for the next agent
-            let next = next_agent.unwrap();
             let (schema_item_next, percentage) =
                 get_schema_item_and_percentage(next, symbol_category_id);
             match schema_item_next {
@@ -589,6 +586,8 @@ async fn generate_allocation_rebates(
                     calculate_allocation_rebate(&mut remain, trade_rebate.volume, rate, percentage, source_rate)
                 }
             }
+        } else {
+            calculate_last_allocation_rebate(&mut remain)
         };
 
         let total = schema_rate_val + combined_val;
@@ -681,7 +680,7 @@ fn get_schema_item_and_percentage(
                         .as_f64()
                         .map(|f| Decimal::try_from(f).unwrap_or(Decimal::ZERO))
                         .unwrap_or(Decimal::ZERO);
-                    return (Some((rate, cid as i32)), percentage);
+                    return (Some((rate, cid)), percentage);
                 }
             }
         }
@@ -785,7 +784,7 @@ async fn generate_level_percentage_rebates(
         let mut percentages: Vec<Decimal> = settings
             .iter()
             .filter_map(|v| v.as_f64())
-            .filter_map(|f| Decimal::from_f64(f))
+            .filter_map(Decimal::from_f64)
             .collect();
         percentages.reverse();
         let mut queue = std::collections::VecDeque::from(percentages);
