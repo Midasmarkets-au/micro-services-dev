@@ -299,6 +299,7 @@ dependencies = [
  "otel",
  "pbkdf2",
  "prost",
+ "reqwest",
  "rsa",
  "serde",
  "serde_json",
