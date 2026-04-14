@@ -562,6 +562,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
 
+    let ipinfo_endpoint = env("IPINFO_ENDPOINT", "https://ipinfo.io");
+    let ipinfo_token = env("IPINFO_TOKEN", "");
+
     let state = Arc::new(AppState {
         pool,
         redis,
@@ -569,6 +572,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         access_token_lifetime,
         secure_cookie,
         mono_client,
+        ipinfo_endpoint,
+        ipinfo_token,
     });
 
     let listener = tokio::net::TcpListener::bind(http_addr).await?;
