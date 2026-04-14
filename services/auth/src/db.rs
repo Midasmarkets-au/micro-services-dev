@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use uuid::Uuid;
 
 /// Mirrors auth."_User" from AuthDbContext (ASP.NET Identity + custom fields).
 #[derive(Debug, sqlx::FromRow)]
@@ -210,5 +211,201 @@ pub async fn update_last_login(
     .bind(user_id)
     .execute(pool)
     .await?;
+    Ok(())
+}
+
+// ─── Registration helpers ─────────────────────────────────────────────────────
+
+/// Parameters for creating a new user during registration.
+pub struct NewUser<'a> {
+    pub uid: i64,
+    pub party_id: i64,
+    pub tenant_id: i64,
+    pub email: &'a str,
+    pub password_hash: &'a str,
+    pub first_name: &'a str,
+    pub last_name: &'a str,
+    pub native_name: &'a str,
+    pub phone: &'a str,
+    pub phone_confirmed: bool,
+    pub ccc: &'a str,
+    pub country_code: &'a str,
+    pub currency: &'a str,
+    pub refer_code: &'a str,
+    pub language: &'a str,
+    pub register_ip: &'a str,
+}
+
+/// INSERT a new user into auth."_User". Returns the generated Id.
+pub async fn insert_user(pool: &PgPool, u: &NewUser<'_>) -> Result<i64, sqlx::Error> {
+    let email_upper = u.email.to_uppercase();
+    let security_stamp = Uuid::new_v4().to_string().to_uppercase();
+    let concurrency_stamp = Uuid::new_v4().to_string();
+    let now = Utc::now();
+
+    let id: i64 = sqlx::query_scalar(
+        r#"
+        INSERT INTO auth."_User" (
+            "Uid", "PartyId", "TenantId",
+            "UserName", "NormalizedUserName",
+            "Email",    "NormalizedEmail",
+            "EmailConfirmed", "PasswordHash",
+            "SecurityStamp", "ConcurrencyStamp",
+            "PhoneNumber", "PhoneNumberConfirmed",
+            "TwoFactorEnabled", "LockoutEnabled",
+            "AccessFailedCount", "Status",
+            "FirstName", "LastName", "NativeName", "Language",
+            "CCC", "CountryCode", "Currency", "ReferCode",
+            "RegisteredIp", "LastLoginIp",
+            "CreatedOn", "UpdatedOn"
+        ) VALUES (
+            $1,  $2,  $3,
+            $4,  $5,
+            $6,  $7,
+            true, $8,
+            $9,  $10,
+            $11, $12,
+            false, true,
+            0, 0,
+            $13, $14, $15, $16,
+            $17, $18, $19, $20,
+            $21, '',
+            $22, $22
+        )
+        RETURNING "Id"
+        "#,
+    )
+    .bind(u.uid)
+    .bind(u.party_id)
+    .bind(u.tenant_id)
+    .bind(u.email)
+    .bind(&email_upper)
+    .bind(u.email)
+    .bind(&email_upper)
+    .bind(u.password_hash)
+    .bind(&security_stamp)
+    .bind(&concurrency_stamp)
+    .bind(u.phone)
+    .bind(u.phone_confirmed)
+    .bind(u.first_name)
+    .bind(u.last_name)
+    .bind(u.native_name)
+    .bind(u.language)
+    .bind(u.ccc)
+    .bind(u.country_code)
+    .bind(u.currency)
+    .bind(u.refer_code)
+    .bind(u.register_ip)
+    .bind(now)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(id)
+}
+
+/// INSERT a role into auth."_UserRole" by role name (e.g. "Guest").
+/// Silently does nothing if the role does not exist.
+pub async fn insert_user_role_by_name(
+    pool: &PgPool,
+    user_id: i64,
+    role_name: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        INSERT INTO auth."_UserRole" ("UserId", "RoleId")
+        SELECT $1, "Id" FROM auth."_Role" WHERE "Name" = $2
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .bind(role_name)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// INSERT a new CentralParty into core."_CentralParty". Returns the generated Id.
+pub async fn insert_central_party(
+    pool: &PgPool,
+    uid: i64,
+    email: &str,
+    name: &str,
+    site_id: i32,
+    tenant_id: i64,
+) -> Result<i64, sqlx::Error> {
+    let now = Utc::now();
+    let id: i64 = sqlx::query_scalar(
+        r#"
+        INSERT INTO core."_CentralParty" (
+            "Uid", "Email", "Name", "NativeName",
+            "Code", "Note", "SiteId", "TenantId",
+            "CreatedOn", "UpdatedOn"
+        ) VALUES ($1, $2, $3, $3, '', '', $4, $5, $6, $6)
+        RETURNING "Id"
+        "#,
+    )
+    .bind(uid)
+    .bind(email)
+    .bind(name)
+    .bind(site_id)
+    .bind(tenant_id)
+    .bind(now)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(id)
+}
+
+/// Resolve tenant_id from a referral code (reads core."_CentralReferralCode").
+/// Returns (tenant_id) or None if the code doesn't exist.
+pub async fn find_tenant_by_refer_code(
+    pool: &PgPool,
+    code: &str,
+) -> Result<Option<i64>, sqlx::Error> {
+    let row: Option<(i64,)> = sqlx::query_as(
+        r#"
+        SELECT t."Id"
+        FROM core."_CentralReferralCode" rc
+        JOIN core."_Tenant" t ON rc."TenantId" = t."Id"
+        WHERE rc."Code" = $1
+        LIMIT 1
+        "#,
+    )
+    .bind(code)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|(id,)| id))
+}
+
+/// Check if a tenant exists by Id.
+pub async fn tenant_exists(pool: &PgPool, tenant_id: i64) -> Result<bool, sqlx::Error> {
+    let row: (bool,) = sqlx::query_as(
+        r#"SELECT EXISTS(SELECT 1 FROM core."_Tenant" WHERE "Id" = $1)"#,
+    )
+    .bind(tenant_id)
+    .fetch_one(pool)
+    .await?;
+    Ok(row.0)
+}
+
+// ─── Rollback helpers ─────────────────────────────────────────────────────────
+
+pub async fn delete_user(pool: &PgPool, user_id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query(r#"DELETE FROM auth."_UserRole" WHERE "UserId" = $1"#)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    sqlx::query(r#"DELETE FROM auth."_User" WHERE "Id" = $1"#)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn delete_central_party(pool: &PgPool, party_id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query(r#"DELETE FROM core."_CentralParty" WHERE "Id" = $1"#)
+        .bind(party_id)
+        .execute(pool)
+        .await?;
     Ok(())
 }

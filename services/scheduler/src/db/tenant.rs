@@ -5,6 +5,16 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
+pub struct NewMedium<'a> {
+    pub tenant_id: i64,
+    pub party_id: i64,
+    pub row_id: i64,
+    pub guid: &'a str,
+    pub file_name: &'a str,
+    pub url: &'a str,
+    pub length: i64,
+}
+
 /// Mirrors sto._ReportRequest
 #[derive(Debug, Clone, sqlx::FromRow, Serialize, Deserialize)]
 pub struct ReportRequest {
@@ -71,28 +81,19 @@ pub async fn mark_report_generated(
 
 /// Insert a row into sto._Medium and return the generated Guid (UUID).
 /// This mirrors what mono's UploadFileAndSaveMediaAsync does.
-pub async fn insert_medium(
-    pool: &PgPool,
-    tenant_id: i64,
-    party_id: i64,
-    row_id: i64,
-    guid: &str,
-    file_name: &str,
-    url: &str,
-    length: i64,
-) -> Result<()> {
+pub async fn insert_medium(pool: &PgPool, medium: &NewMedium<'_>) -> Result<()> {
     sqlx::query(
         r#"INSERT INTO sto."_Medium"
            ("TenantId", "PartyId", "RowId", "Guid", "FileName", "Type", "Context", "ContentType", "Url", "Length")
            VALUES ($1, $2, $3, $4, $5, 'report-request', '', 'text/csv', $6, $7)"#,
     )
-    .bind(tenant_id)
-    .bind(party_id)
-    .bind(row_id)
-    .bind(guid)
-    .bind(file_name)
-    .bind(url)
-    .bind(length)
+    .bind(medium.tenant_id)
+    .bind(medium.party_id)
+    .bind(medium.row_id)
+    .bind(medium.guid)
+    .bind(medium.file_name)
+    .bind(medium.url)
+    .bind(medium.length)
     .execute(pool)
     .await?;
     Ok(())

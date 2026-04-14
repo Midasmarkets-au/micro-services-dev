@@ -327,6 +327,7 @@ pub async fn get_mt5_price(mt5_pool: &MySqlPool, symbol_code: &str) -> Result<Op
 ///   1. Generate a Snowflake ID from idgen
 ///   2. INSERT INTO core.matter_k8s with the Snowflake ID
 ///   3. INSERT INTO trd.rebate_k8s with Id = matter_id (PG routes to correct year partition via CreatedOn)
+///
 /// Returns the new matter/rebate Id.
 pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebate) -> Result<i64> {
     let matter_id = idgen.generate_id().await?;
@@ -365,4 +366,3 @@ pub async fn insert_rebate(pool: &PgPool, idgen: &IdgenClient, rebate: &NewRebat
     tx.commit().await?;
     Ok(matter_id)
 }
-

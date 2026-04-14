@@ -154,6 +154,62 @@ pub struct SendPasswordResetEmailResponse {
     pub sent: bool,
 }
 /// ----------------------------------------------------------------------------
+///   RegisterTenantUser
+/// ----------------------------------------------------------------------------
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTenantUserRequest {
+    /// = CentralParty.Id
+    #[prost(int64, tag = "1")]
+    pub party_id: i64,
+    #[prost(int64, tag = "2")]
+    pub tenant_id: i64,
+    /// auth._User.Id（已创建）
+    #[prost(int64, tag = "3")]
+    pub user_id: i64,
+    /// Party UID（CentralParty.Uid）
+    #[prost(int64, tag = "4")]
+    pub uid: i64,
+    #[prost(string, tag = "5")]
+    pub email: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub first_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub last_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub phone: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub ccc: ::prost::alloc::string::String,
+    #[prost(string, tag = "10")]
+    pub currency: ::prost::alloc::string::String,
+    #[prost(string, tag = "11")]
+    pub refer_code: ::prost::alloc::string::String,
+    #[prost(string, tag = "12")]
+    pub language: ::prost::alloc::string::String,
+    #[prost(int32, tag = "13")]
+    pub site_id: i32,
+    #[prost(string, tag = "14")]
+    pub register_ip: ::prost::alloc::string::String,
+    #[prost(bool, tag = "15")]
+    pub phone_confirmed: bool,
+    #[prost(string, tag = "16")]
+    pub source_comment: ::prost::alloc::string::String,
+    #[prost(string, tag = "17")]
+    pub utm: ::prost::alloc::string::String,
+    #[prost(string, tag = "18")]
+    pub native_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "19")]
+    pub country_code: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTenantUserResponse {
+    #[prost(bool, tag = "1")]
+    pub success: bool,
+    #[prost(string, tag = "2")]
+    pub error: ::prost::alloc::string::String,
+}
+/// ----------------------------------------------------------------------------
 ///   IssueToken — mono 请求 auth 服务为指定用户签发 access token
 /// ----------------------------------------------------------------------------
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -359,6 +415,7 @@ pub mod auth_service_client {
     ///    3. GetTwoFactorSetting  — 读取租户 2FA 配置（ConfigService + TenantDbContext）
     ///    4. GetRecentUserAgents  — 读取最近登录 UA（TenantDbContext.LoginLogs，用于设备识别）
     ///    5. WriteLoginLog        — 写入登录日志（TenantDbContext.LoginLogs + Party.LastLoginIp）
+    ///
     /// ============================================================================
     #[derive(Debug, Clone)]
     pub struct AuthServiceClient<T> {
@@ -594,6 +651,32 @@ pub mod auth_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("api.v1.AuthService", "SendPasswordResetEmail"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// 注册新用户的租户库操作（Party/PartyRole/Referral/Lead/邮件），由 auth 同步调用
+        pub async fn register_tenant_user(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RegisterTenantUserRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RegisterTenantUserResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.AuthService/RegisterTenantUser",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("api.v1.AuthService", "RegisterTenantUser"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -902,6 +985,14 @@ pub mod auth_service_server {
             tonic::Response<super::SendPasswordResetEmailResponse>,
             tonic::Status,
         >;
+        /// 注册新用户的租户库操作（Party/PartyRole/Referral/Lead/邮件），由 auth 同步调用
+        async fn register_tenant_user(
+            &self,
+            request: tonic::Request<super::RegisterTenantUserRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RegisterTenantUserResponse>,
+            tonic::Status,
+        >;
     }
     /// ============================================================================
     ///  AuthService — 由 mono 实现，供 auth service 在登录流程中回调
@@ -915,6 +1006,7 @@ pub mod auth_service_server {
     ///    3. GetTwoFactorSetting  — 读取租户 2FA 配置（ConfigService + TenantDbContext）
     ///    4. GetRecentUserAgents  — 读取最近登录 UA（TenantDbContext.LoginLogs，用于设备识别）
     ///    5. WriteLoginLog        — 写入登录日志（TenantDbContext.LoginLogs + Party.LastLoginIp）
+    ///
     /// ============================================================================
     #[derive(Debug)]
     pub struct AuthServiceServer<T: AuthService> {
@@ -1262,6 +1354,53 @@ pub mod auth_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = SendPasswordResetEmailSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.AuthService/RegisterTenantUser" => {
+                    #[allow(non_camel_case_types)]
+                    struct RegisterTenantUserSvc<T: AuthService>(pub Arc<T>);
+                    impl<
+                        T: AuthService,
+                    > tonic::server::UnaryService<super::RegisterTenantUserRequest>
+                    for RegisterTenantUserSvc<T> {
+                        type Response = super::RegisterTenantUserResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::RegisterTenantUserRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthService>::register_tenant_user(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = RegisterTenantUserSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

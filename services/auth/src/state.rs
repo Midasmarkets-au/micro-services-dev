@@ -3,6 +3,13 @@ use crate::keys::RsaKeyPair;
 use sqlx::PgPool;
 use tokio::sync::Mutex;
 
+/// Twilio Verify configuration. Present only when SMS OTP is enabled.
+pub struct TwilioConfig {
+    pub account_sid: String,
+    pub auth_token: String,
+    pub service_sid: String,
+}
+
 pub struct AppState {
     pub pool: PgPool,
     pub redis: deadpool_redis::Pool,
@@ -16,4 +23,6 @@ pub struct AppState {
     pub ipinfo_endpoint: String,
     /// IPInfo API token (empty = no token)
     pub ipinfo_token: String,
+    /// Twilio Verify config (None = SMS OTP disabled)
+    pub twilio: Option<TwilioConfig>,
 }
