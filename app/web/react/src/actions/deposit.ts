@@ -76,7 +76,7 @@ export async function postQrCodePaid(
   transactionId: string
 ): Promise<ActionResponse<void>> {
   try {
-    await apiClient.v1.post(`/payment/${transactionId}/paid`);
+    await apiClient.v1.post(`/payment/${transactionId}/paid`, null);
     return { success: true };
   } catch (error) {
     if (error instanceof ApiError) {
