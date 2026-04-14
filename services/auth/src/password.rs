@@ -33,7 +33,7 @@ pub fn verify_hashed_password_v3(hashed_base64: &str, password: &str) -> bool {
     }
 
     let prf = read_network_u32(&hashed, 1);
-    let iter_count = read_network_u32(&hashed, 5) as u32;
+    let iter_count = read_network_u32(&hashed, 5);
     let salt_len = read_network_u32(&hashed, 9) as usize;
 
     if salt_len < 16 {

@@ -45,6 +45,7 @@ message ValidateTokenResponse {
 //    3. GetTwoFactorSetting  — 读取租户 2FA 配置（ConfigService + TenantDbContext）
 //    4. GetRecentUserAgents  — 读取最近登录 UA（TenantDbContext.LoginLogs，用于设备识别）
 //    5. WriteLoginLog        — 写入登录日志（TenantDbContext.LoginLogs + Party.LastLoginIp）
+//
 // ============================================================================
 service AuthService {
 

@@ -190,16 +190,16 @@ async fn upload_csv(
     let guid = uuid::Uuid::new_v4().to_string();
     let tenant_pool = ctx.tenant_pool(tenant_id).await?;
     let safe_name = format!("{}.csv", request.name.replace(['/', '\\'], "_"));
-    tenant::insert_medium(
-        &tenant_pool,
+    tenant::insert_medium(&tenant_pool, &tenant::NewMedium {
         tenant_id,
-        request.party_id,
-        request.id,
-        &guid,
-        &safe_name,
-        &url,
+        party_id: request.party_id,
+        row_id: request.id,
+        guid: &guid,
+        file_name: &safe_name,
+        url: &url,
         length,
-    ).await?;
+    })
+    .await?;
 
     Ok(guid)
 }
