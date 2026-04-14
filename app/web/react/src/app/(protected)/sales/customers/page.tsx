@@ -30,6 +30,7 @@ import { AccountRebateRelationModal } from '../_components/modals/AccountRebateR
 import { IbLinksModal } from '../_components/modals/IbLinksModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
 import { AddSalesLinkDialog } from '../_components/modals/AddSalesLinkDialog';
+import { AddIbLinkBySalesDialog } from '../_components/modals/AddIbLinkBySalesDialog';
 import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
 import { TimeShow } from '@/components/TimeShow';
 type RoleTab = 'all' | 'ib' | 'client' | 'sales';
@@ -416,6 +417,19 @@ export default function SalesCustomersPage() {
               hidden: !siteConfig?.rebateEnabled || ibChain.length > 0,
             });
           }
+          if (item.role === AccountRoleTypes.Sales) {
+            dropdownItems.push({
+              key: 'referralCodeList',
+              label: t('action.referralCodeList'),
+              onClick: () => showIbLinks(item),
+            });
+            dropdownItems.push({
+              key: 'newIBReferralCode',
+              label: t('action.newIBReferralCode'),
+              onClick: () => showNewReferral(item),
+              hidden: !siteConfig?.rebateEnabled || ibChain.length > 0,
+            });
+          }
 
           return (
             <DropdownMenu
@@ -560,11 +574,23 @@ export default function SalesCustomersPage() {
         context={editSchemaContext}
         onSuccess={() => fetchData(criteria)}
       />
-      <AddSalesLinkDialog
-        isOpen={newReferralOpen}
-        onClose={() => setNewReferralOpen(false)}
-        onSuccess={() => fetchData(criteria)}
-      />
+      {selectedAccount?.role === AccountRoleTypes.IB ? (
+        <AddIbLinkBySalesDialog
+          isOpen={newReferralOpen}
+          onClose={() => setNewReferralOpen(false)}
+          onSuccess={() => fetchData(criteria)}
+          ibUid={selectedAccount.uid}
+          userName={getUserName(selectedAccount)}
+        />
+      ) : (
+        <AddSalesLinkDialog
+          isOpen={newReferralOpen}
+          onClose={() => setNewReferralOpen(false)}
+          onSuccess={() => fetchData(criteria)}
+          salesUid={selectedAccount?.uid}
+          userName={selectedAccount ? getUserName(selectedAccount) : undefined}
+        />
+      )}
       {salesAccount && (
         <UnlockEmailAddressModal
           key={unlockKey}

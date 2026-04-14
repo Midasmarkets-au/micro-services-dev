@@ -1949,7 +1949,9 @@
       "addRatePercentage": "附加比例 %",
       "choosePipCommission": "选择点差/佣金",
       "choosePipCommissionValue": "选择数值",
-      "noPcNeed": "此账户类型不需要点差/佣金设置"
+      "noPcNeed": "此账户类型不需要点差/佣金设置",
+      "isMLM": "该账户为多级分销类型",
+      "referralCodeNotAvailable": "推荐码功能不可用"
     },
     "referral": {
       "title": "推荐码",
