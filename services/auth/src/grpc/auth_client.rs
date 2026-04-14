@@ -2,8 +2,8 @@ use tonic::transport::Channel;
 use tracing::error;
 
 use crate::generated::api_v1::{
-    GetRecentUserAgentsRequest, GetTwoFactorSettingRequest, SendAuthCodeRequest,
-    SendPasswordResetEmailRequest, VerifyAuthCodeRequest, WriteLoginLogRequest,
+    GetRecentUserAgentsRequest, GetTwoFactorSettingRequest, RegisterTenantUserRequest,
+    SendAuthCodeRequest, SendPasswordResetEmailRequest, VerifyAuthCodeRequest, WriteLoginLogRequest,
     auth_service_client::AuthServiceClient,
 };
 
@@ -103,6 +103,65 @@ pub async fn send_password_reset_email(
     };
     if let Err(e) = client.send_password_reset_email(req).await {
         error!("SendPasswordResetEmail gRPC error: {}", e);
+    }
+}
+
+/// Parameters for registering a user's tenant data.
+pub struct RegisterTenantUserParams<'a> {
+    pub party_id: i64,
+    pub tenant_id: i64,
+    pub user_id: i64,
+    pub uid: i64,
+    pub email: &'a str,
+    pub first_name: &'a str,
+    pub last_name: &'a str,
+    pub native_name: &'a str,
+    pub phone: &'a str,
+    pub ccc: &'a str,
+    pub currency: &'a str,
+    pub refer_code: &'a str,
+    pub language: &'a str,
+    pub site_id: i32,
+    pub register_ip: &'a str,
+    pub phone_confirmed: bool,
+    pub source_comment: &'a str,
+    pub utm: &'a str,
+    pub country_code: &'a str,
+}
+
+/// Call mono to create Party/PartyRole/Lead/email for a newly registered user.
+/// Returns Ok(true) on success, Ok(false) if mono reported failure, Err on transport error.
+pub async fn register_tenant_user(
+    client: &mut MonoAuthClient,
+    p: RegisterTenantUserParams<'_>,
+) -> Result<bool, tonic::Status> {
+    let req = RegisterTenantUserRequest {
+        party_id: p.party_id,
+        tenant_id: p.tenant_id,
+        user_id: p.user_id,
+        uid: p.uid,
+        email: p.email.to_string(),
+        first_name: p.first_name.to_string(),
+        last_name: p.last_name.to_string(),
+        native_name: p.native_name.to_string(),
+        phone: p.phone.to_string(),
+        ccc: p.ccc.to_string(),
+        currency: p.currency.to_string(),
+        refer_code: p.refer_code.to_string(),
+        language: p.language.to_string(),
+        site_id: p.site_id,
+        register_ip: p.register_ip.to_string(),
+        phone_confirmed: p.phone_confirmed,
+        source_comment: p.source_comment.to_string(),
+        utm: p.utm.to_string(),
+        country_code: p.country_code.to_string(),
+    };
+    match client.register_tenant_user(req).await {
+        Ok(resp) => Ok(resp.into_inner().success),
+        Err(e) => {
+            error!("RegisterTenantUser gRPC error: {}", e);
+            Err(e)
+        }
     }
 }
 

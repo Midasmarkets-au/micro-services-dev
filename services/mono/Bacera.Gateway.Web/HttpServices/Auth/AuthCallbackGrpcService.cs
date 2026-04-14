@@ -1,12 +1,15 @@
 using Api.V1;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Context;
+using Bacera.Gateway.Core.Models.Central;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.BackgroundJobs;
+using Bacera.Gateway.Web.EventHandlers;
 using Grpc.Core;
 using Hangfire;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 
@@ -24,6 +27,114 @@ public class AuthCallbackGrpcService(
     ILogger<AuthCallbackGrpcService> logger)
     : AuthService.AuthServiceBase
 {
+    public override async Task<RegisterTenantUserResponse> RegisterTenantUser(
+        RegisterTenantUserRequest request, ServerCallContext context)
+    {
+        try
+        {
+            using var scope = serviceProvider.CreateTenantScope(request.TenantId);
+            var tenantCtx  = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+            var mediator   = scope.ServiceProvider.GetRequiredService<IMediator>();
+
+            // ── Build Party from CentralParty data ──────────────────────────
+            var centralParty = new CentralParty
+            {
+                Id         = request.PartyId,
+                Uid        = request.Uid,
+                Email      = request.Email,
+                Name       = $"{request.FirstName} {request.LastName}",
+                NativeName = request.NativeName,
+                Code       = "",
+                Note       = "",
+                SiteId     = request.SiteId,
+                TenantId   = request.TenantId,
+                CreatedOn  = DateTime.UtcNow,
+                UpdatedOn  = DateTime.UtcNow,
+            };
+            var party = centralParty.ToParty();
+
+            // Apply user fields to party (mirrors User.ApplyToParty)
+            party.NativeName      = request.NativeName;
+            party.PhoneNumber     = request.Phone;
+            party.Email           = request.Email;
+            party.FirstName       = request.FirstName;
+            party.LastName        = request.LastName;
+            party.Language        = request.Language;
+            party.EmailConfirmed  = true;
+            party.ReferCode       = request.ReferCode;
+            party.CountryCode     = request.CountryCode;
+            party.Currency        = request.Currency;
+            party.CCC             = request.Ccc;
+            party.RegisteredIp    = request.RegisterIp;
+
+            // ── Party + PartyRole ────────────────────────────────────────────
+            await tenantCtx.PartyRoles.AddAsync(new PartyRole
+            {
+                Party  = party,
+                RoleId = (int)UserRoleTypes.Client,
+            });
+            await tenantCtx.SaveChangesAsync();
+
+            // ── TryAssignReferCode ───────────────────────────────────────────
+            await TryAssignReferCodeAsync(request.ReferCode, party, tenantCtx);
+
+            // ── Reconstruct User object for the event ────────────────────────
+            var user = new Bacera.Gateway.Auth.User
+            {
+                Id          = request.UserId,
+                PartyId     = request.PartyId,
+                TenantId    = request.TenantId,
+                Email       = request.Email,
+                FirstName   = request.FirstName,
+                LastName    = request.LastName,
+                NativeName  = request.NativeName,
+                PhoneNumber = request.Phone,
+                Language    = request.Language,
+            };
+
+            await mediator.Publish(new UserRegisteredEvent(
+                user,
+                password: "",        // password not needed post-creation
+                callbackUrl: "",
+                sourceComment: request.SourceComment,
+                utm: request.Utm));
+
+            return new RegisterTenantUserResponse { Success = true };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RegisterTenantUser failed for party_id={PartyId}", request.PartyId);
+            return new RegisterTenantUserResponse { Success = false, Error = ex.Message };
+        }
+    }
+
+    private static async Task TryAssignReferCodeAsync(
+        string referCode, Party party, TenantDbContext ctx)
+    {
+        if (string.IsNullOrEmpty(referCode)) return;
+
+        var rc = await ctx.ReferralCodes
+            .SingleOrDefaultAsync(x => x.Code == referCode);
+        if (rc == null) return;
+        if (party.Pid > 0 || party.Id == rc.PartyId) return;
+
+        party.Pid = rc.PartyId;
+        ctx.Parties.Update(party);
+        await ctx.SaveChangesAsync();
+
+        await ctx.Referrals.AddAsync(new Referral
+        {
+            ReferralCodeId  = rc.Id,
+            ReferrerPartyId = rc.PartyId,
+            ReferredPartyId = party.Id,
+            Code            = rc.Code,
+            CreatedOn       = DateTime.UtcNow,
+            Module          = nameof(Bacera.Gateway.Auth.User),
+            RowId           = party.Id,
+        });
+        await ctx.SaveChangesAsync();
+    }
+
     public override async Task<VerifyAuthCodeResponse> VerifyAuthCode(
         VerifyAuthCodeRequest request, ServerCallContext context)
     {

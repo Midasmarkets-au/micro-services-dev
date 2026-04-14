@@ -16,7 +16,7 @@ use auth::{
     cookie, db, grpc, hashids,
     keys::{Jwks, RsaKeyPair},
     password, redis_store, routes, security,
-    state::AppState,
+    state::{AppState, TwilioConfig},
     token,
     generated::http_routes::{CONNECT_TOKEN_PATH, GET_JWKS_PATH},
 };
@@ -461,6 +461,7 @@ fn http_app(state: Arc<AppState>) -> Router {
         .merge(routes::auth::router())
         .merge(routes::password::router())
         .merge(routes::twofa::router())
+        .merge(routes::register::router())
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
@@ -565,6 +566,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ipinfo_endpoint = env("IPINFO_ENDPOINT", "https://ipinfo.io");
     let ipinfo_token = env("IPINFO_TOKEN", "");
 
+    let twilio = {
+        let sid = std::env::var("TWILIO_ACCOUNT_SID").unwrap_or_default();
+        let token = std::env::var("TWILIO_AUTH_TOKEN").unwrap_or_default();
+        let service = std::env::var("TWILIO_VERIFY_SID").unwrap_or_default();
+        if sid.is_empty() || token.is_empty() || service.is_empty() {
+            info!("Twilio not configured — SMS OTP disabled for registration");
+            None
+        } else {
+            info!("Twilio configured — SMS OTP enabled for registration");
+            Some(TwilioConfig { account_sid: sid, auth_token: token, service_sid: service })
+        }
+    };
+
     let state = Arc::new(AppState {
         pool,
         redis,
@@ -574,6 +588,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         mono_client,
         ipinfo_endpoint,
         ipinfo_token,
+        twilio,
     });
 
     let listener = tokio::net::TcpListener::bind(http_addr).await?;

@@ -90,190 +90,191 @@ public partial class AuthControllerV2(
             await GetSite(openAt),
         });
 
-    [AllowAnonymous]
-    [HttpPost("register")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Register([FromBody] RegistrationRequest model)
-    {
-        var ip = GetRemoteIpAddress();
-        var inBlackList = await centralCtx.IpBlackLists.AnyAsync(x => x.Ip == ip);
-        if (inBlackList)
-        {
-            logger.LogWarning("IP {Ip} is in black list", ip);
-            return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail));
-        }
-
-        var ipInfo = await GetIpInfo(ip);
-        var tenantIdFromIp = Tenancy.GetTenantIdByCountryCode(ipInfo.Country);
-
-        model.ReferCode = ReferCodeRegex().Replace(model.ReferCode.Trim().ToUpper(), "");
-        
-        var tenant = await centralCtx.CentralReferralCodes
-                         .Where(x => x.Code == model.ReferCode)
-                         .Select(x => x.Tenant)
-                         .FirstOrDefaultAsync()
-                     ?? await centralCtx.Tenants.FirstOrDefaultAsync(x => x.Id == model.TenantId)
-                     ?? await centralCtx.Tenants.FirstOrDefaultAsync(x => x.Id == tenantIdFromIp)
-                     ?? await centralCtx.Tenants.FirstAsync(x => x.Id == 10000);
-
-        using var scope = serviceProvider.CreateTenantScope(tenant.Id);
-        
-        var tenantCtx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
-        var userService = scope.ServiceProvider.GetRequiredService<UserService>();
-
-        var scopedCfgSvc = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
-
-        var email = model.Email.Trim().ToLower();
-        var existedUsers = await userMgr.Users.Where(x => x.Email == model.Email.Trim().ToLower()).ToListAsync();
-        if (existedUsers.Any(x => x.TenantId != tenant.Id))
-        {
-            logger.LogWarning("User with email already exists in another tenant, {Email}", email);
-            return Conflict(ToErrorResult(ResultMessage.Register.AlreadyRegisterOtherSite));
-        }
-
-        if (existedUsers.Any(x => x.TenantId == tenant.Id))
-        {
-            logger.LogWarning("User with email {Email} already exists", email);
-            return BadRequest(ToErrorResult(ResultMessage.Register.EmailExists));
-        }
-
-        var password = model.Password.Trim();
-        var passwordValidator = new PasswordValidator<User>();
-        var result = await passwordValidator.ValidateAsync(userMgr, new User(), password);
-        if (!result.Succeeded)
-        {
-            return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail,
-                result.Errors.Select(x => x.Description).ToList()));
-        }
-
-        
-
-        // verify OTP
-        var phoneNumberVerified = false;
-        var combinedPhoneNumber = "+" + model.CCC + model.Phone;
-        switch (model.CCC)
-        {
-            case "852" when model.Phone.Length != 8:
-                return BadRequest(Result.Error(ResultMessage.Verification.PhoneNumberInvalid));
-            case "61" when tenant.Id != 1:
-                break;
-            // temporary disable au phone number validation for bvi 
-            // return BadRequest(Result.Error(ResultMessage.Verification.PhoneNumberInvalid));
-        }
-        
-        //********************************************************************
-        // Phone Number Disable on 2025/03/27 for APP Apple IOS Verification
-        //********************************************************************
-        //
-        // if (!IsValidPhoneNumber(combinedPhoneNumber))
-        //     return BadRequest(Result.Error(ResultMessage.Verification.PhoneNumberInvalid));
-        //
-        // if (!PhoneNumberRegionCodeTypes.All.Contains(model.CCC))
-        //     return BadRequest(Result.Error(ResultMessage.Verification.RegionCodeInvalid));
-        
-        var smsEnable = await scopedCfgSvc.GetSmsVerificationToggleSwitchAsync();
-        if (smsEnable)
-        {
-            try
-            {
-                var (otpResult, formattedPhoneNumber) = await smsVerification.VerificationCheck(combinedPhoneNumber, model.Otp);
-                if (otpResult == false) return BadRequest(Result.Error(ResultMessage.Verification.VerificationFail));
-                phoneNumberVerified = true;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Check SMS Verification Code Error : {Message}", ex.Message);
-                return BadRequest(Result.Error(ex.Message));
-            }
-        }
-
-        var referralCode = await tenantCtx.ReferralCodes
-            .Where(x => x.Code == model.ReferCode)
-            .ToResponse()
-            .FirstOrDefaultAsync();
-
-        var centralParty = new CentralParty
-        {
-            Email = email,
-            SiteId = referralCode?.Summary?.siteId ?? model.SiteId ?? await GetSite(),
-            Name = model.FirstName + " " + model.LastName,
-            NativeName = model.FirstName + " " + model.LastName,
-            Code = "",
-            Note = "",
-            Uid = await userService.GeneratePartyUidAsync(),
-            TenantId = tenant.Id,
-            CreatedOn = DateTime.UtcNow,
-        };
-
-        if (centralParty.SiteId == 0) centralParty.SiteId = (int)SiteTypes.BritishVirginIslands;
-
-        await centralCtx.CentralParties.AddAsync(centralParty);
-        await centralCtx.SaveChangesAsync();
-        //
-        var party = centralParty.ToParty();
-        await tenantCtx.PartyRoles.AddAsync(new PartyRole { Party = party, RoleId = (int)UserRoleTypes.Client });
-        await tenantCtx.SaveChangesAsync();
-        //
-        var uid = await Utils.GenerateUniqueIdAsync(uid => userMgr.Users.AnyAsync(x => x.Uid == uid));
-        var user = Gateway.Auth.User
-            .Create(email)
-            .SetUid(uid)
-            .Party(party.Id)
-            .Tenant(tenant.Id)
-            .SetName(model.FirstName, model.LastName)
-            .SetCcc(model.CCC)
-            .SetPhoneNumber(model.Phone)
-            .SetCurrency(model.Currency)
-            .SetReferCode(model.ReferCode)
-            .SetCountryCode(model.CountryCode)
-            .Ip(ipInfo.Ip)
-            .SetLanguage(model.Language);
-
-        user.PhoneNumberConfirmed = phoneNumberVerified;
-        user.EmailConfirmed = true;
-
-        try
-        {
-            result = await userMgr.CreateAsync(user, password);
-
-            if (!result.Succeeded)
-            {
-                var descriptions = result.Errors.Select(x => x.Description).ToList();
-                BcrLog.Slack(
-                    $"User register with email: {user.Email!.ToLower()} failed, message: {string.Join(", ", descriptions)}");
-                return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail,
-                    result.Errors.Select(x => x.Description).ToList()));
-            }
-        }
-        catch (Exception e)
-        {
-            BcrLog.Slack($"User register with email: {user.Email!.ToLower()} failed, message: {e.Message}");
-            return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail));
-        }
-
-
-        user.ApplyToParty(ref party);
-        tenantCtx.Parties.Update(party);
-        await tenantCtx.SaveChangesAsync();
-
-        await TryAssignReferCode(user, tenantCtx);
-        await userMgr.AddClaimsAsync(user, new List<Claim>
-        {
-            new(UserClaimTypes.PartyId, party.Id.ToString()),
-            new(UserClaimTypes.TenantId, tenant.Id.ToString()),
-        });
-        await userMgr.AddToRoleAsync(user, UserRoleTypesString.Guest);
-        email = await userMgr.GetEmailAsync(user);
-        var code = await userMgr.GenerateEmailConfirmationTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = $"{model.ConfirmUrl}?email={HttpUtility.UrlEncode(email)}&code={code}";
-
-        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-        await mediator.Publish(new UserRegisteredEvent(user, password, callbackUrl, model.SourceComment,
-            utm: Request.Cookies["utm"]));
-        return NoContent();
-    }
+    // [Migrated to auth Rust service: POST /api/v2/auth/register]
+    // [AllowAnonymous]
+    // [HttpPost("register")]
+    // [ProducesResponseType(StatusCodes.Status204NoContent)]
+    // [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    // public async Task<IActionResult> Register([FromBody] RegistrationRequest model)
+    // {
+    //     var ip = GetRemoteIpAddress();
+    //     var inBlackList = await centralCtx.IpBlackLists.AnyAsync(x => x.Ip == ip);
+    //     if (inBlackList)
+    //     {
+    //         logger.LogWarning("IP {Ip} is in black list", ip);
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail));
+    //     }
+    //
+    //     var ipInfo = await GetIpInfo(ip);
+    //     var tenantIdFromIp = Tenancy.GetTenantIdByCountryCode(ipInfo.Country);
+    //
+    //     model.ReferCode = ReferCodeRegex().Replace(model.ReferCode.Trim().ToUpper(), "");
+    //     
+    //     var tenant = await centralCtx.CentralReferralCodes
+    //                      .Where(x => x.Code == model.ReferCode)
+    //                      .Select(x => x.Tenant)
+    //                      .FirstOrDefaultAsync()
+    //                  ?? await centralCtx.Tenants.FirstOrDefaultAsync(x => x.Id == model.TenantId)
+    //                  ?? await centralCtx.Tenants.FirstOrDefaultAsync(x => x.Id == tenantIdFromIp)
+    //                  ?? await centralCtx.Tenants.FirstAsync(x => x.Id == 10000);
+    //
+    //     using var scope = serviceProvider.CreateTenantScope(tenant.Id);
+    //     
+    //     var tenantCtx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+    //     var userService = scope.ServiceProvider.GetRequiredService<UserService>();
+    //
+    //     var scopedCfgSvc = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
+    //
+    //     var email = model.Email.Trim().ToLower();
+    //     var existedUsers = await userMgr.Users.Where(x => x.Email == model.Email.Trim().ToLower()).ToListAsync();
+    //     if (existedUsers.Any(x => x.TenantId != tenant.Id))
+    //     {
+    //         logger.LogWarning("User with email already exists in another tenant, {Email}", email);
+    //         return Conflict(ToErrorResult(ResultMessage.Register.AlreadyRegisterOtherSite));
+    //     }
+    //
+    //     if (existedUsers.Any(x => x.TenantId == tenant.Id))
+    //     {
+    //         logger.LogWarning("User with email {Email} already exists", email);
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.EmailExists));
+    //     }
+    //
+    //     var password = model.Password.Trim();
+    //     var passwordValidator = new PasswordValidator<User>();
+    //     var result = await passwordValidator.ValidateAsync(userMgr, new User(), password);
+    //     if (!result.Succeeded)
+    //     {
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail,
+    //             result.Errors.Select(x => x.Description).ToList()));
+    //     }
+    //
+    //     
+    //
+    //     // verify OTP
+    //     var phoneNumberVerified = false;
+    //     var combinedPhoneNumber = "+" + model.CCC + model.Phone;
+    //     switch (model.CCC)
+    //     {
+    //         case "852" when model.Phone.Length != 8:
+    //             return BadRequest(Result.Error(ResultMessage.Verification.PhoneNumberInvalid));
+    //         case "61" when tenant.Id != 1:
+    //             break;
+    //         // temporary disable au phone number validation for bvi 
+    //         // return BadRequest(Result.Error(ResultMessage.Verification.PhoneNumberInvalid));
+    //     }
+    //     
+    //     //********************************************************************
+    //     // Phone Number Disable on 2025/03/27 for APP Apple IOS Verification
+    //     //********************************************************************
+    //     //
+    //     // if (!IsValidPhoneNumber(combinedPhoneNumber))
+    //     //     return BadRequest(Result.Error(ResultMessage.Verification.PhoneNumberInvalid));
+    //     //
+    //     // if (!PhoneNumberRegionCodeTypes.All.Contains(model.CCC))
+    //     //     return BadRequest(Result.Error(ResultMessage.Verification.RegionCodeInvalid));
+    //     
+    //     var smsEnable = await scopedCfgSvc.GetSmsVerificationToggleSwitchAsync();
+    //     if (smsEnable)
+    //     {
+    //         try
+    //         {
+    //             var (otpResult, formattedPhoneNumber) = await smsVerification.VerificationCheck(combinedPhoneNumber, model.Otp);
+    //             if (otpResult == false) return BadRequest(Result.Error(ResultMessage.Verification.VerificationFail));
+    //             phoneNumberVerified = true;
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             logger.LogWarning("Check SMS Verification Code Error : {Message}", ex.Message);
+    //             return BadRequest(Result.Error(ex.Message));
+    //         }
+    //     }
+    //
+    //     var referralCode = await tenantCtx.ReferralCodes
+    //         .Where(x => x.Code == model.ReferCode)
+    //         .ToResponse()
+    //         .FirstOrDefaultAsync();
+    //
+    //     var centralParty = new CentralParty
+    //     {
+    //         Email = email,
+    //         SiteId = referralCode?.Summary?.siteId ?? model.SiteId ?? await GetSite(),
+    //         Name = model.FirstName + " " + model.LastName,
+    //         NativeName = model.FirstName + " " + model.LastName,
+    //         Code = "",
+    //         Note = "",
+    //         Uid = await userService.GeneratePartyUidAsync(),
+    //         TenantId = tenant.Id,
+    //         CreatedOn = DateTime.UtcNow,
+    //     };
+    //
+    //     if (centralParty.SiteId == 0) centralParty.SiteId = (int)SiteTypes.BritishVirginIslands;
+    //
+    //     await centralCtx.CentralParties.AddAsync(centralParty);
+    //     await centralCtx.SaveChangesAsync();
+    //     //
+    //     var party = centralParty.ToParty();
+    //     await tenantCtx.PartyRoles.AddAsync(new PartyRole { Party = party, RoleId = (int)UserRoleTypes.Client });
+    //     await tenantCtx.SaveChangesAsync();
+    //     //
+    //     var uid = await Utils.GenerateUniqueIdAsync(uid => userMgr.Users.AnyAsync(x => x.Uid == uid));
+    //     var user = Gateway.Auth.User
+    //         .Create(email)
+    //         .SetUid(uid)
+    //         .Party(party.Id)
+    //         .Tenant(tenant.Id)
+    //         .SetName(model.FirstName, model.LastName)
+    //         .SetCcc(model.CCC)
+    //         .SetPhoneNumber(model.Phone)
+    //         .SetCurrency(model.Currency)
+    //         .SetReferCode(model.ReferCode)
+    //         .SetCountryCode(model.CountryCode)
+    //         .Ip(ipInfo.Ip)
+    //         .SetLanguage(model.Language);
+    //
+    //     user.PhoneNumberConfirmed = phoneNumberVerified;
+    //     user.EmailConfirmed = true;
+    //
+    //     try
+    //     {
+    //         result = await userMgr.CreateAsync(user, password);
+    //
+    //         if (!result.Succeeded)
+    //         {
+    //             var descriptions = result.Errors.Select(x => x.Description).ToList();
+    //             BcrLog.Slack(
+    //                 $"User register with email: {user.Email!.ToLower()} failed, message: {string.Join(", ", descriptions)}");
+    //             return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail,
+    //                 result.Errors.Select(x => x.Description).ToList()));
+    //         }
+    //     }
+    //     catch (Exception e)
+    //     {
+    //         BcrLog.Slack($"User register with email: {user.Email!.ToLower()} failed, message: {e.Message}");
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.RegisterFail));
+    //     }
+    //
+    //
+    //     user.ApplyToParty(ref party);
+    //     tenantCtx.Parties.Update(party);
+    //     await tenantCtx.SaveChangesAsync();
+    //
+    //     await TryAssignReferCode(user, tenantCtx);
+    //     await userMgr.AddClaimsAsync(user, new List<Claim>
+    //     {
+    //         new(UserClaimTypes.PartyId, party.Id.ToString()),
+    //         new(UserClaimTypes.TenantId, tenant.Id.ToString()),
+    //     });
+    //     await userMgr.AddToRoleAsync(user, UserRoleTypesString.Guest);
+    //     email = await userMgr.GetEmailAsync(user);
+    //     var code = await userMgr.GenerateEmailConfirmationTokenAsync(user);
+    //     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+    //     var callbackUrl = $"{model.ConfirmUrl}?email={HttpUtility.UrlEncode(email)}&code={code}";
+    //
+    //     var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+    //     await mediator.Publish(new UserRegisteredEvent(user, password, callbackUrl, model.SourceComment,
+    //         utm: Request.Cookies["utm"]));
+    //     return NoContent();
+    // }
 
     [AllowAnonymous]
     [HttpPost("password/forgot")]
