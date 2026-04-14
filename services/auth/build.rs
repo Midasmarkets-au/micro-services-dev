@@ -21,6 +21,7 @@ fn workspace_root() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
 /// Rules:
 ///   - Insert `_` before an uppercase letter that follows a lowercase letter
 ///   - Insert `_` before a digit that follows an alphabetic character
+///
 /// Examples: Logout→LOGOUT, SendLoginCode→SEND_LOGIN_CODE, Enable2FA→ENABLE_2FA
 fn pascal_to_screaming_snake(name: &str) -> String {
     let mut out = String::new();
@@ -53,8 +54,7 @@ fn generate_http_routes(
     for line in content.lines() {
         let trimmed = line.trim();
 
-        if trimmed.starts_with("rpc ") {
-            let after = &trimmed["rpc ".len()..];
+        if let Some(after) = trimmed.strip_prefix("rpc ") {
             if let Some(name) = after.split('(').next() {
                 current_rpc = Some(name.trim().to_string());
             }

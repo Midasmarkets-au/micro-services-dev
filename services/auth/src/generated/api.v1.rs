@@ -359,6 +359,7 @@ pub mod auth_service_client {
     ///    3. GetTwoFactorSetting  — 读取租户 2FA 配置（ConfigService + TenantDbContext）
     ///    4. GetRecentUserAgents  — 读取最近登录 UA（TenantDbContext.LoginLogs，用于设备识别）
     ///    5. WriteLoginLog        — 写入登录日志（TenantDbContext.LoginLogs + Party.LastLoginIp）
+    ///
     /// ============================================================================
     #[derive(Debug, Clone)]
     pub struct AuthServiceClient<T> {
@@ -915,6 +916,7 @@ pub mod auth_service_server {
     ///    3. GetTwoFactorSetting  — 读取租户 2FA 配置（ConfigService + TenantDbContext）
     ///    4. GetRecentUserAgents  — 读取最近登录 UA（TenantDbContext.LoginLogs，用于设备识别）
     ///    5. WriteLoginLog        — 写入登录日志（TenantDbContext.LoginLogs + Party.LastLoginIp）
+    ///
     /// ============================================================================
     #[derive(Debug)]
     pub struct AuthServiceServer<T: AuthService> {
