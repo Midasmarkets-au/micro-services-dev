@@ -16,6 +16,7 @@
     "dayMode": "Day Mode",
     "nightMode": "Night Mode",
     "noData": "No data available",
+    "close": "Close",
     "siteType": {
       "0": "DEF",
       "1": "VU",
@@ -651,6 +652,7 @@
   "errorCodes": {
     "Unauthorized": "Unauthorized, please login first",
     "__USER_IS_LOCKED_OUT__": "User is locked out",
+    "invalid_username_or_password": "Invalid username or password",
     "invalid_grant": "Invalid Username or Password",
     "Invalid code": "Invalid verification code",
     "__EMAIL_UNCONFIRMED__": "Email Unconfirmed",
@@ -685,6 +687,7 @@
     "__SERVICE_NOT_FOUND__": "Service not found",
     "networkError": "Network error, please check your connection",
     "unknownError": "An unknown error occurred",
+    "Wallet address already exists": "Wallet address already exists",
     "Request failed": "An unexpected error occurred. Please try again later or contact customer service for assistance.",
     "__ALREADY_PARTICIPATED__": "You have already participated in this event",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "You cannot transfer to your own account",
@@ -1072,7 +1075,8 @@
       "110": "Revisión",
       "200": "BI",
       "300": "BI",
-      "400": "Cliente"
+      "400": "Cliente",
+      "1000": "Guest"
     },
     "noData": "No accounts",
     "detail": {
@@ -1218,7 +1222,11 @@
       "countdown": "Please complete payment within {minutes} minutes",
       "clickRedirect": "Please click the link to complete payment",
       "redirect": "Click to redirect",
-      "error": "Payment failed, please try again"
+      "error": "Payment failed, please try again",
+      "qrCodeNotice": "Please scan the QR code to complete payment",
+      "completePayment": "I have completed payment",
+      "paidConfirmed": "Payment confirmed",
+      "paidSuccess": "Payment confirmation submitted"
     },
     "error": {
       "amountRequired": "Please enter an amount",
@@ -1681,6 +1689,7 @@
       "createClientLink": "Create Client Link",
       "generateReport": "Generate Report",
       "download": "Download",
+      "close": "Close",
       "sortNewest": "Newest First",
       "sortOldest": "Oldest First"
     },
@@ -1940,7 +1949,9 @@
       "addRatePercentage": "Add Rate %",
       "choosePipCommission": "Choose Pip/Commission",
       "choosePipCommissionValue": "Choose value",
-      "noPcNeed": "No pip/commission settings needed for this account"
+      "noPcNeed": "No pip/commission settings needed for this account",
+      "isMLM": "This account is an MLM distribution type",
+      "referralCodeNotAvailable": "Referral code is not available"
     },
     "referral": {
       "title": "Referral",
@@ -2060,6 +2071,7 @@
       "allLevels": "All Levels"
     },
     "action": {
+      "cancel": "Cancel",
       "search": "Search",
       "reset": "Reset",
       "viewDetails": "View Details",
@@ -2143,6 +2155,7 @@
     },
     "customers": {
       "title": "Customers",
+      "all": "All",
       "ibType": "IB",
       "clientType": "Client",
       "salesType": "Sales",
@@ -2309,29 +2322,6 @@
         "km-kh": "Khmer",
         "es-es": "Spanish"
       },
-      "pipOptions": {
-        "0": "No",
-        "1": "P1",
-        "2": "P2",
-        "3": "P3",
-        "4": "P4",
-        "5": "P5",
-        "10": "P10",
-        "15": "P15",
-        "20": "P20",
-        "30": "P30"
-      },
-      "commissionOptions": {
-        "0": "No",
-        "2": "2",
-        "3": "3",
-        "5": "5",
-        "10": "10",
-        "20": "20",
-        "30": "30",
-        "40": "40",
-        "50": "50"
-      },
       "productCategory": {
         "A50": "A50",
         "BTC": "Bitcoin",
@@ -2356,6 +2346,29 @@
         "US100": "Nasdaq US100",
         "US30": "Dow Jones US30",
         "US500": "S&P US500"
+      },
+      "pipOptions": {
+        "0": "No",
+        "1": "P1",
+        "2": "P2",
+        "3": "P3",
+        "4": "P4",
+        "5": "P5",
+        "10": "P10",
+        "15": "P15",
+        "20": "P20",
+        "30": "P30"
+      },
+      "commissionOptions": {
+        "0": "No",
+        "2": "2",
+        "3": "3",
+        "5": "5",
+        "10": "10",
+        "20": "20",
+        "30": "30",
+        "40": "40",
+        "50": "50"
       }
     },
     "ibLinks": {
@@ -2590,6 +2603,52 @@
       "6": "Balance",
       "7": "Credit",
       "undefined": "Undefined"
+    },
+    "pipOptions": {
+      "0": "NO",
+      "1": "P1",
+      "2": "P2",
+      "3": "P3",
+      "4": "P4",
+      "5": "P5",
+      "10": "P10",
+      "15": "P15",
+      "20": "P20",
+      "30": "P30"
+    },
+    "commissionOptions": {
+      "0": "No",
+      "2": "$2",
+      "3": "$3",
+      "5": "$5",
+      "10": "$10",
+      "20": "$20",
+      "30": "$30"
+    },
+    "productCategory": {
+      "A50": "A50",
+      "BTC": "Bitcoin",
+      "Commodities": "Spot Index",
+      "Crypto": "Cryptocurrency",
+      "D Forex": "Direct Forex",
+      "ETH": "Ethereum",
+      "Energy": "Energy Futures",
+      "Forex": "Cross Forex",
+      "Fu_Energy": "Energy Futures",
+      "GAUCNH": "Gold RMB",
+      "Gold": "Gold",
+      "HKG50": "Hang Seng Index",
+      "Index": "Spot Index",
+      "JPN225": "Nikkei JPN225",
+      "Natural Gas": "Natural Gas",
+      "OIL": "WTI/Brent Crude",
+      "Precious Metal": "Precious Metal",
+      "Shares": "Shares",
+      "Silver 1000OZ": "Silver 1000OZ",
+      "Silver 5000OZ": "Silver 5000OZ",
+      "US100": "Nasdaq US100",
+      "US30": "Dow Jones US30",
+      "US500": "S&P US500"
     }
   },
   "unlockEmail": {

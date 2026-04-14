@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-/// MT4 Equity report — mirrors ReportService.Equity.cs
+//! MT4 Equity report — mirrors ReportService.Equity.cs
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};

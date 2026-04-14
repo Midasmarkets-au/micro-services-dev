@@ -68,3 +68,20 @@ export async function postAccountDeposit(
     return { success: false, error: 'Failed to submit deposit' };
   }
 }
+
+/**
+ * 通知服务端 QrCode 支付已完成
+ */
+export async function postQrCodePaid(
+  transactionId: string
+): Promise<ActionResponse<void>> {
+  try {
+    await apiClient.v1.post(`/payment/${transactionId}/paid`, null);
+    return { success: true };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to confirm payment' };
+  }
+}

@@ -394,7 +394,7 @@ async fn run_cron_scheduler(ctx: AppContext) {
         }
 
         // Calculate & Release Rebate: every 2 minutes (*/2 * * * *)
-        if minute % 2 == 0 {
+        if minute.is_multiple_of(2) {
             let ctx_calc = ctx.clone();
             tokio::spawn(async move {
                 if let Err(e) = jobs::rebate::execute_calculate(ctx_calc).await {

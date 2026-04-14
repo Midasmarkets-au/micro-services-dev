@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "[::]:8080".to_string())
         .parse()?;
 
-    let service = ApiServiceImpl::default();
+    let service = ApiServiceImpl;
     let reflection = tonic_reflection::server::Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
         .build()?;

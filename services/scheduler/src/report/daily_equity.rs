@@ -91,8 +91,8 @@ pub async fn generate_daily_equity_csv(
     let prev_dt: NaiveDate = from.date_naive();
     let curr_dt: NaiveDate = to.date_naive();
 
-    let pg_rows = query_postgres(
-        tenant_pool,
+    let pg_rows = query_postgres(QueryPostgresArgs {
+        pool: tenant_pool,
         from,
         to,
         prev_dt,
@@ -100,7 +100,7 @@ pub async fn generate_daily_equity_csv(
         use_closing_time,
         closed_on_from,
         closed_on_to,
-    )
+    })
     .await?;
 
     info!(
@@ -119,8 +119,8 @@ pub async fn generate_daily_equity_csv(
 
 // ─── PostgreSQL CTE query ─────────────────────────────────────────────────────
 
-async fn query_postgres(
-    pool: &PgPool,
+struct QueryPostgresArgs<'a> {
+    pool: &'a PgPool,
     from: DateTime<Utc>,
     to: DateTime<Utc>,
     prev_dt: NaiveDate,
@@ -128,7 +128,19 @@ async fn query_postgres(
     use_closing_time: bool,
     closed_on_from: DateTime<Utc>,
     closed_on_to: DateTime<Utc>,
-) -> Result<Vec<PgRow>> {
+}
+
+async fn query_postgres(args: QueryPostgresArgs<'_>) -> Result<Vec<PgRow>> {
+    let QueryPostgresArgs {
+        pool,
+        from,
+        to,
+        prev_dt,
+        curr_dt,
+        use_closing_time,
+        closed_on_from,
+        closed_on_to,
+    } = args;
     let closing_filter = if use_closing_time {
         r#"AND tr."ClosedOn" >= $5 AND tr."ClosedOn" <= $6"#
     } else {

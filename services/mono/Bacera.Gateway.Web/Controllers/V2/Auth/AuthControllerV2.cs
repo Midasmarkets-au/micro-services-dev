@@ -78,17 +78,19 @@ public partial class AuthControllerV2(
         return Ok(JsonConvert.DeserializeObject(value));
     }
 
-    [AllowAnonymous]
-    [HttpGet("ip-info")]
-    public async Task<IActionResult> IpInfo() => Ok(await GetIpInfo());
+    // Migrated to Rust auth service (GET /api/v2/auth/ip-info)
+    // [AllowAnonymous]
+    // [HttpGet("ip-info")]
+    // public async Task<IActionResult> IpInfo() => Ok(await GetIpInfo());
 
-    [AllowAnonymous]
-    [HttpGet("c")]
-    public async Task<IActionResult> Configuration([FromQuery] string? openAt)
-        => Ok(new List<object>
-        {
-            await GetSite(openAt),
-        });
+    // Migrated to Rust auth service (GET /api/v2/auth/c)
+    // [AllowAnonymous]
+    // [HttpGet("c")]
+    // public async Task<IActionResult> Configuration([FromQuery] string? openAt)
+    //     => Ok(new List<object>
+    //     {
+    //         await GetSite(openAt),
+    //     });
 
     // [Migrated to auth Rust service: POST /api/v2/auth/register]
     // [AllowAnonymous]
@@ -276,84 +278,87 @@ public partial class AuthControllerV2(
     //     return NoContent();
     // }
 
-    [AllowAnonymous]
-    [HttpPost("password/forgot")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ForgetPassword([FromBody] ForgetPasswordRequest request)
-    {
-        request.Email = request.Email.ToLower().Trim();
-        if (!request.Email.IsEmail())
-        {
-            logger.LogWarning("Invalid email {Email}", request.Email);
-            return BadRequest(ToErrorResult(ResultMessage.Register.InvalidEmail));
-        }
+    // Migrated to Rust auth service (POST /api/v2/auth/password/forgot).
+    // Frontend calls /api/v1/auth/password/forgot which is handled by the Rust auth v1 alias.
+    // [AllowAnonymous]
+    // [HttpPost("password/forgot")]
+    // [ProducesResponseType(StatusCodes.Status204NoContent)]
+    // [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    // public async Task<IActionResult> ForgetPassword([FromBody] ForgetPasswordRequest request)
+    // {
+    //     request.Email = request.Email.ToLower().Trim();
+    //     if (!request.Email.IsEmail())
+    //     {
+    //         logger.LogWarning("Invalid email {Email}", request.Email);
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.InvalidEmail));
+    //     }
+    //
+    //     var users = await userMgr.Users
+    //         .Where(x => x.Email == request.Email && x.Status == 0 && x.EmailConfirmed)
+    //         .OrderBy(x => x.TenantId)
+    //         .ToListAsync();
+    //
+    //     var user = users.FirstOrDefault();
+    //     if (user == null || !await userMgr.IsEmailConfirmedAsync(user))
+    //     {
+    //         logger.LogWarning("User with email {Email} not found", request.Email);
+    //         return NoContent();
+    //     }
+    //
+    //     var tenant = await centralCtx.Tenants.FirstOrDefaultAsync(x => x.Id == user.TenantId);
+    //     if (tenant == null)
+    //     {
+    //         logger.LogWarning("Tenant with id {TenantId} not found", user.TenantId);
+    //         return NoContent();
+    //     }
+    //
+    //     var scope = serviceProvider.CreateScope();
+    //     var tenancyResolver = scope.ServiceProvider.GetRequiredService<Tenancy>();
+    //     tenancyResolver.SetTenantId(tenant.Id);
+    //
+    //     var code = await userMgr.GeneratePasswordResetTokenAsync(user);
+    //     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+    //     var callbackUrl = $"{request.ResetUrl}?code={code}";
+    //     var jobClient = scope.ServiceProvider.GetRequiredService<IBackgroundJobClient>();
+    //     var model = new ResetPasswordViewModel(user.Email!, user.GuessUserName(), callbackUrl);
+    //     jobClient.Enqueue<IGeneralJob>(x => x.ResetPasswordAsync(tenant.Id, model, user.Language));
+    //     return NoContent();
+    // }
 
-        var users = await userMgr.Users
-            .Where(x => x.Email == request.Email && x.Status == 0 && x.EmailConfirmed)
-            .OrderBy(x => x.TenantId)
-            .ToListAsync();
-
-        var user = users.FirstOrDefault();
-        if (user == null || !await userMgr.IsEmailConfirmedAsync(user))
-        {
-            // Don't reveal that the user does not exist or is not confirmed
-            logger.LogWarning("User with email {Email} not found", request.Email);
-            return NoContent();
-        }
-
-        var tenant = await centralCtx.Tenants.FirstOrDefaultAsync(x => x.Id == user.TenantId);
-        if (tenant == null)
-        {
-            logger.LogWarning("Tenant with id {TenantId} not found", user.TenantId);
-            return NoContent();
-        }
-
-        var scope = serviceProvider.CreateScope();
-        var tenancyResolver = scope.ServiceProvider.GetRequiredService<Tenancy>();
-        tenancyResolver.SetTenantId(tenant.Id);
-
-        var code = await userMgr.GeneratePasswordResetTokenAsync(user);
-        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = $"{request.ResetUrl}?code={code}";
-        var jobClient = scope.ServiceProvider.GetRequiredService<IBackgroundJobClient>();
-        var model = new ResetPasswordViewModel(user.Email!, user.GuessUserName(), callbackUrl);
-        jobClient.Enqueue<IGeneralJob>(x => x.ResetPasswordAsync(tenant.Id, model, user.Language));
-        return NoContent();
-    }
-
-    [HttpPost("password/change")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestModel spec)
-    {
-        var user = await userMgr.GetUserAsync(User);
-        if (user == null)
-        {
-            return BadRequest(ToErrorResult(ResultMessage.Common.UserNotFound));
-        }
-
-        var result = await userMgr.CheckPasswordAsync(user, spec.CurrentPassword);
-        if (!result)
-        {
-            return BadRequest(ToErrorResult(ResultMessage.Register.ChangePasswordFail));
-        }
-
-        var email = user.Email?.Trim().ToLower() ?? string.Empty;
-        var users = await userMgr.Users.Where(x => x.Email == email).ToListAsync();
-        foreach (var uu in users)
-        {
-            var token = await userMgr.GeneratePasswordResetTokenAsync(uu);
-            var resul = await userMgr.ResetPasswordAsync(uu, token, spec.NewPassword);
-            if (!resul.Succeeded)
-            {
-                logger.LogWarning("User {Uid} change password failed", resul.Errors.Select(x => x.Description));
-            }
-        }
-
-        await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
-        return NoContent();
-    }
+    // Migrated to Rust auth service (POST /api/v2/auth/password/change).
+    // Frontend calls /api/v1/auth/password/change which is handled by the Rust auth v1 alias.
+    // [HttpPost("password/change")]
+    // [ProducesResponseType(StatusCodes.Status204NoContent)]
+    // [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    // public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestModel spec)
+    // {
+    //     var user = await userMgr.GetUserAsync(User);
+    //     if (user == null)
+    //     {
+    //         return BadRequest(ToErrorResult(ResultMessage.Common.UserNotFound));
+    //     }
+    //
+    //     var result = await userMgr.CheckPasswordAsync(user, spec.CurrentPassword);
+    //     if (!result)
+    //     {
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.ChangePasswordFail));
+    //     }
+    //
+    //     var email = user.Email?.Trim().ToLower() ?? string.Empty;
+    //     var users = await userMgr.Users.Where(x => x.Email == email).ToListAsync();
+    //     foreach (var uu in users)
+    //     {
+    //         var token = await userMgr.GeneratePasswordResetTokenAsync(uu);
+    //         var resul = await userMgr.ResetPasswordAsync(uu, token, spec.NewPassword);
+    //         if (!resul.Succeeded)
+    //         {
+    //             logger.LogWarning("User {Uid} change password failed", resul.Errors.Select(x => x.Description));
+    //         }
+    //     }
+    //
+    //     await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
+    //     return NoContent();
+    // }
 
     [HttpPost("password/check")]
     public async Task<IActionResult> Check([FromQuery] string email, [FromQuery] string password)
@@ -379,64 +384,66 @@ public partial class AuthControllerV2(
         return Ok(result);
     }
 
-    [AllowAnonymous]
-    [HttpPost("password/reset")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordByTokenRequest data)
-    {
-        data.Email = data.Email.ToLower().Trim();
-        if (!data.Email.IsEmail())
-        {
-            logger.LogWarning("Invalid email {Email}", data.Email);
-            return BadRequest(ToErrorResult(ResultMessage.Register.InvalidEmail));
-        }
-
-        string code;
-        try
-        {
-            code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(data.Code));
-        }
-        catch (Exception e)
-        {
-            logger.LogWarning("Token code invalid. Error: {@Error}. Request {@Request}", e.Message, data);
-            return BadRequest(ToErrorResult(ResultMessage.Register.InvalidToken));
-        }
-
-        var users = await userMgr.Users
-            .Where(x => x.Email == data.Email && x.Status == 0 && x.EmailConfirmed)
-            .OrderBy(x => x.TenantId)
-            .ToListAsync();
-        if (!users.Any())
-        {
-            logger.LogWarning("User with email {Email} not found", data.Email);
-            return NoContent();
-        }
-
-        var validateResult = false;
-        foreach (var user in users)
-        {
-            validateResult = await userMgr.VerifyUserTokenAsync(user
-                , userMgr.Options.Tokens.PasswordResetTokenProvider
-                , "ResetPassword"
-                , code);
-            if (validateResult) break;
-        }
-
-        if (!validateResult)
-        {
-            return BadRequest(ToErrorResult(ResultMessage.Register.InvalidToken));
-        }
-
-        foreach (var user in users)
-        {
-            var token = await userMgr.GeneratePasswordResetTokenAsync(user);
-            await userMgr.ResetPasswordAsync(user, token, data.Password);
-            await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
-        }
-
-        return NoContent();
-    }
+    // Migrated to Rust auth service (POST /api/v2/auth/password/reset).
+    // Frontend calls /api/v1/auth/password/reset which is handled by the Rust auth v1 alias.
+    // [AllowAnonymous]
+    // [HttpPost("password/reset")]
+    // [ProducesResponseType(StatusCodes.Status204NoContent)]
+    // [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    // public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordByTokenRequest data)
+    // {
+    //     data.Email = data.Email.ToLower().Trim();
+    //     if (!data.Email.IsEmail())
+    //     {
+    //         logger.LogWarning("Invalid email {Email}", data.Email);
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.InvalidEmail));
+    //     }
+    //
+    //     string code;
+    //     try
+    //     {
+    //         code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(data.Code));
+    //     }
+    //     catch (Exception e)
+    //     {
+    //         logger.LogWarning("Token code invalid. Error: {@Error}. Request {@Request}", e.Message, data);
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.InvalidToken));
+    //     }
+    //
+    //     var users = await userMgr.Users
+    //         .Where(x => x.Email == data.Email && x.Status == 0 && x.EmailConfirmed)
+    //         .OrderBy(x => x.TenantId)
+    //         .ToListAsync();
+    //     if (!users.Any())
+    //     {
+    //         logger.LogWarning("User with email {Email} not found", data.Email);
+    //         return NoContent();
+    //     }
+    //
+    //     var validateResult = false;
+    //     foreach (var user in users)
+    //     {
+    //         validateResult = await userMgr.VerifyUserTokenAsync(user
+    //             , userMgr.Options.Tokens.PasswordResetTokenProvider
+    //             , "ResetPassword"
+    //             , code);
+    //         if (validateResult) break;
+    //     }
+    //
+    //     if (!validateResult)
+    //     {
+    //         return BadRequest(ToErrorResult(ResultMessage.Register.InvalidToken));
+    //     }
+    //
+    //     foreach (var user in users)
+    //     {
+    //         var token = await userMgr.GeneratePasswordResetTokenAsync(user);
+    //         await userMgr.ResetPasswordAsync(user, token, data.Password);
+    //         await userService.RecordPasswordChangeAuditAsync(user.PartyId, user.Id);
+    //     }
+    //
+    //     return NoContent();
+    // }
 
     private static async Task TryAssignReferCode(User user, TenantDbContext ctx)
     {
