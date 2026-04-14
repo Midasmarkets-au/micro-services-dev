@@ -25,6 +25,10 @@ pub fn router() -> Router<Arc<AppState>> {
         .route(FORGOT_PASSWORD_PATH, post(forgot_password))
         .route(RESET_PASSWORD_PATH, post(reset_password))
         .route(CHANGE_PASSWORD_PATH, post(change_password))
+        // V1 aliases — same handlers, different paths
+        .route("/api/v1/auth/password/forgot", post(forgot_password))
+        .route("/api/v1/auth/password/reset", post(reset_password))
+        .route("/api/v1/auth/password/change", post(change_password))
 }
 
 // ─── POST /api/v2/auth/password-reset/code ────────────────────────────────
