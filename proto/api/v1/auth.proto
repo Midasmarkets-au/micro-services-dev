@@ -66,6 +66,9 @@ service AuthService {
 
   // 发送密码重置邮件（auth 生成 reset_token，mono 拼接 URL 发送）
   rpc SendPasswordResetEmail(SendPasswordResetEmailRequest) returns (SendPasswordResetEmailResponse);
+
+  // 注册新用户的租户库操作（Party/PartyRole/Referral/Lead/邮件），由 auth 同步调用
+  rpc RegisterTenantUser(RegisterTenantUserRequest) returns (RegisterTenantUserResponse);
 }
 
 // ----------------------------------------------------------------------------
@@ -147,6 +150,36 @@ message SendPasswordResetEmailRequest {
 
 message SendPasswordResetEmailResponse {
   bool sent = 1;
+}
+
+// ----------------------------------------------------------------------------
+//  RegisterTenantUser
+// ----------------------------------------------------------------------------
+message RegisterTenantUserRequest {
+  int64  party_id        = 1;   // = CentralParty.Id
+  int64  tenant_id       = 2;
+  int64  user_id         = 3;   // auth._User.Id（已创建）
+  int64  uid             = 4;   // Party UID（CentralParty.Uid）
+  string email           = 5;
+  string first_name      = 6;
+  string last_name       = 7;
+  string phone           = 8;
+  string ccc             = 9;
+  string currency        = 10;
+  string refer_code      = 11;
+  string language        = 12;
+  int32  site_id         = 13;
+  string register_ip     = 14;
+  bool   phone_confirmed = 15;
+  string source_comment  = 16;
+  string utm             = 17;
+  string native_name     = 18;
+  string country_code    = 19;
+}
+
+message RegisterTenantUserResponse {
+  bool   success = 1;
+  string error   = 2;
 }
 
 // ----------------------------------------------------------------------------
