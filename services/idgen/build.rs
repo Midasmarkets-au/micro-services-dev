@@ -4,12 +4,11 @@ fn workspace_root() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let mut dir = std::path::Path::new(&manifest_dir);
     loop {
         let cargo_toml = dir.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                if content.contains("[workspace]") {
-                    return Ok(dir.to_path_buf());
-                }
-            }
+        if cargo_toml.exists()
+            && let Ok(content) = std::fs::read_to_string(&cargo_toml)
+            && content.contains("[workspace]")
+        {
+            return Ok(dir.to_path_buf());
         }
         dir = match dir.parent() {
             Some(p) => p,
@@ -239,23 +238,22 @@ fn generate_http_routes(
 
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("rpc ") {
-            let after_rpc = trimmed["rpc ".len()..].trim_start();
+        if let Some(after_rpc) = trimmed.strip_prefix("rpc ") {
+            let after_rpc = after_rpc.trim_start();
             if let Some(name) = after_rpc.split_whitespace().next() {
                 let rpc_name = name.split('(').next().unwrap_or(name).trim();
                 current_rpc = Some(rpc_name.to_string());
             }
         }
-        if let Some(ref rpc) = current_rpc {
-            if trimmed.contains("get:") {
-                if let Some(q) = trimmed.find('"') {
-                    let start = q + 1;
-                    if let Some(end) = trimmed[start..].find('"') {
-                        let path = trimmed[start..start + end].to_string();
-                        routes.push((rpc.clone(), path));
-                        current_rpc = None;
-                    }
-                }
+        if let Some(ref rpc) = current_rpc
+            && trimmed.contains("get:")
+            && let Some(q) = trimmed.find('"')
+        {
+            let start = q + 1;
+            if let Some(end) = trimmed[start..].find('"') {
+                let path = trimmed[start..start + end].to_string();
+                routes.push((rpc.clone(), path));
+                current_rpc = None;
             }
         }
     }
