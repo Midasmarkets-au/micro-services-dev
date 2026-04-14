@@ -1,7 +1,7 @@
 using Api.V1;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Context;
-using Bacera.Gateway.Core.Models.Central;
+using Bacera.Gateway;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
