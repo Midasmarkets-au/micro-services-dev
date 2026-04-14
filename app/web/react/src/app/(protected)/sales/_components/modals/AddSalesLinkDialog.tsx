@@ -64,12 +64,16 @@ interface AddSalesLinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  userName?: string;
+  salesUid?: number;
 }
 
 export function AddSalesLinkDialog({
   isOpen,
   onClose,
   onSuccess,
+  userName,
+  salesUid: salesUidProp,
 }: AddSalesLinkDialogProps) {
   const t = useTranslations('sales');
   const tAccount = useTranslations('accounts');
@@ -77,6 +81,7 @@ export function AddSalesLinkDialog({
   const executeRef = useRef(execute);
   executeRef.current = execute;
   const salesAccount = useSalesStore((s) => s.salesAccount);
+  const effectiveSalesUid = salesUidProp ?? salesAccount?.uid;
 
   const [name, setName] = useState('');
   const [language, setLanguage] = useState('en-us');
@@ -108,13 +113,13 @@ export function AddSalesLinkDialog({
   }, [isOpen]);
 
   const initData = useCallback(async () => {
-    if (initDone || initLoading || !salesAccount) return;
+    if (initDone || initLoading || !effectiveSalesUid) return;
     setInitLoading(true);
     try {
       const [catRes, defaultRes, accountsRes] = await Promise.all([
         executeRef.current(getSalesSymbolCategory),
-        executeRef.current(getSalesDefaultLevelSetting, salesAccount.uid),
-        executeRef.current(getSalesAvailableAccountTypes, salesAccount.uid),
+        executeRef.current(getSalesDefaultLevelSetting, effectiveSalesUid),
+        executeRef.current(getSalesAvailableAccountTypes, effectiveSalesUid),
       ]);
 
       let categories: ProductCategory[] = [];
@@ -170,13 +175,13 @@ export function AddSalesLinkDialog({
     } finally {
       setInitLoading(false);
     }
-  }, [salesAccount, initDone, initLoading]);
+  }, [effectiveSalesUid, initDone, initLoading]);
 
   useEffect(() => {
-    if (isOpen && salesAccount && !initDone) {
+    if (isOpen && effectiveSalesUid && !initDone) {
       initData();
     }
-  }, [isOpen, salesAccount, initDone, initData]);
+  }, [isOpen, effectiveSalesUid, initDone, initData]);
 
   const setAccountRule = useCallback(
     (accountType: string, index: number) => {
@@ -270,7 +275,7 @@ export function AddSalesLinkDialog({
   };
 
   const handleSubmit = async () => {
-    if (!validate() || !salesAccount) return;
+    if (!validate() || !effectiveSalesUid) return;
     setSubmitting(true);
     try {
       if (serviceType === SERVICE_TYPE_IB) {
@@ -290,7 +295,7 @@ export function AddSalesLinkDialog({
         }));
         const result = await execute(
           createSalesLinkForIB,
-          salesAccount.uid,
+          effectiveSalesUid,
           {
             name,
             language: language,
@@ -327,7 +332,7 @@ export function AddSalesLinkDialog({
         });
         const result = await execute(
           createSalesLinkForClient,
-          salesAccount.uid,
+          effectiveSalesUid,
           {
             name,
             language,
@@ -352,7 +357,7 @@ export function AddSalesLinkDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="h-[700px]! overflow-hidden flex flex-col p-6!">
         <DialogHeader>
-          <DialogTitle>{t('link.addNewLink')}</DialogTitle>
+          <DialogTitle>{t('link.addNewLink')}{userName ? ` - ${userName}` : ''}</DialogTitle>
           <DialogDescription className="sr-only">
             {t('link.addNewLink')}
           </DialogDescription>

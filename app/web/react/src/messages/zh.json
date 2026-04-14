@@ -1222,7 +1222,11 @@
       "countdown": "请在 {minutes} 分钟内完成支付",
       "clickRedirect": "请点击链接完成支付",
       "redirect": "点击跳转",
-      "error": "支付失败，请重试"
+      "error": "支付失败，请重试",
+      "qrCodeNotice": "请扫描二维码完成支付",
+      "completePayment": "我已完成支付",
+      "paidConfirmed": "已确认支付",
+      "paidSuccess": "支付确认已提交"
     },
     "error": {
       "amountRequired": "请输入金额",
@@ -1945,7 +1949,9 @@
       "addRatePercentage": "附加比例 %",
       "choosePipCommission": "选择点差/佣金",
       "choosePipCommissionValue": "选择数值",
-      "noPcNeed": "此账户类型不需要点差/佣金设置"
+      "noPcNeed": "此账户类型不需要点差/佣金设置",
+      "isMLM": "该账户为多级分销类型",
+      "referralCodeNotAvailable": "推荐码功能不可用"
     },
     "referral": {
       "title": "推荐码",
