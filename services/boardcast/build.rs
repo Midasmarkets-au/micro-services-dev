@@ -3,12 +3,11 @@ fn workspace_root() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let mut dir = std::path::Path::new(&manifest_dir).to_path_buf();
     loop {
         let cargo_toml = dir.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                if content.contains("[workspace]") {
-                    return Ok(dir);
-                }
-            }
+        if cargo_toml.exists()
+            && let Ok(content) = std::fs::read_to_string(&cargo_toml)
+            && content.contains("[workspace]")
+        {
+            return Ok(dir);
         }
         dir = match dir.parent() {
             Some(p) => p.to_path_buf(),
