@@ -123,8 +123,24 @@ spec:
                 name: auth
                 port:
                   number: 9002
-          # 负向前瞻排除 /api/v1/event，该路径由 boardcast-event-ingress 处理
-          - path: /(?!api/v1/event(/|$))(api|hub|live|swagger|.well-known/openid-configuration)/
+          # register 保留在 mono（需在 /api/v1/auth/ 通配规则之前）
+          - path: /api/v1/auth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 9005
+          # V1 auth 整体打到 auth Rust 服务
+          - path: /api/v1/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          # 负向前瞻排除 /api/v1/event 和 /api/v1/auth，分别由各自 ingress/auth 处理
+          - path: /(?!api/v1/event(/|$))(?!api/v1/auth(/|$))(api|hub|live|swagger|.well-known/openid-configuration)/
             pathType: ImplementationSpecific
             backend:
               service:
@@ -170,7 +186,23 @@ spec:
                 name: auth
                 port:
                   number: 9002
-          - path: /(api|hub|live|swagger)/
+          # register 保留在 mono
+          - path: /api/v1/auth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 9005
+          # V1 auth 整体打到 auth Rust 服务
+          - path: /api/v1/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /(?!api/v1/auth(/|$))(api|hub|live|swagger)/
             pathType: ImplementationSpecific
             backend:
               service:
@@ -215,7 +247,23 @@ spec:
                 name: auth
                 port:
                   number: 9002
-          - path: /(api|hub|live|swagger)/
+          # register 保留在 mono
+          - path: /api/v1/auth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: mono
+                port:
+                  number: 9005
+          # V1 auth 整体打到 auth Rust 服务
+          - path: /api/v1/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 9002
+          - path: /(?!api/v1/auth(/|$))(api|hub|live|swagger)/
             pathType: ImplementationSpecific
             backend:
               service:

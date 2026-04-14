@@ -12,4 +12,8 @@ pub struct AppState {
     pub secure_cookie: bool,
     /// mono gRPC client for callbacks (2FA, login log, etc.)
     pub mono_client: Option<Mutex<MonoAuthClient>>,
+    /// IPInfo API base URL (default: https://ipinfo.io)
+    pub ipinfo_endpoint: String,
+    /// IPInfo API token (empty = no token)
+    pub ipinfo_token: String,
 }

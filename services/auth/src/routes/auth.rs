@@ -1,11 +1,13 @@
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{ConnectInfo, Query, State},
     http::HeaderMap,
-    routing::post,
+    routing::{get, post},
 };
+use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::{
@@ -22,6 +24,140 @@ pub fn router() -> Router<Arc<AppState>> {
         .route(LOGOUT_PATH, post(logout))
         .route(SEND_LOGIN_CODE_PATH, post(send_login_code))
         .route(CONFIRM_LOGIN_CODE_PATH, post(confirm_login_code))
+        .route("/api/v1/auth/ip-info", get(ip_info))
+        .route("/api/v1/auth/c", get(site_config))
+}
+
+// ─── Query params ─────────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct SiteConfigQuery {
+    #[serde(rename = "openAt")]
+    open_at: Option<String>,
+}
+
+// ─── IP helpers ───────────────────────────────────────────────────────────────
+
+/// Extract the best client IP and raw header values from the request.
+/// Returns (lookup_ip, remote_addr_str, x_forwarded_for_str, x_real_ip_str).
+fn extract_ip(addr: SocketAddr, headers: &HeaderMap) -> (String, String, String, String) {
+    let remote_ip = addr.ip().to_string();
+    let x_forwarded_for = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("NONE")
+        .to_string();
+    let x_real_ip = headers
+        .get("x-real-ip")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("NONE")
+        .to_string();
+    let lookup_ip = if x_forwarded_for != "NONE" {
+        x_forwarded_for
+            .split(',')
+            .next()
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|| remote_ip.clone())
+    } else if x_real_ip != "NONE" {
+        x_real_ip.clone()
+    } else {
+        remote_ip.clone()
+    };
+    (lookup_ip, remote_ip, x_forwarded_for, x_real_ip)
+}
+
+/// Call ipinfo.io for the given IP and return the parsed JSON.
+/// Appends an `ips` field with local header info. Never fails — returns `{}` on error.
+async fn fetch_ip_info(
+    state: &AppState,
+    lookup_ip: &str,
+    remote_ip: &str,
+    x_forwarded_for: &str,
+    x_real_ip: &str,
+) -> Value {
+    let endpoint = state.ipinfo_endpoint.trim_end_matches('/');
+    let url = if state.ipinfo_token.is_empty() {
+        format!("{}/{}", endpoint, lookup_ip)
+    } else {
+        format!("{}/{}?token={}", endpoint, lookup_ip, state.ipinfo_token)
+    };
+
+    let mut result: Value = if let Ok(client) = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+    {
+        match client.get(&url).send().await {
+            Ok(resp) => resp.json::<Value>().await.unwrap_or_else(|_| json!({})),
+            Err(_) => json!({}),
+        }
+    } else {
+        json!({})
+    };
+
+    result["ips"] = json!({
+        "RemoteIpAddress": remote_ip,
+        "X-Forwarded-For": x_forwarded_for,
+        "X-Real-IP": x_real_ip,
+    });
+    result
+}
+
+// ─── GET /api/v1/auth/ip-info ─────────────────────────────────────────────────
+
+async fn ip_info(
+    State(state): State<Arc<AppState>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+) -> Json<Value> {
+    let (lookup_ip, remote_ip, xff, xri) = extract_ip(addr, &headers);
+    Json(fetch_ip_info(&state, &lookup_ip, &remote_ip, &xff, &xri).await)
+}
+
+// ─── GET /api/v1/auth/c ───────────────────────────────────────────────────────
+
+async fn site_config(
+    State(state): State<Arc<AppState>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Query(params): Query<SiteConfigQuery>,
+) -> Json<Value> {
+    let site_id = match params.open_at.as_deref() {
+        Some(s) => open_at_to_site_id(s),
+        None => {
+            let (lookup_ip, remote_ip, xff, xri) = extract_ip(addr, &headers);
+            let info = fetch_ip_info(&state, &lookup_ip, &remote_ip, &xff, &xri).await;
+            let country = info["country"].as_str().unwrap_or("").to_uppercase();
+            country_to_site_id(&country)
+        }
+    };
+    Json(json!([site_id]))
+}
+
+fn open_at_to_site_id(open_at: &str) -> i32 {
+    match open_at.to_uppercase().as_str() {
+        "BVI" => 1,
+        "BA"  => 2,
+        "CN"  => 3,
+        "TW"  => 4,
+        "VN" | "SEA" => 5,
+        "JP"  => 6,
+        "MY"  => 8,
+        _     => 1,
+    }
+}
+
+fn country_to_site_id(country: &str) -> i32 {
+    match country {
+        "CN" => 3,
+        "TW" => 4,
+        "VN" => 5,
+        "JP" => 6,
+        "MN" => 7,
+        "MY" => 8,
+        "AU" => 2,
+        "VG" => 1,
+        _    => 0,
+    }
 }
 
 /// POST /api/v2/auth/logout
