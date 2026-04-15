@@ -35,8 +35,14 @@ pub struct Claims {
     pub tenant_id: String,
     #[serde(rename = "PartyId")]
     pub party_id: String,
-    #[serde(rename = "GodPartyId")]
+    #[serde(rename = "GodPartyId", default, skip_serializing_if = "String::is_empty")]
     pub god_party_id: String,
+    /// True when this token was issued in god-mode (admin impersonating a user).
+    #[serde(rename = "IsGodMode", skip_serializing_if = "Option::is_none")]
+    pub is_god_mode: Option<bool>,
+    /// Origin header from the login request (e.g. "https://portal.trademdm.com").
+    #[serde(rename = "Origin", skip_serializing_if = "Option::is_none")]
+    pub origin: Option<String>,
     #[serde(rename = "Version")]
     pub version: String,
     #[serde(rename = "UserAgent", skip_serializing_if = "Option::is_none")]
@@ -76,6 +82,8 @@ pub struct TokenParams<'a> {
     pub sales_account: Option<i64>,
     pub agent_account: Option<i64>,
     pub rep_account: Option<i64>,
+    /// Origin header from the login request.
+    pub origin: Option<String>,
 }
 
 pub fn generate_access_token(
@@ -97,7 +105,13 @@ pub fn generate_access_token(
         Some("pwd".to_string())
     };
 
-    let god_party_id_hashed = crate::hashids::encode_party_id(params.god_party_id);
+    let is_god_mode_active = params.god_party_id != 0;
+    let god_party_id_hashed = if is_god_mode_active {
+        crate::hashids::encode_party_id(params.god_party_id)
+    } else {
+        String::new()
+    };
+    let is_god_mode = if is_god_mode_active { Some(true) } else { None };
 
     let claims = Claims {
         sub: params.user_id.to_string(),
@@ -116,6 +130,8 @@ pub fn generate_access_token(
         tenant_id: params.tenant_id.to_string(),
         party_id: params.party_id_hashed.to_string(),
         god_party_id: god_party_id_hashed,
+        is_god_mode,
+        origin: params.origin.clone(),
         version: VERSION.to_string(),
         user_agent: params.user_agent_hash.clone(),
         sales_account: params.sales_account.map(|v| v.to_string()),

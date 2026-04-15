@@ -67,11 +67,7 @@ const handleResponseRejected = async (error) => {
     return;
   }
   if (status === 403 && process.env.VUE_APP_DEV !== "local") {
-    await store.dispatch(Actions.LOGOUT);
-    router.push({ name: "sign-in" });
-    return;
-    // MsgPrompt.error("No permission to access this resource.");
-    // return Promise.reject("No permission to access this.");
+    return Promise.reject(error);
   }
 
   if (status === 406) {

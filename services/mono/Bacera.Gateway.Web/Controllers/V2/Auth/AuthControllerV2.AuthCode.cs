@@ -191,6 +191,33 @@ public partial class AuthControllerV2
     }
 
 
+    /// <summary>
+    /// Exchange a god-mode one-time key for an access_token cookie.
+    /// The key is written by mono's EnableGodMode gRPC handler into Redis
+    /// as `godmode:key:{uuid}` with a 60-second TTL.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("god-mode/exchange")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GodModeExchange([FromBody] GodModeExchangeSpec spec)
+    {
+        if (string.IsNullOrWhiteSpace(spec.Key))
+            return BadRequest(Result.Error("key is required"));
+
+        var redisKey = $"godmode:key:{spec.Key}";
+        var accessToken = await myCache.GetStringAsync(redisKey);
+        if (string.IsNullOrEmpty(accessToken))
+            return BadRequest(Result.Error("God-mode key is invalid or expired"));
+
+        await myCache.KeyDeleteAsync(redisKey);
+
+        ApplyTokenResponseHandler.AppendAccessTokenCookie(Response, accessToken, 86400, Request.IsHttps);
+        return NoContent();
+    }
+
+    public record GodModeExchangeSpec(string Key);
+
     private const int MaxSendEmailCount = 60;
 
     private async Task<bool> IsEmailValidToSendAsync(string email)

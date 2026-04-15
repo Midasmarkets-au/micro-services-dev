@@ -85,6 +85,7 @@ impl AuthValidationService for AuthValidationServer {
             sales_account: if req.sales_account != 0 { Some(req.sales_account) } else { None },
             agent_account: if req.agent_account != 0 { Some(req.agent_account) } else { None },
             rep_account: if req.rep_account != 0 { Some(req.rep_account) } else { None },
+            origin: None,
         };
 
         match generate_access_token(&params, &self.private_der, &self.kid) {

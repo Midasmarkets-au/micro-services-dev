@@ -589,7 +589,8 @@ export default {
             await axios.post(prefix + "user/" + _partyId + "/god-mode")
           ).data;
           const godModeKey = res?.data?.token ?? res?.token;
-          const godModeUrl = process.env.VUE_APP_URL + "/set-token?key=" + godModeKey;
+          const godModeUrl =
+            process.env.VUE_APP_URL + "/set-token?key=" + godModeKey;
           console.log("[god-mode] res=", JSON.stringify(res));
           console.log("[god-mode] godModeKey=", godModeKey);
           console.log("[god-mode] url=", godModeUrl);

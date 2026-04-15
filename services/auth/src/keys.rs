@@ -69,15 +69,20 @@ impl RsaKeyPair {
             .to_pkcs1_der()?
             .as_bytes()
             .to_vec();
+        // jsonwebtoken::DecodingKey::from_rsa_der expects PKCS#1 RSAPublicKey DER,
+        // NOT PKCS#8 SubjectPublicKeyInfo. Use to_pkcs1_der() here.
         let public_der = {
-            use rsa::pkcs8::EncodePublicKey;
-            public_key.to_public_key_der()?.as_bytes().to_vec()
+            use rsa::pkcs1::EncodeRsaPublicKey;
+            public_key.to_pkcs1_der()?.as_bytes().to_vec()
         };
 
-        // kid = first 8 hex chars of SHA-256 of public DER
+        // kid = first 8 hex chars of SHA-256 of SPKI DER (stable across restarts,
+        // computed from SubjectPublicKeyInfo to match the previously published JWKS kid).
         let kid = {
+            use rsa::pkcs8::EncodePublicKey;
             use sha2::{Digest, Sha256};
-            let hash = Sha256::digest(&public_der);
+            let spki_der = public_key.to_public_key_der()?.as_bytes().to_vec();
+            let hash = Sha256::digest(&spki_der);
             hex::encode(&hash[..4])
         };
 

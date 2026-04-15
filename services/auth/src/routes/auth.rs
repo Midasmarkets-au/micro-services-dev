@@ -26,6 +26,7 @@ pub fn router() -> Router<Arc<AppState>> {
         .route(CONFIRM_LOGIN_CODE_PATH, post(confirm_login_code))
         .route("/api/v1/auth/ip-info", get(ip_info))
         .route("/api/v1/auth/c", get(site_config))
+        .route("/api/v2/auth/god-mode/exchange", post(god_mode_exchange))
 }
 
 // ─── Query params ─────────────────────────────────────────────────────────────
@@ -160,6 +161,42 @@ fn country_to_site_id(country: &str) -> i32 {
     }
 }
 
+// ─── God Mode Exchange ────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct GodModeExchangeRequest {
+    key: String,
+}
+
+/// POST /api/v2/auth/god-mode/exchange
+///
+/// Exchanges a one-time god-mode key (written by mono's EnableGodMode gRPC handler
+/// into Redis as `godmode:key:{uuid}`) for an HttpOnly `access_token` cookie.
+/// The key is consumed atomically (single-use, 60-second TTL set by mono).
+async fn god_mode_exchange(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<GodModeExchangeRequest>,
+) -> (HeaderMap, Json<Value>) {
+    if req.key.is_empty() {
+        return (HeaderMap::new(), Json(json!({ "error": "invalid_request", "error_description": "key is required" })));
+    }
+
+    let access_token = match redis_store::consume_godmode_key(&state.redis, &req.key).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            return (HeaderMap::new(), Json(json!({ "error": "invalid_grant", "error_description": "God-mode key is invalid or expired" })));
+        }
+        Err(e) => {
+            tracing::error!("Redis error on god-mode exchange: {}", e);
+            return (HeaderMap::new(), Json(json!({ "error": "server_error" })));
+        }
+    };
+
+    let mut headers = HeaderMap::new();
+    cookie::set_token_cookie(&mut headers, &access_token, state.access_token_lifetime, state.secure_cookie);
+    (headers, Json(json!(null)))
+}
+
 /// POST /api/v2/auth/logout
 /// Clears the access_token cookie and deletes the refresh token from Redis if provided.
 async fn logout(
@@ -289,6 +326,7 @@ async fn confirm_login_code(
         sales_account: None,
         agent_account: None,
         rep_account: None,
+        origin: None,
     };
 
     let token_result = match crate::token::generate_access_token(
