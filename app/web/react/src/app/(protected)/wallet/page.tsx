@@ -321,23 +321,36 @@ export default function WalletPage() {
   }, [wallet?.hashId]);
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      <h1 className="text-2xl font-semibold text-text-primary">
-        {t('title')}
-      </h1>
+    <div className="flex flex-col gap-2 w-full">
+      <div className="bg-surface rounded border border-border p-5">
+        {/* 标题行 */}
+        <div className="flex items-center gap-3 mb-5">
+          <Image
+            src="/images/banner/wallet-day.svg"
+            alt="wallet"
+            width={26}
+            height={26}
+          />
+          <h1 className="text-xl font-semibold text-text-primary">
+            {t('title')}
+          </h1>
+        </div>
+        {/* 分隔线 */}
+        <div className="w-full h-px bg-border mb-5" />
+        {/* Banner */}
+        {isLoadingWallet ? (
+          <div className="h-[170px] bg-muted rounded animate-pulse" />
+        ) : (
+          <WalletBanner
+            balance={wallet?.balance ?? 0}
+            currencyId={wallet?.currencyId ?? 840}
+            onWithdraw={handleWithdraw}
+            onTransfer={handleTransfer}
+          />
+        )}
+      </div>
 
-      {isLoadingWallet ? (
-        <div className="h-[170px] bg-surface rounded animate-pulse" />
-      ) : (
-        <WalletBanner
-          balance={wallet?.balance ?? 0}
-          currencyId={wallet?.currencyId ?? 840}
-          onWithdraw={handleWithdraw}
-          onTransfer={handleTransfer}
-        />
-      )}
-
-      <div className="bg-surface rounded border border-border p-5 md:p-8">
+      <div className="bg-surface rounded border border-border p-4 md:p-6">
         <div className="flex flex-col gap-0 mb-6">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <TransactionTabs
