@@ -321,6 +321,7 @@
     "unionPaymentNotAvailable": "银联支付目前不可用，请尝试其他支付方式或联系客户服务寻求帮助。",
     "PAYMENT_EXECUTE_FAILED": "支付执行失败，请稍后重试或联系客户服务寻求帮助。",
     "unexpectedError": "发生意外错误。请稍后重试或联系客户服务寻求帮助。",
+    "forbidden_in_god_mode": "God 模式下不允许修改密码。",
     "401": "401错误",
     "403": "测试",
     "404": "未找到资源",

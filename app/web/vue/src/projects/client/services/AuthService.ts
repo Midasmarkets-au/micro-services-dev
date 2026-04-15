@@ -107,7 +107,9 @@ export async function loginStart(
   store.dispatch(Actions.LOGIN, login.data);
   // Token is in HttpOnly cookie — SignalR uses withCredentials to send it automatically
   wsSignalR?.setup(null);
-  wsSignalR?.connection?.start().catch((err) => console.warn("SignalR start failed:", err));
+  wsSignalR?.connection
+    ?.start()
+    .catch((err) => console.warn("SignalR start failed:", err));
 
   // 优先级：自定义redirectTo > query.redirect > dashboard
   if (redirectTo) {

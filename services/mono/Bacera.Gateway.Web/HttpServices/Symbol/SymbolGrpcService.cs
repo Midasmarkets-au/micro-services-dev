@@ -1,4 +1,5 @@
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Extension;
 using Grpc.Core;
 using Http.V1;
 using Microsoft.EntityFrameworkCore;
@@ -281,10 +282,7 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         };
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 /// <summary>
@@ -419,10 +417,7 @@ public class TenantExchangeRateGrpcService(TenantDbContext db, TradingService tr
     }
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 
     private static ProtoExchangeRate MapToProto(Bacera.Gateway.ExchangeRate.ResponseModel r)
         => new ProtoExchangeRate

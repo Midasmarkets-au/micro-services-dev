@@ -81,6 +81,15 @@ pub async fn consume_password_reset_token(
     Ok(value)
 }
 
+/// Consume a god-mode one-time key written by mono (key: `godmode:key:{uuid}`).
+/// Returns the stored access token and deletes the key atomically (single-use).
+pub async fn consume_godmode_key(pool: &Pool, key: &str) -> Result<Option<String>, String> {
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let redis_key = format!("godmode:key:{}", key);
+    let value: Option<String> = conn.get_del(&redis_key).await.map_err(|e| e.to_string())?;
+    Ok(value)
+}
+
 /// Log a Redis error without propagating (fire-and-forget pattern).
 pub fn log_redis_error(op: &str, err: impl std::fmt::Display) {
     error!("Redis {} failed: {}", op, err);

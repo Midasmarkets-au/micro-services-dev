@@ -74,6 +74,11 @@ async fn connect_token(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_string();
+    let origin = headers
+        .get("origin")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
     let ip = headers
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
@@ -82,7 +87,7 @@ async fn connect_token(
         .unwrap_or_else(|| addr.ip().to_string());
 
     match grant_type {
-        "password" => handle_password_grant(&state, &req, &ip, &user_agent, &referer).await,
+        "password" => handle_password_grant(&state, &req, &ip, &user_agent, &referer, &origin).await,
         "client_credentials" => handle_client_credentials(&state, &req),
         "refresh_token" => handle_refresh_grant(&state, &req).await,
         _ => error_response(
@@ -108,6 +113,7 @@ fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
         sales_account: None,
         agent_account: None,
         rep_account: None,
+        origin: None,
     };
     match token::generate_access_token(&params, &state.key_pair.private_der, &state.key_pair.kid) {
         Ok(t) => {
@@ -178,6 +184,7 @@ async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> Response 
         sales_account: None,
         agent_account: None,
         rep_account: None,
+        origin: None,
     };
 
     let token_result = match token::generate_access_token(
@@ -218,6 +225,7 @@ async fn handle_password_grant(
     ip: &str,
     user_agent: &str,
     referer: &str,
+    origin: &str,
 ) -> Response {
     let email = match req.username.as_deref() {
         Some(e) if !e.is_empty() => e.trim().to_lowercase(),
@@ -363,6 +371,8 @@ async fn handle_password_grant(
 
     let ua_hash = Some(token::hash_user_agent(user_agent));
 
+    let origin_claim = if origin.is_empty() { None } else { Some(origin.to_string()) };
+
     let params = token::TokenParams {
         user_id: user.id,
         tenant_id: user.tenant_id,
@@ -377,6 +387,7 @@ async fn handle_password_grant(
         sales_account: None,
         agent_account: None,
         rep_account: None,
+        origin: origin_claim,
     };
 
     let token_result = match token::generate_access_token(
