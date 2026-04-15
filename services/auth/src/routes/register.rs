@@ -74,8 +74,11 @@ async fn register(
         })
         .unwrap_or_else(|| addr.ip().to_string());
 
+    tracing::info!(email = req.email.trim(), ip, "register requested");
+
     // ── 2. IP blacklist ────────────────────────────────────────────────────
     if db::is_ip_blocked(&state.pool, &ip).await.unwrap_or(false) {
+        tracing::warn!(email = req.email.trim(), ip, "register: ip blocked");
         return bad_request("__REGISTER_BLOCKED__");
     }
 
@@ -101,9 +104,11 @@ async fn register(
         }
     };
     if existing.iter().any(|u| u.tenant_id != tenant_id) {
+        tracing::warn!(email = req.email, "register: email already registered on another site");
         return bad_request("__ALREADY_REGISTERED_OTHER_SITE__");
     }
     if existing.iter().any(|u| u.tenant_id == tenant_id) {
+        tracing::warn!(email = req.email, tenant_id, "register: email already exists");
         return bad_request("__EMAIL_EXISTS__");
     }
 
@@ -131,6 +136,7 @@ async fn register(
         )
         .await;
         if !verified {
+            tracing::warn!(email = req.email, "register: otp verification failed");
             return bad_request("__VERIFICATION_FAILED__");
         }
         true
@@ -265,6 +271,7 @@ async fn register(
         }
     }
 
+    tracing::info!(email = req.email, tenant_id, user_id, "register success");
     (StatusCode::NO_CONTENT, Json(json!({})))
 }
 
