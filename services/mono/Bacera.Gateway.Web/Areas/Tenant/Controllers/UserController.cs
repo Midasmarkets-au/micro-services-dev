@@ -42,6 +42,30 @@ public class UserController(TenantDbContext tenantDbContext, AuthDbContext authD
     }
 
     /// <summary>
+    /// Get user detail
+    /// </summary>
+    [HttpGet("{id:long}")]
+    [ProducesResponseType(typeof(User.TenantDetailModel), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Detail(long id)
+    {
+        var hideEmail = ShouldHideEmail();
+        var detail = await tenantDbContext.Parties
+            .Where(x => x.Id == id)
+            .ToTenantDetailModel(hideEmail)
+            .SingleOrDefaultAsync();
+
+        if (detail == null) return NotFound();
+
+        var lockoutEnd = await authDbContext.Users
+            .Where(x => x.PartyId == id)
+            .Select(x => x.LockoutEnd)
+            .SingleOrDefaultAsync();
+        detail.LockoutEnd = lockoutEnd?.UtcDateTime;
+
+        return Ok(detail);
+    }
+
+    /// <summary>
     /// Get social media information
     /// </summary>
     [HttpGet("{partyId:long}/social-media-info")]

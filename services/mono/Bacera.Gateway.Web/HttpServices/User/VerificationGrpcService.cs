@@ -1,5 +1,6 @@
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.EventHandlers;
 using Grpc.Core;
 using Http.V1;
@@ -424,6 +425,6 @@ public class TenantVerificationGrpcService(
     private static long GetPartyId(ServerCallContext ctx)
     {
         var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
+        return httpCtx.User.GetPartyId();
     }
 }
