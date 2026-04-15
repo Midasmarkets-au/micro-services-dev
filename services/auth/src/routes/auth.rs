@@ -177,21 +177,25 @@ async fn god_mode_exchange(
     State(state): State<Arc<AppState>>,
     Json(req): Json<GodModeExchangeRequest>,
 ) -> (HeaderMap, Json<Value>) {
+    tracing::info!("god_mode_exchange requested");
     if req.key.is_empty() {
+        tracing::warn!("god_mode_exchange: key is empty");
         return (HeaderMap::new(), Json(json!({ "error": "invalid_request", "error_description": "key is required" })));
     }
 
     let access_token = match redis_store::consume_godmode_key(&state.redis, &req.key).await {
         Ok(Some(t)) => t,
         Ok(None) => {
+            tracing::warn!("god_mode_exchange: key invalid or expired");
             return (HeaderMap::new(), Json(json!({ "error": "invalid_grant", "error_description": "God-mode key is invalid or expired" })));
         }
         Err(e) => {
-            tracing::error!("Redis error on god-mode exchange: {}", e);
+            tracing::error!(error = %e, "god_mode_exchange: redis error");
             return (HeaderMap::new(), Json(json!({ "error": "server_error" })));
         }
     };
 
+    tracing::info!("god_mode_exchange: success");
     let mut headers = HeaderMap::new();
     cookie::set_token_cookie(&mut headers, &access_token, state.access_token_lifetime, state.secure_cookie);
     (headers, Json(json!(null)))
@@ -203,6 +207,7 @@ async fn logout(
     State(state): State<Arc<AppState>>,
     body: Option<Json<LogoutRequest>>,
 ) -> (HeaderMap, Json<Value>) {
+    tracing::info!("logout");
     if let Some(Json(req)) = body {
         if !req.refresh_token.is_empty() {
             redis_store::delete_refresh_token(&state.redis, &req.refresh_token).await;
@@ -222,22 +227,29 @@ async fn send_login_code(
     Json(req): Json<SendLoginCodeRequest>,
 ) -> Json<SendLoginCodeResponse> {
     let email = req.email.trim().to_lowercase();
+    tracing::info!(email, "send_login_code requested");
 
     // Lockout check (shared with password grant)
     if security::is_locked_out(&state.redis, &email).await {
+        tracing::warn!(email, "send_login_code: user locked out");
         return Json(SendLoginCodeResponse { success: false, message: "Please contact customer service.".into() });
     }
 
     // Verify user exists in our DB
     let users = match crate::db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
-        Err(_) => return Json(SendLoginCodeResponse { success: false, message: "server_error".into() }),
+        Err(e) => {
+            tracing::error!(email, error = %e, "send_login_code: db error");
+            return Json(SendLoginCodeResponse { success: false, message: "server_error".into() });
+        }
     };
     if users.is_empty() {
         // Don't reveal user existence; return success anyway (security best practice)
+        tracing::warn!(email, "send_login_code: user not found (returning success to avoid enumeration)");
         return Json(SendLoginCodeResponse { success: true, message: "Login code sent.".into() });
     }
     if users.len() > 1 {
+        tracing::warn!(email, "send_login_code: multiple tenants, email login not allowed");
         return Json(SendLoginCodeResponse { success: false, message: "Email login not allowed for multi-tenant accounts".into() });
     }
 
@@ -249,6 +261,7 @@ async fn send_login_code(
         crate::grpc::auth_client::send_auth_code(&mut client, user.tenant_id, &email, "Login").await;
     }
 
+    tracing::info!(email, user_id = user.id, "send_login_code: code sent");
     Json(SendLoginCodeResponse { success: true, message: "Login code sent.".into() })
 }
 
@@ -259,22 +272,27 @@ async fn confirm_login_code(
     Json(req): Json<ConfirmLoginCodeRequest>,
 ) -> (HeaderMap, Json<Value>) {
     let email = req.email.trim().to_lowercase();
+    tracing::info!(email, "confirm_login_code requested");
 
     // Lockout check before any DB work
     if security::is_locked_out(&state.redis, &email).await {
+        tracing::warn!(email, "confirm_login_code: user locked out");
         return (HeaderMap::new(), Json(json!({ "error": "__USER_IS_LOCKED_OUT__", "error_description": "Please contact customer service." })));
     }
 
     let users = match crate::db::find_users_by_email(&state.pool, &email).await {
         Ok(u) => u,
-        Err(_) => {
+        Err(e) => {
+            tracing::error!(email, error = %e, "confirm_login_code: db error");
             return (HeaderMap::new(), Json(json!({ "error": "server_error" })));
         }
     };
     if users.is_empty() {
+        tracing::warn!(email, "confirm_login_code: user not found");
         return (HeaderMap::new(), Json(json!({ "error": "not_found", "error_description": "User not found." })));
     }
     if users.len() > 1 {
+        tracing::warn!(email, "confirm_login_code: multiple tenants, email login not allowed");
         return (HeaderMap::new(), Json(json!({ "error": "invalid_request", "error_description": "Email login not allowed" })));
     }
 
@@ -288,6 +306,7 @@ async fn confirm_login_code(
         ).await;
         valid
     } else {
+        tracing::error!("confirm_login_code: MONO_GRPC_ADDR not configured");
         return (
             HeaderMap::new(),
             Json(json!({ "error": "server_error", "error_description": "MONO_GRPC_ADDR not configured" })),
@@ -297,8 +316,10 @@ async fn confirm_login_code(
     if !code_valid {
         let locked = security::record_failure(&state.redis, &email).await;
         if locked {
+            tracing::warn!(email, user_id = user.id, "confirm_login_code: account locked after repeated failures");
             return (HeaderMap::new(), Json(json!({ "error": "__USER_IS_LOCKED_OUT__", "error_description": "Please contact customer service." })));
         }
+        tracing::warn!(email, user_id = user.id, "confirm_login_code: invalid code");
         return (HeaderMap::new(), Json(json!({ "error": "invalid_grant", "error_description": "Invalid Code" })));
     }
 
@@ -358,6 +379,7 @@ async fn confirm_login_code(
         state.secure_cookie,
     );
 
+    tracing::info!(user_id = user.id, email, "email-code login success");
     let resp = ConfirmLoginCodeResponse {
         token_type: "Bearer".into(),
         expires_in: token_result.expires_in,

@@ -99,6 +99,7 @@ async fn connect_token(
 
 fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
     let client_id = req.client_id.clone().unwrap_or_default();
+    tracing::info!(client_id, "client_credentials grant");
     let params = token::TokenParams {
         user_id: 0,
         tenant_id: 0,
@@ -117,6 +118,7 @@ fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
     };
     match token::generate_access_token(&params, &state.key_pair.private_der, &state.key_pair.kid) {
         Ok(t) => {
+            tracing::info!(client_id, "client_credentials issued");
             let mut headers = HeaderMap::new();
             cookie::set_token_cookie(&mut headers, &t.access_token, t.expires_in, state.secure_cookie);
             (
@@ -128,7 +130,7 @@ fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
             ).into_response()
         }
         Err(e) => {
-            tracing::error!("generate_access_token failed: {}", e);
+            tracing::error!(client_id, error = %e, "generate_access_token failed");
             error_response("server_error", &format!("RSA key invalid: {}", e))
         }
     }
@@ -142,7 +144,10 @@ async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> Response 
 
     let data = match redis_store::consume_refresh_token(&state.redis, refresh_token).await {
         Ok(Some(d)) => d,
-        Ok(None) => return error_response("invalid_grant", "refresh token is invalid or expired"),
+        Ok(None) => {
+            tracing::warn!("refresh failed: token not found or expired");
+            return error_response("invalid_grant", "refresh token is invalid or expired");
+        }
         Err(e) => {
             error!("Redis error on refresh: {}", e);
             return error_response("server_error", "internal error");
@@ -152,7 +157,10 @@ async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> Response 
     // Reload user to re-check status
     let user = match db::find_user_by_id(&state.pool, data.user_id).await {
         Ok(Some(u)) => u,
-        Ok(None) => return error_response("invalid_grant", "user not found"),
+        Ok(None) => {
+            tracing::warn!(user_id = data.user_id, "refresh failed: user not found");
+            return error_response("invalid_grant", "user not found");
+        }
         Err(e) => {
             error!("db error on refresh: {}", e);
             return error_response("server_error", "internal error");
@@ -160,9 +168,11 @@ async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> Response 
     };
 
     if user.status == 1 {
+        tracing::warn!(user_id = user.id, "refresh failed: user under maintenance");
         return error_response("__USER_UNDER_MAINTENANCE__", "Our system is under maintenance.");
     }
     if user.lockout_enabled && user.lockout_end.is_some_and(|end| end > Utc::now()) {
+        tracing::warn!(user_id = user.id, "refresh failed: user locked out");
         return error_response("__USER_IS_LOCKED_OUT__", "Please contact customer service.");
     }
 
@@ -206,6 +216,8 @@ async fn handle_refresh_grant(state: &AppState, req: &TokenRequest) -> Response 
         redis_store::log_redis_error("store_refresh_token", e);
     }
 
+    tracing::info!(user_id = user.id, "token refreshed");
+
     let mut headers = HeaderMap::new();
     cookie::set_token_cookie(&mut headers, &token_result.access_token, token_result.expires_in, state.secure_cookie);
 
@@ -238,11 +250,13 @@ async fn handle_password_grant(
 
     // IP blacklist check
     if db::is_ip_blocked(&state.pool, ip).await.unwrap_or(false) {
+        tracing::warn!(email, ip, "login failed: ip blocked");
         return error_response("access_denied", "__LOGIN_FAILED__");
     }
 
     // Redis-based lockout check
     if security::is_locked_out(&state.redis, &email).await {
+        tracing::warn!(email, "login failed: user locked out");
         return error_response("__USER_IS_LOCKED_OUT__", "Please contact customer service.");
     }
 
@@ -255,6 +269,7 @@ async fn handle_password_grant(
     };
 
     if users.is_empty() {
+        tracing::warn!(email, "login failed: user not found");
         return error_response("__LOGIN_FAILED__", "Login failed.");
     }
 
@@ -287,9 +302,11 @@ async fn handle_password_grant(
     };
 
     if user.status == 1 {
+        tracing::warn!(email, user_id = user.id, "login failed: user under maintenance");
         return error_response("__USER_UNDER_MAINTENANCE__", "Our system is under maintenance.");
     }
     if !user.email_confirmed {
+        tracing::warn!(email, user_id = user.id, "login failed: email not confirmed");
         return error_response("__EMAIL_UNCONFIRMED__", "Please confirm your email before login.");
     }
 
@@ -300,12 +317,15 @@ async fn handle_password_grant(
     if !password::verify_hashed_password_v3(hash, pwd) {
         let locked = security::record_failure(&state.redis, &email).await;
         if locked {
+            tracing::warn!(email, user_id = user.id, "login failed: account locked after repeated failures");
             return error_response("__USER_IS_LOCKED_OUT__", "Please contact customer service.");
         }
+        tracing::warn!(email, user_id = user.id, "login failed: invalid password");
         return error_response("__LOGIN_FAILED__", "Login failed.");
     }
 
     if user.lockout_enabled && user.lockout_end.is_some_and(|end| end > Utc::now()) {
+        tracing::warn!(email, user_id = user.id, "login failed: user locked out");
         return error_response("__USER_IS_LOCKED_OUT__", "Please contact customer service.");
     }
 
@@ -339,6 +359,7 @@ async fn handle_password_grant(
             if require_email_2fa {
                 let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
                 if tf_code.is_empty() {
+                    tracing::info!(email, user_id = user.id, "2fa required: email code sent");
                     grpc::auth_client::send_auth_code(
                         &mut client, user.tenant_id, &email, "TwoFactor",
                     ).await;
@@ -348,6 +369,7 @@ async fn handle_password_grant(
                     &mut client, user.tenant_id, &email, &tf_code,
                 ).await;
                 if !valid {
+                    tracing::warn!(email, user_id = user.id, err_code, "login failed: 2fa email code invalid");
                     return error_response("invalid_grant", &err_code);
                 }
             }
@@ -410,6 +432,8 @@ async fn handle_password_grant(
     if let Err(e) = redis_store::store_refresh_token(&state.redis, &refresh_token, &store_data).await {
         redis_store::log_redis_error("store_refresh_token", e);
     }
+
+    tracing::info!(user_id = user.id, email, tenant_id = user.tenant_id, ip, "login success");
 
     // Clear login failure counter on success
     security::clear_failures(&state.redis, &email).await;

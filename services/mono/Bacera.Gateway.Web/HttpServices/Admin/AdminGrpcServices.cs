@@ -5,6 +5,7 @@ using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Services.Permission;
 using Bacera.Gateway.ViewModels.Tenant;
+using Bacera.Gateway.Web.Areas.Tenant.Helpers;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Grpc.Core;
 using Http.V1;
@@ -256,6 +257,119 @@ public class TenantIpBlacklistGrpcService(
         return new ReloadCacheResponse { Success = true, Message = $"Reloaded {ips.Count} entries" };
     }
 
+    public override async Task<UploadIpBlacklistResponse> UploadIpBlacklist(
+        UploadIpBlacklistRequest request, ServerCallContext context)
+    {
+        var httpCtx = context.GetHttpContext();
+        var file = httpCtx.Request.Form.Files.FirstOrDefault()
+            ?? throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_REQUIRED__"));
+
+        const long maxBytes = 25 * 1024 * 1024;
+        if (file.Length == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_REQUIRED__"));
+        if (file.Length > maxBytes)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_TOO_LARGE__"));
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__INVALID_FILE_EXTENSION__"));
+
+        await using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        ms.Position = 0;
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook(ms);
+        var sheetName  = request.HasSheetName  ? request.SheetName  : null;
+        var sheetIndex = request.HasSheetIndex ? request.SheetIndex : 0;
+
+        if (!BlacklistExcelImportHelper.TryGetWorksheet(workbook, sheetName, sheetIndex, out var ws, out var sheetErr))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, sheetErr));
+
+        var headerRow = BlacklistExcelImportHelper.FindHeaderRow(ws);
+        if (headerRow == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__EMPTY_SHEET__"));
+
+        var map = BlacklistExcelImportHelper.ResolveColumns(ws, headerRow);
+        if (map.IpCol == null || map.ReasonCol == null)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__MISSING_COLUMNS__"));
+
+        var tracked = await centralDb.IpBlackLists.ToListAsync();
+        var byCanonical = new Dictionary<string, IpBlackList>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in tracked)
+        {
+            var key = BlacklistExcelImportHelper.TryCanonicalIp(e.Ip, out var c) ? c : e.Ip.Trim();
+            if (!byCanonical.ContainsKey(key)) byCanonical[key] = e;
+        }
+
+        var result = new BlacklistUploadResult();
+        var op = await GetOperatorNameAsync(context);
+        var lastRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
+        var pendingSinceLastSave = 0;
+        var ipColLetter = ws.Column(map.IpCol!.Value).ColumnLetter();
+        string Cell(int row, int col) => BlacklistExcelImportHelper.CellText(ws.Cell(row, col));
+
+        for (var r = headerRow + 1; r <= lastRow; r++)
+        {
+            var reasonRaw = Cell(r, map.ReasonCol!.Value);
+            if (string.IsNullOrWhiteSpace(reasonRaw)) { result.SkippedEmptyOrInvalid++; continue; }
+
+            var ipCell = Cell(r, map.IpCol!.Value);
+            if (string.IsNullOrWhiteSpace(ipCell)) continue;
+
+            var ips = BlacklistExcelImportHelper.ExtractIps(ipCell);
+            if (ips.Count == 0)
+            {
+                result.SkippedParseError++;
+                BlacklistExcelImportHelper.AddError(result,
+                    $"Row {r} col {ipColLetter}: no parseable IP; value={BlacklistExcelImportHelper.FormatCellForError(ipCell)}");
+                continue;
+            }
+
+            var note = BlacklistExcelImportHelper.TruncateNote(reasonRaw.Trim());
+            foreach (var ip in ips)
+            {
+                if (ip.Length > 64 || !System.Net.IPAddress.TryParse(ip, out _))
+                {
+                    result.SkippedParseError++;
+                    BlacklistExcelImportHelper.AddError(result,
+                        $"Row {r} col {ipColLetter}: rejected '{BlacklistExcelImportHelper.FormatCellForError(ip, 120)}'; cell={BlacklistExcelImportHelper.FormatCellForError(ipCell, 160)}");
+                    continue;
+                }
+                if (byCanonical.TryGetValue(ip, out var existing))
+                {
+                    if (existing.Enabled) { result.SkippedDuplicate++; continue; }
+                    existing.Enabled = true; existing.Note = note;
+                    existing.OperatorName = op; existing.UpdatedOn = DateTime.UtcNow;
+                    result.Updated++;
+                }
+                else
+                {
+                    var entity = new IpBlackList
+                    {
+                        Ip = ip, Note = note, Enabled = true,
+                        OperatorName = op, CreatedOn = DateTime.UtcNow, UpdatedOn = DateTime.UtcNow,
+                    };
+                    centralDb.IpBlackLists.Add(entity);
+                    byCanonical[ip] = entity;
+                    result.Inserted++;
+                }
+                if (++pendingSinceLastSave >= 200) { await centralDb.SaveChangesAsync(); pendingSinceLastSave = 0; }
+            }
+        }
+        if (pendingSinceLastSave > 0) await centralDb.SaveChangesAsync();
+        await myCache.HSetDeleteByKeyAsync(_ipKey);
+        var allIps = await centralDb.IpBlackLists.Select(x => x.Ip).ToListAsync();
+        foreach (var ip in allIps) await myCache.HSetStringAsync(_ipKey, ip, "1");
+
+        var resp = new UploadIpBlacklistResponse
+        {
+            Inserted = result.Inserted, Updated = result.Updated,
+            SkippedDuplicate = result.SkippedDuplicate,
+            SkippedEmptyOrInvalid = result.SkippedEmptyOrInvalid,
+            SkippedParseError = result.SkippedParseError,
+        };
+        resp.Errors.AddRange(result.Errors);
+        return resp;
+    }
+
     private static IpBlacklistItem MapToProto(IpBlackList.TenantPageModel m) => new()
     {
         Id           = m.Id,
@@ -263,6 +377,7 @@ public class TenantIpBlacklistGrpcService(
         Note         = m.Note,
         Enabled      = m.Enabled,
         CreatedOn    = m.CreatedOn.ToString("O"),
+        UpdatedOn    = m.UpdatedOn.ToString("O"),
         OperatorName = m.OperatorName ?? "",
     };
 
@@ -330,21 +445,24 @@ public class TenantUserBlacklistGrpcService(
     public override async Task<CreateUserBlacklistResponse> CreateUserBlacklist(
         CreateUserBlacklistRequest request, ServerCallContext context)
     {
-        var exists = await centralDb.UserBlackLists.AnyAsync(x => x.Email == request.Email);
+        var exists = await centralDb.UserBlackLists.AnyAsync(x =>
+            (!string.IsNullOrEmpty(request.Phone)    && x.Phone    == request.Phone) ||
+            (!string.IsNullOrEmpty(request.Email)    && x.Email    == request.Email) ||
+            (!string.IsNullOrEmpty(request.IdNumber) && x.IdNumber == request.IdNumber));
         if (exists) throw new RpcException(new Status(StatusCode.AlreadyExists, "__USER_ALREADY_EXISTS__"));
 
-        var spec = new UserBlackList.CreateSpec { Email = request.Email };
+        var spec = new UserBlackList.CreateSpec
+        {
+            Email    = request.Email,
+            Name     = request.Name,
+            Phone    = request.Phone,
+            IdNumber = request.IdNumber,
+        };
         var entity = spec.ToEntity(await GetOperatorNameAsync(context));
         centralDb.UserBlackLists.Add(entity);
         await centralDb.SaveChangesAsync();
         await AddCacheAsync(entity);
-        return new CreateUserBlacklistResponse
-        {
-            Data = MapToProto(new UserBlackList.TenantPageModel
-            {
-                Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
-            }),
-        };
+        return new CreateUserBlacklistResponse { Data = MapToProto(ToPageModel(entity)) };
     }
 
     public override async Task<UpdateUserBlacklistResponse> UpdateUserBlacklist(
@@ -356,20 +474,14 @@ public class TenantUserBlacklistGrpcService(
         var spec = new UserBlackList.UpdateSpec
         {
             Email    = request.Spec?.Email    ?? entity.Email,
-            Name     = entity.Name,
-            Phone    = entity.Phone,
-            IdNumber = entity.IdNumber,
+            Name     = request.Spec?.Name     ?? entity.Name,
+            Phone    = request.Spec?.Phone    ?? entity.Phone,
+            IdNumber = request.Spec?.IdNumber ?? entity.IdNumber,
         };
         spec.ApplyTo(entity, await GetOperatorNameAsync(context));
         await centralDb.SaveChangesAsync();
         await AddCacheAsync(entity);
-        return new UpdateUserBlacklistResponse
-        {
-            Data = MapToProto(new UserBlackList.TenantPageModel
-            {
-                Id = entity.Id, Email = entity.Email, CreatedOn = entity.CreatedOn
-            }),
-        };
+        return new UpdateUserBlacklistResponse { Data = MapToProto(ToPageModel(entity)) };
     }
 
     public override async Task<DeleteUserBlacklistResponse> DeleteUserBlacklist(
@@ -418,13 +530,144 @@ public class TenantUserBlacklistGrpcService(
         myCache.HSetStringAsync(_emailKey, e.Email, "1"),
         myCache.HSetStringAsync(_idNumKey, e.IdNumber, "1"));
 
+    public override async Task<UploadUserBlacklistResponse> UploadUserBlacklist(
+        UploadUserBlacklistRequest request, ServerCallContext context)
+    {
+        var httpCtx = context.GetHttpContext();
+        var file = httpCtx.Request.Form.Files.FirstOrDefault()
+            ?? throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_REQUIRED__"));
+
+        const long maxBytes = 25 * 1024 * 1024;
+        if (file.Length == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_REQUIRED__"));
+        if (file.Length > maxBytes)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_TOO_LARGE__"));
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__INVALID_FILE_EXTENSION__"));
+
+        await using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        ms.Position = 0;
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook(ms);
+        var sheetName  = request.HasSheetName  ? request.SheetName  : null;
+        var sheetIndex = request.HasSheetIndex ? request.SheetIndex : 0;
+
+        if (!BlacklistExcelImportHelper.TryGetWorksheet(workbook, sheetName, sheetIndex, out var ws, out var sheetErr))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, sheetErr));
+
+        var headerRow = BlacklistExcelImportHelper.FindHeaderRow(ws);
+        if (headerRow == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__EMPTY_SHEET__"));
+
+        var map = BlacklistExcelImportHelper.ResolveColumns(ws, headerRow);
+        if (map.NameCol == null || map.PhoneCol == null || map.IdNumberCol == null || map.EmailCol == null)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__MISSING_COLUMNS__"));
+
+        var existingRows = await centralDb.UserBlackLists
+            .Select(x => new { x.Email, x.Phone, x.IdNumber }).ToListAsync();
+        var emailSet = new HashSet<string>(StringComparer.Ordinal);
+        var phoneSet = new HashSet<string>(StringComparer.Ordinal);
+        var idSet    = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var x in existingRows)
+        {
+            if (!string.IsNullOrWhiteSpace(x.Email))    emailSet.Add(x.Email.Trim().ToLowerInvariant());
+            var p = BlacklistExcelImportHelper.TruncateField(BlacklistExcelImportHelper.NormalizePhone(x.Phone ?? ""), 64);
+            if (!string.IsNullOrWhiteSpace(p))           phoneSet.Add(p);
+            if (!string.IsNullOrWhiteSpace(x.IdNumber)) idSet.Add(x.IdNumber.Trim());
+        }
+
+        var batchEmailSet = new HashSet<string>(StringComparer.Ordinal);
+        var batchPhoneSet = new HashSet<string>(StringComparer.Ordinal);
+        var batchIdSet    = new HashSet<string>(StringComparer.Ordinal);
+        var result = new BlacklistUploadResult();
+        var op = await GetOperatorNameAsync(context);
+        var lastRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
+        var pending = 0;
+        string Cell(int r, int c) => BlacklistExcelImportHelper.CellText(ws.Cell(r, c));
+
+        for (var r = headerRow + 1; r <= lastRow; r++)
+        {
+            var name       = Cell(r, map.NameCol!.Value);
+            var phoneRaw   = Cell(r, map.PhoneCol!.Value);
+            var idNumberRaw = Cell(r, map.IdNumberCol!.Value);
+            var emailRaw   = Cell(r, map.EmailCol!.Value);
+
+            if (string.IsNullOrWhiteSpace(name)) { result.SkippedEmptyOrInvalid++; continue; }
+
+            var emailTrimmed = emailRaw.Trim();
+            var emailKey     = string.IsNullOrWhiteSpace(emailTrimmed) ? null : emailTrimmed.ToLowerInvariant();
+            var phoneNorm    = BlacklistExcelImportHelper.TruncateField(BlacklistExcelImportHelper.NormalizePhone(phoneRaw), 64);
+            var phoneKey     = string.IsNullOrWhiteSpace(phoneNorm) ? null : phoneNorm;
+            var idTrim       = idNumberRaw.Trim();
+            var idKey        = string.IsNullOrWhiteSpace(idTrim) ? null : idTrim;
+
+            if (emailKey == null && phoneKey == null && idKey == null) { result.SkippedEmptyOrInvalid++; continue; }
+
+            if      (emailKey != null && (emailSet.Contains(emailKey) || batchEmailSet.Contains(emailKey))) { result.SkippedDuplicate++; continue; }
+            else if (phoneKey != null && (phoneSet.Contains(phoneKey) || batchPhoneSet.Contains(phoneKey))) { result.SkippedDuplicate++; continue; }
+            else if (idKey    != null && (idSet.Contains(idKey)       || batchIdSet.Contains(idKey)))       { result.SkippedDuplicate++; continue; }
+
+            var entity = new UserBlackList
+            {
+                Name         = BlacklistExcelImportHelper.TruncateField(name.Trim(), 64),
+                Phone        = phoneKey ?? "",
+                Email        = string.IsNullOrWhiteSpace(emailTrimmed) ? "" : BlacklistExcelImportHelper.TruncateField(emailTrimmed, 64),
+                IdNumber     = idTrim,
+                OperatorName = op,
+                CreatedOn    = DateTime.UtcNow,
+                UpdatedOn    = DateTime.UtcNow,
+            };
+            centralDb.UserBlackLists.Add(entity);
+            if (emailKey != null) { batchEmailSet.Add(emailKey); emailSet.Add(emailKey); }
+            else if (phoneKey != null) { batchPhoneSet.Add(phoneKey); phoneSet.Add(phoneKey); }
+            else if (idKey != null) { batchIdSet.Add(idKey); idSet.Add(idKey); }
+            result.Inserted++;
+            if (++pending >= 200) { await centralDb.SaveChangesAsync(); pending = 0; }
+        }
+        if (pending > 0) await centralDb.SaveChangesAsync();
+
+        // Reload all caches
+        await myCache.HSetDeleteByKeyAsync(_nameKey);  await myCache.HSetDeleteByKeyAsync(_phoneKey);
+        await myCache.HSetDeleteByKeyAsync(_emailKey); await myCache.HSetDeleteByKeyAsync(_idNumKey);
+        var all = await centralDb.UserBlackLists.Select(x => new { x.Name, x.Phone, x.Email, x.IdNumber }).ToListAsync();
+        foreach (var item in all)
+        {
+            await myCache.HSetStringAsync(_nameKey,  item.Name,     "1");
+            await myCache.HSetStringAsync(_phoneKey, item.Phone,    "1");
+            await myCache.HSetStringAsync(_emailKey, item.Email,    "1");
+            await myCache.HSetStringAsync(_idNumKey, item.IdNumber, "1");
+        }
+
+        var resp = new UploadUserBlacklistResponse
+        {
+            Inserted = result.Inserted,
+            SkippedDuplicate = result.SkippedDuplicate,
+            SkippedEmptyOrInvalid = result.SkippedEmptyOrInvalid,
+        };
+        resp.Errors.AddRange(result.Errors);
+        return resp;
+    }
+
+    private static UserBlackList.TenantPageModel ToPageModel(UserBlackList e) => new()
+    {
+        Id = e.Id, Name = e.Name, Phone = e.Phone, Email = e.Email,
+        IdNumber = e.IdNumber, OperatorName = e.OperatorName,
+        CreatedOn = e.CreatedOn, UpdatedOn = e.UpdatedOn,
+    };
+
     private static UserBlacklistItem MapToProto(UserBlackList.TenantPageModel m) => new()
     {
-        Id        = m.Id,
-        Email     = m.Email,
-        Reason    = m.OperatorName,
-        Status    = 1,
-        CreatedAt = m.CreatedOn.ToString("O"),
+        Id           = m.Id,
+        Email        = m.Email,
+        Name         = m.Name,
+        Phone        = m.Phone,
+        IdNumber     = m.IdNumber,
+        Reason       = m.OperatorName,
+        OperatorName = m.OperatorName,
+        Status       = 1,
+        CreatedAt    = m.CreatedOn.ToString("O"),
+        UpdatedOn    = m.UpdatedOn.ToString("O"),
     };
 
     private async Task<string> GetOperatorNameAsync(ServerCallContext ctx)
