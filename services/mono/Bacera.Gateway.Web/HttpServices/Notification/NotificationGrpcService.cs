@@ -344,10 +344,7 @@ public class TenantEmailGrpcService(
     }
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 /// <summary>

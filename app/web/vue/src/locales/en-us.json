@@ -420,6 +420,7 @@
     "unionPaymentNotAvailable": "UnionPay is not available at this time, please try another payment method or contact customer service for assistance.",
     "__PAYMENT_EXECUTE_FAILED__": "Payment execute failed, please try again later or contact customer service for assistance.",
     "unexpectedError": "An unexpected error has occurred. Please try again later, or contact customer service for assistance.",
+    "forbidden_in_god_mode": "Password changes are not allowed in god mode.",
     "401": "401 error",
     "403": "Test",
     "404": "Not found resource",

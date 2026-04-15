@@ -1,6 +1,7 @@
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway;
 using Bacera.Gateway.ViewModels.Tenant;
@@ -894,10 +895,7 @@ public class TenantAccountGrpcService(
     private static ProtoAccount MapViewModelToProtoWithTags(AccountViewModel v) => MapViewModelToProto(v);
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 // ─── TenantAccountServiceV2 ──────────────────────────────────────────────────
@@ -1224,10 +1222,7 @@ public class ClientAccountGrpcService(
     }
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 // ─── SalesAccountService ─────────────────────────────────────────────────────
@@ -1554,10 +1549,7 @@ public class SalesAccountGrpcService(
     }
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 // ─── AgentAccountService ─────────────────────────────────────────────────────
@@ -1804,10 +1796,7 @@ public class AgentAccountGrpcService(
     }
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 // ─── RepAccountService ───────────────────────────────────────────────────────
@@ -1951,8 +1940,5 @@ public class RepAccountGrpcService(
     }
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }

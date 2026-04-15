@@ -3,13 +3,15 @@ use std::sync::Arc;
 use axum::{Json, Router, extract::State, http::StatusCode, routing::post};
 use serde_json::{Value, json};
 
+use serde::Deserialize;
+
 use crate::{
     db, extractors::AuthUser, password, redis_store, state::AppState,
     generated::{
         http_v1::{
             SendPasswordResetCodeRequest, SendPasswordResetCodeResponse,
             ConfirmPasswordResetCodeRequest, ConfirmPasswordResetCodeResponse,
-            ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest,
+            ForgotPasswordRequest, ResetPasswordRequest,
         },
         http_routes::{
             SEND_PASSWORD_RESET_CODE_PATH, CONFIRM_PASSWORD_RESET_CODE_PATH,
@@ -17,6 +19,14 @@ use crate::{
         },
     },
 };
+
+/// Accepts both camelCase (frontend) and snake_case (proto) field names.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ChangePasswordRequest {
+    current_password: String,
+    new_password: String,
+}
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
@@ -172,6 +182,10 @@ async fn change_password(
     auth_user: AuthUser,
     Json(req): Json<ChangePasswordRequest>,
 ) -> (StatusCode, Json<Value>) {
+    if auth_user.is_god_mode {
+        return (StatusCode::FORBIDDEN, Json(json!({ "error": "forbidden_in_god_mode" })));
+    }
+
     let user = match db::find_user_by_id(&state.pool, auth_user.user_id).await {
         Ok(Some(u)) => u,
         Ok(None) => return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "not_found" }))),

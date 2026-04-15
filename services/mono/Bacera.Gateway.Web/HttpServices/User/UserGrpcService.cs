@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Extension;
 using Grpc.Core;
 using Http.V1;
 using MediatR;
@@ -825,10 +826,7 @@ public class TenantUserGrpcService(
         };
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 /// <summary>

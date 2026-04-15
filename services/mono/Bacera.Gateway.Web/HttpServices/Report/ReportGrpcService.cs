@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Bacera.Gateway.Services;
+using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.BackgroundJobs;
 using Bacera.Gateway.Web.Services;
 using Grpc.Core;
@@ -407,10 +408,7 @@ public class TenantReportGrpcService(
         };
 
     private static long GetPartyId(ServerCallContext ctx)
-    {
-        var httpCtx = ctx.GetHttpContext();
-        return httpCtx.Items.TryGetValue("PartyId", out var v) && v is long id ? id : 0;
-    }
+        => ctx.GetHttpContext().User.GetPartyId();
 }
 
 /// <summary>

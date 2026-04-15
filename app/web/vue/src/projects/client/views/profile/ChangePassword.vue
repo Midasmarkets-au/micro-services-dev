@@ -185,8 +185,13 @@ const onResetPassword = handleSubmit(async () => {
     MsgPrompt.success(t("tip.passwordResetSuccess")).then(() => {
       resetForm();
     });
-  } catch (error) {
-    MsgPrompt.error(error);
+  } catch (error: any) {
+    const errCode = error?.response?.data?.error;
+    if (errCode === "forbidden_in_god_mode") {
+      MsgPrompt.error(t("error.forbidden_in_god_mode"));
+    } else {
+      MsgPrompt.error(error);
+    }
   }
 
   submitButtonRef.value.disabled = false;
