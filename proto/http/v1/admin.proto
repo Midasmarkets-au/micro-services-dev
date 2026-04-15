@@ -75,6 +75,10 @@ service TenantUserBlacklistService {
   rpc ReloadUserBlacklistCache(ReloadUserBlacklistCacheRequest) returns (ReloadUserBlacklistCacheResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/user-black-list/reload-cache" };
   }
+  // 批量导入用户黑名单（上传 .xlsx 文件）
+  rpc UploadUserBlacklist(UploadUserBlacklistRequest) returns (UploadUserBlacklistResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/user-black-list/upload-users", body: "*" };
+  }
 }
 
 // ─── Tenant API Log API (api/v1/tenant/api-log) ──────────────────────────────
@@ -126,11 +130,16 @@ message IpBlacklistItem {
 
 // 用户邮箱黑名单条目实体
 message UserBlacklistItem {
-  int64  id         = 1; // 黑名单记录 ID
-  string email      = 2; // 被封禁的邮箱地址
-  string reason     = 3; // 加入黑名单的原因
-  int32  status     = 4; // 状态：1=active（生效中）、0=inactive（已禁用）
-  string created_at = 5; // 创建时间，ISO 8601 格式
+  int64  id            = 1; // 黑名单记录 ID
+  string email         = 2; // 被封禁的邮箱地址
+  string reason        = 3; // 加入黑名单的原因（映射 operator_name）
+  int32  status        = 4; // 状态：1=active（生效中）、0=inactive（已禁用）
+  string created_at    = 5; // 创建时间，ISO 8601 格式（同 created_on）
+  string name          = 6; // 姓名
+  string phone         = 7; // 手机号
+  string id_number     = 8; // 证件号
+  string operator_name = 9; // 操作人姓名
+  string updated_on    = 10; // 最后更新时间，ISO 8601 格式
 }
 
 // API 访问日志实体
@@ -286,8 +295,11 @@ message GetUserBlacklistRequest {
 
 // 创建用户黑名单请求
 message CreateUserBlacklistRequest {
-  string email  = 1;
-  string reason = 2;
+  string email     = 1;
+  string reason    = 2;
+  string name      = 3; // 姓名
+  string phone     = 4; // 手机号
+  string id_number = 5; // 证件号
 }
 
 // 更新用户黑名单请求
@@ -318,6 +330,20 @@ message ReloadUserBlacklistCacheRequest {}
 message ReloadUserBlacklistCacheResponse {
   bool   success = 1;
   string message = 2;
+}
+
+// 批量上传用户黑名单请求（multipart/form-data，字段名 file）
+message UploadUserBlacklistRequest {
+  optional int32  sheet_index = 1; // Excel sheet 下标（默认 0）
+  optional string sheet_name  = 2; // Excel sheet 名称（优先于 sheet_index）
+}
+
+// 批量上传用户黑名单结果
+message UploadUserBlacklistResponse {
+  int32          inserted                 = 1; // 新增条数
+  int32          skipped_duplicate        = 2; // 已存在，跳过
+  int32          skipped_empty_or_invalid = 3; // name 为空跳过
+  repeated string errors                  = 4; // 详细错误信息
 }
 
 // ─── API Log 相关消息 ─────────────────────────────────────────────────────────
