@@ -5,6 +5,7 @@ using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Services.Permission;
 using Bacera.Gateway.ViewModels.Tenant;
+using Bacera.Gateway.Web.Areas.Tenant.Helpers;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Grpc.Core;
 using Http.V1;
@@ -256,6 +257,119 @@ public class TenantIpBlacklistGrpcService(
         return new ReloadCacheResponse { Success = true, Message = $"Reloaded {ips.Count} entries" };
     }
 
+    public override async Task<UploadIpBlacklistResponse> UploadIpBlacklist(
+        UploadIpBlacklistRequest request, ServerCallContext context)
+    {
+        var httpCtx = context.GetHttpContext();
+        var file = httpCtx.Request.Form.Files.FirstOrDefault()
+            ?? throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_REQUIRED__"));
+
+        const long maxBytes = 25 * 1024 * 1024;
+        if (file.Length == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_REQUIRED__"));
+        if (file.Length > maxBytes)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__FILE_TOO_LARGE__"));
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__INVALID_FILE_EXTENSION__"));
+
+        await using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        ms.Position = 0;
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook(ms);
+        var sheetName  = request.HasSheetName  ? request.SheetName  : null;
+        var sheetIndex = request.HasSheetIndex ? request.SheetIndex : 0;
+
+        if (!BlacklistExcelImportHelper.TryGetWorksheet(workbook, sheetName, sheetIndex, out var ws, out var sheetErr))
+            throw new RpcException(new Status(StatusCode.InvalidArgument, sheetErr));
+
+        var headerRow = BlacklistExcelImportHelper.FindHeaderRow(ws);
+        if (headerRow == 0)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__EMPTY_SHEET__"));
+
+        var map = BlacklistExcelImportHelper.ResolveColumns(ws, headerRow);
+        if (map.IpCol == null || map.ReasonCol == null)
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "__MISSING_COLUMNS__"));
+
+        var tracked = await centralDb.IpBlackLists.ToListAsync();
+        var byCanonical = new Dictionary<string, IpBlackList>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in tracked)
+        {
+            var key = BlacklistExcelImportHelper.TryCanonicalIp(e.Ip, out var c) ? c : e.Ip.Trim();
+            if (!byCanonical.ContainsKey(key)) byCanonical[key] = e;
+        }
+
+        var result = new BlacklistUploadResult();
+        var op = await GetOperatorNameAsync(context);
+        var lastRow = ws.LastRowUsed()?.RowNumber() ?? headerRow;
+        var pendingSinceLastSave = 0;
+        var ipColLetter = ws.Column(map.IpCol!.Value).ColumnLetter();
+        string Cell(int row, int col) => BlacklistExcelImportHelper.CellText(ws.Cell(row, col));
+
+        for (var r = headerRow + 1; r <= lastRow; r++)
+        {
+            var reasonRaw = Cell(r, map.ReasonCol!.Value);
+            if (string.IsNullOrWhiteSpace(reasonRaw)) { result.SkippedEmptyOrInvalid++; continue; }
+
+            var ipCell = Cell(r, map.IpCol!.Value);
+            if (string.IsNullOrWhiteSpace(ipCell)) continue;
+
+            var ips = BlacklistExcelImportHelper.ExtractIps(ipCell);
+            if (ips.Count == 0)
+            {
+                result.SkippedParseError++;
+                BlacklistExcelImportHelper.AddError(result,
+                    $"Row {r} col {ipColLetter}: no parseable IP; value={BlacklistExcelImportHelper.FormatCellForError(ipCell)}");
+                continue;
+            }
+
+            var note = BlacklistExcelImportHelper.TruncateNote(reasonRaw.Trim());
+            foreach (var ip in ips)
+            {
+                if (ip.Length > 64 || !System.Net.IPAddress.TryParse(ip, out _))
+                {
+                    result.SkippedParseError++;
+                    BlacklistExcelImportHelper.AddError(result,
+                        $"Row {r} col {ipColLetter}: rejected '{BlacklistExcelImportHelper.FormatCellForError(ip, 120)}'; cell={BlacklistExcelImportHelper.FormatCellForError(ipCell, 160)}");
+                    continue;
+                }
+                if (byCanonical.TryGetValue(ip, out var existing))
+                {
+                    if (existing.Enabled) { result.SkippedDuplicate++; continue; }
+                    existing.Enabled = true; existing.Note = note;
+                    existing.OperatorName = op; existing.UpdatedOn = DateTime.UtcNow;
+                    result.Updated++;
+                }
+                else
+                {
+                    var entity = new IpBlackList
+                    {
+                        Ip = ip, Note = note, Enabled = true,
+                        OperatorName = op, CreatedOn = DateTime.UtcNow, UpdatedOn = DateTime.UtcNow,
+                    };
+                    centralDb.IpBlackLists.Add(entity);
+                    byCanonical[ip] = entity;
+                    result.Inserted++;
+                }
+                if (++pendingSinceLastSave >= 200) { await centralDb.SaveChangesAsync(); pendingSinceLastSave = 0; }
+            }
+        }
+        if (pendingSinceLastSave > 0) await centralDb.SaveChangesAsync();
+        await myCache.HSetDeleteByKeyAsync(_ipKey);
+        var allIps = await centralDb.IpBlackLists.Select(x => x.Ip).ToListAsync();
+        foreach (var ip in allIps) await myCache.HSetStringAsync(_ipKey, ip, "1");
+
+        var resp = new UploadIpBlacklistResponse
+        {
+            Inserted = result.Inserted, Updated = result.Updated,
+            SkippedDuplicate = result.SkippedDuplicate,
+            SkippedEmptyOrInvalid = result.SkippedEmptyOrInvalid,
+            SkippedParseError = result.SkippedParseError,
+        };
+        resp.Errors.AddRange(result.Errors);
+        return resp;
+    }
+
     private static IpBlacklistItem MapToProto(IpBlackList.TenantPageModel m) => new()
     {
         Id           = m.Id,
@@ -263,6 +377,7 @@ public class TenantIpBlacklistGrpcService(
         Note         = m.Note,
         Enabled      = m.Enabled,
         CreatedOn    = m.CreatedOn.ToString("O"),
+        UpdatedOn    = m.UpdatedOn.ToString("O"),
         OperatorName = m.OperatorName ?? "",
     };
 

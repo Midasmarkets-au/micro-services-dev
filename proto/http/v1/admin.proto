@@ -45,6 +45,10 @@ service TenantIpBlacklistService {
   rpc ReloadCache(ReloadCacheRequest) returns (ReloadCacheResponse) {
     option (google.api.http) = { put: "/api/v1/tenant/ip-black-list/reload-cache" };
   }
+  // 批量导入 IP 黑名单（上传 .xlsx 文件）
+  rpc UploadIpBlacklist(UploadIpBlacklistRequest) returns (UploadIpBlacklistResponse) {
+    option (google.api.http) = { post: "/api/v1/tenant/ip-black-list/upload-ips", body: "*" };
+  }
 }
 
 // ─── Tenant User Blacklist API (api/v1/tenant/user-black-list) ───────────────
@@ -117,6 +121,7 @@ message IpBlacklistItem {
   bool   enabled       = 4; // 是否启用
   string created_on    = 5; // 创建时间，ISO 8601 格式
   string operator_name = 6; // 操作人姓名
+  string updated_on    = 7; // 最后更新时间，ISO 8601 格式
 }
 
 // 用户邮箱黑名单条目实体
@@ -233,6 +238,22 @@ message DeleteIpBlacklistRequest {
 message DeleteIpBlacklistResponse {
   bool   success = 1;
   string message = 2;
+}
+
+// 批量上传 IP 黑名单请求（multipart/form-data，字段名 file）
+message UploadIpBlacklistRequest {
+  optional int32  sheet_index = 1; // Excel sheet 下标（默认 0）
+  optional string sheet_name  = 2; // Excel sheet 名称（优先于 sheet_index）
+}
+
+// 批量上传结果
+message UploadIpBlacklistResponse {
+  int32          inserted              = 1; // 新增条数
+  int32          updated               = 2; // 更新条数（disabled→enabled）
+  int32          skipped_duplicate     = 3; // 已存在且已启用，跳过
+  int32          skipped_empty_or_invalid = 4; // reason 为空跳过
+  int32          skipped_parse_error   = 5; // IP 解析失败
+  repeated string errors               = 6; // 详细错误信息（最多 50 条）
 }
 
 message ReloadCacheRequest {}
