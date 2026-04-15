@@ -549,16 +549,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Redis pool created for {}", redis_url);
 
     let mono_client = if let Some(addr) = mono_grpc_addr {
-        match grpc::auth_client::connect(&addr).await {
-            Ok(c) => {
-                info!("Connected to mono gRPC at {}", addr);
-                Some(tokio::sync::Mutex::new(c))
-            }
-            Err(e) => {
-                tracing::warn!("Could not connect to mono gRPC at {}: {} (2FA will be skipped)", addr, e);
-                None
+        let mut client = None;
+        for attempt in 1..=5u32 {
+            match grpc::auth_client::connect(&addr).await {
+                Ok(c) => {
+                    info!("Connected to mono gRPC at {}", addr);
+                    client = Some(tokio::sync::Mutex::new(c));
+                    break;
+                }
+                Err(e) => {
+                    let delay = std::time::Duration::from_secs(2u64.pow(attempt));
+                    tracing::warn!(
+                        "Could not connect to mono gRPC at {} (attempt {}/5): {:#?} — retrying in {:?}",
+                        addr, attempt, e, delay
+                    );
+                    tokio::time::sleep(delay).await;
+                }
             }
         }
+        if client.is_none() {
+            tracing::error!("Failed to connect to mono gRPC at {} after 5 attempts — 2FA will be skipped", addr);
+        }
+        client
     } else {
         None
     };
