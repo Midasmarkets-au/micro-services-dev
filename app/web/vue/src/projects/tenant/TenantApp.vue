@@ -43,13 +43,9 @@ onMounted(async () => {
   provide(InjectKeys.OPEN_REJECT_REASON_MODAL, rejectReasonBoxRef.value?.show);
   provide(InjectKeys.FILE_SHOW_REF, userFileDocModalRef);
   provide(InjectKeys.OPEN_ADD_COMMENT_MODAL, addCommentModalRef.value?.show);
-  if (!store.state.AuthModule?.isAuthenticated) {
-    await router.push({ name: "sign-in" });
-  } else {
-    if (!store.state.AuthModule?.hasUserVerified2Fa) {
-      await router.push({ name: "2fa" });
-    }
-  }
+  // Authentication redirect is handled by the router guard (VERIFY_AUTH).
+  // Do NOT check isAuthenticated here — it is always false on page refresh
+  // until the async VERIFY_AUTH call completes, causing premature redirects.
   /**
    * Overrides the layout config using saved data from localStorage
    * remove this to use static config (@/core/config/DefaultLayoutConfig.ts)

@@ -285,11 +285,6 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
       const meIdentity = await ClientGlobalService.getMeIdentity();
       this.context.commit(Mutations.SET_USER, meIdentity);
       this.context.commit(Mutations.SET_AUTH, null);
-
-      const config = await ClientGlobalService.getConfiguration();
-      this.context.commit(Mutations.SET_CONFIG, config);
-
-      return true;
     } catch (error) {
       const response = (error as any).response;
       if (!response) return false;
@@ -305,6 +300,16 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
         return false;
       }
     }
+
+    // Fetch configuration separately — a failure here must NOT invalidate the session.
+    try {
+      const config = await ClientGlobalService.getConfiguration();
+      this.context.commit(Mutations.SET_CONFIG, config);
+    } catch {
+      // Non-fatal: configuration fetch failed, proceed with authenticated state.
+    }
+
+    return true;
   }
 
   @Action
