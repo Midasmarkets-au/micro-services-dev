@@ -377,8 +377,13 @@ const AccountService = {
     (await axios.get(prefix + "kyc/" + partyId + "/history")).data,
 
   getUserLatestKyc: async (partyId: number) => {
-    const res = (await axios.get(prefix + "kyc/" + partyId)).data;
-    return res.verificationItems.length ? res.verificationItems[0].data : {};
+    let res: any;
+    try {
+      res = (await axios.get(prefix + "kyc/" + partyId)).data;
+    } catch {
+      return {};
+    }
+    return res?.verificationItems?.length ? res.verificationItems[0].data : {};
   },
 
   createKycForm: async (partyId: number, formData: any) =>
