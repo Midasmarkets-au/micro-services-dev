@@ -244,6 +244,7 @@ const tenantsOptions = ref<any[]>([]);
 const selectedTenant = ref<any>(null);
 const twoFaRequired = ref(false);
 const twoFaCode = ref<any>(null);
+const twoFaSessionToken = ref<string>("");
 
 provide("showPage", showPage);
 provide("formData", formData);
@@ -356,14 +357,16 @@ const onSubmitLogin = async () => {
       password: formData.value.password,
       tenantId: selectedTenant.value,
       twoFaCode: twoFaCode.value,
+      sessionToken: twoFaSessionToken.value || undefined,
     },
     {
       router,
       store,
       wsSignalR,
       t,
-      onTwoFaRequired: () => {
+      onTwoFaRequired: (sessionToken) => {
         twoFaRequired.value = true;
+        twoFaSessionToken.value = sessionToken;
       },
       onMultipleTenants: (tenantIds) => {
         showPage.value = "SelectTenantPage";
