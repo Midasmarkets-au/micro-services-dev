@@ -275,16 +275,16 @@ onMounted(() => {
 
 //Create form validation object
 const register = Yup.object().shape({
-  firstName: Yup.string().required().label("First Name"),
-  lastName: Yup.string().required().label("Last Name"),
-  countryCode: Yup.string().required().label("Nationality"),
+  first_name: Yup.string().required().label("First Name"),
+  last_name: Yup.string().required().label("Last Name"),
+  country_code: Yup.string().required().label("Nationality"),
   ccc: Yup.string().required().label("Code"),
   phone: Yup.string().required().label("Phone"),
   currency: Yup.string().required().label("Currency"),
-  referCode: Yup.string().label("Referral Code"),
+  refer_code: Yup.string().label("Referral Code"),
   email: Yup.string().email().required().label("Email"),
   password: Yup.string().min(4).required().label("Password"),
-  passwordConfirmation: Yup.string()
+  password_confirmation: Yup.string()
     .min(4)
     .required()
     .label("Confirm Password"),

@@ -10,6 +10,12 @@ pub const LOGOUT_PATH: &str = "/api/v2/auth/logout";
 pub const SEND_LOGIN_CODE_PATH: &str = "/api/v2/auth/token/code";
 /// `POST /api/v2/auth/token/code/confirm` (ConfirmLoginCode)
 pub const CONFIRM_LOGIN_CODE_PATH: &str = "/api/v2/auth/token/code/confirm";
+/// `GET /api/v1/auth/ip-info` (IpInfo)
+pub const IP_INFO_PATH: &str = "/api/v1/auth/ip-info";
+/// `GET /api/v1/auth/c` (SiteConfig)
+pub const SITE_CONFIG_PATH: &str = "/api/v1/auth/c";
+/// `POST /api/v2/auth/god-mode/exchange` (GodModeExchange)
+pub const GOD_MODE_EXCHANGE_PATH: &str = "/api/v2/auth/god-mode/exchange";
 /// `POST /api/v2/auth/password-reset/code` (SendPasswordResetCode)
 pub const SEND_PASSWORD_RESET_CODE_PATH: &str = "/api/v2/auth/password-reset/code";
 /// `POST /api/v2/auth/password-reset/code/confirm` (ConfirmPasswordResetCode)
@@ -28,3 +34,5 @@ pub const VERIFY_AUTHENTICATOR_PATH: &str = "/api/v1/2fa/authenticator/verify";
 pub const ENABLE_2FA_PATH: &str = "/api/v1/2fa/enable";
 /// `PUT /api/v1/2fa/disable` (Disable2FA)
 pub const DISABLE_2FA_PATH: &str = "/api/v1/2fa/disable";
+/// `POST /api/v2/auth/register` (Register)
+pub const REGISTER_PATH: &str = "/api/v2/auth/register";

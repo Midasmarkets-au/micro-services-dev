@@ -179,14 +179,14 @@
                   </label>
 
                   <Field
-                    v-model="formData.FirstName"
+                    v-model="formData.first_name"
                     class="mt-1 form-control form-control-lg form-control-solid"
                     type="text"
-                    name="FirstName"
+                    name="first_name"
                     autocomplete="off"
                   >
                     <el-input
-                      v-model="formData.FirstName"
+                      v-model="formData.first_name"
                       :placeholder="$t('tip.pleaseInput')"
                       size="large"
                       class="log-input"
@@ -194,7 +194,7 @@
                   </Field>
                   <div class="fv-plugins-message-container">
                     <div class="fv-help-block">
-                      <ErrorMessage name="FirstName" />
+                      <ErrorMessage name="first_name" />
                     </div>
                   </div>
                 </div>
@@ -204,14 +204,14 @@
                   }}</label>
 
                   <Field
-                    v-model="formData.LastName"
+                    v-model="formData.last_name"
                     class="mt-1 form-control form-control-lg form-control-solid"
                     type="text"
-                    name="LastName"
+                    name="last_name"
                     autocomplete="off"
                   >
                     <el-input
-                      v-model="formData.LastName"
+                      v-model="formData.last_name"
                       :placeholder="$t('tip.pleaseInput')"
                       size="large"
                       class="log-input"
@@ -219,7 +219,7 @@
                   </Field>
                   <div class="fv-plugins-message-container">
                     <div class="fv-help-block">
-                      <ErrorMessage name="LastName" />
+                      <ErrorMessage name="last_name" />
                     </div>
                   </div>
                 </div>
@@ -231,15 +231,15 @@
                   </label>
 
                   <Field
-                    v-model="formData.countryCode"
+                    v-model="formData.country_code"
                     className="mt-1 form-control form-control-lg form-control-solid"
-                    name="countryCode"
+                    name="country_code"
                     autoComplete="off"
                   >
                     <el-select
-                      v-model="formData.countryCode"
+                      v-model="formData.country_code"
                       :placeholder="$t('tip.selectCountry')"
-                      @change="phoneRegionCode = formData.countryCode"
+                      @change="phoneRegionCode = formData.country_code"
                       size="large"
                       class="log-input"
                       filterable
@@ -256,7 +256,7 @@
 
                   <div class="fv-plugins-message-container">
                     <div class="fv-help-block">
-                      <ErrorMessage name="countryCode" />
+                      <ErrorMessage name="country_code" />
                     </div>
                   </div>
                 </div>
@@ -271,15 +271,15 @@
                   </label>
 
                   <Field
-                    v-model="formData.referCode"
+                    v-model="formData.refer_code"
                     class="mt-1 form-control form-control-lg form-control-solid"
                     type="text"
-                    name="referCode"
+                    name="refer_code"
                     autocomplete="off"
                     :disabled="props.code != undefined ? true : false"
                   >
                     <el-input
-                      v-model="formData.referCode"
+                      v-model="formData.refer_code"
                       :placeholder="$t('tip.pleaseInput')"
                       size="large"
                       class="log-input"
@@ -288,7 +288,7 @@
                   </Field>
                   <div class="fv-plugins-message-container">
                     <div class="fv-help-block">
-                      <ErrorMessage name="referCode" />
+                      <ErrorMessage name="refer_code" />
                     </div>
                   </div>
                 </div>
@@ -605,10 +605,10 @@ const initFormData = () => {
   i18n.locale.value = language.value;
   localStorage.setItem("language", language.value);
 
-  var confirmUrl =
+  var confirm_url =
     window.location.protocol + "//" + window.location.host + "/confirm-email";
   if (window.location.href.includes("portal")) {
-    confirmUrl =
+    confirm_url =
       window.location.protocol +
       "//" +
       window.location.host +
@@ -616,11 +616,11 @@ const initFormData = () => {
   }
   formData.value = {
     language: language.value,
-    confirmUrl: confirmUrl,
+    confirm_url: confirm_url,
   };
 
   if (props.code) {
-    formData.value.referCode = props.code;
+    formData.value.refer_code = props.code;
   }
 
   phoneRegionCode.value = "";
@@ -647,7 +647,7 @@ const configTenantId = () => {
     checked.value = false;
   }
   if (tenantId) {
-    formData.value.tenantId = tenantId;
+    formData.value.tenant_id = tenantId;
   }
   if (tenantId == TenantTypes.au) {
     regionCodes.value = getRegionCodes(["au", "cn", "hk", "tw", "vn", "jp"]);
@@ -709,14 +709,14 @@ const getC = async () => {
     }
     let res;
     if (openAt) {
-      res = await axios.get("/api/v1/auth/c?openAt=" + openAt);
+      res = await axios.get("/api/v1/auth/c?open_at=" + openAt);
     } else {
       res = await axios.get("/api/v1/auth/c");
     }
     c.value = res.data;
     if (getTenancy.value == tenancies.au) {
       c.value = [SiteTypes.Australia];
-      formData.value.tenantId = TenantTypes.au;
+      formData.value.tenant_id = TenantTypes.au;
     }
     window.localStorage.setItem("c", c.value);
     if (c.value[0] == SiteTypes.Australia) {
@@ -754,9 +754,9 @@ function createValidationSchema() {
 const step2_validationSchema = ref(createValidation2Schema());
 function createValidation2Schema() {
   return Yup.object().shape({
-    FirstName: Yup.string().required(t("error.__FIRST_NAME_IS_REQUIRED__")),
-    LastName: Yup.string().required(t("error.__LAST_NAME_IS_REQUIRED__")),
-    countryCode: Yup.string().required(t("error.__NATIONALITY_IS_REQUIRED")),
+    first_name: Yup.string().required(t("error.__FIRST_NAME_IS_REQUIRED__")),
+    last_name: Yup.string().required(t("error.__LAST_NAME_IS_REQUIRED__")),
+    country_code: Yup.string().required(t("error.__NATIONALITY_IS_REQUIRED")),
     phone: Yup.string().required(t("error.__PHONE_NUMBER_IS_REQUIRED__")),
     // otpCode: Yup.string().required().label("OPT Code"),
     // otpCode: Yup.string().when({
@@ -798,7 +798,7 @@ const onSubmitRegister = async () => {
   try {
     await ClientGlobalService.registerNewUser({
       ...formData.value,
-      siteId: c.value[0],
+      site_id: c.value[0],
     });
     event("conversion", { send_to: process.env.VUE_APP_GA_SIGNUP_EVENT });
 
@@ -810,7 +810,7 @@ const onSubmitRegister = async () => {
       {
         email: formData.value.email,
         password: formData.value.password,
-        tenantId: formData.value.tenantId?.toString(),
+        tenantId: formData.value.tenant_id?.toString(),
       },
       {
         router,
@@ -864,7 +864,7 @@ const resendConfirmation = async () => {
   try {
     await ClientGlobalService.resendConfirmationEmail(
       formData.value.email,
-      formData.value.confirmUrl
+      formData.value.confirm_url
     );
 
     MsgPrompt.success(t("tip.confirmationEmailResend"));
