@@ -66,25 +66,15 @@ service TenantSymbolService {
 
 service TenantExchangeRateService {
   // 分页查询汇率列表；可按来源/目标货币过滤
-  rpc ListExchangeRates(ListExchangeRatesRequest) returns (ListExchangeRatesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate" };
-  }
+  rpc ListExchangeRates(ListExchangeRatesRequest) returns (ListExchangeRatesResponse) {}
   // 按 id 获取汇率详情
-  rpc GetExchangeRate(GetExchangeRateRequest) returns (GetExchangeRateResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}" };
-  }
+  rpc GetExchangeRate(GetExchangeRateRequest) returns (GetExchangeRateResponse) {}
   // 获取指定汇率的历史变动记录（分页）
-  rpc GetExchangeRateHistory(GetExchangeRateHistoryRequest) returns (GetExchangeRateHistoryResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/exchange-rate/{id}/history" };
-  }
+  rpc GetExchangeRateHistory(GetExchangeRateHistoryRequest) returns (GetExchangeRateHistoryResponse) {}
   // 创建新货币对汇率
-  rpc CreateExchangeRate(CreateExchangeRateRequest) returns (CreateExchangeRateResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/exchange-rate", body: "*" };
-  }
+  rpc CreateExchangeRate(CreateExchangeRateRequest) returns (CreateExchangeRateResponse) {}
   // 更新汇率（body 字段名为 spec）
-  rpc UpdateExchangeRate(UpdateExchangeRateRequest) returns (UpdateExchangeRateResponse) {
-    option (google.api.http) = { put: "/api/v1/tenant/exchange-rate/{id}", body: "spec" };
-  }
+  rpc UpdateExchangeRate(UpdateExchangeRateRequest) returns (UpdateExchangeRateResponse) {}
 }
 
 // ─── Messages ────────────────────────────────────────────────────────────────

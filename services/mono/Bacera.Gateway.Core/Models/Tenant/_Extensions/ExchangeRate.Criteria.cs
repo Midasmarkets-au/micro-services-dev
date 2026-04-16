@@ -4,7 +4,7 @@ using M = ExchangeRate;
 
 partial class ExchangeRate : IEntity
 {
-    public sealed class Criteria : EntityCriteria<M>
+    public sealed class Criteria : BaseEntityCriteria<M>
     {
         public CurrencyTypes? FromCurrencyId { get; set; }
         public CurrencyTypes? ToCurrencyId { get; set; }
