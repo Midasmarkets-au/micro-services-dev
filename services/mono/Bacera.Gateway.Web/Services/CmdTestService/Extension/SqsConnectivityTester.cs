@@ -116,8 +116,9 @@ public class SqsConnectivityTester
         {
             ["BCRSendMessage"] = _sqsOptions.BCRSendMessage,
             ["BCREventTrade"] = _sqsOptions.BCREventTrade,
-            ["BCRTrade"] = _sqsOptions.BCRTrade,
-            ["BCRSalesRebateTrade"] = _sqsOptions.BCRSalesRebateTrade
+            // [MIGRATED] BCRTrade and BCRSalesRebateTrade removed — queues no longer in use.
+            // ["BCRTrade"] = _sqsOptions.BCRTrade,
+            // ["BCRSalesRebateTrade"] = _sqsOptions.BCRSalesRebateTrade
         };
 
         foreach (var queue in queues.Where(q => !string.IsNullOrEmpty(q.Value)))
@@ -174,9 +175,10 @@ public class SqsConnectivityTester
         var queues = new[]
         {
             ("BCRSendMessage", _sqsOptions.BCRSendMessage),
-            ("BCREventTrade", _sqsOptions.BCREventTrade), 
-            ("BCRTrade", _sqsOptions.BCRTrade),
-            ("BCRSalesRebateTrade", _sqsOptions.BCRSalesRebateTrade)
+            ("BCREventTrade", _sqsOptions.BCREventTrade),
+            // [MIGRATED] BCRTrade and BCRSalesRebateTrade removed — queues no longer in use.
+            // ("BCRTrade", _sqsOptions.BCRTrade),
+            // ("BCRSalesRebateTrade", _sqsOptions.BCRSalesRebateTrade)
         };
 
         Console.WriteLine("\nQueue Configuration:");

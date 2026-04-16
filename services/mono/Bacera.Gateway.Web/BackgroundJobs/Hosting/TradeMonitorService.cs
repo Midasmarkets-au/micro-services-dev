@@ -11,6 +11,8 @@ using Newtonsoft.Json;
 
 namespace Bacera.Gateway.Web.BackgroundJobs.Hosting;
 
+// [MIGRATED] TradeMonitorService — BCRTrade queue producer, no longer registered in DI or triggered.
+// MT5 trade monitoring replaced by scheduler/src/jobs/trade_monitor.rs (NATS JetStream).
 public class TradeMonitorService(
     IServiceProvider serviceProvider,
     ILogger<TradeMonitorService> logger,
@@ -23,7 +25,8 @@ public class TradeMonitorService(
 {
     //private readonly Dictionary<int, MetaTrade4DbContext> _mt4TradeServiceCtxPool = new();
     private readonly Dictionary<int, MetaTrade5DbContext> _mt5TradeServiceCtxPool = new();
-    private readonly string _bcrTradeQueueName = sqsOptions.Value.BCRTrade;
+    // [MIGRATED] BCRTrade queue no longer used — removed field.
+    // private readonly string _bcrTradeQueueName = sqsOptions.Value.BCRTrade;
 
     ~TradeMonitorService()
     {
@@ -274,25 +277,19 @@ public class TradeMonitorService(
                     return;
                 }
 
-                var message = JsonConvert.SerializeObject(trade, Gateway.Utils.UtcJsonSerializerSettings);
-                // FIFO queues require MessageGroupId - use ServiceId as the group for ordering
-                await mqService.SendAsync(message, _bcrTradeQueueName, messageGroupId: trade.ServiceId.ToString(), cancellationToken: stoppingToken);
-                await myCache.HSetStringAsync(hashKey, field, "1");
-                successCount++;
-                enqueuedTrades.Add(trade);
+                // [MIGRATED] BCRTrade send removed — replaced by scheduler NATS JetStream.
+                // var message = JsonConvert.SerializeObject(trade, Gateway.Utils.UtcJsonSerializerSettings);
+                // await mqService.SendAsync(message, _bcrTradeQueueName, messageGroupId: trade.ServiceId.ToString(), cancellationToken: stoppingToken);
+                // await myCache.HSetStringAsync(hashKey, field, "1");
+                // successCount++;
+                // enqueuedTrades.Add(trade);
             }
             catch (OperationCanceledException e)
             {
+                // [MIGRATED] _bcrTradeQueueName removed
                 logger.LogInformation(
-                    "Operation Cancelled, Failed to send message to " +
-                    "queue: {queueName}, TenantId:{tenantId}, AccountNumber: {accountNumber}, Ticket: {ticket}, CloseTime: {closeTime} " +
-                    "with message: {message}"
-                    , _bcrTradeQueueName
-                    , trade.TenantId
-                    , trade.AccountNumber
-                    , trade.Ticket
-                    , trade.CloseAt
-                    , e.Message);
+                    "Operation Cancelled for trade AccountNumber: {accountNumber}, Ticket: {ticket}, CloseTime: {closeTime}, message: {message}",
+                    trade.AccountNumber, trade.Ticket, trade.CloseAt, e.Message);
                 failCount++;
             }
             catch (Exception e)

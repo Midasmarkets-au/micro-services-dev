@@ -80,10 +80,11 @@ public partial class CmdTestService
                 .Aggregate((x, y) => $"{x},{y}");
             _logger.LogWarning("CheckMissedTrade: Missed trades: {tickets}", ticketString);
 
-            var tasks = missedTrades
-                .Select(JsonConvert.SerializeObject)
-                .Select(x => _mqService.SendAsync(x, "BCRTrade"));
-            await Task.WhenAll(tasks);
+            // [MIGRATED] BCRTrade send removed — queue no longer in use.
+            // var tasks = missedTrades
+            //     .Select(JsonConvert.SerializeObject)
+            //     .Select(x => _mqService.SendAsync(x, "BCRTrade"));
+            // await Task.WhenAll(tasks);
             return;
         }
 
