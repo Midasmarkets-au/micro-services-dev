@@ -20,6 +20,11 @@ pub fn encode_party_id(id: i64) -> String {
     h.encode(&[id as u64])
 }
 
+pub fn decode_party_id(hashed: &str) -> Option<i64> {
+    let h = build_harsh(PARTY_SALT, PARTY_ALPHABET);
+    h.decode(hashed).ok().and_then(|v| v.first().map(|&x| x as i64))
+}
+
 pub fn encode_user_id(id: i64) -> String {
     let h = build_harsh(USER_SALT, USER_ALPHABET);
     h.encode(&[id as u64])

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Api.V1;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
@@ -7,6 +8,7 @@ using Http.V1;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using ProtoUser        = Http.V1.User;
 using ProtoRole        = Http.V1.Role;
@@ -30,7 +32,9 @@ public class TenantUserGrpcService(
     TradingService tradingSvc,
     AccountingService accountingSvc,
     BcrTokenService bcrTokenSvc,
-    IMyCache cache)
+    IMyCache cache,
+    AuthValidationService.AuthValidationServiceClient authGrpcClient,
+    ILogger<TenantUserGrpcService> logger)
     : TenantUserService.TenantUserServiceBase
 {
     // ─── List / Get ───────────────────────────────────────────────────────────
@@ -563,6 +567,19 @@ public class TenantUserGrpcService(
     public override async Task<LockUserResponse> LockUser(LockUserRequest request, ServerCallContext context)
     {
         await userSvc.LockUserAsync(request.PartyId, GetPartyId(context));
+
+        // Revoke all active tokens via auth service (party-level revocation timestamp)
+        try
+        {
+            await authGrpcClient.RevokeUserAsync(new RevokeUserRequest { PartyId = request.PartyId });
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: legacy Redis lockout cache still provides protection
+            logger.LogWarning("LockUser: RevokeUser gRPC failed for partyId={PartyId}: {Error}",
+                request.PartyId, ex.Message);
+        }
+
         var result = await GetUser(new GetUserRequest { PartyId = request.PartyId }, context);
         return new LockUserResponse { Data = result.Data };
     }
@@ -603,6 +620,19 @@ public class TenantUserGrpcService(
 
         var oneTimeKey = Guid.NewGuid().ToString("N");
         await cache.SetStringAsync($"godmode:key:{oneTimeKey}", res.AccessToken, TimeSpan.FromSeconds(60));
+
+        var operatorPartyId = GetPartyId(context);
+        authDb.UserAudits.Add(new Bacera.Gateway.Auth.UserAudit
+        {
+            PartyId     = operatorPartyId,
+            RowId       = targetUser.Id,
+            Type        = (int)AuditTypes.User,
+            Action      = (int)AuditActionTypes.Update,
+            CreatedOn   = DateTime.UtcNow,
+            Environment = System.Net.Dns.GetHostName(),
+            Data        = $"{{\"action\":\"GodModeEnabled\",\"operatorPartyId\":{operatorPartyId},\"targetPartyId\":{targetUser.PartyId},\"targetUserId\":{targetUser.Id}}}",
+        });
+        await authDb.SaveChangesAsync();
 
         var proto = MapAuthUserToProto(targetUser);
         proto.Token = oneTimeKey;

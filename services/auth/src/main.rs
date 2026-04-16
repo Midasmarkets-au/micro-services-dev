@@ -557,6 +557,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(true);
     let jwt_secret = std::env::var("JWT_SECRET").ok();
     let rsa_key_path = std::env::var("RSA_PRIVATE_KEY_PATH").ok();
+
+    if jwt_secret.is_none() && rsa_key_path.is_none() {
+        error!("JWT_SECRET or RSA_PRIVATE_KEY_PATH must be configured. Refusing to start with an ephemeral key that invalidates all tokens on restart.");
+        return Err("JWT_SECRET or RSA_PRIVATE_KEY_PATH is required".into());
+    }
+
     let redis_url = env("REDIS_URL", "redis://redis:6379");
     let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50002").parse()?;
     let mono_grpc_addr = Some(env("MONO_GRPC_ADDR", "http://mono:50005"));
@@ -646,6 +652,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state.key_pair.private_der.clone(),
         state.key_pair.public_der.clone(),
         state.key_pair.kid.clone(),
+        state.redis.clone(),
     );
 
     tokio::select! {

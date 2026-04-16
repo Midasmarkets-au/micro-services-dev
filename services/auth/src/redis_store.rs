@@ -90,6 +90,46 @@ pub async fn consume_godmode_key(pool: &Pool, key: &str) -> Result<Option<String
     Ok(value)
 }
 
+/// Add a jti to the blocklist (logout). TTL = remaining token lifetime.
+/// Key: `auth:blocklist:jti:{jti}`
+pub async fn blocklist_jti(pool: &Pool, jti: &str, ttl_secs: u64) -> Result<(), String> {
+    if ttl_secs == 0 {
+        return Ok(());
+    }
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let key = format!("auth:blocklist:jti:{}", jti);
+    conn.set_ex::<_, _, ()>(&key, 1u8, ttl_secs)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Check whether a jti is in the blocklist.
+pub async fn is_jti_blocked(pool: &Pool, jti: &str) -> bool {
+    let Ok(mut conn) = pool.get().await else { return false };
+    let key = format!("auth:blocklist:jti:{}", jti);
+    conn.exists::<_, bool>(&key).await.unwrap_or(false)
+}
+
+const REVOKE_TTL_SECS: u64 = 24 * 3600; // 1 day — matches max access token lifetime
+
+/// Record a party-level revocation timestamp (ban/lockout).
+/// Key: `auth:revoked:party:{party_id}` → Unix timestamp of revocation
+pub async fn revoke_party(pool: &Pool, party_id: i64) -> Result<(), String> {
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let key = format!("auth:revoked:party:{}", party_id);
+    let now = chrono::Utc::now().timestamp();
+    conn.set_ex::<_, _, ()>(&key, now, REVOKE_TTL_SECS)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Get the revocation timestamp for a party, if any.
+pub async fn get_party_revoke_ts(pool: &Pool, party_id: i64) -> Option<i64> {
+    let Ok(mut conn) = pool.get().await else { return None };
+    let key = format!("auth:revoked:party:{}", party_id);
+    conn.get::<_, Option<i64>>(&key).await.unwrap_or(None)
+}
+
 /// Log a Redis error without propagating (fire-and-forget pattern).
 pub fn log_redis_error(op: &str, err: impl std::fmt::Display) {
     error!("Redis {} failed: {}", op, err);

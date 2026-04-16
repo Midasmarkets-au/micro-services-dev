@@ -19,6 +19,22 @@ use crate::{
     },
 };
 
+/// Decode JWT claims without signature verification (for logout jti extraction).
+/// Safety: we only use this after the token was already verified by the auth middleware.
+fn decode_jti_exp_unsafe(token: &str) -> Option<(String, i64)> {
+    use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
+    use crate::token::Claims;
+    // Use an all-zeros key — we skip signature validation intentionally
+    let mut validation = Validation::new(Algorithm::RS256);
+    validation.insecure_disable_signature_validation();
+    validation.validate_aud = false;
+    validation.validate_exp = false;
+    let dummy_key = DecodingKey::from_secret(b"");
+    decode::<Claims>(token, &dummy_key, &validation)
+        .ok()
+        .map(|d| (d.claims.jti, d.claims.exp))
+}
+
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
         .route(LOGOUT_PATH, post(logout))
@@ -202,12 +218,40 @@ async fn god_mode_exchange(
 }
 
 /// POST /api/v2/auth/logout
-/// Clears the access_token cookie and deletes the refresh token from Redis if provided.
+/// Clears the access_token cookie, deletes the refresh token from Redis,
+/// and adds the current access token's jti to the blocklist so it cannot
+/// be used even if someone still holds the cookie value.
 async fn logout(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     body: Option<Json<LogoutRequest>>,
 ) -> (HeaderMap, Json<Value>) {
     tracing::info!("logout");
+
+    // Extract access token from cookie and blocklist its jti
+    let cookie_header = headers
+        .get(axum::http::header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let access_token = cookie_header
+        .split(';')
+        .find_map(|part| {
+            let part = part.trim();
+            part.strip_prefix("access_token=")
+        });
+
+    if let Some(token) = access_token {
+        if let Some((jti, exp)) = decode_jti_exp_unsafe(token) {
+            let now = chrono::Utc::now().timestamp();
+            let ttl = (exp - now).max(0) as u64;
+            if ttl > 0 {
+                if let Err(e) = redis_store::blocklist_jti(&state.redis, &jti, ttl).await {
+                    redis_store::log_redis_error("blocklist_jti(logout)", e);
+                }
+            }
+        }
+    }
+
     if let Some(Json(req)) = body {
         if !req.refresh_token.is_empty() {
             redis_store::delete_refresh_token(&state.redis, &req.refresh_token).await;

@@ -13,11 +13,14 @@ option go_package = "api/v1";
 // ============================================================================
 service AuthValidationService {
 
-  // 验证 access token，返回解析后的 claims
+  // 验证 access token，返回解析后的 claims（含黑名单/封号检查）
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
 
   // 为指定用户签发 access token（god-mode、邮件验证码登录等场景）
   rpc IssueToken(IssueTokenRequest) returns (IssueTokenResponse);
+
+  // 吊销指定用户的所有 token（封号时调用）
+  rpc RevokeUser(RevokeUserRequest) returns (RevokeUserResponse);
 }
 
 message ValidateTokenRequest {
@@ -28,9 +31,11 @@ message ValidateTokenResponse {
   bool            valid      = 1;
   int64           user_id    = 2;
   int64           tenant_id  = 3;
-  string          party_id   = 4;
+  string          party_id   = 4;  // hashed party_id
   repeated string roles      = 5;
   string          error      = 6;  // 验证失败时的错误描述
+  string          jti        = 7;  // JWT ID，logout 时写黑名单用
+  int64           exp        = 8;  // token 过期时间戳，计算 jti blacklist TTL 用
 }
 
 // ============================================================================
@@ -201,6 +206,18 @@ message IssueTokenRequest {
 }
 
 message IssueTokenResponse {
-  string access_token  = 1;
-  int64  expires_in    = 2;
+  string access_token   = 1;
+  int64  expires_in     = 2;
+  string refresh_token  = 3;
+}
+
+// ----------------------------------------------------------------------------
+//  RevokeUser — mono 封号时调用，吊销用户所有 token
+// ----------------------------------------------------------------------------
+message RevokeUserRequest {
+  int64 party_id = 1;  // raw party_id（数字）
+}
+
+message RevokeUserResponse {
+  bool ok = 1;
 }
