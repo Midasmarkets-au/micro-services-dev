@@ -126,10 +126,7 @@ public class UserService(
         user.UpdatedOn = DateTime.UtcNow;
         authCtx.Users.Update(user);
 
-        // used for check if token is valid when locked user try to access api using legacy token
-        // access token lifetime is 24 hour
         _ = SetLockStatusCacheAsync(partyId, true);
-
         await authCtx.SaveChangesWithAuditAsync(operatorPartyId);
     }
 

@@ -36,6 +36,10 @@ struct TokenRequest {
     tenant_id: Option<String>,
     code: Option<String>,
     tf_code: Option<String>,
+    /// Opaque session token returned in the first request when 2FA is required.
+    /// Must be present in the second request (with tf_code) to prove the password
+    /// was already verified in this session.
+    session_token: Option<String>,
 }
 
 fn error_response(error: &str, description: &str) -> Response {
@@ -98,7 +102,31 @@ async fn connect_token(
 }
 
 fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
-    let client_id = req.client_id.clone().unwrap_or_default();
+    let client_id = req.client_id.as_deref().unwrap_or("").trim().to_string();
+
+    let allowlist = match &state.client_credentials_allowlist {
+        None => {
+            tracing::warn!(client_id, "client_credentials rejected: allowlist not configured");
+            return error_response("unauthorized_client", "client_credentials grant is not enabled");
+        }
+        Some(m) => m,
+    };
+
+    match allowlist.get(&client_id) {
+        None => {
+            tracing::warn!(client_id, "client_credentials rejected: not in allowlist");
+            return error_response("unauthorized_client", "client_id not allowed");
+        }
+        Some(Some(expected_secret)) => {
+            let provided = req.client_secret.as_deref().unwrap_or("");
+            if provided != expected_secret {
+                tracing::warn!(client_id, "client_credentials rejected: invalid secret");
+                return error_response("invalid_client", "invalid client_secret");
+            }
+        }
+        Some(None) => {} // client_id allowed, no secret required
+    }
+
     tracing::info!(client_id, "client_credentials grant");
     let params = token::TokenParams {
         user_id: 0,
@@ -359,12 +387,50 @@ async fn handle_password_grant(
             if require_email_2fa {
                 let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
                 if tf_code.is_empty() {
+                    // First request: password verified. Store a pending session so the
+                    // second request (with tf_code) can prove password was already checked.
+                    let pending = redis_store::TwoFaPendingSession {
+                        user_id: user.id,
+                        tenant_id: user.tenant_id,
+                        email: email.clone(),
+                        method: "email".to_string(),
+                    };
+                    let session_token = match redis_store::store_2fa_pending_session(&state.redis, &pending).await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            error!("failed to store 2fa pending session: {}", e);
+                            return error_response("server_error", "internal error");
+                        }
+                    };
                     tracing::info!(email, user_id = user.id, "2fa required: email code sent");
                     grpc::auth_client::send_auth_code(
                         &mut client, user.tenant_id, &email, "TwoFactor",
                     ).await;
-                    return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "emailSent": true }))).into_response();
+                    return (HeaderMap::new(), Json(json!({
+                        "twoFactorRequired": true,
+                        "emailSent": true,
+                        "sessionToken": session_token,
+                    }))).into_response();
                 }
+
+                // Second request: verify the pending session before accepting the code.
+                let session_token = req.session_token.as_deref().unwrap_or("");
+                if session_token.is_empty() {
+                    tracing::warn!(email, user_id = user.id, "login failed: 2fa submitted without session_token");
+                    return error_response("invalid_request", "session_token is required for 2FA verification");
+                }
+                match redis_store::consume_2fa_pending_session(&state.redis, session_token).await {
+                    Ok(Some(s)) if s.user_id == user.id && s.email == email => {}
+                    Ok(_) => {
+                        tracing::warn!(email, user_id = user.id, "login failed: 2fa session invalid or expired");
+                        return error_response("invalid_grant", "2FA session expired, please login again");
+                    }
+                    Err(e) => {
+                        error!("Redis error consuming 2fa session: {}", e);
+                        return error_response("server_error", "internal error");
+                    }
+                }
+
                 let (valid, err_code) = grpc::auth_client::verify_auth_code(
                     &mut client, user.tenant_id, &email, &tf_code,
                 ).await;
@@ -378,13 +444,83 @@ async fn handle_password_grant(
         if is_admin && user.two_factor_enabled {
             let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
             if tf_code.is_empty() {
-                return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "authenticator2FA": true }))).into_response();
+                // First request: store pending session for authenticator 2FA.
+                let pending = redis_store::TwoFaPendingSession {
+                    user_id: user.id,
+                    tenant_id: user.tenant_id,
+                    email: email.clone(),
+                    method: "authenticator".to_string(),
+                };
+                let session_token = match redis_store::store_2fa_pending_session(&state.redis, &pending).await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        error!("failed to store 2fa pending session: {}", e);
+                        return error_response("server_error", "internal error");
+                    }
+                };
+                return (HeaderMap::new(), Json(json!({
+                    "twoFactorRequired": true,
+                    "authenticator2FA": true,
+                    "sessionToken": session_token,
+                }))).into_response();
+            }
+            // Second request: verify pending session before accepting authenticator code.
+            let session_token = req.session_token.as_deref().unwrap_or("");
+            if session_token.is_empty() {
+                tracing::warn!(email, user_id = user.id, "login failed: authenticator 2fa submitted without session_token");
+                return error_response("invalid_request", "session_token is required for 2FA verification");
+            }
+            match redis_store::consume_2fa_pending_session(&state.redis, session_token).await {
+                Ok(Some(s)) if s.user_id == user.id && s.email == email => {}
+                Ok(_) => {
+                    tracing::warn!(email, user_id = user.id, "login failed: authenticator 2fa session invalid or expired");
+                    return error_response("invalid_grant", "2FA session expired, please login again");
+                }
+                Err(e) => {
+                    error!("Redis error consuming 2fa session: {}", e);
+                    return error_response("server_error", "internal error");
+                }
             }
         }
     } else if user.two_factor_enabled {
         let tf_code = req.tf_code.as_deref().unwrap_or("");
         if tf_code.is_empty() {
-            return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "authenticator2FA": true }))).into_response();
+            // First request: store pending session for authenticator 2FA (no mono client path).
+            let pending = redis_store::TwoFaPendingSession {
+                user_id: user.id,
+                tenant_id: user.tenant_id,
+                email: email.clone(),
+                method: "authenticator".to_string(),
+            };
+            let session_token = match redis_store::store_2fa_pending_session(&state.redis, &pending).await {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("failed to store 2fa pending session: {}", e);
+                    return error_response("server_error", "internal error");
+                }
+            };
+            return (HeaderMap::new(), Json(json!({
+                "twoFactorRequired": true,
+                "authenticator2FA": true,
+                "sessionToken": session_token,
+            }))).into_response();
+        }
+        // Second request: verify pending session.
+        let session_token = req.session_token.as_deref().unwrap_or("");
+        if session_token.is_empty() {
+            tracing::warn!(email, user_id = user.id, "login failed: 2fa submitted without session_token (no mono)");
+            return error_response("invalid_request", "session_token is required for 2FA verification");
+        }
+        match redis_store::consume_2fa_pending_session(&state.redis, session_token).await {
+            Ok(Some(s)) if s.user_id == user.id && s.email == email => {}
+            Ok(_) => {
+                tracing::warn!(email, user_id = user.id, "login failed: 2fa session invalid or expired (no mono)");
+                return error_response("invalid_grant", "2FA session expired, please login again");
+            }
+            Err(e) => {
+                error!("Redis error consuming 2fa session: {}", e);
+                return error_response("server_error", "internal error");
+            }
         }
     }
 
@@ -557,6 +693,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(true);
     let jwt_secret = std::env::var("JWT_SECRET").ok();
     let rsa_key_path = std::env::var("RSA_PRIVATE_KEY_PATH").ok();
+
+    if jwt_secret.is_none() && rsa_key_path.is_none() {
+        error!("JWT_SECRET or RSA_PRIVATE_KEY_PATH must be configured. Refusing to start with an ephemeral key that invalidates all tokens on restart.");
+        return Err("JWT_SECRET or RSA_PRIVATE_KEY_PATH is required".into());
+    }
+
     let redis_url = env("REDIS_URL", "redis://redis:6379");
     let grpc_addr: SocketAddr = env("GRPC_ADDR", "[::]:50002").parse()?;
     let mono_grpc_addr = Some(env("MONO_GRPC_ADDR", "http://mono:50005"));
@@ -626,6 +768,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    let client_credentials_allowlist = match std::env::var("CLIENT_CREDENTIALS_ALLOWLIST") {
+        Ok(val) if !val.trim().is_empty() => {
+            let map: std::collections::HashMap<String, Option<String>> = val
+                .split(',')
+                .filter_map(|entry| {
+                    let entry = entry.trim();
+                    if entry.is_empty() { return None; }
+                    match entry.split_once(':') {
+                        Some((id, secret)) => Some((id.trim().to_string(), Some(secret.trim().to_string()))),
+                        None => Some((entry.to_string(), None)),
+                    }
+                })
+                .collect();
+            info!("client_credentials allowlist: {} client(s) configured", map.len());
+            Some(map)
+        }
+        _ => {
+            info!("CLIENT_CREDENTIALS_ALLOWLIST not set — client_credentials grant is disabled");
+            None
+        }
+    };
+
     let state = Arc::new(AppState {
         pool,
         redis,
@@ -636,6 +800,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ipinfo_endpoint,
         ipinfo_token,
         twilio,
+        client_credentials_allowlist,
     });
 
     let listener = tokio::net::TcpListener::bind(http_addr).await?;
@@ -646,6 +811,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         state.key_pair.private_der.clone(),
         state.key_pair.public_der.clone(),
         state.key_pair.kid.clone(),
+        state.redis.clone(),
     );
 
     tokio::select! {

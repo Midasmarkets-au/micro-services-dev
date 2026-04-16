@@ -14,6 +14,7 @@ pub struct ValidateTokenResponse {
     pub user_id: i64,
     #[prost(int64, tag = "3")]
     pub tenant_id: i64,
+    /// hashed party_id
     #[prost(string, tag = "4")]
     pub party_id: ::prost::alloc::string::String,
     #[prost(string, repeated, tag = "5")]
@@ -21,6 +22,12 @@ pub struct ValidateTokenResponse {
     /// 验证失败时的错误描述
     #[prost(string, tag = "6")]
     pub error: ::prost::alloc::string::String,
+    /// JWT ID，logout 时写黑名单用
+    #[prost(string, tag = "7")]
+    pub jti: ::prost::alloc::string::String,
+    /// token 过期时间戳，计算 jti blacklist TTL 用
+    #[prost(int64, tag = "8")]
+    pub exp: i64,
 }
 /// ----------------------------------------------------------------------------
 ///   VerifyAuthCode
@@ -250,6 +257,24 @@ pub struct IssueTokenResponse {
     pub access_token: ::prost::alloc::string::String,
     #[prost(int64, tag = "2")]
     pub expires_in: i64,
+    #[prost(string, tag = "3")]
+    pub refresh_token: ::prost::alloc::string::String,
+}
+/// ----------------------------------------------------------------------------
+///   RevokeUser — mono 封号时调用，吊销用户所有 token
+/// ----------------------------------------------------------------------------
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RevokeUserRequest {
+    /// raw party_id（数字）
+    #[prost(int64, tag = "1")]
+    pub party_id: i64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RevokeUserResponse {
+    #[prost(bool, tag = "1")]
+    pub ok: bool,
 }
 /// Generated client implementations.
 pub mod auth_validation_service_client {
@@ -342,7 +367,7 @@ pub mod auth_validation_service_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// 验证 access token，返回解析后的 claims
+        /// 验证 access token，返回解析后的 claims（含黑名单/封号检查）
         pub async fn validate_token(
             &mut self,
             request: impl tonic::IntoRequest<super::ValidateTokenRequest>,
@@ -394,6 +419,32 @@ pub mod auth_validation_service_client {
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("api.v1.AuthValidationService", "IssueToken"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// 吊销指定用户的所有 token（封号时调用）
+        pub async fn revoke_user(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RevokeUserRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RevokeUserResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/api.v1.AuthValidationService/RevokeUser",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("api.v1.AuthValidationService", "RevokeUser"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -688,7 +739,7 @@ pub mod auth_validation_service_server {
     /// Generated trait containing gRPC methods that should be implemented for use with AuthValidationServiceServer.
     #[async_trait]
     pub trait AuthValidationService: Send + Sync + 'static {
-        /// 验证 access token，返回解析后的 claims
+        /// 验证 access token，返回解析后的 claims（含黑名单/封号检查）
         async fn validate_token(
             &self,
             request: tonic::Request<super::ValidateTokenRequest>,
@@ -702,6 +753,14 @@ pub mod auth_validation_service_server {
             request: tonic::Request<super::IssueTokenRequest>,
         ) -> std::result::Result<
             tonic::Response<super::IssueTokenResponse>,
+            tonic::Status,
+        >;
+        /// 吊销指定用户的所有 token（封号时调用）
+        async fn revoke_user(
+            &self,
+            request: tonic::Request<super::RevokeUserRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RevokeUserResponse>,
             tonic::Status,
         >;
     }
@@ -873,6 +932,53 @@ pub mod auth_validation_service_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = IssueTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/api.v1.AuthValidationService/RevokeUser" => {
+                    #[allow(non_camel_case_types)]
+                    struct RevokeUserSvc<T: AuthValidationService>(pub Arc<T>);
+                    impl<
+                        T: AuthValidationService,
+                    > tonic::server::UnaryService<super::RevokeUserRequest>
+                    for RevokeUserSvc<T> {
+                        type Response = super::RevokeUserResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::RevokeUserRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as AuthValidationService>::revoke_user(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = RevokeUserSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
