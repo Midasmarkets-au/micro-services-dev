@@ -1,6 +1,7 @@
 use deadpool_redis::{Config, Pool, Runtime, redis::AsyncCommands};
 use serde::{Deserialize, Serialize};
 use tracing::error;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshTokenData {
@@ -79,6 +80,56 @@ pub async fn consume_password_reset_token(
     let key = format!("auth:pwd_reset:{}", token);
     let value: Option<String> = conn.get_del(&key).await.map_err(|e| e.to_string())?;
     Ok(value)
+}
+
+// ── 2FA Pending Session ───────────────────────────────────────────────────────
+// After password verification passes but 2FA is required, store a short-lived
+// session so the second request (with tf_code) can prove the password was already
+// verified in this session — preventing a bypass where someone submits only a code.
+
+const TWO_FA_PENDING_TTL_SECS: u64 = 300; // 5 minutes
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TwoFaPendingSession {
+    pub user_id: i64,
+    pub tenant_id: i64,
+    pub email: String,
+    /// "email" or "authenticator"
+    pub method: String,
+}
+
+/// Create a 2FA pending session. Returns the generated session token (UUID).
+/// Key: `auth:2fa_pending:{session_token}`
+pub async fn store_2fa_pending_session(
+    pool: &Pool,
+    session: &TwoFaPendingSession,
+) -> Result<String, String> {
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let session_token = Uuid::new_v4().to_string();
+    let key = format!("auth:2fa_pending:{}", session_token);
+    let value = serde_json::to_string(session).map_err(|e| e.to_string())?;
+    conn.set_ex::<_, _, ()>(&key, &value, TWO_FA_PENDING_TTL_SECS)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(session_token)
+}
+
+/// Consume a 2FA pending session (single-use). Returns None if not found or expired.
+pub async fn consume_2fa_pending_session(
+    pool: &Pool,
+    session_token: &str,
+) -> Result<Option<TwoFaPendingSession>, String> {
+    let mut conn = pool.get().await.map_err(|e| e.to_string())?;
+    let key = format!("auth:2fa_pending:{}", session_token);
+    let value: Option<String> = conn.get_del(&key).await.map_err(|e| e.to_string())?;
+    match value {
+        None => Ok(None),
+        Some(v) => {
+            let session: TwoFaPendingSession =
+                serde_json::from_str(&v).map_err(|e| e.to_string())?;
+            Ok(Some(session))
+        }
+    }
 }
 
 /// Consume a god-mode one-time key written by mono (key: `godmode:key:{uuid}`).

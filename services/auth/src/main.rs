@@ -36,6 +36,10 @@ struct TokenRequest {
     tenant_id: Option<String>,
     code: Option<String>,
     tf_code: Option<String>,
+    /// Opaque session token returned in the first request when 2FA is required.
+    /// Must be present in the second request (with tf_code) to prove the password
+    /// was already verified in this session.
+    session_token: Option<String>,
 }
 
 fn error_response(error: &str, description: &str) -> Response {
@@ -383,12 +387,50 @@ async fn handle_password_grant(
             if require_email_2fa {
                 let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
                 if tf_code.is_empty() {
+                    // First request: password verified. Store a pending session so the
+                    // second request (with tf_code) can prove password was already checked.
+                    let pending = redis_store::TwoFaPendingSession {
+                        user_id: user.id,
+                        tenant_id: user.tenant_id,
+                        email: email.clone(),
+                        method: "email".to_string(),
+                    };
+                    let session_token = match redis_store::store_2fa_pending_session(&state.redis, &pending).await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            error!("failed to store 2fa pending session: {}", e);
+                            return error_response("server_error", "internal error");
+                        }
+                    };
                     tracing::info!(email, user_id = user.id, "2fa required: email code sent");
                     grpc::auth_client::send_auth_code(
                         &mut client, user.tenant_id, &email, "TwoFactor",
                     ).await;
-                    return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "emailSent": true }))).into_response();
+                    return (HeaderMap::new(), Json(json!({
+                        "twoFactorRequired": true,
+                        "emailSent": true,
+                        "sessionToken": session_token,
+                    }))).into_response();
                 }
+
+                // Second request: verify the pending session before accepting the code.
+                let session_token = req.session_token.as_deref().unwrap_or("");
+                if session_token.is_empty() {
+                    tracing::warn!(email, user_id = user.id, "login failed: 2fa submitted without session_token");
+                    return error_response("invalid_request", "session_token is required for 2FA verification");
+                }
+                match redis_store::consume_2fa_pending_session(&state.redis, session_token).await {
+                    Ok(Some(s)) if s.user_id == user.id && s.email == email => {}
+                    Ok(_) => {
+                        tracing::warn!(email, user_id = user.id, "login failed: 2fa session invalid or expired");
+                        return error_response("invalid_grant", "2FA session expired, please login again");
+                    }
+                    Err(e) => {
+                        error!("Redis error consuming 2fa session: {}", e);
+                        return error_response("server_error", "internal error");
+                    }
+                }
+
                 let (valid, err_code) = grpc::auth_client::verify_auth_code(
                     &mut client, user.tenant_id, &email, &tf_code,
                 ).await;
@@ -402,13 +444,83 @@ async fn handle_password_grant(
         if is_admin && user.two_factor_enabled {
             let tf_code = req.tf_code.as_deref().unwrap_or("").replace([' ', '-'], "");
             if tf_code.is_empty() {
-                return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "authenticator2FA": true }))).into_response();
+                // First request: store pending session for authenticator 2FA.
+                let pending = redis_store::TwoFaPendingSession {
+                    user_id: user.id,
+                    tenant_id: user.tenant_id,
+                    email: email.clone(),
+                    method: "authenticator".to_string(),
+                };
+                let session_token = match redis_store::store_2fa_pending_session(&state.redis, &pending).await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        error!("failed to store 2fa pending session: {}", e);
+                        return error_response("server_error", "internal error");
+                    }
+                };
+                return (HeaderMap::new(), Json(json!({
+                    "twoFactorRequired": true,
+                    "authenticator2FA": true,
+                    "sessionToken": session_token,
+                }))).into_response();
+            }
+            // Second request: verify pending session before accepting authenticator code.
+            let session_token = req.session_token.as_deref().unwrap_or("");
+            if session_token.is_empty() {
+                tracing::warn!(email, user_id = user.id, "login failed: authenticator 2fa submitted without session_token");
+                return error_response("invalid_request", "session_token is required for 2FA verification");
+            }
+            match redis_store::consume_2fa_pending_session(&state.redis, session_token).await {
+                Ok(Some(s)) if s.user_id == user.id && s.email == email => {}
+                Ok(_) => {
+                    tracing::warn!(email, user_id = user.id, "login failed: authenticator 2fa session invalid or expired");
+                    return error_response("invalid_grant", "2FA session expired, please login again");
+                }
+                Err(e) => {
+                    error!("Redis error consuming 2fa session: {}", e);
+                    return error_response("server_error", "internal error");
+                }
             }
         }
     } else if user.two_factor_enabled {
         let tf_code = req.tf_code.as_deref().unwrap_or("");
         if tf_code.is_empty() {
-            return (HeaderMap::new(), Json(json!({ "twoFactorRequired": true, "authenticator2FA": true }))).into_response();
+            // First request: store pending session for authenticator 2FA (no mono client path).
+            let pending = redis_store::TwoFaPendingSession {
+                user_id: user.id,
+                tenant_id: user.tenant_id,
+                email: email.clone(),
+                method: "authenticator".to_string(),
+            };
+            let session_token = match redis_store::store_2fa_pending_session(&state.redis, &pending).await {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("failed to store 2fa pending session: {}", e);
+                    return error_response("server_error", "internal error");
+                }
+            };
+            return (HeaderMap::new(), Json(json!({
+                "twoFactorRequired": true,
+                "authenticator2FA": true,
+                "sessionToken": session_token,
+            }))).into_response();
+        }
+        // Second request: verify pending session.
+        let session_token = req.session_token.as_deref().unwrap_or("");
+        if session_token.is_empty() {
+            tracing::warn!(email, user_id = user.id, "login failed: 2fa submitted without session_token (no mono)");
+            return error_response("invalid_request", "session_token is required for 2FA verification");
+        }
+        match redis_store::consume_2fa_pending_session(&state.redis, session_token).await {
+            Ok(Some(s)) if s.user_id == user.id && s.email == email => {}
+            Ok(_) => {
+                tracing::warn!(email, user_id = user.id, "login failed: 2fa session invalid or expired (no mono)");
+                return error_response("invalid_grant", "2FA session expired, please login again");
+            }
+            Err(e) => {
+                error!("Redis error consuming 2fa session: {}", e);
+                return error_response("server_error", "internal error");
+            }
         }
     }
 
