@@ -151,6 +151,40 @@ pub struct ConfirmLoginCodeResponse {
 #[derive(serde::Deserialize, serde::Serialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IpInfoRequest {}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IpInfoResponse {}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SiteConfigRequest {
+    /// query param: BVI / AU / CN 等，为空时按 IP 自动判断
+    #[prost(string, tag = "1")]
+    #[serde(default)]
+    pub open_at: ::prost::alloc::string::String,
+}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SiteConfigResponse {}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GodModeExchangeRequest {
+    /// 一次性 god-mode key（mono 写入 Redis，60s TTL）
+    #[prost(string, tag = "1")]
+    #[serde(default)]
+    pub key: ::prost::alloc::string::String,
+}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GodModeExchangeResponse {}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SendPasswordResetCodeRequest {
     #[prost(string, tag = "1")]
     #[serde(default)]
@@ -292,3 +326,65 @@ pub struct Disable2FaRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Disable2FaResponse {}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterRequest {
+    #[prost(string, tag = "1")]
+    #[serde(default)]
+    pub email: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    #[serde(default)]
+    pub password: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    #[serde(default)]
+    pub first_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    #[serde(default)]
+    pub last_name: ::prost::alloc::string::String,
+    /// 国际电话区号（纯数字，如 "61"）
+    #[prost(string, tag = "5")]
+    #[serde(default)]
+    pub ccc: ::prost::alloc::string::String,
+    /// ISO 国家码（如 "AU"）
+    #[prost(string, tag = "6")]
+    #[serde(default)]
+    pub country_code: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    #[serde(default)]
+    pub currency: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    #[serde(default)]
+    pub phone: ::prost::alloc::string::String,
+    /// SMS OTP（Twilio 验证，未启用时可为空）
+    #[prost(string, tag = "9")]
+    #[serde(default)]
+    pub otp: ::prost::alloc::string::String,
+    /// 推荐码（大写字母+数字）
+    #[prost(string, tag = "10")]
+    #[serde(default)]
+    pub refer_code: ::prost::alloc::string::String,
+    /// 语言码（如 "en-us"）
+    #[prost(string, tag = "11")]
+    #[serde(default)]
+    pub language: ::prost::alloc::string::String,
+    #[prost(string, tag = "12")]
+    #[serde(default)]
+    pub source_comment: ::prost::alloc::string::String,
+    /// 0 表示按 IP 自动判断
+    #[prost(int32, tag = "13")]
+    #[serde(default)]
+    pub site_id: i32,
+    /// 0 表示按推荐码/IP 自动判断
+    #[prost(int64, tag = "14")]
+    #[serde(default)]
+    pub tenant_id: i64,
+    /// 邮件确认链接 base URL
+    #[prost(string, tag = "15")]
+    #[serde(default)]
+    pub confirm_url: ::prost::alloc::string::String,
+}
+#[derive(serde::Deserialize, serde::Serialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterResponse {}

@@ -107,13 +107,13 @@ export default {
   getMeIdentity: async () => (await axios.get("/api/v1/user/me")).data,
 
   registerNewUser: async (formData: any) =>
-    (await axios.post("/api/v1/auth/register", formData)).data,
+    (await axios.post("/api/v2/auth/register", formData)).data,
 
-  resendConfirmationEmail: async (email: string, confirmUrl: string) =>
+  resendConfirmationEmail: async (email: string, confirm_url: string) =>
     (
       await axios.post("/api/v1/user/email/confirmation/resend", {
         email,
-        confirmUrl,
+        confirm_url,
       })
     ).data,
 

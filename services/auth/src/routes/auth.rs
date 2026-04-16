@@ -14,8 +14,12 @@ use crate::{
     cookie, redis_store, security, state::AppState,
     generated::{
         http_v1::{LogoutRequest, SendLoginCodeRequest, ConfirmLoginCodeRequest,
-            SendLoginCodeResponse, ConfirmLoginCodeResponse},
-        http_routes::{LOGOUT_PATH, SEND_LOGIN_CODE_PATH, CONFIRM_LOGIN_CODE_PATH},
+            SendLoginCodeResponse, ConfirmLoginCodeResponse,
+            GodModeExchangeRequest},
+        http_routes::{
+            LOGOUT_PATH, SEND_LOGIN_CODE_PATH, CONFIRM_LOGIN_CODE_PATH,
+            IP_INFO_PATH, SITE_CONFIG_PATH, GOD_MODE_EXCHANGE_PATH,
+        },
     },
 };
 
@@ -40,16 +44,15 @@ pub fn router() -> Router<Arc<AppState>> {
         .route(LOGOUT_PATH, post(logout))
         .route(SEND_LOGIN_CODE_PATH, post(send_login_code))
         .route(CONFIRM_LOGIN_CODE_PATH, post(confirm_login_code))
-        .route("/api/v1/auth/ip-info", get(ip_info))
-        .route("/api/v1/auth/c", get(site_config))
-        .route("/api/v2/auth/god-mode/exchange", post(god_mode_exchange))
+        .route(IP_INFO_PATH, get(ip_info))
+        .route(SITE_CONFIG_PATH, get(site_config))
+        .route(GOD_MODE_EXCHANGE_PATH, post(god_mode_exchange))
 }
 
 // ─── Query params ─────────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct SiteConfigQuery {
-    #[serde(rename = "openAt")]
     open_at: Option<String>,
 }
 
@@ -178,11 +181,6 @@ fn country_to_site_id(country: &str) -> i32 {
 }
 
 // ─── God Mode Exchange ────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct GodModeExchangeRequest {
-    key: String,
-}
 
 /// POST /api/v2/auth/god-mode/exchange
 ///
