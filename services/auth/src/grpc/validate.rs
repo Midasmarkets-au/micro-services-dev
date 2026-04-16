@@ -80,7 +80,7 @@ impl AuthValidationService for AuthValidationServer {
             email: &req.email,
             roles: &req.roles,
             two_factor_enabled: req.two_factor_enabled,
-            lifetime_secs: 86400,
+            lifetime_secs: 3600,
             user_agent_hash,
             sales_account: if req.sales_account != 0 { Some(req.sales_account) } else { None },
             agent_account: if req.agent_account != 0 { Some(req.agent_account) } else { None },
