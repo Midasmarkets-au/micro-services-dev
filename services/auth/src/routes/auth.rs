@@ -14,26 +14,45 @@ use crate::{
     cookie, redis_store, security, state::AppState,
     generated::{
         http_v1::{LogoutRequest, SendLoginCodeRequest, ConfirmLoginCodeRequest,
-            SendLoginCodeResponse, ConfirmLoginCodeResponse},
-        http_routes::{LOGOUT_PATH, SEND_LOGIN_CODE_PATH, CONFIRM_LOGIN_CODE_PATH},
+            SendLoginCodeResponse, ConfirmLoginCodeResponse,
+            GodModeExchangeRequest},
+        http_routes::{
+            LOGOUT_PATH, SEND_LOGIN_CODE_PATH, CONFIRM_LOGIN_CODE_PATH,
+            IP_INFO_PATH, SITE_CONFIG_PATH, GOD_MODE_EXCHANGE_PATH,
+        },
     },
 };
+
+/// Decode JWT claims without signature verification (for logout jti extraction).
+/// Safety: we only use this after the token was already verified by the auth middleware.
+fn decode_jti_exp_unsafe(token: &str) -> Option<(String, i64)> {
+    use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
+    use crate::token::Claims;
+    // Use an all-zeros key — we skip signature validation intentionally
+    let mut validation = Validation::new(Algorithm::RS256);
+    validation.insecure_disable_signature_validation();
+    validation.validate_aud = false;
+    validation.validate_exp = false;
+    let dummy_key = DecodingKey::from_secret(b"");
+    decode::<Claims>(token, &dummy_key, &validation)
+        .ok()
+        .map(|d| (d.claims.jti, d.claims.exp))
+}
 
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
         .route(LOGOUT_PATH, post(logout))
         .route(SEND_LOGIN_CODE_PATH, post(send_login_code))
         .route(CONFIRM_LOGIN_CODE_PATH, post(confirm_login_code))
-        .route("/api/v1/auth/ip-info", get(ip_info))
-        .route("/api/v1/auth/c", get(site_config))
-        .route("/api/v2/auth/god-mode/exchange", post(god_mode_exchange))
+        .route(IP_INFO_PATH, get(ip_info))
+        .route(SITE_CONFIG_PATH, get(site_config))
+        .route(GOD_MODE_EXCHANGE_PATH, post(god_mode_exchange))
 }
 
 // ─── Query params ─────────────────────────────────────────────────────────────
 
 #[derive(Deserialize)]
 struct SiteConfigQuery {
-    #[serde(rename = "openAt")]
     open_at: Option<String>,
 }
 
@@ -163,11 +182,6 @@ fn country_to_site_id(country: &str) -> i32 {
 
 // ─── God Mode Exchange ────────────────────────────────────────────────────────
 
-#[derive(Deserialize)]
-struct GodModeExchangeRequest {
-    key: String,
-}
-
 /// POST /api/v2/auth/god-mode/exchange
 ///
 /// Exchanges a one-time god-mode key (written by mono's EnableGodMode gRPC handler
@@ -202,12 +216,40 @@ async fn god_mode_exchange(
 }
 
 /// POST /api/v2/auth/logout
-/// Clears the access_token cookie and deletes the refresh token from Redis if provided.
+/// Clears the access_token cookie, deletes the refresh token from Redis,
+/// and adds the current access token's jti to the blocklist so it cannot
+/// be used even if someone still holds the cookie value.
 async fn logout(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     body: Option<Json<LogoutRequest>>,
 ) -> (HeaderMap, Json<Value>) {
     tracing::info!("logout");
+
+    // Extract access token from cookie and blocklist its jti
+    let cookie_header = headers
+        .get(axum::http::header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let access_token = cookie_header
+        .split(';')
+        .find_map(|part| {
+            let part = part.trim();
+            part.strip_prefix("access_token=")
+        });
+
+    if let Some(token) = access_token {
+        if let Some((jti, exp)) = decode_jti_exp_unsafe(token) {
+            let now = chrono::Utc::now().timestamp();
+            let ttl = (exp - now).max(0) as u64;
+            if ttl > 0 {
+                if let Err(e) = redis_store::blocklist_jti(&state.redis, &jti, ttl).await {
+                    redis_store::log_redis_error("blocklist_jti(logout)", e);
+                }
+            }
+        }
+    }
+
     if let Some(Json(req)) = body {
         if !req.refresh_token.is_empty() {
             redis_store::delete_refresh_token(&state.redis, &req.refresh_token).await;

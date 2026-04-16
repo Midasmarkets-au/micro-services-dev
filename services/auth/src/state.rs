@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::grpc::auth_client::MonoAuthClient;
 use crate::keys::RsaKeyPair;
 use sqlx::PgPool;
@@ -25,4 +27,8 @@ pub struct AppState {
     pub ipinfo_token: String,
     /// Twilio Verify config (None = SMS OTP disabled)
     pub twilio: Option<TwilioConfig>,
+    /// Allowlist for client_credentials grant: client_id -> Option<client_secret>.
+    /// None = allowlist not configured, all client_credentials requests are rejected.
+    /// Some(map) = only listed client_ids are allowed; value None means no secret required.
+    pub client_credentials_allowlist: Option<HashMap<String, Option<String>>>,
 }

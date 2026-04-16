@@ -1,12 +1,17 @@
 export interface RegisterRequest {
   email: string;
   password: string;
-  confirmUrl: string;
+  confirm_url: string;
   ccc: string;
-  countryCode: string;
+  country_code: string;
   currency: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   phone: string;
-  referCode: string;
+  refer_code: string;
+  language?: string;
+  source_comment?: string;
+  site_id?: number;
+  tenant_id?: number;
+  otp?: string;
 }

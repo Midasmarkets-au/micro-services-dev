@@ -61,12 +61,14 @@ public class CommandJob
                 case "poll-send-message-queue":
                     result = await RunSendMessageQueue(cts);
                     break;
-                case "pull-trade-queue":
-                    result = await RunPullTradeQueue(cts);
-                    break;
-                case "mt-monitor":
-                    result = await RunMetaTradeMonitor(cts);
-                    break;
+                // [MIGRATED] pull-trade-queue and mt-monitor commands removed.
+                // BCRTrade pipeline replaced by scheduler NATS JetStream (trade_monitor.rs + trade_handler.rs).
+                // case "pull-trade-queue":
+                //     result = await RunPullTradeQueue(cts);
+                //     break;
+                // case "mt-monitor":
+                //     result = await RunMetaTradeMonitor(cts);
+                //     break;
                 case "bcr-task":
                     result = await RunBcrTask(cts);
                     break;
@@ -111,48 +113,23 @@ public class CommandJob
         return await WithCtsWrapper(pollEventTradeService.PollEventTradeAsync, cts);
     }
 
-    /// <summary>
-    /// Amazon SQS Queue: Poll BCRRebateTrade
-    /// </summary>
-    /// <returns></returns>
-    private async Task<bool> RunPullTradeQueue(CancellationTokenSource cts)
-    {
-        var svc = _serviceProvider.GetRequiredService<PollMetaTradeHandler>();
-        return await WithCtsWrapper(svc.PollRebateTradeAsync, cts);
-    }
-
-    /// <summary>
-    /// Amazon SQS Queue: Monitor MT4/5 Trade, Enqueue to BCREventTrade...
-    /// </summary>
-    /// <returns></returns>
-    private async Task<bool> RunMetaTradeMonitor(CancellationTokenSource cts)
-    {
-        Console.WriteLine("🔍 [DEBUG] Starting RunMetaTradeMonitor...");
-
-        Console.WriteLine("🔍 [DEBUG] Getting TradeMonitorService from DI container...");
-        var metaTradeMonitorService = _serviceProvider.GetRequiredService<TradeMonitorService>();
-        Console.WriteLine("🔍 [DEBUG] TradeMonitorService obtained successfully");
-
-        try
-        {
-            Console.WriteLine("🔍 [DEBUG] Calling ExecuteJobAsync...");
-            var result = await WithCtsWrapper(metaTradeMonitorService.ExecuteJobAsync, cts);
-            Console.WriteLine($"🔍 [DEBUG] ExecuteJobAsync completed with result: {result}");
-            
-            return result;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ [ERROR] Exception in RunMetaTradeMonitor: {ex.GetType().Name}: {ex.Message}");
-            Console.WriteLine($"❌ [ERROR] Stack trace: {ex.StackTrace}");
-            return false;
-        }
-        finally
-        {
-            metaTradeMonitorService.Dispose();
-            Console.WriteLine("🔍 [DEBUG] TradeMonitorService disposed");
-        }
-    }
+    // [MIGRATED] RunPullTradeQueue and RunMetaTradeMonitor removed.
+    // BCRTrade pipeline has been replaced by scheduler NATS JetStream:
+    //   - Producer: scheduler/src/jobs/trade_monitor.rs (polls MT5 DB, publishes to NATS)
+    //   - Consumer: scheduler/src/jobs/trade_handler.rs (writes to trade_rebate_k8s)
+    //
+    // private async Task<bool> RunPullTradeQueue(CancellationTokenSource cts)
+    // {
+    //     var svc = _serviceProvider.GetRequiredService<PollMetaTradeHandler>();
+    //     return await WithCtsWrapper(svc.PollRebateTradeAsync, cts);
+    // }
+    //
+    // private async Task<bool> RunMetaTradeMonitor(CancellationTokenSource cts)
+    // {
+    //     var metaTradeMonitorService = _serviceProvider.GetRequiredService<TradeMonitorService>();
+    //     try { return await WithCtsWrapper(metaTradeMonitorService.ExecuteJobAsync, cts); }
+    //     finally { metaTradeMonitorService.Dispose(); }
+    // }
 
 
     private async Task<bool> RunBcrTask(CancellationTokenSource cts)

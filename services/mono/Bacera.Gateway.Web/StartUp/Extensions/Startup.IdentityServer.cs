@@ -1,8 +1,10 @@
 using System.Security.Cryptography.X509Certificates;
+using Api.V1;
 using Bacera.Gateway.Auth;
 using Bacera.Gateway.Web.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using static OpenIddict.Server.OpenIddictServerEvents;
@@ -146,6 +148,30 @@ public partial class Startup
                             context.Token = cookieToken;
 
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        // After local JWKS signature/exp check passes, do a blacklist check
+                        // against the auth service (jti blocklist + party revocation).
+                        // gRPC unavailability is non-fatal: fallback to local validation only.
+                        var rawToken = (context.SecurityToken as
+                            System.IdentityModel.Tokens.Jwt.JwtSecurityToken)?.RawData;
+                        if (string.IsNullOrEmpty(rawToken)) return;
+
+                        try
+                        {
+                            var authClient = context.HttpContext.RequestServices
+                                .GetRequiredService<AuthValidationService.AuthValidationServiceClient>();
+                            var resp = await authClient.ValidateTokenAsync(
+                                new ValidateTokenRequest { Token = rawToken },
+                                deadline: DateTime.UtcNow.AddSeconds(3));
+                            if (!resp.Valid)
+                                context.Fail(resp.Error);
+                        }
+                        catch
+                        {
+                            // auth gRPC unreachable — degrade gracefully, local sig check is sufficient
+                        }
                     }
                 };
             });

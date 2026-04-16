@@ -173,7 +173,7 @@ public partial class AuthControllerV2
         BcrTokenResult token;
         try
         {
-            token = await tokenSvc.GetUserTokenAsync(user, clientId: spec.GrantType);
+            token = await tokenSvc.GetUserTokenAsync(user);
         }
         catch (Exception e)
         {

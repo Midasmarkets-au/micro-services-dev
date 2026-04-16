@@ -479,25 +479,12 @@ public partial class CmdTestService
             var json = model.ToString();
             Console.WriteLine($"📤 Message JSON: {json}");
 
-            // Send to sales rebate queue (always)
-            await _mqService.SendAsync(json, "bcr-sales-rebate-trade.fifo",
-                messageGroupId: tenantId.ToString());
-            Console.WriteLine($"✅ Sent to bcr-sales-rebate-trade.fifo");
+            // [MIGRATED] BCRSalesRebateTrade and BCREventTrade (Trade source) sends removed.
+            // Pipeline replaced by scheduler NATS JetStream (trade_monitor.rs + trade_handler.rs).
+            // await _mqService.SendAsync(json, "bcr-sales-rebate-trade.fifo", messageGroupId: tenantId.ToString());
+            // await _mqService.SendAsync(json, "bcr-event-trade.fifo", messageGroupId: tenantId.ToString());
 
-            // Check conditions for event trade queue
-            if (tradeRebate.Reason is not (1 or 2) &&
-                tradeRebate.ClosedOn - tradeRebate.OpenedOn > TimeSpan.FromSeconds(60))
-            {
-                await _mqService.SendAsync(json, "bcr-event-trade.fifo",
-                    messageGroupId: tenantId.ToString());
-                Console.WriteLine($"✅ Sent to bcr-event-trade.fifo (meets conditions)");
-            }
-            else
-            {
-                Console.WriteLine($"⏭️ Skipped bcr-event-trade.fifo (Reason: {tradeRebate.Reason}, Duration: {tradeRebate.ClosedOn - tradeRebate.OpenedOn})");
-            }
-
-            Console.WriteLine($"�� Successfully reprocessed TradeRebate {tradeRebateId} to downstream queues!");
+            Console.WriteLine($"⚠️ ReprocessTradeRebate is no longer supported — BCRTrade pipeline replaced by scheduler NATS JetStream.");
         }
         catch (Exception ex)
         {

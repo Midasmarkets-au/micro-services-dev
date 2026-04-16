@@ -11,6 +11,8 @@ using Newtonsoft.Json;
 
 namespace Bacera.Gateway.Web.BackgroundJobs.Hosting;
 
+// [MIGRATED] PollRebateTradeHandler — BCRSalesRebateTrade queue consumer, never implemented.
+// Pipeline replaced by scheduler NATS JetStream. This class is kept for reference only.
 using SQSMessage = Amazon.SQS.Model.Message;
 
 public class PollRebateTradeHandler

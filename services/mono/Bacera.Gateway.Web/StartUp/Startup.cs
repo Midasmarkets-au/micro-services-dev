@@ -175,9 +175,11 @@ public static partial class Startup
         
         me.Services.AddTransient<CommandJob>()
             .AddTransient<CmdTestService>()
-            .AddTransient<TradeMonitorService>()
+            // [MIGRATED] TradeMonitorService and PollMetaTradeHandler removed — BCRTrade pipeline
+            // has been replaced by scheduler/src/jobs/trade_monitor.rs + trade_handler.rs (NATS JetStream).
+            // .AddTransient<TradeMonitorService>()
+            // .AddTransient<PollMetaTradeHandler>()
             .AddTransient<PollEventTradeHandler>()
-            .AddTransient<PollMetaTradeHandler>()
             .AddTransient<PollSendMessageHandler>()
             .AddSingleton<MyDbContextPool>()
             ;

@@ -9,11 +9,11 @@ public partial class Startup
         var region = GetEnvValue("AWS_SQS_REGION");
         var prefix = GetEnvValue("AWS_SQS_PREFIX");
         var bcrEventTrade = GetEnvValue("AWS_SQS_BCR_EVENT_TRADE_QUEUE");
-        var bcrSalesRebateTrade = GetEnvValue("AWS_SQS_BCR_SALES_REBATE_TRADE_QUEUE");
-        var bcrTrade = GetEnvValue("AWS_SQS_BCR_TRADE_QUEUE");
         var bcrSendMessage = GetEnvValue("AWS_SQS_BCR_SEND_MESSAGE_QUEUE");
-        return AmazonSQSOptions.Create(accessKey, accessSecret, region, prefix, bcrTrade, bcrEventTrade,
-            bcrSalesRebateTrade, bcrSendMessage);
+        // [MIGRATED] BCRTrade and BCRSalesRebateTrade env vars removed — queues no longer in use.
+        // var bcrSalesRebateTrade = GetEnvValue("AWS_SQS_BCR_SALES_REBATE_TRADE_QUEUE");
+        // var bcrTrade = GetEnvValue("AWS_SQS_BCR_TRADE_QUEUE");
+        return AmazonSQSOptions.Create(accessKey, accessSecret, region, prefix, bcrEventTrade, bcrSendMessage);
     }
 
     private static CentralDatabaseOptions GetCentralDatabaseOptions()

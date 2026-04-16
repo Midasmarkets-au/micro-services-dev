@@ -7,45 +7,19 @@ use axum::{
     http::{HeaderMap, StatusCode},
     routing::post,
 };
-use serde::Deserialize;
 use serde_json::json;
 use tracing::{error, warn};
 
-use crate::{db, grpc, party_uid, password, state::AppState, twilio};
+use crate::{
+    db, grpc, party_uid, password, state::AppState, twilio,
+    generated::{
+        http_v1::RegisterRequest,
+        http_routes::REGISTER_PATH,
+    },
+};
 
 pub fn router() -> Router<Arc<AppState>> {
-    Router::new().route("/api/v2/auth/register", post(register))
-}
-
-// ─── Request / Response ──────────────────────────────────────────────────────
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RegistrationRequest {
-    pub email: String,
-    pub password: String,
-    pub first_name: String,
-    pub last_name: String,
-    #[serde(default)]
-    pub ccc: String,
-    #[serde(default)]
-    pub country_code: String,
-    #[serde(default)]
-    pub currency: String,
-    #[serde(default)]
-    pub phone: String,
-    #[serde(default)]
-    pub otp: String,
-    #[serde(default)]
-    pub refer_code: String,
-    #[serde(default)]
-    pub language: String,
-    #[serde(default)]
-    pub source_comment: String,
-    pub site_id: Option<i32>,
-    pub tenant_id: Option<i64>,
-    #[serde(default)]
-    pub confirm_url: String,
+    Router::new().route(REGISTER_PATH, post(register))
 }
 
 fn bad_request(msg: &str) -> (StatusCode, Json<serde_json::Value>) {
@@ -58,7 +32,7 @@ async fn register(
     State(state): State<Arc<AppState>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
-    Json(mut req): Json<RegistrationRequest>,
+    Json(mut req): Json<RegisterRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     // ── 1. Extract IP ──────────────────────────────────────────────────────
     let ip = headers
@@ -155,10 +129,11 @@ async fn register(
     };
 
     // ── 9. SiteId ──────────────────────────────────────────────────────────
-    let site_id = req.site_id.unwrap_or_else(|| {
+    let site_id = if req.site_id == 0 {
         fetch_ip_country(&ip).map(|c| country_to_site(&c)).unwrap_or(1)
-    });
-    let site_id = if site_id == 0 { 1 } else { site_id };
+    } else {
+        req.site_id
+    };
 
     // ── 10. Create CentralParty ────────────────────────────────────────────
     let full_name = format!("{} {}", req.first_name.trim(), req.last_name.trim());
@@ -277,7 +252,7 @@ async fn register(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async fn resolve_tenant(state: &AppState, req: &RegistrationRequest, ip: &str) -> i64 {
+async fn resolve_tenant(state: &AppState, req: &RegisterRequest, ip: &str) -> i64 {
     // 1. Referral code → tenant
     if !req.refer_code.is_empty() {
         if let Ok(Some(tid)) = db::find_tenant_by_refer_code(&state.pool, &req.refer_code).await {
@@ -285,9 +260,9 @@ async fn resolve_tenant(state: &AppState, req: &RegistrationRequest, ip: &str) -
         }
     }
     // 2. Explicitly provided tenant_id
-    if let Some(tid) = req.tenant_id {
-        if db::tenant_exists(&state.pool, tid).await.unwrap_or(false) {
-            return tid;
+    if req.tenant_id != 0 {
+        if db::tenant_exists(&state.pool, req.tenant_id).await.unwrap_or(false) {
+            return req.tenant_id;
         }
     }
     // 3. IP country

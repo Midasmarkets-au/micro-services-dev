@@ -46,6 +46,21 @@ service AuthTokenService {
   rpc ConfirmLoginCode(ConfirmLoginCodeRequest) returns (ConfirmLoginCodeResponse) {
     option (google.api.http) = { post: "/api/v2/auth/token/code/confirm" body: "*" };
   }
+
+  // 查询客户端 IP 信息（ipinfo.io 代理）
+  rpc IpInfo(IpInfoRequest) returns (IpInfoResponse) {
+    option (google.api.http) = { get: "/api/v1/auth/ip-info" };
+  }
+
+  // 根据 IP 或 open_at 参数返回站点配置（site_id 列表）
+  rpc SiteConfig(SiteConfigRequest) returns (SiteConfigResponse) {
+    option (google.api.http) = { get: "/api/v1/auth/c" };
+  }
+
+  // God-mode 一次性 key 换 HttpOnly access_token cookie
+  rpc GodModeExchange(GodModeExchangeRequest) returns (GodModeExchangeResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/god-mode/exchange" body: "*" };
+  }
 }
 
 // OAuth2 token 请求（实际走 form-encoded，此处描述等价字段）
@@ -106,6 +121,19 @@ message ConfirmLoginCodeResponse {
   int64  expires_in    = 2;
   string refresh_token = 3;
 }
+
+message IpInfoRequest {}
+message IpInfoResponse {}   // handler 返回动态 JSON，此消息仅用于路由注解
+
+message SiteConfigRequest {
+  string open_at = 1;  // query param: BVI / AU / CN 等，为空时按 IP 自动判断
+}
+message SiteConfigResponse {}  // handler 返回动态 JSON，此消息仅用于路由注解
+
+message GodModeExchangeRequest {
+  string key = 1;  // 一次性 god-mode key（mono 写入 Redis，60s TTL）
+}
+message GodModeExchangeResponse {}
 
 // ─── Auth Password Service ────────────────────────────────────────────────────
 // 密码重置（两种流程）和密码修改
@@ -227,3 +255,33 @@ message Disable2FARequest {
 }
 
 message Disable2FAResponse {}  // 204 No Content
+
+// ─── Auth Register Service ────────────────────────────────────────────────────
+// 注册新用户（公开端点，无需认证）
+service AuthRegisterService {
+
+  // 注册新用户（创建 CentralParty + _User，并通过 gRPC 回调 mono 创建租户记录）
+  rpc Register(RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = { post: "/api/v2/auth/register" body: "*" };
+  }
+}
+
+message RegisterRequest {
+  string email          = 1;
+  string password       = 2;
+  string first_name     = 3;
+  string last_name      = 4;
+  string ccc            = 5;   // 国际电话区号（纯数字，如 "61"）
+  string country_code   = 6;   // ISO 国家码（如 "AU"）
+  string currency       = 7;
+  string phone          = 8;
+  string otp            = 9;   // SMS OTP（Twilio 验证，未启用时可为空）
+  string refer_code     = 10;  // 推荐码（大写字母+数字）
+  string language       = 11;  // 语言码（如 "en-us"）
+  string source_comment = 12;
+  int32  site_id        = 13;  // 0 表示按 IP 自动判断
+  int64  tenant_id      = 14;  // 0 表示按推荐码/IP 自动判断
+  string confirm_url    = 15;  // 邮件确认链接 base URL
+}
+
+message RegisterResponse {}  // 204 No Content
