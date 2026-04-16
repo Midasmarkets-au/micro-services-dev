@@ -1,45 +1,104 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-国际化文件同步脚本
-=================
-以 zh.json 为基准，将所有其他语言文件的 key 补全。
+AI 驱动的国际化翻译脚本
+========================
+以 zh.json 为原本，使用 Anthropic Claude 自动将所有 key 翻译成目标语言。
 
 使用方法：
+    # 增量翻译所有语言（只翻译缺失的 key，保留现有翻译）
     python3 sync_i18n.py
 
-策略：
-  1. 读取 zh.json 作为结构基准
-  2. 读取 en.json 作为英文默认值
-  3. 对每个目标语言文件：
-     a. 以 zh+en 合并版本为基础（提供完整结构和英文默认值）
-     b. 应用各语言翻译字典（覆盖对应的缺失翻译）
-     c. 最后用文件已有翻译覆盖（保留现有翻译不变）
+    # 全量翻译所有语言（重新翻译所有 key，覆盖现有翻译）
+    python3 sync_i18n.py --full
+
+    # 只翻译指定语言
+    python3 sync_i18n.py --lang ko,vi,th
+
+    # 使用 OpenAI（默认 Anthropic）
+    python3 sync_i18n.py --provider openai
+
+    # 指定 Anthropic 模型
+    python3 sync_i18n.py --model claude-3-5-sonnet-20241022
+
+    # 指定 API Key（也可通过环境变量）
+    python3 sync_i18n.py --api-key sk-ant-xxx
+
+    # 增量翻译并显示详细输出
+    python3 sync_i18n.py --verbose
+
+环境变量：
+    ANTHROPIC_API_KEY  Anthropic API Key（默认使用）
+    OPENAI_API_KEY     OpenAI API Key（provider=openai 时使用）
+
+支持的目标语言：
+    en, zh-tw, es, id, ms, vi, th, ko, km, jp
 """
 
 import json
-import copy
 import os
+import copy
+import argparse
+import time
+import sys
+import shutil
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ============================================================
+# 目标语言配置
+# ============================================================
+LANGUAGE_CONFIG: Dict[str, Dict[str, str]] = {
+    'en.json':    {'name': 'English',                      'code': 'en'},
+    'zh-tw.json': {'name': 'Traditional Chinese (Taiwan)', 'code': 'zh-TW'},
+    'es.json':    {'name': 'Spanish',                      'code': 'es'},
+    'id.json':    {'name': 'Indonesian',                   'code': 'id'},
+    'ms.json':    {'name': 'Malay',                        'code': 'ms'},
+    'vi.json':    {'name': 'Vietnamese',                   'code': 'vi'},
+    'th.json':    {'name': 'Thai',                         'code': 'th'},
+    'ko.json':    {'name': 'Korean',                       'code': 'ko'},
+    'km.json':    {'name': 'Khmer (Cambodian)',             'code': 'km'},
+    'jp.json':    {'name': 'Japanese',                     'code': 'ja'},
+}
+
+# ============================================================
+# 翻译提示词
+# ============================================================
+TRANSLATE_PROMPT = """\
+You are a professional UI/UX text translator specializing in financial trading platform interfaces.
+
+Translate the following JSON object's VALUES from Simplified Chinese to {target_language}.
+
+Rules:
+1. ONLY translate the values; keep every key exactly as-is.
+2. Preserve ALL placeholders in {{variable}} or {{variable}} format completely unchanged.
+3. Preserve HTML tags, URLs, and purely numeric/code strings unchanged.
+4. Use a formal, professional tone suitable for a financial trading platform.
+5. Return ONLY a valid JSON object — no markdown fences, no explanations.
+
+Input:
+{input_json}"""
 
 
 # ============================================================
 # 工具函数
 # ============================================================
 
-def deep_merge(base, override):
-    """以 override 为主，base 补充缺失的 key"""
-    result = copy.deepcopy(base)
-    for k, v in override.items():
-        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
-            result[k] = deep_merge(result[k], v)
+def get_flat_dict(obj: dict, prefix: str = '') -> Dict[str, str]:
+    """将嵌套字典展平为 {dot.path: value} 的字典"""
+    result: Dict[str, str] = {}
+    for k, v in obj.items():
+        full_key = f'{prefix}.{k}' if prefix else k
+        if isinstance(v, dict):
+            result.update(get_flat_dict(v, full_key))
         else:
-            result[k] = v
+            result[full_key] = str(v)
     return result
 
 
-def set_nested(obj, key_path, value):
+def set_nested(obj: dict, key_path: str, value: str) -> None:
     """按点路径设置嵌套字典的值"""
     parts = key_path.split('.')
     curr = obj
@@ -50,2026 +109,456 @@ def set_nested(obj, key_path, value):
     curr[parts[-1]] = value
 
 
-def get_all_keys(obj, prefix=''):
-    """获取字典所有叶子节点的点路径"""
-    keys = set()
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            full_key = f'{prefix}.{k}' if prefix else k
-            keys.add(full_key)
-            if isinstance(v, dict):
-                keys.update(get_all_keys(v, full_key))
-    return keys
+def rebuild_structure(flat: Dict[str, str], structure: dict) -> dict:
+    """以 zh.json 结构为骨架，将扁平字典重建为嵌套字典"""
+    result = copy.deepcopy(structure)
+    for key_path, value in flat.items():
+        set_nested(result, key_path, value)
+    return result
 
 
-def process_language(lang_file, lang_translations, zh, en, verbose=True):
+def backup_file(filepath: str) -> Optional[str]:
+    """备份文件，返回备份路径；文件不存在时返回 None"""
+    if not os.path.exists(filepath):
+        return None
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_dir = os.path.join(BASE_DIR, '.i18n_backup')
+    os.makedirs(backup_dir, exist_ok=True)
+    backup_path = os.path.join(backup_dir, f'{os.path.basename(filepath)}.{ts}.bak')
+    shutil.copy2(filepath, backup_path)
+    return backup_path
+
+
+def _cache_path(lang_file: str) -> str:
+    """返回该语言的翻译缓存文件路径（用于断点续传）"""
+    cache_dir = os.path.join(BASE_DIR, '.i18n_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, f'{lang_file}.cache.json')
+
+
+def load_cache(lang_file: str) -> Dict[str, str]:
+    """读取断点续传缓存"""
+    path = _cache_path(lang_file)
+    if os.path.exists(path):
+        try:
+            with open(path, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_cache(lang_file: str, data: Dict[str, str]) -> None:
+    """保存断点续传缓存"""
+    with open(_cache_path(lang_file), 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def clear_cache(lang_file: str) -> None:
+    """清除断点续传缓存"""
+    path = _cache_path(lang_file)
+    if os.path.exists(path):
+        os.remove(path)
+
+
+# ============================================================
+# AI 翻译（Anthropic）
+# ============================================================
+
+def _translate_anthropic(
+    items: Dict[str, str],
+    target_language: str,
+    client,
+    model: str,
+) -> Dict[str, str]:
+    input_json = json.dumps(items, ensure_ascii=False, indent=2)
+    prompt = TRANSLATE_PROMPT.format(
+        target_language=target_language,
+        input_json=input_json,
+    )
+    response = client.messages.create(
+        model=model,
+        max_tokens=8192,
+        messages=[{'role': 'user', 'content': prompt}],
+        temperature=0.1,
+    )
+    text = response.content[0].text.strip()
+    # 清理可能的 markdown 代码块
+    if text.startswith('```'):
+        text = text.split('\n', 1)[1]
+        text = text.rsplit('```', 1)[0].strip()
+    return json.loads(text)
+
+
+# ============================================================
+# AI 翻译（OpenAI）
+# ============================================================
+
+def _translate_openai(
+    items: Dict[str, str],
+    target_language: str,
+    client,
+    model: str,
+) -> Dict[str, str]:
+    input_json = json.dumps(items, ensure_ascii=False, indent=2)
+    prompt = TRANSLATE_PROMPT.format(
+        target_language=target_language,
+        input_json=input_json,
+    )
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{'role': 'user', 'content': prompt}],
+        temperature=0.1,
+        response_format={'type': 'json_object'},
+    )
+    return json.loads(response.choices[0].message.content)
+
+
+# ============================================================
+# 带重试的批量翻译
+# ============================================================
+
+def translate_batch(
+    items: Dict[str, str],
+    target_language: str,
+    provider: str,
+    client,
+    model: str,
+    max_retries: int = 3,
+) -> Dict[str, str]:
+    """批量翻译一组 key-value，失败自动重试"""
+    last_error: Optional[Exception] = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            if provider == 'openai':
+                return _translate_openai(items, target_language, client, model)
+            else:
+                return _translate_anthropic(items, target_language, client, model)
+        except json.JSONDecodeError as e:
+            last_error = e
+            print(f' [JSON 解析错误, 重试 {attempt}/{max_retries}]', end='', flush=True)
+        except Exception as e:
+            last_error = e
+            print(f' [错误: {type(e).__name__}, 重试 {attempt}/{max_retries}]', end='', flush=True)
+        time.sleep(2 ** attempt)
+    raise RuntimeError(f'翻译失败（{max_retries} 次重试后）: {last_error}')
+
+
+# ============================================================
+# 翻译单个语言文件
+# ============================================================
+
+def translate_language(
+    lang_file: str,
+    lang_config: Dict[str, str],
+    zh_flat: Dict[str, str],
+    zh_structure: dict,
+    provider: str,
+    client,
+    model: str,
+    full_mode: bool = False,
+    batch_size: int = 60,
+    backup: bool = True,
+    verbose: bool = False,
+) -> Tuple[int, int]:
     """
-    处理单个语言文件。
-
-    参数：
-      lang_file       目标语言文件名（相对于 BASE_DIR）
-      lang_translations  该语言缺失 key 的翻译字典 {dot_path: value}
-      zh              zh.json 内容（结构基准）
-      en              en.json 内容（英文默认值）
-      verbose         是否打印统计信息
+    翻译单个语言文件。
+    返回 (成功翻译 key 数, 失败 key 数)。
     """
     filepath = os.path.join(BASE_DIR, lang_file)
-    with open(filepath, encoding='utf-8') as f:
-        existing = json.load(f)
+    lang_name = lang_config['name']
 
-    # 步骤1：zh + en 合并（en 优先，提供完整英文默认值）
-    base = deep_merge(zh, en)
+    # 读取现有翻译
+    existing_flat: Dict[str, str] = {}
+    if os.path.exists(filepath):
+        with open(filepath, encoding='utf-8') as f:
+            existing_flat = get_flat_dict(json.load(f))
 
-    # 步骤2：应用目标语言翻译字典（覆盖英文默认值）
-    for k, v in lang_translations.items():
-        set_nested(base, k, v)
+    # 确定需要翻译的 key
+    if full_mode:
+        keys_to_translate = list(zh_flat.keys())
+        print(f'\n  [{lang_file}] 全量模式 — 共 {len(keys_to_translate)} 个 key')
+    else:
+        keys_to_translate = [k for k in zh_flat if k not in existing_flat]
+        skipped = len(zh_flat) - len(keys_to_translate)
+        print(
+            f'\n  [{lang_file}] 增量模式 — '
+            f'需翻译 {len(keys_to_translate)} 个 / 已有 {skipped} 个 / 共 {len(zh_flat)} 个'
+        )
 
-    # 步骤3：已有翻译最优先（保留文件中现有的所有翻译）
-    result = deep_merge(base, existing)
+    if not keys_to_translate:
+        print(f'  ✓ {lang_file} 无需更新')
+        return 0, 0
 
-    # 统计
-    if verbose:
-        zh_keys = get_all_keys(zh)
-        old_missing = len(zh_keys - get_all_keys(existing))
-        new_missing = len(zh_keys - get_all_keys(result))
-        print(f"  ✓ {lang_file:<18} 原缺失: {old_missing:<6} 补全后缺失: {new_missing}")
+    # 加载断点续传缓存（全量模式也支持续传）
+    cache = load_cache(lang_file) if not full_mode else {}
+    if full_mode:
+        # 全量模式清空旧缓存，重新开始
+        clear_cache(lang_file)
 
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+    # 过滤掉缓存中已翻译的 key
+    remaining_keys = [k for k in keys_to_translate if k not in cache]
+    if cache:
+        print(f'    ↻ 从缓存恢复 {len(cache)} 个 key，剩余 {len(remaining_keys)} 个待翻译')
 
+    # 备份原文件
+    if backup and os.path.exists(filepath):
+        bak = backup_file(filepath)
+        if verbose and bak:
+            print(f'    📦 已备份至 {bak}')
 
-# ============================================================
-# 读取基准文件
-# ============================================================
-with open(os.path.join(BASE_DIR, 'zh.json'), encoding='utf-8') as f:
-    ZH = json.load(f)
+    # 批量翻译
+    translated_flat: Dict[str, str] = dict(cache)
+    failed_keys: List[str] = []
+    total_batches = (len(remaining_keys) + batch_size - 1) // batch_size if remaining_keys else 0
 
-with open(os.path.join(BASE_DIR, 'en.json'), encoding='utf-8') as f:
-    EN = json.load(f)
+    for i in range(0, len(remaining_keys), batch_size):
+        batch_keys = remaining_keys[i: i + batch_size]
+        batch_items = {k: zh_flat[k] for k in batch_keys}
+        batch_num = i // batch_size + 1
 
-
-# ============================================================
-# en.json 补全字典
-# （en.json 通常与 zh.json 保持同步，此处作为兜底）
-# ============================================================
-EN_ADDITIONS = {
-    "accounts.accountRole.1000": "Guest",
-    "common.close": "Close",
-    "errorCodes.Wallet address already exists": "Wallet address already exists",
-    "errorCodes.invalid_username_or_password": "Invalid username or password",
-    "ib.action.close": "Close",
-    "sales.action.cancel": "Cancel",
-    "sales.customers.all": "All",
-    "type.commissionOptions.0": "No",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "Bitcoin",
-    "type.productCategory.Commodities": "Spot Index",
-    "type.productCategory.Crypto": "Cryptocurrency",
-    "type.productCategory.D Forex": "Direct Forex",
-    "type.productCategory.ETH": "Ethereum",
-    "type.productCategory.Energy": "Energy Futures",
-    "type.productCategory.Forex": "Cross Forex",
-    "type.productCategory.Fu_Energy": "Energy Futures",
-    "type.productCategory.GAUCNH": "Gold RMB",
-    "type.productCategory.Gold": "Gold",
-    "type.productCategory.HKG50": "Hang Seng Index",
-    "type.productCategory.Index": "Spot Index",
-    "type.productCategory.JPN225": "Nikkei JPN225",
-    "type.productCategory.Natural Gas": "Natural Gas",
-    "type.productCategory.OIL": "WTI/Brent Crude",
-    "type.productCategory.Precious Metal": "Precious Metal",
-    "type.productCategory.Shares": "Shares",
-    "type.productCategory.Silver 1000OZ": "Silver 1000OZ",
-    "type.productCategory.Silver 5000OZ": "Silver 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-}
-
-# ============================================================
-# 繁体中文 (zh-tw.json)
-# ============================================================
-ZH_TW = {
-    "common.noData": "暫無資料",
-    "common.close": "關閉",
-    "common.editAccountSettings": "編輯帳戶設定",
-    "common.updateAlias": "更新",
-    "common.aliasPlaceholder": "請輸入別名",
-    "common.default": "預設",
-    "common.setDefault": "設為預設",
-    "errors.noPermission.title": "無訪問權限",
-    "errors.noPermission.description": "抱歉，您沒有權限訪問此頁面。請聯繫管理員獲取相應權限。",
-    "errors.noPermission.goBack": "返回上頁",
-    "errors.noPermission.goHome": "返回首頁",
-    "auth.PrivacyPolicy": "隱私政策",
-    "auth.TermsAndConditions": "條款和條件",
-    "auth.andHaveSought": "並在交易前尋求獨立的專業金融建議，以確保您充分了解涉及的風險。",
-    "auth.backTo": "返回",
-    "auth.byCreateAccountYouAgree": "創建帳戶即表示您同意我們的",
-    "auth.confirm": "確認",
-    "auth.confirmEmailSuccess": "請登入以驗證",
-    "auth.confirmEmailSuccessTitle": "確認成功",
-    "auth.confirmPasswordRequiredShort": "請確認密碼",
-    "auth.contactUs": "聯繫我們",
-    "auth.disable": "禁用",
-    "auth.disableTwoFa": "如果您不想使用兩步驗證，您可以禁用此功能，但請記住，您的帳戶可能會更容易受到未經授權的訪問。",
-    "auth.emailConfirmation": "電子郵件確認",
-    "auth.emailExists": "郵箱已存在",
-    "auth.enable": "啟用",
-    "auth.enableTwoFa": "啟用雙重認證：通過激活雙重認證來保護您的帳戶，確保即使密碼被洩露，只有您可以訪問您的帳戶。",
-    "auth.enterYourInfo": "填寫您的資訊",
-    "auth.financialServicesGuide": "金融服務指南",
-    "auth.notReceiveEmail": "沒有收到郵件？",
-    "auth.passwordHint": "使用8個或更多字符，包含字母、數字和符號的組合",
-    "auth.passwordLowercase": "密碼必須包含至少一個小寫字母",
-    "auth.passwordMin8": "密碼至少需要8個字符",
-    "auth.passwordNumber": "密碼必須包含至少一個數字",
-    "auth.passwordSymbol": "密碼必須包含至少一個符號",
-    "auth.passwordUppercase": "密碼必須包含至少一個大寫字母",
-    "auth.pleaseEnsure": "請確保您已閱讀",
-    "auth.pleaseLoginWith2FA": "請使用雙因素認證登入",
-    "auth.pleaseSelectTenant": "請選擇租戶以繼續",
-    "auth.productDisclosureDocument": "產品披露聲明",
-    "auth.selectTenantRequired": "請選擇要登入的租戶",
-    "auth.sessionExpired": "您的登入已過期，請重新登入。",
-    "auth.targetMarketDetermination": "目標市場確定",
-    "auth.tenants.1": "澳大利亞",
-    "auth.tenants.10000": "國際",
-    "auth.tenants.10002": "蒙古",
-    "auth.tenants.10004": "東南亞",
-    "auth.tenants.10005": "日本",
-    "auth.termAndConditions": "條款和條件",
-    "auth.twoFaDesc": "為了提高您的帳戶安全性，我們強烈建議設置雙重身份驗證（2FA）。2FA 通過在密碼之外要求第二種形式的驗證增加了一層額外的保護。",
-    "auth.twoFactorAuthenticationSetupReminder": "雙因素認證(2FA) 設置提醒",
-    "auth.twoFactorRequired": "請輸入雙因素驗證碼",
-    "dashboard.loggingOut": "退出中...",
-    "dashboard.startDate": "開始日期",
-    "dashboard.endDate": "結束日期",
-    "dashboard.viewDetails": "查看詳情",
-    "dashboard.eventShop": "積分商城",
-    "dashboard.activityCycle": "活動週期",
-    "dashboard.longTerm": "長期",
-    "dashboard.eventNotice.dontShowAgain": "不再顯示",
-    "dashboard.eventNotice.previous": "上一條",
-    "dashboard.eventNotice.next": "下一條",
-    "dashboard.eventNotice.close": "關閉",
-    "dashboard.eventNotice.postedOn": "發布時間",
-    "dashboard.eventNotice.noEvents": "暫無活動公告",
-    "dashboard.realAccount": "真實帳戶",
-    "dashboard.demoAccount": "模擬帳戶",
-    "dashboard.depositAndWithdraw": "出金取款帳戶",
-    "dashboard.createTradingAccount": "創建交易帳戶",
-    "dashboard.noTransactions": "暫無交易記錄",
-    "dashboard.announcements": "公告",
-    "dashboard.viewMore": "查看更多",
-    "dashboard.noNotifications": "暫無通知",
-    "dashboard.accountSettings": "帳戶設定",
-    "dashboard.contactSupport": "聯繫客服",
-    "dashboard.menu.sales": "銷售中心",
-    "dashboard.menu.rep": "代表中心",
-    "accounts.accountRole.0": "未知",
-    "accounts.accountRole.100": "銷售",
-    "accounts.accountRole.1000": "Guest",
-    "accounts.accountRole.110": "代表",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "Client",
-    "accounts.action.reset": "重置",
-    "accounts.action.search": "搜索",
-    "accounts.detail.table.accountNumber": "帳號",
-    "accounts.detail.table.buy": "買入",
-    "accounts.detail.table.closePrice": "收盤價",
-    "accounts.detail.table.closeTime": "收盤時間",
-    "accounts.detail.table.commission": "佣金",
-    "accounts.detail.table.openPrice": "開盤價",
-    "accounts.detail.table.openTime": "開盤時間",
-    "accounts.detail.table.pl": "盈虧",
-    "accounts.detail.table.sell": "賣出",
-    "accounts.detail.table.sl": "止損/止盈",
-    "accounts.detail.table.subTotal": "小計",
-    "accounts.detail.table.swap": "隔夜利息",
-    "accounts.detail.table.symbol": "品種",
-    "accounts.detail.table.ticket": "訂單號",
-    "accounts.detail.table.total": "總計",
-    "accounts.detail.table.tp": "止盈",
-    "accounts.detail.table.volume": "交易量",
-    "accounts.trade.account": "帳號",
-    "accounts.trade.allHistory": "全部歷史",
-    "accounts.trade.closedOrder": "已關閉訂單",
-    "accounts.trade.openOrder": "未關閉訂單",
-    "accounts.trade.product": "產品",
-    "accounts.trade.service": "服務",
-    "profile.tabs.basicInfo": "基本資訊",
-    "profile.tabs.security": "登入密碼",
-    "profile.tabs.bankInfos": "銀行資訊",
-    "profile.tabs.files": "文件上傳",
-    "profile.tabs.address": "地址管理",
-    "profile.changeAvatar": "更換頭像",
-    "profile.avatarHint": "僅允許 png, jpg, jpeg 文件類型",
-    "profile.basicInfo": "基礎資訊",
-    "profile.fields.name": "姓名",
-    "profile.fields.nickname": "姓名",
-    "profile.fields.firstName": "名",
-    "profile.fields.lastName": "姓",
-    "profile.fields.email": "電子郵件",
-    "profile.fields.phone": "手機號",
-    "profile.fields.country": "國家和地區",
-    "profile.fields.countryPlaceholder": "請選擇",
-    "profile.fields.currency": "貨幣",
-    "profile.fields.timezone": "時區",
-    "profile.fields.language": "語言",
-    "profile.fields.registeredAt": "註冊時間",
-    "profile.buttons.reset": "重置",
-    "profile.buttons.save": "保存",
-    "profile.changePhone.title": "修改手機號",
-    "profile.changePhone.edit": "修改",
-    "profile.changePhone.phonePlaceholder": "請輸入手機號",
-    "profile.changePhone.sendCode": "發送驗證碼",
-    "profile.changePhone.verificationCode": "驗證碼",
-    "profile.changePhone.codePlaceholder": "請輸入驗證碼",
-    "profile.changePhone.resendCode": "重新發送",
-    "profile.changePhone.resendIn": "重新發送",
-    "profile.changePhone.codeSentTo": "驗證碼已發送至 {phone}",
-    "profile.common.cancel": "取消",
-    "profile.common.confirm": "確認",
-    "profile.common.back": "返回",
-    "profile.errors.phoneRequired": "請輸入手機號",
-    "profile.errors.codeRequired": "請輸入驗證碼",
-    "profile.errors.invalidFileType": "僅允許 png, jpg, jpeg 文件類型",
-    "profile.errors.fileTooLarge": "文件大小不能超過 5MB",
-    "profile.messages.codeSent": "驗證碼已發送",
-    "profile.messages.profileUpdated": "個人資料已更新",
-    "profile.messages.avatarUpdated": "頭像更新成功",
-    "profile.messages.saved": "保存成功",
-    "profile.messages.passwordChanged": "密碼修改成功",
-    "profile.security.title": "更改密碼",
-    "profile.security.currentPassword": "舊密碼",
-    "profile.security.currentPasswordPlaceholder": "請輸入舊密碼",
-    "profile.security.newPassword": "新密碼",
-    "profile.security.newPasswordPlaceholder": "請輸入新密碼",
-    "profile.security.confirmPassword": "確認密碼",
-    "profile.security.confirmPasswordPlaceholder": "請再次輸入密碼",
-    "profile.security.passwordUpdateWithdrawalNotice": "為保障資金安全，密碼修改後24小時內將暫時限制出金。",
-    "profile.security.twoFactor": "雙重認證",
-    "profile.security.twoFactorCode": "驗證碼",
-    "profile.security.twoFactorCodePlaceholder": "輸入您的代碼",
-    "profile.security.verify": "驗證",
-    "profile.security.reset": "重置",
-    "profile.security.save": "保存",
-    "profile.security.errors.currentPasswordRequired": "請輸入舊密碼",
-    "profile.security.errors.newPasswordRequired": "請輸入新密碼",
-    "profile.security.errors.newPasswordMinLength": "密碼長度至少8位",
-    "profile.security.errors.newPasswordPattern": "密碼需包含大小寫字母、數字和特殊字符",
-    "profile.security.errors.confirmPasswordRequired": "請再次輸入密碼",
-    "profile.security.errors.passwordMismatch": "兩次輸入的密碼不一致",
-    "profile.security.errors.codeRequired": "請輸入驗證碼",
-    "profile.security.messages.twoFactorEnabled": "雙重認證已啟用",
-    "profile.security.messages.twoFactorDisabled": "雙重認證已禁用",
-    "profile.security.messages.codeSent": "驗證碼已發送到您的郵箱",
-    "profile.files.additionalDocuments": "附加文件",
-    "profile.files.uploadFile": "上傳文件",
-    "profile.files.noFiles": "暫無文件",
-    "profile.files.clickToView": "點擊查看",
-    "profile.files.view": "查看",
-    "profile.files.rejected": "已拒絕",
-    "profile.files.loading": "加載中...",
-    "profile.files.loadError": "文件加載失敗",
-    "profile.files.cannotPreview": "此文件類型不支持預覽",
-    "profile.files.download": "下載",
-    "profile.files.zoomIn": "放大",
-    "profile.files.zoomOut": "縮小",
-    "profile.files.rotate": "旋轉",
-    "profile.files.close": "關閉",
-    "profile.files.uploadSuccess": "文件上傳成功",
-    "profile.files.selectFileType": "請選擇文件類型",
-    "profile.files.fileType": "文件類型",
-    "profile.files.uploadFileBtn": "上傳文件",
-    "profile.files.banner.title": "驗證您的帳戶",
-    "profile.files.banner.subtitle": "請完善您的身份和相關資訊以便我們驗證您的身份。",
-    "profile.files.banner.startNow": "立即開始",
-    "profile.bankInfos.linkedAccounts": "已關聯帳戶",
-    "profile.bankInfos.addBankAccount": "添加帳戶",
-    "profile.bankInfos.addUSDTWallet": "USD錢包地址",
-    "profile.bankInfos.addAccount": "添加支付帳戶",
-    "profile.bankInfos.editAccount": "編輯支付帳戶",
-    "profile.bankInfos.noAccounts": "暫無帳戶資訊",
-    "profile.bankInfos.accountName": "支付帳戶名稱",
-    "profile.bankInfos.accountHolder": "帳戶持有人",
-    "profile.bankInfos.bankCountry": "您的銀行所在國家",
-    "profile.bankInfos.selectCountry": "請選擇國家",
-    "profile.bankInfos.bsb": "BSB（如果適用）",
-    "profile.bankInfos.bsbPlaceholder": "請輸入BSB",
-    "profile.bankInfos.bsbHelper": "如果適用",
-    "profile.bankInfos.swiftCode": "SWIFT代碼",
-    "profile.bankInfos.swiftPlaceholder": "請輸入SWIFT代碼",
-    "profile.bankInfos.bankName": "銀行名稱",
-    "profile.bankInfos.branchName": "分行名稱",
-    "profile.bankInfos.accountNumber": "帳號",
-    "profile.bankInfos.confirmAccountNumber": "確認帳號",
-    "profile.bankInfos.usdtWalletAddress": "USDT錢包地址",
-    "profile.bankInfos.walletPlaceholder": "請輸入帳戶持有人",
-    "profile.bankInfos.bankNameLabel": "銀行名稱：",
-    "profile.bankInfos.walletLabel": "錢包類型：",
-    "profile.bankInfos.usdtWallet": "USDT錢包",
-    "profile.bankInfos.accountLabel": "帳號：",
-    "profile.bankInfos.addressLabel": "地址：",
-    "profile.bankInfos.holder": "持有人",
-    "profile.bankInfos.bankLocation": "銀行所在地",
-    "profile.bankInfos.unlinkAccount": "取消關聯",
-    "profile.bankInfos.copySuccess": "複製成功",
-    "profile.bankInfos.addSuccess": "添加成功",
-    "profile.bankInfos.updateSuccess": "更新成功",
-    "profile.bankInfos.deleteSuccess": "刪除成功",
-    "profile.bankInfos.confirmDelete.title": "取消關聯",
-    "profile.bankInfos.confirmDelete.description": "確認取消帳戶關聯嗎？",
-    "profile.bankInfos.errors.fetchFailed": "獲取帳戶資訊失敗",
-    "profile.bankInfos.errors.addFailed": "添加帳戶失敗",
-    "profile.bankInfos.errors.updateFailed": "更新帳戶失敗",
-    "profile.bankInfos.errors.deleteFailed": "刪除帳戶失敗",
-    "profile.bankInfos.errors.copyFailed": "複製失敗",
-    "profile.bankInfos.errors.nameRequired": "請輸入支付帳戶名稱",
-    "profile.bankInfos.errors.holderRequired": "請輸入帳戶持有人",
-    "profile.bankInfos.errors.bankNameRequired": "請輸入銀行名稱",
-    "profile.bankInfos.errors.branchNameRequired": "請輸入分行名稱",
-    "profile.bankInfos.errors.stateRequired": "請輸入SWIFT代碼",
-    "profile.bankInfos.errors.cityRequired": "請輸入分行名稱",
-    "profile.bankInfos.errors.accountNoRequired": "請輸入帳號",
-    "profile.bankInfos.errors.confirmAccountNoRequired": "請確認帳號",
-    "profile.bankInfos.errors.accountNoMismatch": "兩次輸入的帳號不一致",
-    "profile.bankInfos.errors.walletAddressRequired": "請輸入USDT錢包地址",
-    "profile.address.title": "地址資訊",
-    "profile.address.addAddress": "添加地址",
-    "profile.address.editAddress": "編輯地址",
-    "profile.address.noAddresses": "暫無地址資訊",
-    "profile.address.addSuccess": "地址添加成功",
-    "profile.address.updateSuccess": "地址更新成功",
-    "profile.address.fields.name": "姓名",
-    "profile.address.fields.phoneCode": "區號",
-    "profile.address.fields.phone": "電話號碼",
-    "profile.address.fields.socialMediaType": "聯繫方式類型",
-    "profile.address.fields.socialMediaAccount": "聯繫方式帳號",
-    "profile.address.fields.socialMedia": "第二聯繫方式",
-    "profile.address.fields.country": "國家",
-    "profile.address.fields.state": "省份/州",
-    "profile.address.fields.city": "城市",
-    "profile.address.fields.address": "詳細地址",
-    "profile.address.fields.postalCode": "郵政編碼",
-    "profile.address.fields.nameLabel": "姓名：",
-    "profile.address.fields.phoneLabel": "電話：",
-    "profile.address.fields.codeLabel": "代碼：",
-    "profile.address.placeholders.name": "請輸入姓名",
-    "profile.address.placeholders.phoneCode": "請選擇區號",
-    "profile.address.placeholders.phone": "請輸入電話號碼",
-    "profile.address.placeholders.socialMediaType": "請選擇聯繫方式",
-    "profile.address.placeholders.socialMedia": "請輸入帳號",
-    "profile.address.placeholders.country": "請選擇國家",
-    "profile.address.placeholders.state": "請輸入省份/州",
-    "profile.address.placeholders.city": "請輸入城市",
-    "profile.address.placeholders.address": "請輸入詳細地址",
-    "profile.address.placeholders.postalCode": "請輸入郵政編碼",
-    "profile.address.errors.nameRequired": "請輸入姓名",
-    "profile.address.errors.phoneRequired": "請輸入電話號碼",
-    "profile.address.errors.socialMediaRequired": "請輸入第二聯繫方式",
-    "profile.address.errors.countryRequired": "請選擇國家",
-    "profile.address.errors.stateRequired": "請輸入省份/州",
-    "profile.address.errors.cityRequired": "請輸入城市",
-    "profile.address.errors.addressRequired": "請輸入詳細地址",
-    "profile.address.errors.postalCodeRequired": "請輸入郵政編碼",
-    "eventshop.title": "積分商城",
-    "eventshop.registration.title": "活動注冊",
-    "eventshop.registration.agree": "我同意活動規則",
-    "eventshop.registration.register": "注冊",
-    "eventshop.registration.registering": "注冊中...",
-    "eventshop.registration.success": "注冊成功",
-    "eventshop.registration.agreeRequired": "請先同意活動規則",
-    "eventshop.userInfo.level": "等級",
-    "eventshop.userInfo.points": "積分：",
-    "eventshop.userInfo.unavailable": "不可用：",
-    "eventshop.sidebar.shop": "商店",
-    "eventshop.sidebar.orderHistory": "訂單歷史",
-    "eventshop.sidebar.pointsHistory": "積分歷史",
-    "eventshop.sidebar.rewardDetails": "獎勵詳情",
-    "eventshop.sidebar.terms": "商場條款",
-    "eventshop.sidebar.pointsRules": "積分獲取規則",
-    "eventshop.banner.title": "MIDAS MARKET",
-    "eventshop.banner.subtitle": "好禮兌換活動商城",
-    "eventshop.banner.newArrival": "新品上新",
-    "eventshop.banner.eventDate": "活動日期",
-    "eventshop.shop.all": "全部",
-    "eventshop.shop.exchange": "立即兌換",
-    "eventshop.shop.pointsUnit": "積分",
-    "eventshop.shop.noItems": "暫無商品",
-    "eventshop.shop.loading": "加載中...",
-    "eventshop.notification.orderNumber": "訂單編號",
-    "eventshop.notification.pointsUsed": "已使用積分",
-    "eventshop.notification.itemName": "商品名稱",
-    "eventshop.notification.quantity": "數量",
-    "eventshop.notification.date": "日期",
-    "eventshop.notification.view": "查看",
-    "eventshop.orderStatus.pending": "待處理",
-    "eventshop.orderStatus.processing": "處理中",
-    "eventshop.orderStatus.shipped": "已發貨",
-    "eventshop.orderStatus.succeed": "已完成",
-    "eventshop.orderStatus.cancelled": "已取消",
-    "eventshop.orderStatus.paid": "已支付",
-    "eventshop.pointStatus.pending": "待處理",
-    "eventshop.pointStatus.success": "成功",
-    "eventshop.pointStatus.fail": "失敗",
-    "eventshop.pointSource.openAccount": "開戶",
-    "eventshop.pointSource.deposit": "入金",
-    "eventshop.pointSource.trade": "交易",
-    "eventshop.pointSource.adjust": "調整",
-    "eventshop.pointSource.purchase": "購買",
-    "eventshop.rebateStatus.pending": "待處理",
-    "eventshop.rebateStatus.processing": "處理中",
-    "eventshop.rebateStatus.succeed": "已完成",
-    "eventshop.rebateStatus.failed": "失敗",
-    "eventshop.columns.itemName": "商品名稱",
-    "eventshop.columns.orderNumber": "訂單編號",
-    "eventshop.columns.points": "積分",
-    "eventshop.columns.quantity": "數量",
-    "eventshop.columns.time": "時間",
-    "eventshop.columns.status": "狀態",
-    "eventshop.columns.action": "操作",
-    "eventshop.columns.type": "類型",
-    "eventshop.columns.ticket": "票號",
-    "eventshop.columns.symbol": "產品",
-    "eventshop.columns.lot": "手數",
-    "eventshop.columns.openTime": "開盤時間",
-    "eventshop.columns.closeTime": "收盤時間",
-    "eventshop.columns.amount": "金額",
-    "eventshop.columns.createdOn": "創建時間",
-    "eventshop.filter.newestFirst": "最新的優先",
-    "eventshop.filter.oldestFirst": "最舊的優先",
-    "eventshop.filter.searchPlaceholder": "請輸入商品名稱",
-    "eventshop.filter.reset": "重置",
-    "eventshop.filter.search": "搜索",
-    "eventshop.terms.title": "MDM積分商城條款和條件",
-    "eventshop.pointsRuleTitle": "MDM積分商城積分規則概要",
-    "eventshop.noData": "暫無數據",
-    "eventshop.tradePoints": "交易獲得積分",
-    "eventshop.orderDetail.title": "訂單詳情",
-    "eventshop.orderDetail.basicInfo": "基本資訊",
-    "eventshop.orderDetail.orderInfo": "訂單資訊",
-    "eventshop.orderDetail.recipient": "收貨人：",
-    "eventshop.orderDetail.address": "收貨地址：",
-    "eventshop.orderDetail.postalCode": "郵編：",
-    "eventshop.orderDetail.phone": "手機號：",
-    "eventshop.orderDetail.shippedTime": "發貨時間：",
-    "eventshop.orderDetail.exchangeTime": "兌換時間：",
-    "eventshop.orderDetail.createdTime": "創建時間：",
-    "eventshop.orderDetail.orderNumber": "訂單編號：",
-    "eventshop.orderDetail.trackingNumber": "物流單號：",
-    "eventshop.orderDetail.waitingForShipment": "等待發貨",
-    "eventshop.orderDetail.close": "關閉",
-    "eventshop.orderDetail.confirmDelivered": "確認收貨",
-    "eventshop.orderDetail.copied": "已複製",
-    "eventshop.exchange.title": "禮品兌換",
-    "eventshop.exchange.currentPoints": "當前積分",
-    "eventshop.exchange.quantity": "數量",
-    "eventshop.exchange.address": "收貨地址",
-    "eventshop.exchange.selectAddress": "請選擇收貨地址",
-    "eventshop.exchange.noAddress": "暫無地址，請先添加",
-    "eventshop.exchange.comment": "備注",
-    "eventshop.exchange.commentPlaceholder": "請輸入備注",
-    "eventshop.exchange.agreeRules": "我同意活動規則",
-    "eventshop.exchange.viewRules": "查看活動規則",
-    "eventshop.exchange.redeem": "兌換",
-    "eventshop.exchange.points": "積分",
-    "eventshop.exchange.cancel": "取消",
-    "eventshop.exchange.success": "兌換成功",
-    "eventshop.exchange.failed": "兌換失敗",
-    "eventshop.exchange.addAddress": "請先添加收貨地址",
-    "eventshop.exchange.insufficientPoints": "積分不足",
-    "eventshop.exchange.addNewAddress": "添加地址",
-    "eventshop.exchange.editAddress": "編輯地址",
-    "eventshop.exchange.manageAddress": "管理地址",
-    "eventshop.exchange.changeAddress": "更換地址",
-    "eventshop.exchange.addressName": "收貨人姓名",
-    "eventshop.exchange.addressNamePlaceholder": "請輸入收貨人姓名",
-    "eventshop.exchange.addressPhone": "手機號",
-    "eventshop.exchange.addressPhonePlaceholder": "請輸入手機號",
-    "eventshop.exchange.addressCountryCode": "區號",
-    "eventshop.exchange.addressCountry": "國家/地區",
-    "eventshop.exchange.addressCountryPlaceholder": "請選擇國家/地區",
-    "eventshop.exchange.addressState": "省/州",
-    "eventshop.exchange.addressStatePlaceholder": "請輸入省/州",
-    "eventshop.exchange.addressCity": "城市",
-    "eventshop.exchange.addressCityPlaceholder": "請輸入城市",
-    "eventshop.exchange.addressStreet": "詳細地址",
-    "eventshop.exchange.addressStreetPlaceholder": "請輸入詳細地址",
-    "eventshop.exchange.addressPostalCode": "郵政編碼",
-    "eventshop.exchange.addressPostalCodePlaceholder": "請輸入郵政編碼",
-    "eventshop.exchange.addressSave": "保存",
-    "eventshop.exchange.addressSaving": "保存中...",
-    "eventshop.exchange.addressSaveSuccess": "地址保存成功",
-    "eventshop.exchange.addressRequired": "此項為必填",
-    "eventshop.exchange.selectedAddress": "已選地址",
-    "type.commissionOptions.0": "No",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "比特幣",
-    "type.productCategory.Commodities": "現貨指數",
-    "type.productCategory.Crypto": "加密貨幣",
-    "type.productCategory.D Forex": "直盤",
-    "type.productCategory.ETH": "以太坊",
-    "type.productCategory.Energy": "能源期貨",
-    "type.productCategory.Forex": "交叉盤",
-    "type.productCategory.Fu_Energy": "能源期貨",
-    "type.productCategory.GAUCNH": "黃金人民幣",
-    "type.productCategory.Gold": "黃金",
-    "type.productCategory.HKG50": "恒生指數",
-    "type.productCategory.Index": "現貨指數",
-    "type.productCategory.JPN225": "日經JPN225",
-    "type.productCategory.Natural Gas": "天然氣",
-    "type.productCategory.OIL": "原油/布倫特原油",
-    "type.productCategory.Precious Metal": "貴金屬",
-    "type.productCategory.Shares": "股票",
-    "type.productCategory.Silver 1000OZ": "白銀1000OZ",
-    "type.productCategory.Silver 5000OZ": "白銀5000OZ",
-    "type.productCategory.US100": "納斯達克US100",
-    "type.productCategory.US30": "道瓊斯US30",
-    "type.productCategory.US500": "標普US500",
-    "sales.title": "銷售中心",
-    "sales.menu.rebate": "返佣",
-    "sales.action.cancel": "取消",
-    "sales.customers.all": "全部",
-    "sales.customers.salesType": "銷售",
-    "errorCodes.Wallet address already exists": "錢包地址已存在",
-    "errorCodes.invalid_username_or_password": "用戶名或密碼無效",
-    "errorCodes.electronicIdentityVerificationRequired": "電子身份驗證為必選項，請選擇同意後繼續。",
-    "ib.action.close": "關閉",
-    "rep.title": "代表中心",
-    "rep.menu.customers": "客戶",
-    "rep.menu.trade": "交易",
-    "rep.menu.transaction": "轉賬",
-    "rep.menu.deposit": "入金",
-    "rep.menu.withdrawal": "出金",
-    "rep.noRepAccount": "無代表帳戶",
-    "rep.fields.customer": "客戶",
-    "rep.fields.accountNo": "帳號",
-    "rep.fields.uid": "UID",
-    "rep.fields.email": "電子郵件",
-    "rep.fields.type": "類型",
-    "rep.fields.group": "群組",
-    "rep.fields.code": "代碼",
-    "rep.fields.createdOn": "創建時間",
-    "rep.fields.balance": "余額",
-    "rep.fields.actions": "操作",
-    "rep.fields.accounts": "帳戶",
-    "rep.action.clear": "清除",
-    "rep.action.viewDetails": "查看詳情",
-    "rep.action.viewAccounts": "查看帳戶",
-    "rep.action.search": "搜索",
-    "rep.action.reset": "重置",
-    "rep.action.action": "操作",
-    "rep.customers.title": "客戶",
-    "rep.customers.ibType": "IB",
-    "rep.customers.clientType": "Client",
-    "rep.customers.searchPlaceholder": "電子郵件或帳號",
-    "wallet.withdraw.fee": "手續費",
-    "wallet.withdraw.processing": "處理時間",
-    "wallet.withdraw.hour": "小時",
-    "wallet.withdraw.selectBankAccount": "選擇銀行帳戶",
-    "wallet.withdraw.addBankAccount": "請先添加銀行帳戶",
-    "wallet.withdraw.addUsdtWallet": "請先添加 USDT 錢包地址",
-    "wallet.withdraw.noBankAccount": "暫無銀行帳戶，請前往個人資料頁面添加。",
-    "wallet.withdraw.noUsdtWallet": "暫無 USDT 錢包地址，請前往個人資料頁面添加。",
-    "wallet.withdraw.withdrawFromCurrentWallet": "從當前錢包出金",
-    "wallet.withdraw.addNewAccount": "添加新帳戶",
-    "wallet.withdraw.addBankAccountNotice": "添加新的銀行帳戶可能需要驗證，這可能需要一些時間。",
-    "wallet.withdraw.nickname": "收款帳戶暱稱",
-    "wallet.withdraw.accountHolder": "帳戶持有人",
-    "wallet.withdraw.bankCountry": "銀行所在國家",
-    "wallet.withdraw.selectCountry": "選擇國家",
-    "wallet.withdraw.bsb": "BSB",
-    "wallet.withdraw.swiftCode": "Swift Code",
-    "wallet.withdraw.bankNameField": "銀行名稱",
-    "wallet.withdraw.branchNameField": "分行名稱",
-    "wallet.withdraw.stateField": "省/州",
-    "wallet.withdraw.cityField": "城市",
-    "wallet.withdraw.accountNo": "帳號",
-    "wallet.withdraw.confirmAccountNo": "確認帳號",
-    "wallet.withdraw.ifApplicable": "如適用",
-    "wallet.withdraw.accountNumberNotMatch": "兩次輸入的帳號不一致",
-    "wallet.withdraw.fieldRequired": "此項為必填",
-    "wallet.withdraw.addAccountSuccess": "收款帳戶添加成功",
-    "wallet.transfer.betweenAccounts.title": "轉賬",
-    "wallet.transfer.betweenAccounts.maxTransferOut": "最大可轉出金額",
-    "wallet.transfer.betweenAccounts.targetAccount": "目標帳戶",
-    "wallet.transfer.betweenAccounts.selectTargetAccount": "選擇目標帳戶",
-    "wallet.transfer.betweenAccounts.transferAmount": "轉賬金額",
-    "wallet.transfer.betweenAccounts.pleaseInput": "請輸入金額",
-    "wallet.transfer.betweenAccounts.amountGreaterThanZero": "金額必須大於 0",
-    "wallet.transfer.betweenAccounts.amountExceedsBalance": "金額超出可用余額",
-    "wallet.transfer.betweenAccounts.upToTwoDecimals": "最多保留兩位小數",
-    "wallet.transfer.betweenAccounts.transferAgreement": "我同意 MDM 可能會在轉賬期間扣除相關獎金和入金費用（如果不滿足相關交易條件）。",
-    "wallet.transfer.betweenAccounts.codeRequired": "請輸入驗證碼",
-    "wallet.transfer.betweenAccounts.codeSentToEmail": "驗證碼已發送到您的郵箱",
-    "wallet.transfer.betweenAccounts.submitSuccess": "轉賬請求已成功提交",
-}
-
-# ============================================================
-# 西班牙文 (es.json)
-# ============================================================
-ES = {
-    "common.noData": "Sin datos",
-    "common.close": "Cerrar",
-    "common.editAccountSettings": "Editar Configuración de Cuenta",
-    "common.updateAlias": "Actualizar",
-    "common.aliasPlaceholder": "Ingrese alias",
-    "common.default": "Predeterminado",
-    "common.setDefault": "Establecer Predeterminado",
-    "errors.noPermission.title": "Acceso Denegado",
-    "errors.noPermission.description": "Lo sentimos, no tiene permiso para acceder a esta página. Por favor contacte al administrador.",
-    "errors.noPermission.goBack": "Volver",
-    "errors.noPermission.goHome": "Ir a Inicio",
-    "auth.PrivacyPolicy": "Política de Privacidad",
-    "auth.TermsAndConditions": "Términos y Condiciones",
-    "auth.andHaveSought": "y haber buscado asesoramiento financiero profesional independiente para asegurarse de comprender completamente los riesgos antes de operar.",
-    "auth.backTo": "Volver a",
-    "auth.byCreateAccountYouAgree": "Al crear una cuenta, acepta nuestros",
-    "auth.confirm": "Confirmar",
-    "auth.confirmEmailSuccess": "Por favor inicie sesión para verificar",
-    "auth.confirmEmailSuccessTitle": "Confirmación Exitosa",
-    "auth.confirmPasswordRequiredShort": "Confirmar contraseña es requerido",
-    "auth.contactUs": "Contáctenos",
-    "auth.disable": "Deshabilitar",
-    "auth.disableTwoFa": "Si no desea usar la verificación en dos pasos, puede deshabilitar esta función. Sin embargo, su cuenta puede volverse más vulnerable.",
-    "auth.emailConfirmation": "Confirmación de Correo",
-    "auth.emailExists": "El correo electrónico ya existe",
-    "auth.enable": "Habilitar",
-    "auth.enableTwoFa": "Habilitar 2FA: Proteja su cuenta activando la autenticación de dos factores.",
-    "auth.enterYourInfo": "Ingrese su Información",
-    "auth.financialServicesGuide": "Guía de Servicios Financieros",
-    "auth.notReceiveEmail": "¿No recibió el correo?",
-    "auth.passwordHint": "Use 8 o más caracteres con una combinación de letras, números y símbolos",
-    "auth.passwordLowercase": "La contraseña debe contener al menos una letra minúscula",
-    "auth.passwordMin8": "La contraseña debe tener al menos 8 caracteres",
-    "auth.passwordNumber": "La contraseña debe contener al menos un número",
-    "auth.passwordSymbol": "La contraseña debe contener al menos un símbolo",
-    "auth.passwordUppercase": "La contraseña debe contener al menos una letra mayúscula",
-    "auth.pleaseEnsure": "Por favor asegúrese de haber leído",
-    "auth.pleaseLoginWith2FA": "Por favor inicie sesión con verificación 2FA",
-    "auth.pleaseSelectTenant": "Por favor seleccione un tenant para continuar",
-    "auth.productDisclosureDocument": "Declaración de Divulgación del Producto",
-    "auth.selectTenantRequired": "Por favor seleccione un tenant para iniciar sesión",
-    "auth.sessionExpired": "Su sesión ha expirado. Por favor inicie sesión nuevamente.",
-    "auth.targetMarketDetermination": "Determinación del Mercado Objetivo",
-    "auth.tenants.1": "Australia",
-    "auth.tenants.10000": "Internacional",
-    "auth.tenants.10002": "Mongolia",
-    "auth.tenants.10004": "Sudeste Asiático",
-    "auth.tenants.10005": "Japón",
-    "auth.termAndConditions": "Términos y Condiciones",
-    "auth.twoFaDesc": "Para mejorar la seguridad de su cuenta, recomendamos configurar la autenticación de dos factores (2FA).",
-    "auth.twoFactorAuthenticationSetupReminder": "Recordatorio de configuración 2FA",
-    "auth.twoFactorRequired": "Por favor ingrese el código de autenticación de dos factores",
-    "dashboard.loggingOut": "Cerrando sesión...",
-    "dashboard.startDate": "Fecha Inicio",
-    "dashboard.endDate": "Fecha Fin",
-    "dashboard.viewDetails": "Ver Detalles",
-    "dashboard.eventShop": "Tienda de Puntos",
-    "dashboard.activityCycle": "Ciclo de Actividad",
-    "dashboard.longTerm": "Largo Plazo",
-    "dashboard.eventNotice.dontShowAgain": "No mostrar de nuevo",
-    "dashboard.eventNotice.previous": "Anterior",
-    "dashboard.eventNotice.next": "Siguiente",
-    "dashboard.eventNotice.close": "Cerrar",
-    "dashboard.eventNotice.postedOn": "Publicado el",
-    "dashboard.eventNotice.noEvents": "No hay anuncios de eventos",
-    "dashboard.realAccount": "Cuenta Real",
-    "dashboard.demoAccount": "Cuenta Demo",
-    "dashboard.depositAndWithdraw": "Cuenta de Depósito y Retiro",
-    "dashboard.createTradingAccount": "Crear Cuenta de Trading",
-    "dashboard.noTransactions": "Sin transacciones aún",
-    "dashboard.announcements": "Anuncios",
-    "dashboard.viewMore": "Ver Más",
-    "dashboard.noNotifications": "Sin notificaciones",
-    "dashboard.accountSettings": "Configuración de Cuenta",
-    "dashboard.contactSupport": "Contactar Soporte",
-    "dashboard.menu.sales": "Centro de Ventas",
-    "dashboard.menu.rep": "Centro de Rep",
-    "accounts.accountRole.0": "Desconocido",
-    "accounts.accountRole.100": "Ventas",
-    "accounts.accountRole.1000": "Invitado",
-    "accounts.accountRole.110": "Representante",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "Cliente",
-    "accounts.action.reset": "Restablecer",
-    "accounts.action.search": "Buscar",
-    "accounts.detail.table.accountNumber": "Cuenta",
-    "accounts.detail.table.buy": "Comprar",
-    "accounts.detail.table.closePrice": "Precio Cierre",
-    "accounts.detail.table.closeTime": "Hora Cierre",
-    "accounts.detail.table.commission": "Comisión",
-    "accounts.detail.table.openPrice": "Precio Apertura",
-    "accounts.detail.table.openTime": "Hora Apertura",
-    "accounts.detail.table.pl": "G/P",
-    "accounts.detail.table.sell": "Vender",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "Subtotal",
-    "accounts.detail.table.swap": "Swap",
-    "accounts.detail.table.symbol": "Símbolo",
-    "accounts.detail.table.ticket": "Ticket",
-    "accounts.detail.table.total": "Total",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "Volumen",
-    "accounts.trade.account": "Cuenta",
-    "accounts.trade.allHistory": "Todo el Historial",
-    "accounts.trade.closedOrder": "Órdenes Cerradas",
-    "accounts.trade.openOrder": "Órdenes Abiertas",
-    "accounts.trade.product": "Producto",
-    "accounts.trade.service": "Servicio",
-    "type.commissionOptions.0": "No",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "Bitcoin",
-    "type.productCategory.Commodities": "Índice Spot",
-    "type.productCategory.Crypto": "Criptomoneda",
-    "type.productCategory.D Forex": "Forex Directo",
-    "type.productCategory.ETH": "Ethereum",
-    "type.productCategory.Energy": "Futuros de Energía",
-    "type.productCategory.Forex": "Forex Cruzado",
-    "type.productCategory.Fu_Energy": "Futuros de Energía",
-    "type.productCategory.GAUCNH": "Oro CNY",
-    "type.productCategory.Gold": "Oro",
-    "type.productCategory.HKG50": "Índice Hang Seng",
-    "type.productCategory.Index": "Índice Spot",
-    "type.productCategory.JPN225": "Nikkei JPN225",
-    "type.productCategory.Natural Gas": "Gas Natural",
-    "type.productCategory.OIL": "WTI/Brent Crudo",
-    "type.productCategory.Precious Metal": "Metal Precioso",
-    "type.productCategory.Shares": "Acciones",
-    "type.productCategory.Silver 1000OZ": "Plata 1000OZ",
-    "type.productCategory.Silver 5000OZ": "Plata 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "La dirección de la billetera ya existe",
-    "errorCodes.invalid_username_or_password": "Nombre de usuario o contraseña inválidos",
-    "errorCodes.electronicIdentityVerificationRequired": "La verificación de identidad electrónica es obligatoria para continuar.",
-    "ib.action.close": "Cerrar",
-    "sales.action.cancel": "Cancelar",
-    "sales.customers.all": "Todos",
-    "sales.customers.salesType": "Ventas",
-}
-
-# ============================================================
-# 印尼文 (id.json)
-# ============================================================
-ID = {
-    "common.noData": "Tidak ada data",
-    "common.close": "Tutup",
-    "common.editAccountSettings": "Edit Pengaturan Akun",
-    "common.updateAlias": "Perbarui",
-    "common.aliasPlaceholder": "Masukkan alias",
-    "common.default": "Default",
-    "common.setDefault": "Jadikan Default",
-    "errors.noPermission.title": "Akses Ditolak",
-    "errors.noPermission.description": "Maaf, Anda tidak memiliki izin untuk mengakses halaman ini. Silakan hubungi administrator.",
-    "errors.noPermission.goBack": "Kembali",
-    "errors.noPermission.goHome": "Ke Beranda",
-    "auth.PrivacyPolicy": "Kebijakan Privasi",
-    "auth.TermsAndConditions": "Syarat dan Ketentuan",
-    "auth.andHaveSought": "dan telah mencari saran keuangan profesional independen untuk memastikan Anda memahami sepenuhnya risiko yang terlibat sebelum berdagang.",
-    "auth.backTo": "Kembali ke",
-    "auth.byCreateAccountYouAgree": "Dengan membuat akun, Anda menyetujui",
-    "auth.confirm": "Konfirmasi",
-    "auth.confirmEmailSuccess": "Silakan login untuk memverifikasi",
-    "auth.confirmEmailSuccessTitle": "Konfirmasi Berhasil",
-    "auth.confirmPasswordRequiredShort": "Konfirmasi kata sandi diperlukan",
-    "auth.contactUs": "Hubungi Kami",
-    "auth.disable": "Nonaktifkan",
-    "auth.disableTwoFa": "Jika Anda tidak ingin menggunakan verifikasi dua langkah, Anda dapat menonaktifkan fitur ini. Namun, akun Anda mungkin lebih rentan terhadap akses tidak sah.",
-    "auth.emailConfirmation": "Konfirmasi Email",
-    "auth.emailExists": "Email sudah ada",
-    "auth.enable": "Aktifkan",
-    "auth.enableTwoFa": "Aktifkan 2FA: Lindungi akun Anda dengan mengaktifkan autentikasi dua faktor.",
-    "auth.enterYourInfo": "Masukkan Informasi Anda",
-    "auth.financialServicesGuide": "Panduan Layanan Keuangan",
-    "auth.notReceiveEmail": "Tidak menerima email?",
-    "auth.passwordHint": "Gunakan 8 karakter atau lebih dengan kombinasi huruf, angka & simbol",
-    "auth.passwordLowercase": "Kata sandi harus mengandung minimal satu huruf kecil",
-    "auth.passwordMin8": "Kata sandi harus minimal 8 karakter",
-    "auth.passwordNumber": "Kata sandi harus mengandung minimal satu angka",
-    "auth.passwordSymbol": "Kata sandi harus mengandung minimal satu simbol",
-    "auth.passwordUppercase": "Kata sandi harus mengandung minimal satu huruf besar",
-    "auth.pleaseEnsure": "Pastikan Anda telah membaca",
-    "auth.pleaseLoginWith2FA": "Silakan login dengan verifikasi 2FA",
-    "auth.pleaseSelectTenant": "Silakan pilih tenant untuk melanjutkan",
-    "auth.productDisclosureDocument": "Pernyataan Pengungkapan Produk",
-    "auth.selectTenantRequired": "Silakan pilih tenant untuk login",
-    "auth.sessionExpired": "Sesi Anda telah berakhir. Silakan login kembali.",
-    "auth.targetMarketDetermination": "Penentuan Pasar Sasaran",
-    "auth.tenants.1": "Australia",
-    "auth.tenants.10000": "Internasional",
-    "auth.tenants.10002": "Mongolia",
-    "auth.tenants.10004": "Asia Tenggara",
-    "auth.tenants.10005": "Jepang",
-    "auth.termAndConditions": "Syarat dan Ketentuan",
-    "auth.twoFaDesc": "Untuk meningkatkan keamanan akun Anda, kami sangat menyarankan pengaturan autentikasi dua faktor (2FA).",
-    "auth.twoFactorAuthenticationSetupReminder": "Pengingat Pengaturan 2FA",
-    "auth.twoFactorRequired": "Silakan masukkan kode autentikasi dua faktor",
-    "dashboard.loggingOut": "Keluar...",
-    "dashboard.startDate": "Tanggal Mulai",
-    "dashboard.endDate": "Tanggal Akhir",
-    "dashboard.viewDetails": "Lihat Detail",
-    "dashboard.eventShop": "Toko Poin",
-    "dashboard.activityCycle": "Siklus Aktivitas",
-    "dashboard.longTerm": "Jangka Panjang",
-    "dashboard.eventNotice.dontShowAgain": "Jangan tampilkan lagi",
-    "dashboard.eventNotice.previous": "Sebelumnya",
-    "dashboard.eventNotice.next": "Berikutnya",
-    "dashboard.eventNotice.close": "Tutup",
-    "dashboard.eventNotice.postedOn": "Diposting pada",
-    "dashboard.eventNotice.noEvents": "Tidak ada pengumuman acara",
-    "dashboard.realAccount": "Akun Real",
-    "dashboard.demoAccount": "Akun Demo",
-    "dashboard.depositAndWithdraw": "Akun Deposit & Penarikan",
-    "dashboard.createTradingAccount": "Buat Akun Trading",
-    "dashboard.noTransactions": "Belum ada transaksi",
-    "dashboard.announcements": "Pengumuman",
-    "dashboard.viewMore": "Lihat Lebih",
-    "dashboard.noNotifications": "Tidak ada notifikasi",
-    "dashboard.accountSettings": "Pengaturan Akun",
-    "dashboard.contactSupport": "Hubungi Support",
-    "dashboard.menu.sales": "Pusat Penjualan",
-    "dashboard.menu.rep": "Pusat Rep",
-    "accounts.accountRole.0": "Tidak Diketahui",
-    "accounts.accountRole.100": "Penjualan",
-    "accounts.accountRole.1000": "Tamu",
-    "accounts.accountRole.110": "Perwakilan",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "Klien",
-    "accounts.action.reset": "Reset",
-    "accounts.action.search": "Cari",
-    "accounts.detail.table.accountNumber": "Akun",
-    "accounts.detail.table.buy": "Beli",
-    "accounts.detail.table.closePrice": "Harga Tutup",
-    "accounts.detail.table.closeTime": "Waktu Tutup",
-    "accounts.detail.table.commission": "Komisi",
-    "accounts.detail.table.openPrice": "Harga Buka",
-    "accounts.detail.table.openTime": "Waktu Buka",
-    "accounts.detail.table.pl": "L/R",
-    "accounts.detail.table.sell": "Jual",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "Sub Total",
-    "accounts.detail.table.swap": "Swap",
-    "accounts.detail.table.symbol": "Simbol",
-    "accounts.detail.table.ticket": "Tiket",
-    "accounts.detail.table.total": "Total",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "Volume",
-    "accounts.trade.account": "Akun",
-    "accounts.trade.allHistory": "Semua Riwayat",
-    "accounts.trade.closedOrder": "Order Ditutup",
-    "accounts.trade.openOrder": "Order Terbuka",
-    "accounts.trade.product": "Produk",
-    "accounts.trade.service": "Layanan",
-    "type.commissionOptions.0": "Tidak",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "Bitcoin",
-    "type.productCategory.Commodities": "Indeks Spot",
-    "type.productCategory.Crypto": "Kripto",
-    "type.productCategory.D Forex": "Forex Langsung",
-    "type.productCategory.ETH": "Ethereum",
-    "type.productCategory.Energy": "Futures Energi",
-    "type.productCategory.Forex": "Forex Silang",
-    "type.productCategory.Fu_Energy": "Futures Energi",
-    "type.productCategory.GAUCNH": "Emas CNY",
-    "type.productCategory.Gold": "Emas",
-    "type.productCategory.HKG50": "Hang Seng Index",
-    "type.productCategory.Index": "Indeks Spot",
-    "type.productCategory.JPN225": "Nikkei JPN225",
-    "type.productCategory.Natural Gas": "Gas Alam",
-    "type.productCategory.OIL": "WTI/Brent Mentah",
-    "type.productCategory.Precious Metal": "Logam Mulia",
-    "type.productCategory.Shares": "Saham",
-    "type.productCategory.Silver 1000OZ": "Perak 1000OZ",
-    "type.productCategory.Silver 5000OZ": "Perak 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "Alamat dompet sudah ada",
-    "errorCodes.invalid_username_or_password": "Nama pengguna atau kata sandi tidak valid",
-    "errorCodes.electronicIdentityVerificationRequired": "Persetujuan verifikasi identitas elektronik diperlukan untuk melanjutkan.",
-    "ib.action.close": "Tutup",
-    "sales.action.cancel": "Batal",
-    "sales.customers.all": "Semua",
-    "sales.customers.salesType": "Penjualan",
-}
-
-# ============================================================
-# 马来文 (ms.json)
-# ============================================================
-MS = {
-    "common.noData": "Tiada data",
-    "common.close": "Tutup",
-    "common.editAccountSettings": "Edit Tetapan Akaun",
-    "common.updateAlias": "Kemas kini",
-    "common.aliasPlaceholder": "Masukkan alias",
-    "common.default": "Lalai",
-    "common.setDefault": "Tetapkan Lalai",
-    "errors.noPermission.title": "Akses Ditolak",
-    "errors.noPermission.description": "Maaf, anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila hubungi pentadbir.",
-    "errors.noPermission.goBack": "Kembali",
-    "errors.noPermission.goHome": "Ke Laman Utama",
-    "auth.PrivacyPolicy": "Dasar Privasi",
-    "auth.TermsAndConditions": "Terma dan Syarat",
-    "auth.andHaveSought": "dan telah mendapatkan nasihat kewangan profesional bebas untuk memastikan anda memahami sepenuhnya risiko yang terlibat sebelum berdagang.",
-    "auth.backTo": "Kembali ke",
-    "auth.byCreateAccountYouAgree": "Dengan mencipta akaun, anda bersetuju dengan",
-    "auth.confirm": "Sahkan",
-    "auth.confirmEmailSuccess": "Sila log masuk untuk mengesahkan",
-    "auth.confirmEmailSuccessTitle": "Pengesahan Berjaya",
-    "auth.confirmPasswordRequiredShort": "Pengesahan kata laluan diperlukan",
-    "auth.contactUs": "Hubungi Kami",
-    "auth.disable": "Lumpuhkan",
-    "auth.disableTwoFa": "Jika anda tidak mahu menggunakan pengesahan dua langkah, anda boleh melumpuhkan ciri ini.",
-    "auth.emailConfirmation": "Pengesahan E-mel",
-    "auth.emailExists": "E-mel sudah wujud",
-    "auth.enable": "Dayakan",
-    "auth.enableTwoFa": "Dayakan 2FA: Lindungi akaun anda dengan mengaktifkan pengesahan dua faktor.",
-    "auth.enterYourInfo": "Masukkan Maklumat Anda",
-    "auth.financialServicesGuide": "Panduan Perkhidmatan Kewangan",
-    "auth.notReceiveEmail": "Tidak menerima e-mel?",
-    "auth.passwordHint": "Gunakan 8 atau lebih aksara dengan gabungan huruf, nombor & simbol",
-    "auth.passwordLowercase": "Kata laluan mesti mengandungi sekurang-kurangnya satu huruf kecil",
-    "auth.passwordMin8": "Kata laluan mesti sekurang-kurangnya 8 aksara",
-    "auth.passwordNumber": "Kata laluan mesti mengandungi sekurang-kurangnya satu nombor",
-    "auth.passwordSymbol": "Kata laluan mesti mengandungi sekurang-kurangnya satu simbol",
-    "auth.passwordUppercase": "Kata laluan mesti mengandungi sekurang-kurangnya satu huruf besar",
-    "auth.pleaseEnsure": "Sila pastikan anda telah membaca",
-    "auth.pleaseLoginWith2FA": "Sila log masuk dengan pengesahan 2FA",
-    "auth.pleaseSelectTenant": "Sila pilih penyewa untuk meneruskan",
-    "auth.productDisclosureDocument": "Penyata Pendedahan Produk",
-    "auth.selectTenantRequired": "Sila pilih penyewa untuk log masuk",
-    "auth.sessionExpired": "Sesi anda telah tamat. Sila log masuk semula.",
-    "auth.targetMarketDetermination": "Penentuan Pasaran Sasaran",
-    "auth.tenants.1": "Australia",
-    "auth.tenants.10000": "Antarabangsa",
-    "auth.tenants.10002": "Mongolia",
-    "auth.tenants.10004": "Asia Tenggara",
-    "auth.tenants.10005": "Jepun",
-    "auth.termAndConditions": "Terma dan Syarat",
-    "auth.twoFaDesc": "Untuk meningkatkan keselamatan akaun anda, kami sangat mengesyorkan menyediakan pengesahan dua faktor (2FA).",
-    "auth.twoFactorAuthenticationSetupReminder": "Peringatan Persediaan 2FA",
-    "auth.twoFactorRequired": "Sila masukkan kod pengesahan dua faktor",
-    "dashboard.loggingOut": "Log keluar...",
-    "dashboard.startDate": "Tarikh Mula",
-    "dashboard.endDate": "Tarikh Tamat",
-    "dashboard.viewDetails": "Lihat Butiran",
-    "dashboard.eventShop": "Kedai Mata",
-    "dashboard.activityCycle": "Kitaran Aktiviti",
-    "dashboard.longTerm": "Jangka Panjang",
-    "dashboard.eventNotice.dontShowAgain": "Jangan tunjuk lagi",
-    "dashboard.eventNotice.previous": "Sebelumnya",
-    "dashboard.eventNotice.next": "Seterusnya",
-    "dashboard.eventNotice.close": "Tutup",
-    "dashboard.eventNotice.postedOn": "Disiarkan pada",
-    "dashboard.eventNotice.noEvents": "Tiada pengumuman acara",
-    "dashboard.realAccount": "Akaun Sebenar",
-    "dashboard.demoAccount": "Akaun Demo",
-    "dashboard.depositAndWithdraw": "Akaun Deposit & Pengeluaran",
-    "dashboard.createTradingAccount": "Cipta Akaun Trading",
-    "dashboard.noTransactions": "Tiada transaksi lagi",
-    "dashboard.announcements": "Pengumuman",
-    "dashboard.viewMore": "Lihat Lagi",
-    "dashboard.noNotifications": "Tiada pemberitahuan",
-    "dashboard.accountSettings": "Tetapan Akaun",
-    "dashboard.contactSupport": "Hubungi Sokongan",
-    "dashboard.menu.sales": "Pusat Jualan",
-    "dashboard.menu.rep": "Pusat Rep",
-    "accounts.accountRole.0": "Tidak Diketahui",
-    "accounts.accountRole.100": "Jualan",
-    "accounts.accountRole.1000": "Tetamu",
-    "accounts.accountRole.110": "Wakil",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "Pelanggan",
-    "accounts.action.reset": "Set Semula",
-    "accounts.action.search": "Cari",
-    "accounts.detail.table.accountNumber": "Akaun",
-    "accounts.detail.table.buy": "Beli",
-    "accounts.detail.table.closePrice": "Harga Tutup",
-    "accounts.detail.table.closeTime": "Masa Tutup",
-    "accounts.detail.table.commission": "Komisen",
-    "accounts.detail.table.openPrice": "Harga Buka",
-    "accounts.detail.table.openTime": "Masa Buka",
-    "accounts.detail.table.pl": "U/R",
-    "accounts.detail.table.sell": "Jual",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "Sub Jumlah",
-    "accounts.detail.table.swap": "Swap",
-    "accounts.detail.table.symbol": "Simbol",
-    "accounts.detail.table.ticket": "Tiket",
-    "accounts.detail.table.total": "Jumlah",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "Volum",
-    "accounts.trade.account": "Akaun",
-    "accounts.trade.allHistory": "Semua Sejarah",
-    "accounts.trade.closedOrder": "Pesanan Ditutup",
-    "accounts.trade.openOrder": "Pesanan Terbuka",
-    "accounts.trade.product": "Produk",
-    "accounts.trade.service": "Perkhidmatan",
-    "type.commissionOptions.0": "Tidak",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "Bitcoin",
-    "type.productCategory.Commodities": "Indeks Spot",
-    "type.productCategory.Crypto": "Kripto",
-    "type.productCategory.D Forex": "Forex Langsung",
-    "type.productCategory.ETH": "Ethereum",
-    "type.productCategory.Energy": "Niaga Hadapan Tenaga",
-    "type.productCategory.Forex": "Forex Silang",
-    "type.productCategory.Fu_Energy": "Niaga Hadapan Tenaga",
-    "type.productCategory.GAUCNH": "Emas CNY",
-    "type.productCategory.Gold": "Emas",
-    "type.productCategory.HKG50": "Indeks Hang Seng",
-    "type.productCategory.Index": "Indeks Spot",
-    "type.productCategory.JPN225": "Nikkei JPN225",
-    "type.productCategory.Natural Gas": "Gas Asli",
-    "type.productCategory.OIL": "WTI/Brent Mentah",
-    "type.productCategory.Precious Metal": "Logam Berharga",
-    "type.productCategory.Shares": "Saham",
-    "type.productCategory.Silver 1000OZ": "Perak 1000OZ",
-    "type.productCategory.Silver 5000OZ": "Perak 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "Alamat dompet sudah wujud",
-    "errorCodes.invalid_username_or_password": "Nama pengguna atau kata laluan tidak sah",
-    "errorCodes.electronicIdentityVerificationRequired": "Persetujuan pengesahan identiti elektronik diperlukan untuk meneruskan.",
-    "ib.action.close": "Tutup",
-    "sales.action.cancel": "Batal",
-    "sales.customers.all": "Semua",
-    "sales.customers.salesType": "Jualan",
-}
-
-# ============================================================
-# 越南文 (vi.json)
-# ============================================================
-VI = {
-    "common.noData": "Không có dữ liệu",
-    "common.close": "Đóng",
-    "common.editAccountSettings": "Chỉnh sửa cài đặt tài khoản",
-    "common.updateAlias": "Cập nhật",
-    "common.aliasPlaceholder": "Nhập bí danh",
-    "common.default": "Mặc định",
-    "common.setDefault": "Đặt làm mặc định",
-    "errors.noPermission.title": "Từ chối truy cập",
-    "errors.noPermission.description": "Xin lỗi, bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên.",
-    "errors.noPermission.goBack": "Quay lại",
-    "errors.noPermission.goHome": "Về trang chủ",
-    "auth.PrivacyPolicy": "Chính sách Bảo mật",
-    "auth.TermsAndConditions": "Điều khoản và Điều kiện",
-    "auth.andHaveSought": "và đã tìm kiếm lời khuyên tài chính chuyên nghiệp độc lập để đảm bảo bạn hiểu đầy đủ các rủi ro trước khi giao dịch.",
-    "auth.backTo": "Quay lại",
-    "auth.byCreateAccountYouAgree": "Bằng cách tạo tài khoản, bạn đồng ý với",
-    "auth.confirm": "Xác nhận",
-    "auth.confirmEmailSuccess": "Vui lòng đăng nhập để xác minh",
-    "auth.confirmEmailSuccessTitle": "Xác nhận thành công",
-    "auth.confirmPasswordRequiredShort": "Vui lòng xác nhận mật khẩu",
-    "auth.contactUs": "Liên hệ chúng tôi",
-    "auth.disable": "Vô hiệu hóa",
-    "auth.disableTwoFa": "Nếu bạn không muốn sử dụng xác minh hai bước, bạn có thể tắt tính năng này.",
-    "auth.emailConfirmation": "Xác nhận Email",
-    "auth.emailExists": "Email đã tồn tại",
-    "auth.enable": "Kích hoạt",
-    "auth.enableTwoFa": "Kích hoạt 2FA: Bảo vệ tài khoản của bạn bằng cách kích hoạt xác thực hai yếu tố.",
-    "auth.enterYourInfo": "Nhập thông tin của bạn",
-    "auth.financialServicesGuide": "Hướng dẫn dịch vụ tài chính",
-    "auth.notReceiveEmail": "Không nhận được email?",
-    "auth.passwordHint": "Sử dụng 8 ký tự trở lên kết hợp chữ cái, số & ký hiệu",
-    "auth.passwordLowercase": "Mật khẩu phải chứa ít nhất một chữ cái thường",
-    "auth.passwordMin8": "Mật khẩu phải có ít nhất 8 ký tự",
-    "auth.passwordNumber": "Mật khẩu phải chứa ít nhất một chữ số",
-    "auth.passwordSymbol": "Mật khẩu phải chứa ít nhất một ký hiệu",
-    "auth.passwordUppercase": "Mật khẩu phải chứa ít nhất một chữ hoa",
-    "auth.pleaseEnsure": "Vui lòng đảm bảo bạn đã đọc",
-    "auth.pleaseLoginWith2FA": "Vui lòng đăng nhập với xác minh 2FA",
-    "auth.pleaseSelectTenant": "Vui lòng chọn tenant để tiếp tục",
-    "auth.productDisclosureDocument": "Bản công bố sản phẩm",
-    "auth.selectTenantRequired": "Vui lòng chọn tenant để đăng nhập",
-    "auth.sessionExpired": "Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại.",
-    "auth.targetMarketDetermination": "Xác định thị trường mục tiêu",
-    "auth.tenants.1": "Úc",
-    "auth.tenants.10000": "Quốc tế",
-    "auth.tenants.10002": "Mông Cổ",
-    "auth.tenants.10004": "Đông Nam Á",
-    "auth.tenants.10005": "Nhật Bản",
-    "auth.termAndConditions": "Điều khoản và Điều kiện",
-    "auth.twoFaDesc": "Để tăng cường bảo mật tài khoản, chúng tôi khuyên bạn nên thiết lập xác thực hai yếu tố (2FA).",
-    "auth.twoFactorAuthenticationSetupReminder": "Nhắc nhở thiết lập 2FA",
-    "auth.twoFactorRequired": "Vui lòng nhập mã xác thực hai yếu tố",
-    "dashboard.loggingOut": "Đang đăng xuất...",
-    "dashboard.startDate": "Ngày bắt đầu",
-    "dashboard.endDate": "Ngày kết thúc",
-    "dashboard.viewDetails": "Xem chi tiết",
-    "dashboard.eventShop": "Cửa hàng điểm",
-    "dashboard.activityCycle": "Chu kỳ hoạt động",
-    "dashboard.longTerm": "Dài hạn",
-    "dashboard.eventNotice.dontShowAgain": "Không hiển thị lại",
-    "dashboard.eventNotice.previous": "Trước",
-    "dashboard.eventNotice.next": "Tiếp",
-    "dashboard.eventNotice.close": "Đóng",
-    "dashboard.eventNotice.postedOn": "Đăng lúc",
-    "dashboard.eventNotice.noEvents": "Không có thông báo sự kiện",
-    "dashboard.realAccount": "Tài khoản thực",
-    "dashboard.demoAccount": "Tài khoản demo",
-    "dashboard.depositAndWithdraw": "Tài khoản nạp/rút tiền",
-    "dashboard.createTradingAccount": "Tạo tài khoản giao dịch",
-    "dashboard.noTransactions": "Chưa có giao dịch",
-    "dashboard.announcements": "Thông báo",
-    "dashboard.viewMore": "Xem thêm",
-    "dashboard.noNotifications": "Không có thông báo",
-    "dashboard.accountSettings": "Cài đặt tài khoản",
-    "dashboard.contactSupport": "Liên hệ hỗ trợ",
-    "dashboard.menu.sales": "Trung tâm bán hàng",
-    "dashboard.menu.rep": "Trung tâm Rep",
-    "accounts.accountRole.0": "Không xác định",
-    "accounts.accountRole.100": "Bán hàng",
-    "accounts.accountRole.1000": "Khách",
-    "accounts.accountRole.110": "Đại diện",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "Khách hàng",
-    "accounts.action.reset": "Đặt lại",
-    "accounts.action.search": "Tìm kiếm",
-    "accounts.detail.table.accountNumber": "Tài khoản",
-    "accounts.detail.table.buy": "Mua",
-    "accounts.detail.table.closePrice": "Giá đóng",
-    "accounts.detail.table.closeTime": "Giờ đóng",
-    "accounts.detail.table.commission": "Hoa hồng",
-    "accounts.detail.table.openPrice": "Giá mở",
-    "accounts.detail.table.openTime": "Giờ mở",
-    "accounts.detail.table.pl": "L/R",
-    "accounts.detail.table.sell": "Bán",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "Tạm tính",
-    "accounts.detail.table.swap": "Swap",
-    "accounts.detail.table.symbol": "Biểu tượng",
-    "accounts.detail.table.ticket": "Ticket",
-    "accounts.detail.table.total": "Tổng",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "Khối lượng",
-    "accounts.trade.account": "Tài khoản",
-    "accounts.trade.allHistory": "Tất cả lịch sử",
-    "accounts.trade.closedOrder": "Lệnh đã đóng",
-    "accounts.trade.openOrder": "Lệnh đang mở",
-    "accounts.trade.product": "Sản phẩm",
-    "accounts.trade.service": "Dịch vụ",
-    "type.commissionOptions.0": "Không",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "Bitcoin",
-    "type.productCategory.Commodities": "Chỉ số Spot",
-    "type.productCategory.Crypto": "Tiền điện tử",
-    "type.productCategory.D Forex": "Forex trực tiếp",
-    "type.productCategory.ETH": "Ethereum",
-    "type.productCategory.Energy": "Hợp đồng tương lai Năng lượng",
-    "type.productCategory.Forex": "Forex chéo",
-    "type.productCategory.Fu_Energy": "Hợp đồng tương lai Năng lượng",
-    "type.productCategory.GAUCNH": "Vàng CNY",
-    "type.productCategory.Gold": "Vàng",
-    "type.productCategory.HKG50": "Chỉ số Hang Seng",
-    "type.productCategory.Index": "Chỉ số Spot",
-    "type.productCategory.JPN225": "Nikkei JPN225",
-    "type.productCategory.Natural Gas": "Khí tự nhiên",
-    "type.productCategory.OIL": "WTI/Brent Dầu thô",
-    "type.productCategory.Precious Metal": "Kim loại quý",
-    "type.productCategory.Shares": "Cổ phiếu",
-    "type.productCategory.Silver 1000OZ": "Bạc 1000OZ",
-    "type.productCategory.Silver 5000OZ": "Bạc 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "Địa chỉ ví đã tồn tại",
-    "errorCodes.invalid_username_or_password": "Tên đăng nhập hoặc mật khẩu không hợp lệ",
-    "errorCodes.electronicIdentityVerificationRequired": "Cần đồng ý xác minh danh tính điện tử để tiếp tục.",
-    "ib.action.close": "Đóng",
-    "sales.action.cancel": "Hủy",
-    "sales.customers.all": "Tất cả",
-    "sales.customers.salesType": "Bán hàng",
-}
-
-# ============================================================
-# 泰文 (th.json)
-# ============================================================
-TH = {
-    "common.noData": "ไม่มีข้อมูล",
-    "common.close": "ปิด",
-    "common.editAccountSettings": "แก้ไขการตั้งค่าบัญชี",
-    "common.updateAlias": "อัพเดต",
-    "common.aliasPlaceholder": "กรอกชื่อแทน",
-    "common.default": "ค่าเริ่มต้น",
-    "common.setDefault": "ตั้งเป็นค่าเริ่มต้น",
-    "errors.noPermission.title": "การเข้าถึงถูกปฏิเสธ",
-    "errors.noPermission.description": "ขออภัย คุณไม่มีสิทธิ์เข้าถึงหน้านี้ กรุณาติดต่อผู้ดูแลระบบ",
-    "errors.noPermission.goBack": "ย้อนกลับ",
-    "errors.noPermission.goHome": "ไปหน้าหลัก",
-    "auth.PrivacyPolicy": "นโยบายความเป็นส่วนตัว",
-    "auth.TermsAndConditions": "ข้อกำหนดและเงื่อนไข",
-    "auth.andHaveSought": "และได้ขอคำแนะนำทางการเงินจากผู้เชี่ยวชาญอิสระ",
-    "auth.backTo": "กลับไปที่",
-    "auth.byCreateAccountYouAgree": "การสร้างบัญชีหมายความว่าคุณยอมรับ",
-    "auth.confirm": "ยืนยัน",
-    "auth.confirmEmailSuccess": "กรุณาเข้าสู่ระบบเพื่อยืนยัน",
-    "auth.confirmEmailSuccessTitle": "ยืนยันสำเร็จ",
-    "auth.confirmPasswordRequiredShort": "กรุณายืนยันรหัสผ่าน",
-    "auth.contactUs": "ติดต่อเรา",
-    "auth.disable": "ปิดใช้งาน",
-    "auth.disableTwoFa": "หากคุณไม่ต้องการใช้การยืนยันตัวตนสองขั้นตอน คุณสามารถปิดใช้งานคุณลักษณะนี้ได้",
-    "auth.emailConfirmation": "การยืนยันอีเมล",
-    "auth.emailExists": "อีเมลนี้มีอยู่แล้ว",
-    "auth.enable": "เปิดใช้งาน",
-    "auth.enableTwoFa": "เปิดใช้งาน 2FA: ปกป้องบัญชีของคุณด้วยการเปิดใช้งานการยืนยันตัวตนสองปัจจัย",
-    "auth.enterYourInfo": "กรอกข้อมูลของคุณ",
-    "auth.financialServicesGuide": "คู่มือบริการทางการเงิน",
-    "auth.notReceiveEmail": "ไม่ได้รับอีเมล?",
-    "auth.passwordHint": "ใช้อักขระ 8 ตัวขึ้นไปผสมตัวอักษร ตัวเลข และสัญลักษณ์",
-    "auth.passwordLowercase": "รหัสผ่านต้องมีตัวอักษรพิมพ์เล็กอย่างน้อยหนึ่งตัว",
-    "auth.passwordMin8": "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร",
-    "auth.passwordNumber": "รหัสผ่านต้องมีตัวเลขอย่างน้อยหนึ่งตัว",
-    "auth.passwordSymbol": "รหัสผ่านต้องมีสัญลักษณ์อย่างน้อยหนึ่งตัว",
-    "auth.passwordUppercase": "รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่อย่างน้อยหนึ่งตัว",
-    "auth.pleaseEnsure": "กรุณาตรวจสอบให้แน่ใจว่าคุณได้อ่าน",
-    "auth.pleaseLoginWith2FA": "กรุณาเข้าสู่ระบบด้วยการยืนยัน 2FA",
-    "auth.pleaseSelectTenant": "กรุณาเลือก tenant เพื่อดำเนินการต่อ",
-    "auth.productDisclosureDocument": "เอกสารเปิดเผยข้อมูลผลิตภัณฑ์",
-    "auth.selectTenantRequired": "กรุณาเลือก tenant เพื่อเข้าสู่ระบบ",
-    "auth.sessionExpired": "เซสชันของคุณหมดอายุแล้ว กรุณาเข้าสู่ระบบอีกครั้ง",
-    "auth.targetMarketDetermination": "การกำหนดตลาดเป้าหมาย",
-    "auth.tenants.1": "ออสเตรเลีย",
-    "auth.tenants.10000": "นานาชาติ",
-    "auth.tenants.10002": "มองโกเลีย",
-    "auth.tenants.10004": "เอเชียตะวันออกเฉียงใต้",
-    "auth.tenants.10005": "ญี่ปุ่น",
-    "auth.termAndConditions": "ข้อกำหนดและเงื่อนไข",
-    "auth.twoFaDesc": "เพื่อเพิ่มความปลอดภัยของบัญชี เราแนะนำให้ตั้งค่าการยืนยันตัวตนสองปัจจัย (2FA)",
-    "auth.twoFactorAuthenticationSetupReminder": "การแจ้งเตือนการตั้งค่า 2FA",
-    "auth.twoFactorRequired": "กรุณากรอกรหัสยืนยันตัวตนสองปัจจัย",
-    "dashboard.loggingOut": "กำลังออกจากระบบ...",
-    "dashboard.startDate": "วันที่เริ่มต้น",
-    "dashboard.endDate": "วันที่สิ้นสุด",
-    "dashboard.viewDetails": "ดูรายละเอียด",
-    "dashboard.eventShop": "ร้านคะแนน",
-    "dashboard.activityCycle": "รอบกิจกรรม",
-    "dashboard.longTerm": "ระยะยาว",
-    "dashboard.eventNotice.dontShowAgain": "ไม่แสดงอีก",
-    "dashboard.eventNotice.previous": "ก่อนหน้า",
-    "dashboard.eventNotice.next": "ถัดไป",
-    "dashboard.eventNotice.close": "ปิด",
-    "dashboard.eventNotice.postedOn": "เผยแพร่เมื่อ",
-    "dashboard.eventNotice.noEvents": "ไม่มีประกาศกิจกรรม",
-    "dashboard.realAccount": "บัญชีจริง",
-    "dashboard.demoAccount": "บัญชีทดลอง",
-    "dashboard.depositAndWithdraw": "บัญชีฝาก/ถอน",
-    "dashboard.createTradingAccount": "สร้างบัญชีซื้อขาย",
-    "dashboard.noTransactions": "ยังไม่มีธุรกรรม",
-    "dashboard.announcements": "ประกาศ",
-    "dashboard.viewMore": "ดูเพิ่มเติม",
-    "dashboard.noNotifications": "ไม่มีการแจ้งเตือน",
-    "dashboard.accountSettings": "การตั้งค่าบัญชี",
-    "dashboard.contactSupport": "ติดต่อฝ่ายสนับสนุน",
-    "dashboard.menu.sales": "ศูนย์ขาย",
-    "dashboard.menu.rep": "ศูนย์ Rep",
-    "accounts.accountRole.0": "ไม่ทราบ",
-    "accounts.accountRole.100": "ฝ่ายขาย",
-    "accounts.accountRole.1000": "แขก",
-    "accounts.accountRole.110": "ตัวแทน",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "ลูกค้า",
-    "accounts.action.reset": "รีเซ็ต",
-    "accounts.action.search": "ค้นหา",
-    "accounts.detail.table.accountNumber": "บัญชี",
-    "accounts.detail.table.buy": "ซื้อ",
-    "accounts.detail.table.closePrice": "ราคาปิด",
-    "accounts.detail.table.closeTime": "เวลาปิด",
-    "accounts.detail.table.commission": "ค่าคอมมิชชั่น",
-    "accounts.detail.table.openPrice": "ราคาเปิด",
-    "accounts.detail.table.openTime": "เวลาเปิด",
-    "accounts.detail.table.pl": "กำไร/ขาดทุน",
-    "accounts.detail.table.sell": "ขาย",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "ยอดรวมย่อย",
-    "accounts.detail.table.swap": "สวอป",
-    "accounts.detail.table.symbol": "สัญลักษณ์",
-    "accounts.detail.table.ticket": "ตั๋ว",
-    "accounts.detail.table.total": "รวมทั้งหมด",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "ปริมาณ",
-    "accounts.trade.account": "บัญชี",
-    "accounts.trade.allHistory": "ประวัติทั้งหมด",
-    "accounts.trade.closedOrder": "คำสั่งที่ปิดแล้ว",
-    "accounts.trade.openOrder": "คำสั่งที่เปิดอยู่",
-    "accounts.trade.product": "ผลิตภัณฑ์",
-    "accounts.trade.service": "บริการ",
-    "type.commissionOptions.0": "ไม่มี",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "บิตคอยน์",
-    "type.productCategory.Commodities": "ดัชนีสปอต",
-    "type.productCategory.Crypto": "คริปโตเคอร์เรนซี",
-    "type.productCategory.D Forex": "ฟอเร็กซ์โดยตรง",
-    "type.productCategory.ETH": "อีเธอเรียม",
-    "type.productCategory.Energy": "สัญญาล่วงหน้าพลังงาน",
-    "type.productCategory.Forex": "ฟอเร็กซ์ข้าม",
-    "type.productCategory.Fu_Energy": "สัญญาล่วงหน้าพลังงาน",
-    "type.productCategory.GAUCNH": "ทองคำ CNY",
-    "type.productCategory.Gold": "ทองคำ",
-    "type.productCategory.HKG50": "ดัชนีแฮงเส็ง",
-    "type.productCategory.Index": "ดัชนีสปอต",
-    "type.productCategory.JPN225": "นิกเกอิ JPN225",
-    "type.productCategory.Natural Gas": "ก๊าซธรรมชาติ",
-    "type.productCategory.OIL": "WTI/เบรนท์ น้ำมันดิบ",
-    "type.productCategory.Precious Metal": "โลหะมีค่า",
-    "type.productCategory.Shares": "หุ้น",
-    "type.productCategory.Silver 1000OZ": "เงิน 1000OZ",
-    "type.productCategory.Silver 5000OZ": "เงิน 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "ที่อยู่กระเป๋าเงินมีอยู่แล้ว",
-    "errorCodes.invalid_username_or_password": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
-    "errorCodes.electronicIdentityVerificationRequired": "ต้องการความยินยอมในการยืนยันตัวตนอิเล็กทรอนิกส์เพื่อดำเนินการต่อ",
-    "ib.action.close": "ปิด",
-    "sales.action.cancel": "ยกเลิก",
-    "sales.customers.all": "ทั้งหมด",
-    "sales.customers.salesType": "ฝ่ายขาย",
-}
-
-# ============================================================
-# 韩文 (ko.json)
-# ============================================================
-KO = {
-    "common.noData": "데이터 없음",
-    "common.close": "닫기",
-    "common.editAccountSettings": "계정 설정 편집",
-    "common.updateAlias": "업데이트",
-    "common.aliasPlaceholder": "별칭 입력",
-    "common.default": "기본",
-    "common.setDefault": "기본으로 설정",
-    "errors.noPermission.title": "접근 거부",
-    "errors.noPermission.description": "죄송합니다. 이 페이지에 접근할 권한이 없습니다. 관리자에게 문의하세요.",
-    "errors.noPermission.goBack": "뒤로",
-    "errors.noPermission.goHome": "홈으로",
-    "auth.PrivacyPolicy": "개인정보 처리방침",
-    "auth.TermsAndConditions": "이용약관",
-    "auth.andHaveSought": "거래 전에 위험을 완전히 이해할 수 있도록 독립적인 전문 재정 조언을 구해야 합니다.",
-    "auth.backTo": "돌아가기",
-    "auth.byCreateAccountYouAgree": "계정을 생성함으로써 귀하는 당사의",
-    "auth.confirm": "확인",
-    "auth.confirmEmailSuccess": "로그인하여 확인하세요",
-    "auth.confirmEmailSuccessTitle": "확인 성공",
-    "auth.confirmPasswordRequiredShort": "비밀번호를 확인하세요",
-    "auth.contactUs": "문의하기",
-    "auth.disable": "비활성화",
-    "auth.disableTwoFa": "2단계 인증을 사용하지 않으려면 이 기능을 비활성화할 수 있습니다.",
-    "auth.emailConfirmation": "이메일 확인",
-    "auth.emailExists": "이메일이 이미 존재합니다",
-    "auth.enable": "활성화",
-    "auth.enableTwoFa": "2FA 활성화: 2단계 인증을 활성화하여 계정을 보호하세요.",
-    "auth.enterYourInfo": "정보를 입력하세요",
-    "auth.financialServicesGuide": "금융 서비스 가이드",
-    "auth.notReceiveEmail": "이메일을 받지 못하셨나요?",
-    "auth.passwordHint": "문자, 숫자 및 기호를 조합하여 8자 이상 사용하세요",
-    "auth.passwordLowercase": "비밀번호에 소문자가 하나 이상 포함되어야 합니다",
-    "auth.passwordMin8": "비밀번호는 최소 8자 이상이어야 합니다",
-    "auth.passwordNumber": "비밀번호에 숫자가 하나 이상 포함되어야 합니다",
-    "auth.passwordSymbol": "비밀번호에 기호가 하나 이상 포함되어야 합니다",
-    "auth.passwordUppercase": "비밀번호에 대문자가 하나 이상 포함되어야 합니다",
-    "auth.pleaseEnsure": "읽었는지 확인하세요",
-    "auth.pleaseLoginWith2FA": "2FA 인증으로 로그인하세요",
-    "auth.pleaseSelectTenant": "계속하려면 테넌트를 선택하세요",
-    "auth.productDisclosureDocument": "제품 공시 설명서",
-    "auth.selectTenantRequired": "로그인할 테넌트를 선택하세요",
-    "auth.sessionExpired": "세션이 만료되었습니다. 다시 로그인하세요.",
-    "auth.targetMarketDetermination": "목표 시장 결정",
-    "auth.tenants.1": "호주",
-    "auth.tenants.10000": "국제",
-    "auth.tenants.10002": "몽골",
-    "auth.tenants.10004": "동남아시아",
-    "auth.tenants.10005": "일본",
-    "auth.termAndConditions": "이용약관",
-    "auth.twoFaDesc": "계정 보안을 강화하기 위해 2단계 인증(2FA) 설정을 강력히 권장합니다.",
-    "auth.twoFactorAuthenticationSetupReminder": "2FA 설정 알림",
-    "auth.twoFactorRequired": "2단계 인증 코드를 입력하세요",
-    "dashboard.loggingOut": "로그아웃 중...",
-    "dashboard.startDate": "시작 날짜",
-    "dashboard.endDate": "종료 날짜",
-    "dashboard.viewDetails": "상세 보기",
-    "dashboard.eventShop": "포인트 상점",
-    "dashboard.activityCycle": "활동 주기",
-    "dashboard.longTerm": "장기",
-    "dashboard.eventNotice.dontShowAgain": "다시 표시하지 않음",
-    "dashboard.eventNotice.previous": "이전",
-    "dashboard.eventNotice.next": "다음",
-    "dashboard.eventNotice.close": "닫기",
-    "dashboard.eventNotice.postedOn": "게시일",
-    "dashboard.eventNotice.noEvents": "이벤트 공지가 없습니다",
-    "dashboard.realAccount": "실계좌",
-    "dashboard.demoAccount": "데모 계좌",
-    "dashboard.depositAndWithdraw": "입출금 계좌",
-    "dashboard.createTradingAccount": "거래 계좌 생성",
-    "dashboard.noTransactions": "거래 내역 없음",
-    "dashboard.announcements": "공지사항",
-    "dashboard.viewMore": "더 보기",
-    "dashboard.noNotifications": "알림 없음",
-    "dashboard.accountSettings": "계정 설정",
-    "dashboard.contactSupport": "고객 지원 연락",
-    "dashboard.menu.sales": "영업 센터",
-    "dashboard.menu.rep": "Rep 센터",
-    "accounts.accountRole.0": "알 수 없음",
-    "accounts.accountRole.100": "영업",
-    "accounts.accountRole.1000": "게스트",
-    "accounts.accountRole.110": "담당자",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "고객",
-    "accounts.action.reset": "재설정",
-    "accounts.action.search": "검색",
-    "accounts.detail.table.accountNumber": "계좌",
-    "accounts.detail.table.buy": "매수",
-    "accounts.detail.table.closePrice": "청산가",
-    "accounts.detail.table.closeTime": "청산시간",
-    "accounts.detail.table.commission": "수수료",
-    "accounts.detail.table.openPrice": "진입가",
-    "accounts.detail.table.openTime": "진입시간",
-    "accounts.detail.table.pl": "손익",
-    "accounts.detail.table.sell": "매도",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "소계",
-    "accounts.detail.table.swap": "스왑",
-    "accounts.detail.table.symbol": "종목",
-    "accounts.detail.table.ticket": "티켓",
-    "accounts.detail.table.total": "합계",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "거래량",
-    "accounts.trade.account": "계좌",
-    "accounts.trade.allHistory": "전체 내역",
-    "accounts.trade.closedOrder": "청산 주문",
-    "accounts.trade.openOrder": "미청산 주문",
-    "accounts.trade.product": "상품",
-    "accounts.trade.service": "서비스",
-    "type.commissionOptions.0": "없음",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "비트코인",
-    "type.productCategory.Commodities": "현물 지수",
-    "type.productCategory.Crypto": "암호화폐",
-    "type.productCategory.D Forex": "직접 외환",
-    "type.productCategory.ETH": "이더리움",
-    "type.productCategory.Energy": "에너지 선물",
-    "type.productCategory.Forex": "교차 외환",
-    "type.productCategory.Fu_Energy": "에너지 선물",
-    "type.productCategory.GAUCNH": "금 위안화",
-    "type.productCategory.Gold": "금",
-    "type.productCategory.HKG50": "항셍지수",
-    "type.productCategory.Index": "현물 지수",
-    "type.productCategory.JPN225": "닛케이 JPN225",
-    "type.productCategory.Natural Gas": "천연가스",
-    "type.productCategory.OIL": "WTI/브렌트 원유",
-    "type.productCategory.Precious Metal": "귀금속",
-    "type.productCategory.Shares": "주식",
-    "type.productCategory.Silver 1000OZ": "은 1000OZ",
-    "type.productCategory.Silver 5000OZ": "은 5000OZ",
-    "type.productCategory.US100": "나스닥 US100",
-    "type.productCategory.US30": "다우존스 US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "지갑 주소가 이미 존재합니다",
-    "errorCodes.invalid_username_or_password": "사용자 이름 또는 비밀번호가 잘못되었습니다",
-    "errorCodes.electronicIdentityVerificationRequired": "계속하려면 전자 신원 확인 동의가 필요합니다.",
-    "ib.action.close": "닫기",
-    "sales.action.cancel": "취소",
-    "sales.customers.all": "전체",
-    "sales.customers.salesType": "영업",
-}
-
-# ============================================================
-# 高棉文/柬埔寨文 (km.json)
-# ============================================================
-KM = {
-    "common.noData": "គ្មានទិន្នន័យ",
-    "common.close": "បិទ",
-    "common.editAccountSettings": "កែប្រែការកំណត់គណនី",
-    "common.updateAlias": "អាប់ដេត",
-    "common.aliasPlaceholder": "បញ្ចូលឈ្មោះហៅ",
-    "common.default": "លំនាំដើម",
-    "common.setDefault": "កំណត់ជាលំនាំដើម",
-    "errors.noPermission.title": "ការចូលប្រើត្រូវបានបដិសេធ",
-    "errors.noPermission.description": "សូមទោស អ្នកមិនមានការអនុញ្ញាតឱ្យចូលប្រើទំព័រនេះ។ សូមទំនាក់ទំនងអ្នកគ្រប់គ្រង។",
-    "errors.noPermission.goBack": "ត្រឡប់ក្រោយ",
-    "errors.noPermission.goHome": "ទៅទំព័រដើម",
-    "auth.PrivacyPolicy": "គោលការណ៍ភាពឯកជន",
-    "auth.TermsAndConditions": "លក្ខខណ្ឌ",
-    "auth.andHaveSought": "ហើយបានស្វែងរកដំបូន្មានហិរញ្ញវត្ថុជំនាញឯករាជ្យ",
-    "auth.backTo": "ត្រឡប់ទៅ",
-    "auth.byCreateAccountYouAgree": "តាមរយៈការបង្កើតគណនី អ្នកយល់ព្រម",
-    "auth.confirm": "បញ្ជាក់",
-    "auth.confirmEmailSuccess": "សូមចូលដើម្បីបញ្ជាក់",
-    "auth.confirmEmailSuccessTitle": "ការបញ្ជាក់ជោគជ័យ",
-    "auth.confirmPasswordRequiredShort": "សូមបញ្ជាក់ពាក្យសម្ងាត់",
-    "auth.contactUs": "ទំនាក់ទំនងយើង",
-    "auth.disable": "បិទដំណើរការ",
-    "auth.disableTwoFa": "ប្រសិនបើអ្នកមិនចង់ប្រើការផ្ទៀងផ្ទាត់ពីរជំហាន អ្នកអាចបិទមុខងារនេះ។",
-    "auth.emailConfirmation": "ការបញ្ជាក់អ៊ីមែល",
-    "auth.emailExists": "អ៊ីមែលនេះមានរួចហើយ",
-    "auth.enable": "បើកដំណើរការ",
-    "auth.enableTwoFa": "បើកដំណើរការ 2FA: ការពារគណនីរបស់អ្នកដោយការធ្វើឱ្យសកម្មការផ្ទៀងផ្ទាត់ពីរជំហាន។",
-    "auth.enterYourInfo": "បញ្ចូលព័ត៌មានរបស់អ្នក",
-    "auth.financialServicesGuide": "មគ្គុទ្ទេសសេវាហិរញ្ញវត្ថុ",
-    "auth.notReceiveEmail": "មិនបានទទួលអ៊ីមែល?",
-    "auth.passwordHint": "ប្រើ 8 តួអក្សរឬច្រើនជាងនេះ ដោយរួមបញ្ចូលអក្សរ លេខ និងនិមិត្តសញ្ញា",
-    "auth.passwordLowercase": "ពាក្យសម្ងាត់ត្រូវតែមានអក្សរតូចយ៉ាងតិចមួយ",
-    "auth.passwordMin8": "ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច 8 តួអក្សរ",
-    "auth.passwordNumber": "ពាក្យសម្ងាត់ត្រូវតែមានលេខយ៉ាងតិចមួយ",
-    "auth.passwordSymbol": "ពាក្យសម្ងាត់ត្រូវតែមាននិមិត្តសញ្ញាយ៉ាងតិចមួយ",
-    "auth.passwordUppercase": "ពាក្យសម្ងាត់ត្រូវតែមានអក្សរធំយ៉ាងតិចមួយ",
-    "auth.pleaseEnsure": "សូមប្រាកដថាអ្នកបានអាន",
-    "auth.pleaseLoginWith2FA": "សូមចូលដោយប្រើការផ្ទៀងផ្ទាត់ 2FA",
-    "auth.pleaseSelectTenant": "សូមជ្រើសរើស tenant ដើម្បីបន្ត",
-    "auth.productDisclosureDocument": "សេចក្តីប្រកាសផលិតផល",
-    "auth.selectTenantRequired": "សូមជ្រើសរើស tenant ដើម្បីចូល",
-    "auth.sessionExpired": "វគ្គរបស់អ្នកផុតកំណត់ហើយ។ សូមចូលម្ដងទៀត។",
-    "auth.targetMarketDetermination": "ការកំណត់ទីផ្សារគោលដៅ",
-    "auth.tenants.1": "អូស្ត្រាលី",
-    "auth.tenants.10000": "អន្តរជាតិ",
-    "auth.tenants.10002": "ម៉ុងហ្គោលី",
-    "auth.tenants.10004": "អាស៊ីអាគ្នេយ៍",
-    "auth.tenants.10005": "ជប៉ុន",
-    "auth.termAndConditions": "លក្ខខណ្ឌ",
-    "auth.twoFaDesc": "ដើម្បីបង្កើនសន្តិសុខគណនី យើងណែនាំឱ្យដំឡើងការផ្ទៀងផ្ទាត់ពីរជំហាន (2FA)។",
-    "auth.twoFactorAuthenticationSetupReminder": "ការរំលឹកការដំឡើង 2FA",
-    "auth.twoFactorRequired": "សូមបញ្ចូលលេខកូដផ្ទៀងផ្ទាត់ពីរជំហាន",
-    "dashboard.loggingOut": "កំពុងចេញ...",
-    "dashboard.startDate": "កាលបរិច្ឆេទចាប់ផ្ដើម",
-    "dashboard.endDate": "កាលបរិច្ឆេទបញ្ចប់",
-    "dashboard.viewDetails": "មើលលម្អិត",
-    "dashboard.eventShop": "ហាងពិន្ទុ",
-    "dashboard.activityCycle": "វដ្តសកម្មភាព",
-    "dashboard.longTerm": "រយៈពេលវែង",
-    "dashboard.eventNotice.dontShowAgain": "មិនបង្ហាញទៀត",
-    "dashboard.eventNotice.previous": "មុន",
-    "dashboard.eventNotice.next": "បន្ទាប់",
-    "dashboard.eventNotice.close": "បិទ",
-    "dashboard.eventNotice.postedOn": "បានបង្ហោះ",
-    "dashboard.eventNotice.noEvents": "គ្មានការប្រកាសសកម្មភាព",
-    "dashboard.realAccount": "គណនីពិត",
-    "dashboard.demoAccount": "គណនីសាកល្បង",
-    "dashboard.depositAndWithdraw": "គណនីដាក់/ដកប្រាក់",
-    "dashboard.createTradingAccount": "បង្កើតគណនីជួញដូរ",
-    "dashboard.noTransactions": "មិនទាន់មានប្រតិបត្តិការ",
-    "dashboard.announcements": "សេចក្ដីប្រកាស",
-    "dashboard.viewMore": "មើលបន្ថែម",
-    "dashboard.noNotifications": "គ្មានការជូនដំណឹង",
-    "dashboard.accountSettings": "ការកំណត់គណនី",
-    "dashboard.contactSupport": "ទំនាក់ទំនងជំនួយ",
-    "dashboard.menu.sales": "មជ្ឈមណ្ឌលលក់",
-    "dashboard.menu.rep": "មជ្ឈមណ្ឌល Rep",
-    "accounts.accountRole.0": "មិនស្គាល់",
-    "accounts.accountRole.100": "ផ្នែកលក់",
-    "accounts.accountRole.1000": "ភ្ញៀវ",
-    "accounts.accountRole.110": "តំណាង",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "អតិថិជន",
-    "accounts.action.reset": "កំណត់ឡើងវិញ",
-    "accounts.action.search": "ស្វែងរក",
-    "accounts.detail.table.accountNumber": "គណនី",
-    "accounts.detail.table.buy": "ទិញ",
-    "accounts.detail.table.closePrice": "តម្លៃបិទ",
-    "accounts.detail.table.closeTime": "ម៉ោងបិទ",
-    "accounts.detail.table.commission": "កម្រៃ",
-    "accounts.detail.table.openPrice": "តម្លៃបើក",
-    "accounts.detail.table.openTime": "ម៉ោងបើក",
-    "accounts.detail.table.pl": "ចំណេញ/ខាត",
-    "accounts.detail.table.sell": "លក់",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "សរុបរង",
-    "accounts.detail.table.swap": "ស្វ៉ាប",
-    "accounts.detail.table.symbol": "ស្លាក",
-    "accounts.detail.table.ticket": "ប័ណ្ណ",
-    "accounts.detail.table.total": "សរុប",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "ទំហំ",
-    "accounts.trade.account": "គណនី",
-    "accounts.trade.allHistory": "ប្រវត្តិទាំងអស់",
-    "accounts.trade.closedOrder": "ការបញ្ជាទិញបានបិទ",
-    "accounts.trade.openOrder": "ការបញ្ជាទិញកំពុងបើក",
-    "accounts.trade.product": "ផលិតផល",
-    "accounts.trade.service": "សេវាកម្ម",
-    "type.commissionOptions.0": "ទេ",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "Bitcoin",
-    "type.productCategory.Commodities": "ដាក់សន្ទស្សន៍ Spot",
-    "type.productCategory.Crypto": "រូបិយប័ណ្ណគ្រីប",
-    "type.productCategory.D Forex": "Forex ផ្ទាល់",
-    "type.productCategory.ETH": "Ethereum",
-    "type.productCategory.Energy": "អនាគតថាមពល",
-    "type.productCategory.Forex": "Forex ឆ្លង",
-    "type.productCategory.Fu_Energy": "អនាគតថាមពល",
-    "type.productCategory.GAUCNH": "មាស CNY",
-    "type.productCategory.Gold": "មាស",
-    "type.productCategory.HKG50": "សន្ទស្សន៍ Hang Seng",
-    "type.productCategory.Index": "ដាក់សន្ទស្សន៍ Spot",
-    "type.productCategory.JPN225": "Nikkei JPN225",
-    "type.productCategory.Natural Gas": "ឧស្ម័នធម្មជាតិ",
-    "type.productCategory.OIL": "WTI/Brent ប្រេងទឹក",
-    "type.productCategory.Precious Metal": "លោហៈមានតម្លៃ",
-    "type.productCategory.Shares": "ហ៊ុន",
-    "type.productCategory.Silver 1000OZ": "ប្រាក់ 1000OZ",
-    "type.productCategory.Silver 5000OZ": "ប្រាក់ 5000OZ",
-    "type.productCategory.US100": "Nasdaq US100",
-    "type.productCategory.US30": "Dow Jones US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "អាសយដ្ឋានកាបូបមានរួចហើយ",
-    "errorCodes.invalid_username_or_password": "ឈ្មោះអ្នកប្រើប្រាស់ ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ",
-    "errorCodes.electronicIdentityVerificationRequired": "ត្រូវការការយល់ព្រមផ្ទៀងផ្ទាត់អត្តសញ្ញាណអេឡិចត្រូនិក ដើម្បីបន្ត។",
-    "ib.action.close": "បិទ",
-    "sales.action.cancel": "បោះបង់",
-    "sales.customers.all": "ទាំងអស់",
-    "sales.customers.salesType": "ផ្នែកលក់",
-}
-
-# ============================================================
-# 日文 (jp.json)
-# ============================================================
-JP = {
-    "common.noData": "データなし",
-    "common.close": "閉じる",
-    "common.editAccountSettings": "アカウント設定を編集",
-    "common.updateAlias": "更新",
-    "common.aliasPlaceholder": "エイリアスを入力",
-    "common.default": "デフォルト",
-    "common.setDefault": "デフォルトに設定",
-    "errors.noPermission.title": "アクセス拒否",
-    "errors.noPermission.description": "申し訳ありませんが、このページにアクセスする権限がありません。管理者にお問い合わせください。",
-    "errors.noPermission.goBack": "戻る",
-    "errors.noPermission.goHome": "ホームへ",
-    "auth.PrivacyPolicy": "プライバシーポリシー",
-    "auth.TermsAndConditions": "利用規約",
-    "auth.andHaveSought": "取引前にリスクを十分に理解するために、独立した専門的な財務アドバイスを求めてください。",
-    "auth.backTo": "戻る",
-    "auth.byCreateAccountYouAgree": "アカウントを作成することで、当社の",
-    "auth.confirm": "確認",
-    "auth.confirmEmailSuccess": "確認のためにログインしてください",
-    "auth.confirmEmailSuccessTitle": "確認成功",
-    "auth.confirmPasswordRequiredShort": "パスワードを確認してください",
-    "auth.contactUs": "お問い合わせ",
-    "auth.disable": "無効化",
-    "auth.disableTwoFa": "2段階認証を使用しない場合は、この機能を無効にできます。",
-    "auth.emailConfirmation": "メール確認",
-    "auth.emailExists": "メールアドレスは既に存在します",
-    "auth.enable": "有効化",
-    "auth.enableTwoFa": "2FAを有効化：2要素認証を有効にしてアカウントを保護してください。",
-    "auth.enterYourInfo": "情報を入力",
-    "auth.financialServicesGuide": "金融サービスガイド",
-    "auth.notReceiveEmail": "メールを受信しましたか？",
-    "auth.passwordHint": "文字、数字、記号を組み合わせた8文字以上を使用してください",
-    "auth.passwordLowercase": "パスワードには少なくとも1つの小文字を含める必要があります",
-    "auth.passwordMin8": "パスワードは8文字以上必要です",
-    "auth.passwordNumber": "パスワードには少なくとも1つの数字を含める必要があります",
-    "auth.passwordSymbol": "パスワードには少なくとも1つの記号を含める必要があります",
-    "auth.passwordUppercase": "パスワードには少なくとも1つの大文字を含める必要があります",
-    "auth.pleaseEnsure": "以下を読んだことを確認してください",
-    "auth.pleaseLoginWith2FA": "2FA認証でログインしてください",
-    "auth.pleaseSelectTenant": "続行するにはテナントを選択してください",
-    "auth.productDisclosureDocument": "製品開示書",
-    "auth.selectTenantRequired": "ログインするにはテナントを選択してください",
-    "auth.sessionExpired": "セッションが期限切れになりました。再度ログインしてください。",
-    "auth.targetMarketDetermination": "ターゲット市場決定",
-    "auth.tenants.1": "オーストラリア",
-    "auth.tenants.10000": "インターナショナル",
-    "auth.tenants.10002": "モンゴル",
-    "auth.tenants.10004": "東南アジア",
-    "auth.tenants.10005": "日本",
-    "auth.termAndConditions": "利用規約",
-    "auth.twoFaDesc": "アカウントのセキュリティを強化するため、2要素認証（2FA）の設定を強くお勧めします。",
-    "auth.twoFactorAuthenticationSetupReminder": "2FA設定リマインダー",
-    "auth.twoFactorRequired": "2要素認証コードを入力してください",
-    "dashboard.loggingOut": "ログアウト中...",
-    "dashboard.startDate": "開始日",
-    "dashboard.endDate": "終了日",
-    "dashboard.viewDetails": "詳細を見る",
-    "dashboard.eventShop": "ポイントショップ",
-    "dashboard.activityCycle": "活動サイクル",
-    "dashboard.longTerm": "長期",
-    "dashboard.eventNotice.dontShowAgain": "再表示しない",
-    "dashboard.eventNotice.previous": "前へ",
-    "dashboard.eventNotice.next": "次へ",
-    "dashboard.eventNotice.close": "閉じる",
-    "dashboard.eventNotice.postedOn": "投稿日",
-    "dashboard.eventNotice.noEvents": "イベント通知なし",
-    "dashboard.realAccount": "リアル口座",
-    "dashboard.demoAccount": "デモ口座",
-    "dashboard.depositAndWithdraw": "入出金口座",
-    "dashboard.createTradingAccount": "取引口座を作成",
-    "dashboard.noTransactions": "取引履歴なし",
-    "dashboard.announcements": "お知らせ",
-    "dashboard.viewMore": "さらに見る",
-    "dashboard.noNotifications": "通知なし",
-    "dashboard.accountSettings": "アカウント設定",
-    "dashboard.contactSupport": "サポートに連絡",
-    "dashboard.menu.sales": "営業センター",
-    "dashboard.menu.rep": "Repセンター",
-    "accounts.accountRole.0": "不明",
-    "accounts.accountRole.100": "営業",
-    "accounts.accountRole.1000": "ゲスト",
-    "accounts.accountRole.110": "代表",
-    "accounts.accountRole.200": "Top IB",
-    "accounts.accountRole.300": "IB",
-    "accounts.accountRole.400": "クライアント",
-    "accounts.action.reset": "リセット",
-    "accounts.action.search": "検索",
-    "accounts.detail.table.accountNumber": "口座",
-    "accounts.detail.table.buy": "買い",
-    "accounts.detail.table.closePrice": "終値",
-    "accounts.detail.table.closeTime": "終了時間",
-    "accounts.detail.table.commission": "手数料",
-    "accounts.detail.table.openPrice": "始値",
-    "accounts.detail.table.openTime": "開始時間",
-    "accounts.detail.table.pl": "損益",
-    "accounts.detail.table.sell": "売り",
-    "accounts.detail.table.sl": "S/L",
-    "accounts.detail.table.subTotal": "小計",
-    "accounts.detail.table.swap": "スワップ",
-    "accounts.detail.table.symbol": "銘柄",
-    "accounts.detail.table.ticket": "チケット",
-    "accounts.detail.table.total": "合計",
-    "accounts.detail.table.tp": "T/P",
-    "accounts.detail.table.volume": "取引量",
-    "accounts.trade.account": "口座",
-    "accounts.trade.allHistory": "全履歴",
-    "accounts.trade.closedOrder": "決済済み注文",
-    "accounts.trade.openOrder": "未決済注文",
-    "accounts.trade.product": "商品",
-    "accounts.trade.service": "サービス",
-    "type.commissionOptions.0": "なし",
-    "type.commissionOptions.2": "$2",
-    "type.commissionOptions.3": "$3",
-    "type.commissionOptions.5": "$5",
-    "type.commissionOptions.10": "$10",
-    "type.commissionOptions.20": "$20",
-    "type.commissionOptions.30": "$30",
-    "type.pipOptions.0": "NO",
-    "type.pipOptions.1": "P1",
-    "type.pipOptions.2": "P2",
-    "type.pipOptions.3": "P3",
-    "type.pipOptions.4": "P4",
-    "type.pipOptions.5": "P5",
-    "type.pipOptions.10": "P10",
-    "type.pipOptions.15": "P15",
-    "type.pipOptions.20": "P20",
-    "type.pipOptions.30": "P30",
-    "type.productCategory.A50": "A50",
-    "type.productCategory.BTC": "ビットコイン",
-    "type.productCategory.Commodities": "現物指数",
-    "type.productCategory.Crypto": "暗号通貨",
-    "type.productCategory.D Forex": "ダイレクトFX",
-    "type.productCategory.ETH": "イーサリアム",
-    "type.productCategory.Energy": "エネルギー先物",
-    "type.productCategory.Forex": "クロスFX",
-    "type.productCategory.Fu_Energy": "エネルギー先物",
-    "type.productCategory.GAUCNH": "ゴールド人民元",
-    "type.productCategory.Gold": "ゴールド",
-    "type.productCategory.HKG50": "ハンセン指数",
-    "type.productCategory.Index": "現物指数",
-    "type.productCategory.JPN225": "日経JPN225",
-    "type.productCategory.Natural Gas": "天然ガス",
-    "type.productCategory.OIL": "WTI/ブレント原油",
-    "type.productCategory.Precious Metal": "貴金属",
-    "type.productCategory.Shares": "株式",
-    "type.productCategory.Silver 1000OZ": "シルバー1000OZ",
-    "type.productCategory.Silver 5000OZ": "シルバー5000OZ",
-    "type.productCategory.US100": "ナスダック US100",
-    "type.productCategory.US30": "ダウジョーンズ US30",
-    "type.productCategory.US500": "S&P US500",
-    "errorCodes.Wallet address already exists": "ウォレットアドレスはすでに存在します",
-    "errorCodes.invalid_username_or_password": "ユーザー名またはパスワードが無効です",
-    "errorCodes.electronicIdentityVerificationRequired": "続行するには電子本人確認への同意が必要です。",
-    "ib.action.close": "閉じる",
-    "sales.action.cancel": "キャンセル",
-    "sales.customers.all": "全て",
-    "sales.customers.salesType": "営業",
-}
-
-
-# ============================================================
-# 主函数：运行所有语言同步
-# ============================================================
-def sync_en():
-    """单独同步 en.json（直接合并 zh.json 结构并补充 en 翻译）"""
-    filepath = os.path.join(BASE_DIR, 'en.json')
-    with open(filepath, encoding='utf-8') as f:
-        existing = json.load(f)
-
-    # 以 zh 为基准，补充 en 的新增翻译，保留现有 en 翻译
-    base = deep_merge(ZH, existing)
-    for k, v in EN_ADDITIONS.items():
-        # 只设置 en 中缺失的 key
-        def get_nested(obj, path):
-            parts = path.split('.')
-            curr = obj
-            for p in parts:
-                if isinstance(curr, dict) and p in curr:
-                    curr = curr[p]
+        print(
+            f'    批次 {batch_num:>3}/{total_batches}'
+            f'（{len(batch_keys):>3} key）...',
+            end='', flush=True,
+        )
+        try:
+            result = translate_batch(batch_items, lang_name, provider, client, model)
+            ok_count = 0
+            for k in batch_keys:
+                translated_val = result.get(k)
+                if translated_val is not None:
+                    translated_flat[k] = translated_val
+                    ok_count += 1
                 else:
-                    return None
-            return curr
+                    # AI 未返回该 key，降级使用中文原文
+                    translated_flat[k] = zh_flat[k]
+                    failed_keys.append(k)
+            print(f' ✓ ({ok_count}/{len(batch_keys)})')
+        except Exception as e:
+            print(f' ✗ ({e})')
+            for k in batch_keys:
+                translated_flat[k] = zh_flat[k]
+                failed_keys.append(k)
 
-        if get_nested(existing, k) is None:
-            set_nested(base, k, v)
+        # 每批完成后更新缓存（断点续传保障）
+        save_cache(lang_file, translated_flat)
 
-    # 用现有翻译覆盖（保留已有翻译）
-    result = deep_merge(base, existing)
+        if i + batch_size < len(remaining_keys):
+            time.sleep(0.5)
 
-    zh_keys = get_all_keys(ZH)
-    missing = len(zh_keys - get_all_keys(result))
-    print(f"  ✓ en.json           原有翻译已保留, 补全后缺失: {missing}")
+    # 合并：增量模式保留已有翻译
+    if full_mode:
+        final_flat = translated_flat
+    else:
+        final_flat = {**existing_flat, **translated_flat}
 
+    # 按 zh.json 结构重建并写入
+    output = rebuild_structure(final_flat, zh_structure)
     with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+        json.dump(output, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+
+    # 翻译完成后清除缓存
+    clear_cache(lang_file)
+
+    missing = len(set(zh_flat.keys()) - set(final_flat.keys()))
+    fail_count = len(failed_keys)
+    success_count = len(keys_to_translate) - fail_count
+
+    if missing == 0 and fail_count == 0:
+        print(f'  ✓ {lang_file} 翻译完成（新增 {len(keys_to_translate)} 个 key）')
+    else:
+        print(
+            f'  △ {lang_file} 翻译完成'
+            f'（成功 {success_count}，降级 {fail_count}，缺失 {missing}）'
+        )
+        if verbose and failed_keys:
+            for k in failed_keys[:10]:
+                print(f'      - {k}')
+            if len(failed_keys) > 10:
+                print(f'      ... 共 {len(failed_keys)} 个降级 key')
+
+    return success_count, fail_count
+
+
+# ============================================================
+# 命令行入口
+# ============================================================
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='AI 驱动的国际化翻译脚本 — 以 zh.json 为原本',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''\
+示例：
+  # 增量翻译所有语言（默认，Anthropic Claude）
+  python3 sync_i18n.py
+
+  # 全量翻译所有语言（覆盖现有翻译）
+  python3 sync_i18n.py --full
+
+  # 只增量翻译 Korean 和 Vietnamese
+  python3 sync_i18n.py --lang ko,vi
+
+  # 全量翻译繁体中文，使用高质量模型
+  python3 sync_i18n.py --full --lang zh-tw --model claude-3-5-sonnet-20241022
+
+  # 使用 OpenAI 翻译
+  python3 sync_i18n.py --provider openai
+
+  # 增量翻译并显示详细输出
+  python3 sync_i18n.py --verbose
+
+环境变量：
+  ANTHROPIC_API_KEY  Anthropic API Key（默认）
+  OPENAI_API_KEY     OpenAI API Key（provider=openai 时）
+''',
+    )
+    parser.add_argument(
+        '--full', action='store_true',
+        help='全量替换：重新翻译所有 key（默认：增量，只翻译缺失的 key）',
+    )
+    parser.add_argument(
+        '--lang', type=str, default=None,
+        help='指定目标语言，逗号分隔，如: ko,vi,th（默认：翻译所有语言）',
+    )
+    parser.add_argument(
+        '--provider', choices=['anthropic', 'openai'], default='anthropic',
+        help='AI 服务提供商（默认: anthropic）',
+    )
+    parser.add_argument(
+        '--model', type=str, default=None,
+        help=(
+            'AI 模型名称（默认: anthropic=claude-haiku-4-5，'
+            'openai=gpt-4o-mini）'
+        ),
+    )
+    parser.add_argument(
+        '--api-key', type=str, default=None,
+        help='API Key（也可通过环境变量 ANTHROPIC_API_KEY / OPENAI_API_KEY 设置）',
+    )
+    parser.add_argument(
+        '--batch-size', type=int, default=60,
+        help='每批翻译的 key 数量（默认: 60）',
+    )
+    parser.add_argument(
+        '--no-backup', action='store_true',
+        help='翻译前不备份原文件',
+    )
+    parser.add_argument(
+        '--verbose', '-v', action='store_true',
+        help='显示详细输出（包括降级 key 列表）',
+    )
+
+    args = parser.parse_args()
+
+    # 确定默认模型
+    if args.model:
+        model = args.model
+    elif args.provider == 'anthropic':
+        model = 'claude-haiku-4-5'
+    else:
+        model = 'gpt-4o-mini'
+
+    # 初始化 AI 客户端
+    if args.provider == 'anthropic':
+        try:
+            import anthropic  # type: ignore
+        except ImportError:
+            print('✗ 请先安装 anthropic 库: pip install anthropic')
+            sys.exit(1)
+        api_key = args.api_key or os.environ.get('ANTHROPIC_API_KEY')
+        if not api_key:
+            print('✗ 请设置 ANTHROPIC_API_KEY 环境变量，或使用 --api-key 参数')
+            sys.exit(1)
+        client = anthropic.Anthropic(api_key=api_key)
+
+    else:  # openai
+        try:
+            from openai import OpenAI  # type: ignore
+        except ImportError:
+            print('✗ 请先安装 openai 库: pip install openai')
+            sys.exit(1)
+        api_key = args.api_key or os.environ.get('OPENAI_API_KEY')
+        if not api_key:
+            print('✗ 请设置 OPENAI_API_KEY 环境变量，或使用 --api-key 参数')
+            sys.exit(1)
+        client = OpenAI(api_key=api_key)
+
+    # 读取 zh.json
+    zh_path = os.path.join(BASE_DIR, 'zh.json')
+    if not os.path.exists(zh_path):
+        print(f'✗ 找不到源文件: {zh_path}')
+        sys.exit(1)
+    with open(zh_path, encoding='utf-8') as f:
+        zh_structure = json.load(f)
+    zh_flat = get_flat_dict(zh_structure)
+
+    print('=' * 60)
+    print('  AI 国际化翻译脚本')
+    print('=' * 60)
+    print(f'  源语言    : zh.json（{len(zh_flat)} 个 key）')
+    print(f'  模式      : {"全量替换" if args.full else "增量翻译（保留已有翻译）"}')
+    print(f'  AI 提供商 : {args.provider}')
+    print(f'  模型      : {model}')
+    print(f'  批次大小  : {args.batch_size}')
+
+    # 确定要处理的语言列表
+    if args.lang:
+        lang_files: List[str] = []
+        for token in args.lang.split(','):
+            token = token.strip()
+            if not token.endswith('.json'):
+                token += '.json'
+            if token in LANGUAGE_CONFIG:
+                lang_files.append(token)
+            else:
+                print(f'⚠  未知语言标识: {token}，已跳过')
+    else:
+        lang_files = list(LANGUAGE_CONFIG.keys())
+
+    print(f'  目标语言  : {", ".join(lang_files)}')
+    print('=' * 60)
+
+    # 翻译每个语言，统计结果
+    start_time = time.time()
+    total_success = 0
+    total_failed = 0
+    errored_langs: List[str] = []
+
+    for lang_file in lang_files:
+        try:
+            ok, fail = translate_language(
+                lang_file=lang_file,
+                lang_config=LANGUAGE_CONFIG[lang_file],
+                zh_flat=zh_flat,
+                zh_structure=zh_structure,
+                provider=args.provider,
+                client=client,
+                model=model,
+                full_mode=args.full,
+                batch_size=args.batch_size,
+                backup=not args.no_backup,
+                verbose=args.verbose,
+            )
+            total_success += ok
+            total_failed += fail
+        except Exception as e:
+            print(f'  ✗ {lang_file} 翻译失败: {e}')
+            errored_langs.append(lang_file)
+
+    elapsed = time.time() - start_time
+    print()
+    print('=' * 60)
+    print(f'  翻译完成！耗时 {elapsed:.1f}s')
+    print(f'  成功翻译 : {total_success} 个 key')
+    if total_failed:
+        print(f'  降级回退 : {total_failed} 个 key（已用中文原文填充）')
+    if errored_langs:
+        print(f'  失败语言 : {", ".join(errored_langs)}')
+    print('=' * 60)
 
 
 if __name__ == '__main__':
-    print("=" * 60)
-    print("国际化文件同步脚本")
-    print("基准文件: zh.json")
-    print("=" * 60)
-
-    # 先同步 en.json
-    sync_en()
-
-    # 重新读取更新后的 en.json 作为英文默认值
-    with open(os.path.join(BASE_DIR, 'en.json'), encoding='utf-8') as f:
-        EN = json.load(f)
-
-    # 处理其他语言
-    LANGUAGES = [
-        ('zh-tw.json', ZH_TW),
-        ('es.json',    ES),
-        ('id.json',    ID),
-        ('ms.json',    MS),
-        ('vi.json',    VI),
-        ('th.json',    TH),
-        ('ko.json',    KO),
-        ('km.json',    KM),
-        ('jp.json',    JP),
-    ]
-
-    for lang_file, lang_dict in LANGUAGES:
-        try:
-            process_language(lang_file, lang_dict, ZH, EN)
-        except Exception as e:
-            print(f"  ✗ {lang_file} 处理失败: {e}")
-
-    print("=" * 60)
-    print("同步完成！所有语言文件已更新。")
-    print()
-    print("使用说明：")
-    print("  每次 zh.json 新增 key 后，运行此脚本即可自动同步。")
-    print("  新 key 默认使用英文值，需要时可在对应语言字典中补充翻译。")
-    print("=" * 60)
+    main()

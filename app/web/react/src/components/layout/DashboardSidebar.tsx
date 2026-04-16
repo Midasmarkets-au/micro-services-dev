@@ -73,7 +73,7 @@ export function DashboardSidebar({ user: propUser }: DashboardSidebarProps) {
     <aside className="sidebar-responsive">
       {/* 用户信息卡片；profile 及子页面移动端隐藏 */}
       <div
-        className={`relative flex flex-col items-center gap-3 overflow-hidden rounded bg-surface px-0 py-5 ${isProfilePage ? 'max-md:hidden' : ''}`}
+        className={`relative flex flex-col items-center border  border-[rgba(26,29,33,0.08)] gap-3 overflow-hidden rounded bg-surface px-0 py-5 ${isProfilePage ? 'max-md:hidden' : ''}`}
       >
         {/* 右上角设置图标 - 点击跳转 /profile */}
         <Link
