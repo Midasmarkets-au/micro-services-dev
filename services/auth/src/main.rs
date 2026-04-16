@@ -98,7 +98,31 @@ async fn connect_token(
 }
 
 fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
-    let client_id = req.client_id.clone().unwrap_or_default();
+    let client_id = req.client_id.as_deref().unwrap_or("").trim().to_string();
+
+    let allowlist = match &state.client_credentials_allowlist {
+        None => {
+            tracing::warn!(client_id, "client_credentials rejected: allowlist not configured");
+            return error_response("unauthorized_client", "client_credentials grant is not enabled");
+        }
+        Some(m) => m,
+    };
+
+    match allowlist.get(&client_id) {
+        None => {
+            tracing::warn!(client_id, "client_credentials rejected: not in allowlist");
+            return error_response("unauthorized_client", "client_id not allowed");
+        }
+        Some(Some(expected_secret)) => {
+            let provided = req.client_secret.as_deref().unwrap_or("");
+            if provided != expected_secret {
+                tracing::warn!(client_id, "client_credentials rejected: invalid secret");
+                return error_response("invalid_client", "invalid client_secret");
+            }
+        }
+        Some(None) => {} // client_id allowed, no secret required
+    }
+
     tracing::info!(client_id, "client_credentials grant");
     let params = token::TokenParams {
         user_id: 0,
@@ -632,6 +656,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    let client_credentials_allowlist = match std::env::var("CLIENT_CREDENTIALS_ALLOWLIST") {
+        Ok(val) if !val.trim().is_empty() => {
+            let map: std::collections::HashMap<String, Option<String>> = val
+                .split(',')
+                .filter_map(|entry| {
+                    let entry = entry.trim();
+                    if entry.is_empty() { return None; }
+                    match entry.split_once(':') {
+                        Some((id, secret)) => Some((id.trim().to_string(), Some(secret.trim().to_string()))),
+                        None => Some((entry.to_string(), None)),
+                    }
+                })
+                .collect();
+            info!("client_credentials allowlist: {} client(s) configured", map.len());
+            Some(map)
+        }
+        _ => {
+            info!("CLIENT_CREDENTIALS_ALLOWLIST not set — client_credentials grant is disabled");
+            None
+        }
+    };
+
     let state = Arc::new(AppState {
         pool,
         redis,
@@ -642,6 +688,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ipinfo_endpoint,
         ipinfo_token,
         twilio,
+        client_credentials_allowlist,
     });
 
     let listener = tokio::net::TcpListener::bind(http_addr).await?;
