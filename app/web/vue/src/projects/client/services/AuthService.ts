@@ -9,17 +9,18 @@ export interface LoginParams {
   password: string;
   tenantId?: string;
   twoFaCode?: string;
+  sessionToken?: string;
 }
 
 export interface LoginOptions {
   router: Router;
   store: Store<any>;
   wsSignalR?: any;
-  onTwoFaRequired?: () => void;
+  onTwoFaRequired?: (sessionToken: string) => void;
   onMultipleTenants?: (tenantIds: any[]) => void;
   onError?: (errors: any) => void;
   t: (key: string) => string;
-  redirectTo?: string; // 自定义登录成功后的跳转路径
+  redirectTo?: string;
 }
 
 /**
@@ -39,6 +40,10 @@ export function setupLoginParams(params: LoginParams): URLSearchParams {
 
   if (params.twoFaCode) {
     urlParams.append("tf_code", params.twoFaCode);
+  }
+
+  if (params.sessionToken) {
+    urlParams.append("session_token", params.sessionToken);
   }
 
   return urlParams;
@@ -130,6 +135,7 @@ export async function performLogin(
 ): Promise<{
   success: boolean;
   requiresTwoFa?: boolean;
+  sessionToken?: string;
   multipleTenants?: any[];
 }> {
   const {
@@ -183,12 +189,13 @@ export async function performLogin(
     };
   }
 
-  // 处理双因素认证
+  // 处理双因素认证 — 服务端返回 sessionToken，必须在第二次请求时携带
   if (handleTwoFA(login)) {
+    const sessionToken: string = login?.data?.sessionToken ?? "";
     if (onTwoFaRequired) {
-      onTwoFaRequired();
+      onTwoFaRequired(sessionToken);
     }
-    return { success: false, requiresTwoFa: true };
+    return { success: false, requiresTwoFa: true, sessionToken };
   }
 
   // 登录成功

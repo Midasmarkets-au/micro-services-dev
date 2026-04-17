@@ -104,28 +104,31 @@ async fn connect_token(
 fn handle_client_credentials(state: &AppState, req: &TokenRequest) -> Response {
     let client_id = req.client_id.as_deref().unwrap_or("").trim().to_string();
 
-    let allowlist = match &state.client_credentials_allowlist {
-        None => {
-            tracing::warn!(client_id, "client_credentials rejected: allowlist not configured");
-            return error_response("unauthorized_client", "client_credentials grant is not enabled");
-        }
-        Some(m) => m,
-    };
-
-    match allowlist.get(&client_id) {
-        None => {
-            tracing::warn!(client_id, "client_credentials rejected: not in allowlist");
-            return error_response("unauthorized_client", "client_id not allowed");
-        }
-        Some(Some(expected_secret)) => {
-            let provided = req.client_secret.as_deref().unwrap_or("");
-            if provided != expected_secret {
-                tracing::warn!(client_id, "client_credentials rejected: invalid secret");
-                return error_response("invalid_client", "invalid client_secret");
-            }
-        }
-        Some(None) => {} // client_id allowed, no secret required
-    }
+    // ── Client Credentials Allowlist (disabled — no current internal callers) ──
+    // Uncomment and set CLIENT_CREDENTIALS_ALLOWLIST env var to re-enable.
+    // Format: "client_id[:secret]" comma-separated, e.g. "portal,scheduler:secret"
+    //
+    // let allowlist = match &state.client_credentials_allowlist {
+    //     None => {
+    //         tracing::warn!(client_id, "client_credentials rejected: allowlist not configured");
+    //         return error_response("unauthorized_client", "client_credentials grant is not enabled");
+    //     }
+    //     Some(m) => m,
+    // };
+    // match allowlist.get(&client_id) {
+    //     None => {
+    //         tracing::warn!(client_id, "client_credentials rejected: not in allowlist");
+    //         return error_response("unauthorized_client", "client_id not allowed");
+    //     }
+    //     Some(Some(expected_secret)) => {
+    //         let provided = req.client_secret.as_deref().unwrap_or("");
+    //         if provided != expected_secret {
+    //             tracing::warn!(client_id, "client_credentials rejected: invalid secret");
+    //             return error_response("invalid_client", "invalid client_secret");
+    //         }
+    //     }
+    //     Some(None) => {} // client_id allowed, no secret required
+    // }
 
     tracing::info!(client_id, "client_credentials grant");
     let params = token::TokenParams {
