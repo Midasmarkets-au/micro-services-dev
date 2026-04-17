@@ -49,15 +49,23 @@ public class MonitorService(IServiceProvider provider)
         var cache = provider.GetRequiredService<IMyCache>();
         var db = cache.GetDatabase();
         var prefixKey = CacheKeys.GetWsOnlineAdminHKey();
+        var pattern = $"{prefixKey}:*";
+
+        var allKeys = new List<string>();
+        long cursor = 0;
+        do
+        {
+            var scan = await db.ExecuteAsync("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "100");
+            var result = (RedisResult[])scan!;
+            cursor = long.Parse((string)result[0]!);
+            allKeys.AddRange((string[])result[1]!);
+        } while (cursor != 0);
 
         var results = new List<object>();
-        var server = cache.GetServer();
-        var keys = server.Keys(pattern: $"{prefixKey}:*", pageSize: 100);
-
-        foreach (var key in keys)
+        foreach (var key in allKeys)
         {
             var value = await db.StringGetAsync(key);
-            results.Add(value);
+            if (value.HasValue) results.Add(value);
         }
 
         return results;
@@ -68,10 +76,19 @@ public class MonitorService(IServiceProvider provider)
         var cache = provider.GetRequiredService<IMyCache>();
         var db = cache.GetDatabase();
         var prefixKey = CacheKeys.GetWsOnlineAdminHKey();
+        var pattern = $"{prefixKey}:*";
 
-        var server = cache.GetServer();
-        var keys = server.Keys(pattern: $"{prefixKey}:*", pageSize: 100);
-        foreach (var key in keys)
+        var allKeys = new List<string>();
+        long cursor = 0;
+        do
+        {
+            var scan = await db.ExecuteAsync("SCAN", cursor.ToString(), "MATCH", pattern, "COUNT", "100");
+            var result = (RedisResult[])scan!;
+            cursor = long.Parse((string)result[0]!);
+            allKeys.AddRange((string[])result[1]!);
+        } while (cursor != 0);
+
+        foreach (var key in allKeys)
         {
             await db.KeyDeleteAsync(key);
         }
