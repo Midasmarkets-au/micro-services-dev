@@ -245,7 +245,15 @@ export default class AuthModule extends VuexModule implements UserAuthInfo {
   }
 
   @Action
-  [Actions.LOGOUT]() {
+  async [Actions.LOGOUT]() {
+    // Call auth service to invalidate the access token (jti blacklist) and
+    // clear the HttpOnly cookie server-side. Fire-and-forget — local state
+    // is always cleared regardless of whether the request succeeds.
+    try {
+      await ApiService.post("api/v2/auth/logout", {});
+    } catch {
+      // Non-fatal: cookie and local state are cleared below regardless
+    }
     this.context.commit(Mutations.PURGE_AUTH);
   }
 
