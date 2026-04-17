@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "Harap masukkan jumlah",
       "amountRange": "Harap masukkan jumlah antara ",
-      "selectChannel": "Harap pilih metode pembayaran"
+      "amountInteger": "Jumlah harus berupa bilangan bulat",
+      "selectChannel": "Harap pilih metode pembayaran",
+      "requiredField": "Kolom ini wajib diisi",
+      "maxLength": "Maksimum {max} karakter"
+    },
+    "creditCard": {
+      "title": "Kartu Kredit",
+      "ccNumber": "Nomor Kartu",
+      "firstName": "Nama Depan",
+      "lastName": "Nama Belakang",
+      "ccCvc": "CVC",
+      "ccMonth": "Bulan",
+      "ccYear": "Tahun",
+      "billingInformation": "Informasi Penagihan",
+      "billingAddress": "Alamat Penagihan",
+      "billingCity": "Kota",
+      "billingState": "Negara Bagian/Provinsi",
+      "billingZipcode": "Kode Pos",
+      "billingCountry": "Negara",
+      "billingPhone": "Telepon"
     },
     "requestKeys": {
       "nativeName": "Nama Lengkap",

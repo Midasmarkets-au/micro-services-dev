@@ -7,6 +7,8 @@ import type {
   DepositGroupInfo,
   DepositRequest,
   DepositResponse,
+  ExLinkCurrency,
+  ExLinkExchangeRatesResponse,
 } from '@/types/deposit';
 
 /**
@@ -66,6 +68,40 @@ export async function postAccountDeposit(
       return { success: false, error: error.message, errorCode: error.errorCode };
     }
     return { success: false, error: 'Failed to submit deposit' };
+  }
+}
+
+/**
+ * ExLink Global - 获取支持的币种列表
+ */
+export async function getExLinkCurrencies(): Promise<ActionResponse<ExLinkCurrency[]>> {
+  try {
+    const response = await apiClient.v1.get<{ data: ExLinkCurrency[] }>(
+      '/client/deposit/exlink/currencies'
+    );
+    return { success: true, data: response.data || [] };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to fetch ExLink currencies' };
+  }
+}
+
+/**
+ * ExLink Global - 获取实时汇率列表
+ */
+export async function getExLinkExchangeRates(): Promise<ActionResponse<ExLinkExchangeRatesResponse>> {
+  try {
+    const response = await apiClient.v1.get<{ data: ExLinkExchangeRatesResponse }>(
+      '/client/deposit/exlink/exchange-rates'
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to fetch ExLink exchange rates' };
   }
 }
 

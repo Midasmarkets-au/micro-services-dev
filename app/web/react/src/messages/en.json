@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "Please enter an amount",
       "amountRange": "Please enter amount between ",
-      "selectChannel": "Please select a payment method"
+      "amountInteger": "Amount must be an integer",
+      "selectChannel": "Please select a payment method",
+      "requiredField": "This field is required",
+      "maxLength": "Max {max} characters"
+    },
+    "creditCard": {
+      "title": "Credit Card",
+      "ccNumber": "Card Number",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "ccCvc": "CVC",
+      "ccMonth": "Month",
+      "ccYear": "Year",
+      "billingInformation": "Billing Information",
+      "billingAddress": "Billing Address",
+      "billingCity": "City",
+      "billingState": "State/Province",
+      "billingZipcode": "Zip Code",
+      "billingCountry": "Country",
+      "billingPhone": "Phone"
     },
     "requestKeys": {
       "nativeName": "Full Name",

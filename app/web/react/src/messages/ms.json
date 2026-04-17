@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "Sila masukkan jumlah",
       "amountRange": "Sila masukkan jumlah deposit",
-      "selectChannel": "Sila pilih kaedah pembayaran"
+      "amountInteger": "Jumlah mestilah integer",
+      "selectChannel": "Sila pilih kaedah pembayaran",
+      "requiredField": "Medan ini diperlukan",
+      "maxLength": "Maksimum {max} aksara"
+    },
+    "creditCard": {
+      "title": "Kad Kredit",
+      "ccNumber": "Nombor Kad",
+      "firstName": "Nama Pertama",
+      "lastName": "Nama Akhir",
+      "ccCvc": "CVC",
+      "ccMonth": "Bulan",
+      "ccYear": "Tahun",
+      "billingInformation": "Maklumat Pengebilan",
+      "billingAddress": "Alamat Pengebilan",
+      "billingCity": "Bandar",
+      "billingState": "Negeri/Wilayah",
+      "billingZipcode": "Poskod",
+      "billingCountry": "Negara",
+      "billingPhone": "Telefon"
     },
     "requestKeys": {
       "nativeName": "Nama sebenar",

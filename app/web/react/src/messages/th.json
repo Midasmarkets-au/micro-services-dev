@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "กรุณาป้อนจำนวน",
       "amountRange": "กรุณาป้อนจำนวนที่ฝาก",
-      "selectChannel": "กรุณาเลือกวิธีชำระเงิน"
+      "amountInteger": "จำนวนต้องเป็นจำนวนเต็ม",
+      "selectChannel": "กรุณาเลือกวิธีชำระเงิน",
+      "requiredField": "จำเป็นต้องกรอกข้อมูลนี้",
+      "maxLength": "สูงสุด {max} ตัวอักษร"
+    },
+    "creditCard": {
+      "title": "บัตรเครดิต",
+      "ccNumber": "หมายเลขบัตร",
+      "firstName": "ชื่อ",
+      "lastName": "นามสกุล",
+      "ccCvc": "CVC",
+      "ccMonth": "เดือน",
+      "ccYear": "ปี",
+      "billingInformation": "ข้อมูลการเรียกเก็บเงิน",
+      "billingAddress": "ที่อยู่สำหรับเรียกเก็บเงิน",
+      "billingCity": "เมือง",
+      "billingState": "รัฐ/จังหวัด",
+      "billingZipcode": "รหัสไปรษณีย์",
+      "billingCountry": "ประเทศ",
+      "billingPhone": "โทรศัพท์"
     },
     "requestKeys": {
       "nativeName": "ชื่อจริง",

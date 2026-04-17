@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "សូមបញ្ចូលចំនួន",
       "amountRange": "សូមបញ្ចូលចំនួនដាក់ប្រាក់",
-      "selectChannel": "សូមជ្រើសរើសវិធីទូទាត់"
+      "amountInteger": "ចំនួនត្រូវតែជាចំនួនគត់",
+      "selectChannel": "សូមជ្រើសរើសវិធីទូទាត់",
+      "requiredField": "វាលនេះត្រូវការ",
+      "maxLength": "អតិបរមា {max} តួអក្សរ"
+    },
+    "creditCard": {
+      "title": "ប័ណ្ណឥណទាន",
+      "ccNumber": "លេខប័ណ្ណ",
+      "firstName": "នាមខ្លួន",
+      "lastName": "នាមត្រកូល",
+      "ccCvc": "CVC",
+      "ccMonth": "ខែ",
+      "ccYear": "ឆ្នាំ",
+      "billingInformation": "ព័ត៌មានវិក្កយបត្រ",
+      "billingAddress": "អាសយដ្ឋានវិក្កយបត្រ",
+      "billingCity": "ទីក្រុង",
+      "billingState": "រដ្ឋ/ខេត្ត",
+      "billingZipcode": "លេខកូដប្រៃសណីយ៍",
+      "billingCountry": "ប្រទេស",
+      "billingPhone": "លេខទូរស័ព្ទ"
     },
     "requestKeys": {
       "nativeName": "ឈ្មោះពិត",

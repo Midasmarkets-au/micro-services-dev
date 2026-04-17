@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "Por favor ingrese el monto",
       "amountRange": "Por favor ingrese el monto del depósito",
-      "selectChannel": "Por favor seleccione el método de pago"
+      "amountInteger": "El monto debe ser un número entero",
+      "selectChannel": "Por favor seleccione el método de pago",
+      "requiredField": "Este campo es obligatorio",
+      "maxLength": "Máximo {max} caracteres"
+    },
+    "creditCard": {
+      "title": "Tarjeta de Crédito",
+      "ccNumber": "Número de Tarjeta",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "ccCvc": "CVC",
+      "ccMonth": "Mes",
+      "ccYear": "Año",
+      "billingInformation": "Información de Facturación",
+      "billingAddress": "Dirección de Facturación",
+      "billingCity": "Ciudad",
+      "billingState": "Estado/Provincia",
+      "billingZipcode": "Código Postal",
+      "billingCountry": "País",
+      "billingPhone": "Teléfono"
     },
     "requestKeys": {
       "nativeName": "Nombre real",

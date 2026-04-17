@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "請輸入金額",
       "amountRange": "請輸入入金額",
-      "selectChannel": "請選擇支付方式"
+      "amountInteger": "金額必須為整數",
+      "selectChannel": "請選擇支付方式",
+      "requiredField": "此項為必填",
+      "maxLength": "最多 {max} 個字元"
+    },
+    "creditCard": {
+      "title": "信用卡",
+      "ccNumber": "卡號",
+      "firstName": "名",
+      "lastName": "姓",
+      "ccCvc": "CVC",
+      "ccMonth": "月",
+      "ccYear": "年",
+      "billingInformation": "帳單資訊",
+      "billingAddress": "帳單地址",
+      "billingCity": "城市",
+      "billingState": "州/省",
+      "billingZipcode": "郵遞區號",
+      "billingCountry": "國家",
+      "billingPhone": "聯絡電話"
     },
     "requestKeys": {
       "nativeName": "真實姓名",

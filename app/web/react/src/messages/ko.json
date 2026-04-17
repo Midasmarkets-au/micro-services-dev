@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "금액을 입력해 주세요",
       "amountRange": "입금 금액을 입력해 주세요",
-      "selectChannel": "결제 방법을 선택해 주세요"
+      "amountInteger": "금액은 정수여야 합니다",
+      "selectChannel": "결제 방법을 선택해 주세요",
+      "requiredField": "필수 입력 항목입니다",
+      "maxLength": "최대 {max}자"
+    },
+    "creditCard": {
+      "title": "신용카드",
+      "ccNumber": "카드번호",
+      "firstName": "이름",
+      "lastName": "성",
+      "ccCvc": "CVC",
+      "ccMonth": "월",
+      "ccYear": "년",
+      "billingInformation": "청구 정보",
+      "billingAddress": "청구지 주소",
+      "billingCity": "도시",
+      "billingState": "주/도",
+      "billingZipcode": "우편번호",
+      "billingCountry": "국가",
+      "billingPhone": "연락처"
     },
     "requestKeys": {
       "nativeName": "실명",

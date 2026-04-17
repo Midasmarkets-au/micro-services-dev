@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "请输入金额",
       "amountRange": "请输入入金额",
-      "selectChannel": "请选择支付方式"
+      "amountInteger": "金额必须为整数",
+      "selectChannel": "请选择支付方式",
+      "requiredField": "此项为必填",
+      "maxLength": "最多 {max} 个字符"
+    },
+    "creditCard": {
+      "title": "信用卡",
+      "ccNumber": "卡号",
+      "firstName": "名",
+      "lastName": "姓",
+      "ccCvc": "CVC",
+      "ccMonth": "月",
+      "ccYear": "年",
+      "billingInformation": "账单信息",
+      "billingAddress": "账单地址",
+      "billingCity": "城市",
+      "billingState": "州/省",
+      "billingZipcode": "邮编",
+      "billingCountry": "国家",
+      "billingPhone": "联系电话"
     },
     "requestKeys": {
       "nativeName": "真实姓名",

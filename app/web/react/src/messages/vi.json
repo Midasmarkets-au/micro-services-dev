@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "Vui lòng nhập số tiền",
       "amountRange": "Vui lòng nhập số tiền nạp",
-      "selectChannel": "Vui lòng chọn phương thức thanh toán"
+      "amountInteger": "Số tiền phải là số nguyên",
+      "selectChannel": "Vui lòng chọn phương thức thanh toán",
+      "requiredField": "Trường này là bắt buộc",
+      "maxLength": "Tối đa {max} ký tự"
+    },
+    "creditCard": {
+      "title": "Thẻ tín dụng",
+      "ccNumber": "Số thẻ",
+      "firstName": "Tên",
+      "lastName": "Họ",
+      "ccCvc": "CVC",
+      "ccMonth": "Tháng",
+      "ccYear": "Năm",
+      "billingInformation": "Thông tin thanh toán",
+      "billingAddress": "Địa chỉ thanh toán",
+      "billingCity": "Thành phố",
+      "billingState": "Bang/Tỉnh",
+      "billingZipcode": "Mã bưu chính",
+      "billingCountry": "Quốc gia",
+      "billingPhone": "Số điện thoại"
     },
     "requestKeys": {
       "nativeName": "Tên thật",

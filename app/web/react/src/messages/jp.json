@@ -1233,7 +1233,26 @@
     "error": {
       "amountRequired": "金額を入力してください",
       "amountRange": "入金額を入力してください",
-      "selectChannel": "支払い方法を選択してください"
+      "amountInteger": "金額は整数でなければなりません",
+      "selectChannel": "支払い方法を選択してください",
+      "requiredField": "この項目は必須です",
+      "maxLength": "最大{max}文字"
+    },
+    "creditCard": {
+      "title": "クレジットカード",
+      "ccNumber": "カード番号",
+      "firstName": "名",
+      "lastName": "姓",
+      "ccCvc": "CVC",
+      "ccMonth": "月",
+      "ccYear": "年",
+      "billingInformation": "請求情報",
+      "billingAddress": "請求先住所",
+      "billingCity": "市区町村",
+      "billingState": "都道府県/州",
+      "billingZipcode": "郵便番号",
+      "billingCountry": "国",
+      "billingPhone": "電話番号"
     },
     "requestKeys": {
       "nativeName": "本名",
