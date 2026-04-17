@@ -8,27 +8,7 @@ import { LanguageTypes, type ILanguage } from '@/core/types/LanguageTypes';
 import { useServerAction } from '@/hooks/useServerAction';
 import { setLocale, updateUserLanguage } from '@/actions';
 import { useUserStore } from '@/stores';
-
-// 语言代码映射：LanguageTypes code -> i18n locale
-const localeMap: Record<string, string> = {
-  'en-us': 'en',
-  'zh-cn': 'zh',
-  'zh-tw': 'zh-tw',
-  'vi-vn': 'vi',
-  'th-th': 'th',
-  'jp-jp': 'jp',
-  'id-id': 'id',
-  'ms-my': 'ms',
-  'ko-kr': 'ko',
-  'km-kh': 'km',
-  'es-es': 'es',
-};
-
-// 反向映射：i18n locale -> LanguageTypes code
-const reverseLocaleMap: Record<string, string> = Object.entries(localeMap).reduce(
-  (acc, [key, value]) => ({ ...acc, [value]: key }),
-  {}
-);
+import { localeMap, reverseLocaleMap } from '@/i18n/config';
 
 export function LanguageToggle() {
   const currentLocale = useLocale();
