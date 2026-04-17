@@ -125,7 +125,17 @@ export default function SalesLinkPage() {
       const baseUrl =
         typeof window !== 'undefined' ? window.location.origin : '';
       const link = `${baseUrl}/sign-up?code=${item.code}&siteId=${siteId}&lang=${lang}`;
-      await navigator.clipboard.writeText(link);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = link;
+        ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
       setCopiedLink(link);
       setCopyConfirmItem(item);
       setCopyConfirmOpen(true);

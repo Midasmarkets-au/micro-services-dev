@@ -1739,7 +1739,17 @@
       "createdTime": "作成日時",
       "status": "ステータス",
       "statusDeposited": "入金完了",
-      "statusNotDeposited": "入金作成済み"
+      "statusNotDeposited": "入金作成済み",
+      "verification": "認証",
+      "verificationNotStarted": "未開始",
+      "verificationStatus": {
+        "0": "未完了",
+        "1": "審査待ち",
+        "2": "審査中",
+        "3": "承認待ち",
+        "4": "承認済み",
+        "5": "拒否"
+      }
     },
     "customers": {
       "title": "顧客",
@@ -2151,7 +2161,17 @@
       "createdTime": "作成日時",
       "status": "ステータス",
       "statusDeposited": "入金完了",
-      "statusNotDeposited": "入金作成済み"
+      "statusNotDeposited": "入金作成済み",
+      "verification": "認証",
+      "verificationNotStarted": "未開始",
+      "verificationStatus": {
+        "0": "未完了",
+        "1": "審査待ち",
+        "2": "審査中",
+        "3": "承認待ち",
+        "4": "承認済み",
+        "5": "拒否"
+      }
     },
     "customers": {
       "title": "顧客",

@@ -1739,7 +1739,17 @@
       "createdTime": "Fecha de creación",
       "status": "Estado",
       "statusDeposited": "Depósito completado",
-      "statusNotDeposited": "Depósito creado"
+      "statusNotDeposited": "Depósito creado",
+      "verification": "Verificación",
+      "verificationNotStarted": "No iniciado",
+      "verificationStatus": {
+        "0": "Incompleto",
+        "1": "Pendiente de revisión",
+        "2": "En revisión",
+        "3": "Pendiente de aprobación",
+        "4": "Aprobado",
+        "5": "Rechazado"
+      }
     },
     "customers": {
       "title": "Clientes",
@@ -2151,7 +2161,17 @@
       "createdTime": "Fecha de creación",
       "status": "Estado",
       "statusDeposited": "Depósito completado",
-      "statusNotDeposited": "Depósito creado"
+      "statusNotDeposited": "Depósito creado",
+      "verification": "Verificación",
+      "verificationNotStarted": "No iniciado",
+      "verificationStatus": {
+        "0": "Incompleto",
+        "1": "Pendiente de revisión",
+        "2": "En revisión",
+        "3": "Pendiente de aprobación",
+        "4": "Aprobado",
+        "5": "Rechazado"
+      }
     },
     "customers": {
       "title": "Clientes",

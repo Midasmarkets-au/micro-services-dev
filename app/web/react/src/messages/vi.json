@@ -1739,7 +1739,17 @@
       "createdTime": "Thời gian tạo",
       "status": "Trạng thái",
       "statusDeposited": "Đã nạp tiền",
-      "statusNotDeposited": "Đã tạo nạp"
+      "statusNotDeposited": "Đã tạo nạp",
+      "verification": "Xác minh",
+      "verificationNotStarted": "Chưa bắt đầu",
+      "verificationStatus": {
+        "0": "Chưa hoàn thành",
+        "1": "Chờ xem xét",
+        "2": "Đang xem xét",
+        "3": "Chờ phê duyệt",
+        "4": "Đã phê duyệt",
+        "5": "Bị từ chối"
+      }
     },
     "customers": {
       "title": "Khách hàng",
@@ -2151,7 +2161,17 @@
       "createdTime": "Thời gian tạo",
       "status": "Trạng thái",
       "statusDeposited": "Đã nạp tiền",
-      "statusNotDeposited": "Đã tạo nạp"
+      "statusNotDeposited": "Đã tạo nạp",
+      "verification": "Xác minh",
+      "verificationNotStarted": "Chưa bắt đầu",
+      "verificationStatus": {
+        "0": "Chưa hoàn thành",
+        "1": "Chờ xem xét",
+        "2": "Đang xem xét",
+        "3": "Chờ phê duyệt",
+        "4": "Đã phê duyệt",
+        "5": "Bị từ chối"
+      }
     },
     "customers": {
       "title": "Khách hàng",

@@ -25,6 +25,7 @@ export interface TabsProps<T extends string = string> {
   size?: TabSize;
   showDivider?: boolean;
   className?: string;
+  tabsRowClassName?: string;
 }
 
 export function Tabs<T extends string = string>({
@@ -34,12 +35,13 @@ export function Tabs<T extends string = string>({
   size = 'xl',
   showDivider = true,
   className = '',
+  tabsRowClassName = '',
 }: TabsProps<T>) {
   const cfg = sizeConfig[size];
 
   return (
     <div className={`flex flex-col ${className}`}>
-      <div className={`relative flex ${cfg.gap} overflow-x-auto overflow-y-hidden ${showDivider ? 'border-b border-border' : ''}`}>
+      <div className={`relative flex ${cfg.gap} overflow-x-auto overflow-y-hidden ${showDivider ? 'border-b border-border' : ''} ${tabsRowClassName}`}>
         {tabs.map((tab) => {
           const isActive = activeKey === tab.key;
           const isDisabled = tab.disabled;

@@ -137,11 +137,21 @@ export function TradeAccountCard({
 
   // 复制账号
   const handleCopy = async () => {
-    if (data.accountNumber) {
-      await navigator.clipboard.writeText(String(data.accountNumber));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    if (!data.accountNumber) return;
+    const text = String(data.accountNumber);
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // 按钮配置
@@ -258,16 +268,24 @@ export function TradeAccountCard({
                   </span>
                   {data.accountNumber > 0 ? (
                     <>
+      
                       <span className="text-sm font-medium text-text-secondary">
                         {data.accountNumber}
                       </span>
-                      <button
-                        onClick={handleCopy}
-                        className="text-text-secondary hover:text-primary transition-colors"
-                        title={copied ? t('action.copied') : t('action.copy')}
-                      >
-                        <CopyIcon />
-                      </button>
+                      <div className="relative inline-flex items-center">
+                        {copied && (
+                          <span className="animate-fade-in pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[#000f32] px-2 py-1 text-xs text-white dark:bg-white dark:text-[#000f32]">
+                            {t('action.copied')}
+                          </span>
+                        )}
+                        <button
+                          onClick={handleCopy}
+                          className={`transition-colors cursor-pointer ${copied ? 'text-primary' : 'text-text-secondary hover:text-primary'}`}
+                          title={copied ? t('action.copied') : t('action.copy')}
+                        >
+                          <CopyIcon />
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <span className="text-sm font-medium text-text-secondary">--</span>

@@ -1739,7 +1739,17 @@
       "createdTime": "建立時間",
       "status": "狀態",
       "statusDeposited": "已完成入金",
-      "statusNotDeposited": "已建立入金"
+      "statusNotDeposited": "已建立入金",
+      "verification": "驗證",
+      "verificationNotStarted": "未開始",
+      "verificationStatus": {
+        "0": "未完成",
+        "1": "等待審核",
+        "2": "審核中",
+        "3": "等待批准",
+        "4": "已批准",
+        "5": "已拒絕"
+      }
     },
     "customers": {
       "title": "客戶",
@@ -2151,7 +2161,17 @@
       "createdTime": "建立時間",
       "status": "狀態",
       "statusDeposited": "已完成入金",
-      "statusNotDeposited": "已建立入金"
+      "statusNotDeposited": "已建立入金",
+      "verification": "驗證",
+      "verificationNotStarted": "未開始",
+      "verificationStatus": {
+        "0": "未完成",
+        "1": "等待審核",
+        "2": "審核中",
+        "3": "等待批准",
+        "4": "已批准",
+        "5": "已拒絕"
+      }
     },
     "customers": {
       "title": "客戶",

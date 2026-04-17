@@ -1739,7 +1739,17 @@
       "createdTime": "생성 시간",
       "status": "상태",
       "statusDeposited": "입금 완료",
-      "statusNotDeposited": "입금 생성됨"
+      "statusNotDeposited": "입금 생성됨",
+      "verification": "인증",
+      "verificationNotStarted": "시작 안 됨",
+      "verificationStatus": {
+        "0": "미완료",
+        "1": "검토 대기 중",
+        "2": "검토 중",
+        "3": "승인 대기 중",
+        "4": "승인됨",
+        "5": "거부됨"
+      }
     },
     "customers": {
       "title": "고객",
@@ -2151,7 +2161,17 @@
       "createdTime": "생성 시간",
       "status": "상태",
       "statusDeposited": "입금 완료",
-      "statusNotDeposited": "입금 생성됨"
+      "statusNotDeposited": "입금 생성됨",
+      "verification": "인증",
+      "verificationNotStarted": "시작 안 됨",
+      "verificationStatus": {
+        "0": "미완료",
+        "1": "검토 대기 중",
+        "2": "검토 중",
+        "3": "승인 대기 중",
+        "4": "승인됨",
+        "5": "거부됨"
+      }
     },
     "customers": {
       "title": "고객",
