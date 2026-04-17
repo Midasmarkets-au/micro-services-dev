@@ -1739,7 +1739,17 @@
       "createdTime": "Waktu Dibuat",
       "status": "Status",
       "statusDeposited": "Telah Disetor",
-      "statusNotDeposited": "Belum Disetor"
+      "statusNotDeposited": "Belum Disetor",
+      "verification": "Verifikasi",
+      "verificationNotStarted": "Belum dimulai",
+      "verificationStatus": {
+        "0": "Tidak lengkap",
+        "1": "Menunggu tinjauan",
+        "2": "Sedang ditinjau",
+        "3": "Menunggu persetujuan",
+        "4": "Disetujui",
+        "5": "Ditolak"
+      }
     },
     "customers": {
       "title": "Pelanggan",
@@ -2151,7 +2161,17 @@
       "createdTime": "Waktu Dibuat",
       "status": "Status",
       "statusDeposited": "Telah Disetor",
-      "statusNotDeposited": "Belum Disetor"
+      "statusNotDeposited": "Belum Disetor",
+      "verification": "Verifikasi",
+      "verificationNotStarted": "Belum dimulai",
+      "verificationStatus": {
+        "0": "Tidak lengkap",
+        "1": "Menunggu tinjauan",
+        "2": "Sedang ditinjau",
+        "3": "Menunggu persetujuan",
+        "4": "Disetujui",
+        "5": "Ditolak"
+      }
     },
     "customers": {
       "title": "Pelanggan",

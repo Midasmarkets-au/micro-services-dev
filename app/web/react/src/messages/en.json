@@ -1739,7 +1739,17 @@
       "createdTime": "Created Time",
       "status": "Status",
       "statusDeposited": "Deposited",
-      "statusNotDeposited": "Not Deposited"
+      "statusNotDeposited": "Not Deposited",
+      "verification": "Verification",
+      "verificationNotStarted": "Not Started",
+      "verificationStatus": {
+        "0": "Incomplete",
+        "1": "Pending Review",
+        "2": "Under Review",
+        "3": "Pending Approval",
+        "4": "Approved",
+        "5": "Rejected"
+      }
     },
     "customers": {
       "title": "Customers",
@@ -2151,7 +2161,17 @@
       "createdTime": "Created Time",
       "status": "Status",
       "statusDeposited": "Deposited",
-      "statusNotDeposited": "Not Deposited"
+      "statusNotDeposited": "Not Deposited",
+      "verification": "Verification",
+      "verificationNotStarted": "Not Started",
+      "verificationStatus": {
+        "0": "Incomplete",
+        "1": "Pending Review",
+        "2": "Under Review",
+        "3": "Pending Approval",
+        "4": "Approved",
+        "5": "Rejected"
+      }
     },
     "customers": {
       "title": "Customers",

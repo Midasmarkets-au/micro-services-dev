@@ -50,9 +50,9 @@ export function ShopBanner({ eventDetail }: ShopBannerProps) {
         background: bannerUrl ? `url("${bannerUrl}") center/cover no-repeat` : config.gradient,
       }}
     >
-      {/* 光效容器 — Figma: left=399, top=-449.3, container=1105.6 */}
+      {/* 光效容器 — 锚定右侧，随容器宽度自适应 */}
       <div
-        className="absolute left-[399px] top-[-449.3px] size-[1105.6px] pointer-events-none"
+        className="absolute right-[-220px] top-[-449.3px] size-[1105.6px] pointer-events-none"
         style={{ mixBlendMode: theme === 'dark' ? 'hard-light' : undefined }}
       >
         {/* 蓝色漩涡底图 — 957px, rotate=-9.8deg, opacity=0.8 */}
@@ -111,8 +111,8 @@ export function ShopBanner({ eventDetail }: ShopBannerProps) {
         </p>
       )}
 
-      {/* 礼盒 — Figma: left=765, top=-55.3, container=390, image=294, rotate=-25deg */}
-      <div className="absolute left-[765px] top-[-55.3px] z-10 size-[390px] flex items-center justify-center">
+      {/* 礼盒 — 锚定右侧，随容器宽度自适应 */}
+      <div className="absolute right-[45px] top-[-55.3px] z-0 size-[390px] flex items-center justify-center">
         <img
           src={config.giftBox}
           alt="Gift"

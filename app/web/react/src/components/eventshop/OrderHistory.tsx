@@ -223,11 +223,12 @@ export function OrderHistory() {
           }}
           size="lg"
           showDivider={false}
+          tabsRowClassName="!gap-5 md:!gap-6"
         />
 
         <div className="flex items-center gap-3 mb-3 ml-auto shrink-0">
           <Select value={sortOrder} onValueChange={handleSortChange}>
-            <SelectTrigger triggerSize="sm" className="w-[140px]! shrink-0 rounded border border-border bg-surface px-3 text-sm">
+            <SelectTrigger triggerSize="sm" className="w-[120px]! shrink-0 rounded border border-border bg-surface px-3 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -235,7 +236,7 @@ export function OrderHistory() {
               <SelectItem value="asc">{t('filter.oldestFirst')}</SelectItem>
             </SelectContent>
           </Select>
-          <div className="w-[200px] shrink-0 relative">
+          <div className="w-[clamp(140px,calc(-3px+10.56vw),200px)] shrink-0 relative">
             <Image src="/images/icons/search.svg" alt="" width={16} height={16} className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none" />
             <Input
               value={searchText}

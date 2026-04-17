@@ -124,22 +124,34 @@ export default function IBNewCustomersPage() {
       align: 'center',
       skeletonWidth: 'w-20',
       skeletonHeight: 'h-5',
-      render: (item) =>
-        item.status === 2 ? (
-          <span className="rounded bg-[rgba(0,78,255,0.2)] px-3 py-1 text-xs text-[#004eff]">
-            {t('statusDeposited')}
+      render: (item) => {
+        const hasVerification = item.verification && !item.verification.isEmpty;
+        const verificationLabel = hasVerification
+          ? t(`verificationStatus.${item.verification!.status}`)
+          : t('verificationNotStarted');
+        const isApproved = hasVerification && item.verification!.status === 4;
+        const isRejected = hasVerification && item.verification!.status === 5;
+        return (
+          <span
+            className={[
+              'rounded px-3 py-1 text-xs',
+              isApproved
+                ? 'bg-[rgba(0,78,255,0.2)] text-[#004eff]'
+                : isRejected
+                  ? 'bg-[rgba(128,0,32,0.2)] text-[#800020]'
+                  : 'bg-[rgba(128,128,128,0.15)] text-text-secondary',
+            ].join(' ')}
+          >
+            {t('verification')} {verificationLabel}
           </span>
-        ) : (
-          <span className="rounded bg-[rgba(128,0,32,0.2)] px-3 py-1 text-xs text-[#800020]">
-            {t('statusNotDeposited')}
-          </span>
-        ),
+        );
+      },
     },
   ], [t]);
 
   return (
     <div className="flex flex-1 flex-col gap-5 rounded bg-surface p-5">
-      <Tabs tabs={tabs} activeKey={activeTab} onChange={handleTabChange} />
+      {/* <Tabs tabs={tabs} activeKey={activeTab} onChange={handleTabChange} /> */}
 
       <DataTable<IBReferralHistory>
         columns={columns}
