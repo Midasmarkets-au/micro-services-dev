@@ -1739,7 +1739,17 @@
       "createdTime": "เวลาสร้าง",
       "status": "สถานะ",
       "statusDeposited": "ฝากเงินสำเร็จ",
-      "statusNotDeposited": "สร้างการฝากแล้ว"
+      "statusNotDeposited": "สร้างการฝากแล้ว",
+      "verification": "การยืนยัน",
+      "verificationNotStarted": "ยังไม่เริ่ม",
+      "verificationStatus": {
+        "0": "ไม่สมบูรณ์",
+        "1": "รอการตรวจสอบ",
+        "2": "กำลังตรวจสอบ",
+        "3": "รอการอนุมัติ",
+        "4": "อนุมัติแล้ว",
+        "5": "ถูกปฏิเสธ"
+      }
     },
     "customers": {
       "title": "ลูกค้า",
@@ -2151,7 +2161,17 @@
       "createdTime": "เวลาสร้าง",
       "status": "สถานะ",
       "statusDeposited": "ฝากเงินสำเร็จ",
-      "statusNotDeposited": "สร้างการฝากแล้ว"
+      "statusNotDeposited": "สร้างการฝากแล้ว",
+      "verification": "การยืนยัน",
+      "verificationNotStarted": "ยังไม่เริ่ม",
+      "verificationStatus": {
+        "0": "ไม่สมบูรณ์",
+        "1": "รอการตรวจสอบ",
+        "2": "กำลังตรวจสอบ",
+        "3": "รอการอนุมัติ",
+        "4": "อนุมัติแล้ว",
+        "5": "ถูกปฏิเสธ"
+      }
     },
     "customers": {
       "title": "ลูกค้า",

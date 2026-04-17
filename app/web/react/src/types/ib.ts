@@ -72,6 +72,11 @@ export interface IBClientCriteria extends IBListParams {
 // IB Referral 相关
 // ============================================
 
+export interface IBReferralHistoryVerification {
+  isEmpty: boolean;
+  status: number; // 0=未完成 1=等待审核 2=审核中 3=等待批准 4=已批准 5=已拒绝
+}
+
 export interface IBReferralHistory {
   id: number;
   userId: number;
@@ -83,6 +88,7 @@ export interface IBReferralHistory {
   createdOn: string;
   completedOn?: string;
   user?: IBClientUser;
+  verification?: IBReferralHistoryVerification;
 }
 
 export interface IBReferralHistoryResponse {
