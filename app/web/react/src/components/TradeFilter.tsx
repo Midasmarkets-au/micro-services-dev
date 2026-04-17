@@ -488,7 +488,7 @@ export const TradeFilter = forwardRef<TradeFilterRef, TradeFilterProps>(function
         params.serviceId = Number(serviceId);
       }
       if (visibleFields.has('product') && symbol.trim()) params.symbol = symbol.trim();
-      if (visibleFields.has('account') && accountNumber.trim()) params.searchText = accountNumber.trim();
+      if (visibleFields.has('account') && accountNumber.trim()) params.accountNumber = accountNumber.trim();
       if (visibleFields.has('pageSize')) params.size = pageSize;
       if (visibleFields.has('transactionType') && transactionType) params.ledgerSide = Number(transactionType);
       if (visibleFields.has('transactionStatus') && transactionStatus) params.stateId = Number(transactionStatus);

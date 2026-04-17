@@ -4,6 +4,13 @@ export type VerificationStep = 'started' | 'info' | 'financial' | 'agreement' | 
 // 验证状态
 export type VerificationStatus = 0 | 1 | 2 | 3; // 0=未开始, 1=进行中, 2=已提交, 3=已通过
 
+// 推荐历史中的 verification 字段（IB / Sales 共用）
+// status: 0=未完成 1=等待审核 2=审核中 3=等待批准 4=已批准 5=已拒绝
+export interface ReferralHistoryVerification {
+  isEmpty: boolean;
+  status: number;
+}
+
 // 账户信息 (Started)
 export interface StartedData {
   currency: number;

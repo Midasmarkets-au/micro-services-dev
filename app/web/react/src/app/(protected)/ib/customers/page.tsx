@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -11,21 +11,17 @@ import {
   Avatar,
   BalanceShow,
   Button,
-  Input,
   Skeleton,
   Tag,
   Tabs,
   DataTable,
   DropdownMenu,
   Pagination,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
   Icon,
 } from '@/components/ui';
 import type { TabItem, DataTableColumn, DropdownMenuItem } from '@/components/ui';
+import { CustomerFilter } from '@/components/CustomerFilter';
+import type { CustomerFilterRef, CustomerFilterParams } from '@/components/CustomerFilter';
 import type { IBClientAccount, IBClientCriteria } from '@/types/ib';
 import { useUserStore } from '@/stores';
 import { ViewRebateStatModal } from '../_components/modals/ViewRebateStatModal';
@@ -70,9 +66,8 @@ export default function IBCustomersPage() {
   const [criteria, setCriteria] = useState<IBClientCriteria>(INITIAL_CRITERIA);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RoleTab>('all');
-  const [sortOrder, setSortOrder] = useState<string>('newest');
-  const [searchText, setSearchText] = useState('');
   const [ibChain, setIbChain] = useState<IBClientAccount[]>([]);
+  const filterRef = useRef<CustomerFilterRef>(null);
   const [rebateStatOpen, setRebateStatOpen] = useState(false);
   const [editSchemaOpen, setEditSchemaOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<IBClientAccount | null>(null);
@@ -116,37 +111,40 @@ export default function IBCustomersPage() {
       fetchData({
         ...INITIAL_CRITERIA,
         role: getRoleValue(activeTab),
-        sortFlag: sortOrder === 'newest',
+        sortFlag: true,
       });
     } else {
       setIsLoading(false);
     }
-  }, [agentAccount, activeTab, sortOrder, fetchData]);
+  }, [agentAccount, activeTab, fetchData]);
 
   const handleTabChange = (tab: RoleTab) => {
     setActiveTab(tab);
-    setSearchText('');
     setIbChain([]);
+    filterRef.current?.setValues({ searchText: '', dateRange: undefined, sortOrder: 'newest' });
   };
 
-  const handleSearch = () => {
-    fetchData({
-      ...criteria,
-      page: 1,
-      searchText: searchText || undefined,
-      role: getRoleValue(activeTab),
-      sortFlag: sortOrder === 'newest',
-      relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
-    });
-  };
+  const handleFilterSearch = useCallback(
+    (params: CustomerFilterParams) => {
+      fetchData({
+        ...criteria,
+        page: 1,
+        searchText: params.searchText,
+        role: getRoleValue(activeTab),
+        sortFlag: params.sortOrder !== 'oldest',
+        relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
+        from: params.from,
+        to: params.to,
+      });
+    },
+    [criteria, activeTab, ibChain.length, fetchData],
+  );
 
-  const handleReset = () => {
-    setSearchText('');
-    setSortOrder('newest');
+  const handleFilterReset = useCallback(() => {
     setIbChain([]);
     setActiveTab('all');
     fetchData(INITIAL_CRITERIA);
-  };
+  }, [fetchData]);
 
   const handleIbDrillDown = useCallback((ibAccount: IBClientAccount) => {
     setIbChain((prev) => [...prev, ibAccount]);
@@ -161,7 +159,8 @@ export default function IBCustomersPage() {
 
   const handleClearChain = () => {
     setIbChain([]);
-    fetchData({ ...INITIAL_CRITERIA, role: getRoleValue(activeTab), sortFlag: sortOrder === 'newest' });
+    const currentSortOrder = filterRef.current?.getValues().sortOrder ?? 'newest';
+    fetchData({ ...INITIAL_CRITERIA, role: getRoleValue(activeTab), sortFlag: currentSortOrder !== 'oldest' });
   };
 
   const handleGoToLevel = (idx: number) => {
@@ -342,10 +341,15 @@ export default function IBCustomersPage() {
     return cols;
   }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showEditSchema, siteConfig, ibChain.length]);
 
+  const sortOptions = [
+    { value: 'newest', label: t('action.sortNewest') },
+    { value: 'oldest', label: t('action.sortOldest') },
+  ];
+
   return (
     <div className="flex w-full min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
       {/* Tabs + Filter Bar */}
-      <div className="flex flex-col gap-3 border-b border-border pb-0 md:flex-row md:flex-wrap md:items-end md:justify-between md:gap-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <Tabs
           tabs={tabs}
           activeKey={activeTab}
@@ -353,35 +357,18 @@ export default function IBCustomersPage() {
           size="xl"
           showDivider={false}
         />
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <Select value={sortOrder} onValueChange={setSortOrder}>
-            <SelectTrigger triggerSize="sm" className="w-[130px]! shrink-0 rounded border border-border bg-input-bg px-3 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">{t('action.sortNewest')}</SelectItem>
-              <SelectItem value="oldest">{t('action.sortOldest')}</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="relative">
-            <Icon name="search-line" className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-text-secondary" />
-            <Input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder={t('customers.searchPlaceholder')}
-              inputSize="sm"
-              className="w-[200px] pl-9!"
-            />
-          </div>
-          <Button variant="secondary" size="sm" onClick={handleReset} disabled={isLoading} className="bg-[#000f32] text-white hover:bg-[#000f32]/90">
-            <Icon name="reset-line" />
-            {t('action.reset')}
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleSearch} disabled={isLoading}>
-            <Icon name="search-line" />
-            {t('action.search')}
-          </Button>
+        <div className="ml-auto">
+          <CustomerFilter
+            ref={filterRef}
+            showSortOrder
+            sortOptions={sortOptions}
+            showDatePicker={activeTab === 'client'}
+            defaultValues={{ sortOrder: 'newest' }}
+            onSearch={handleFilterSearch}
+            onReset={handleFilterReset}
+            isLoading={isLoading}
+            searchPlaceholder={t('customers.searchPlaceholder')}
+          />
         </div>
       </div>
 

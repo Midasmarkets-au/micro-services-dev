@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -11,18 +11,18 @@ import {
   Avatar,
   BalanceShow,
   Button,
-  Input,
   Skeleton,
   Tag,
   Tabs,
   DataTable,
   DropdownMenu,
   Pagination,
-  SimpleSelect,
   Icon,
 } from '@/components/ui';
 import type { TabItem, DataTableColumn, DropdownMenuItem } from '@/components/ui';
 import type { SalesClientAccount, SalesClientCriteria } from '@/types/sales';
+import { CustomerFilter } from '@/components/CustomerFilter';
+import type { CustomerFilterRef, CustomerFilterParams } from '@/components/CustomerFilter';
 import { useUserStore } from '@/stores';
 import { ViewRebateStatModal } from '../_components/modals/ViewRebateStatModal';
 import { OpenTradeAccountModal } from '../_components/modals/OpenTradeAccountModal';
@@ -75,8 +75,8 @@ export default function SalesCustomersPage() {
   const [criteria, setCriteria] = useState<SalesClientCriteria>(INITIAL_CRITERIA);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RoleTab>('ib');
-  const [searchText, setSearchText] = useState('');
   const [ibChain, setIbChain] = useState<SalesClientAccount[]>([]);
+  const filterRef = useRef<CustomerFilterRef>(null);
 
   // 弹窗状态
   const [rebateStatOpen, setRebateStatOpen] = useState(false);
@@ -145,28 +145,33 @@ export default function SalesCustomersPage() {
 
   const handleTabChange = (tab: RoleTab) => {
     setActiveTab(tab);
-    setSearchText('');
     setIbChain([]);
+    setCriteria((prev) => ({ ...prev, multiLevel: false }));
+    filterRef.current?.setValues({ searchText: '', dateRange: undefined, multiLevel: false });
   };
 
-  const handleSearch = () => {
-    fetchData({
-      ...criteria,
-      page: 1,
-      searchText: searchText || undefined,
-      role: getRoleValue(activeTab) || undefined,
-      sortFlag: true,
-      relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
-      multiLevel: criteria.multiLevel ?? false,
-    });
-  };
+  const handleFilterSearch = useCallback(
+    (params: CustomerFilterParams) => {
+      fetchData({
+        ...criteria,
+        page: 1,
+        searchText: params.searchText,
+        role: getRoleValue(activeTab) || undefined,
+        sortFlag: true,
+        relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
+        multiLevel: params.multiLevel ?? false,
+        from: params.from,
+        to: params.to,
+      });
+    },
+    [criteria, activeTab, ibChain.length, fetchData],
+  );
 
-  const handleReset = () => {
-    setSearchText('');
+  const handleFilterReset = useCallback(() => {
     setIbChain([]);
     setActiveTab('ib');
     fetchData(INITIAL_CRITERIA);
-  };
+  }, [fetchData]);
 
   const handleIbDrillDown = useCallback((ibAccount: SalesClientAccount) => {
     setIbChain((prev) => [...prev, ibAccount]);
@@ -448,15 +453,9 @@ export default function SalesCustomersPage() {
 
     return cols;
   }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showOpenAccount, showRebateRelation, showIbLinks, showEditSchema, showNewReferral, showUnlockEmailAddress, siteConfig, ibChain.length]);
-  const multiLevelOptions = [
-    { value: 'false', label: t('fields.directLevel') },
-    { value: 'true', label: t('fields.allLevels') },
-  ];
-  const multiLevel = criteria.multiLevel ?? false;
-
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
-      {/* Tabs + 筛选区 同一行，移动端自动换行 */}
+      {/* Tabs + 筛选区同一行 */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <Tabs
           tabs={tabs}
@@ -465,38 +464,16 @@ export default function SalesCustomersPage() {
           size="xl"
           showDivider={false}
         />
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <SimpleSelect
-            value={String(multiLevel)}
-            onChange={(val) => {
-              const next = val === 'true';
-              const nextCriteria = { ...criteria, multiLevel: next, page: 1 };
-              setCriteria(nextCriteria);
-              fetchData(nextCriteria);
-            }}
-            options={multiLevelOptions}
-            triggerSize="sm"
-            className="w-auto! min-w-28 shrink-0 bg-input-bg"
+        <div className="ml-auto">
+          <CustomerFilter
+            ref={filterRef}
+            showMultiLevel
+            showDatePicker={activeTab === 'client'}
+            onSearch={handleFilterSearch}
+            onReset={handleFilterReset}
+            isLoading={isLoading}
+            searchPlaceholder={t('customers.searchPlaceholder')}
           />
-          <div className="relative">
-            <Icon name="search-line" className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-text-secondary" />
-            <Input
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder={t('customers.searchPlaceholder')}
-              inputSize="sm"
-              className="w-[200px] pl-9!"
-            />
-          </div>
-          <Button variant="secondary" size="sm" onClick={handleReset} disabled={isLoading} className="bg-[#000f32] text-white hover:bg-[#000f32]/90">
-            <Icon name="reset-line" />
-            {t('action.reset')}
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleSearch} disabled={isLoading}>
-            <Icon name="search-line" />
-            {t('action.search')}
-          </Button>
         </div>
       </div>
 
