@@ -61,14 +61,9 @@ export default {
     }));
   },
 
-  queryOnlineUsers: async (criteria?: any) => {
-    const res = (
-      await axios.get(prefixV2 + "statistic/online-users", { params: criteria })
-    ).data;
-    // Proto returns { items: [{ tenantId, total, deviceStat, clientStat }] }
-    // Component expects a flat array directly
-    return res.items ?? [];
-  },
+  queryOnlineUsers: async (criteria?: any) =>
+    (await axios.get(prefixV2 + "statistic/online-users", { params: criteria }))
+      .data,
 
   getExcludeEquityBelowCredit: async () =>
     (

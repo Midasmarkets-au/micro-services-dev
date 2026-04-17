@@ -187,16 +187,33 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
 
         var categories = await query
             .GroupBy(x => new { x.CategoryId, x.Category, x.Type })
-            .Select(g => new { g.Key.CategoryId, g.Key.Category, g.Key.Type })
-            .Distinct()
+            .Select(g => new
+            {
+                g.Key.CategoryId,
+                g.Key.Category,
+                g.Key.Type,
+                Symbols = g.OrderByDescending(s => s.Id)
+                           .Select(s => new { s.Id, s.Code })
+                           .ToList(),
+            })
+            .OrderByDescending(x => x.CategoryId)
             .ToListAsync();
 
         var response = new GetCategoriesResponse();
-        response.Categories.AddRange(categories.Select(c => new ProtoSymbolCategory
+        response.Categories.AddRange(categories.Select(c =>
         {
-            Id   = c.CategoryId,
-            Name = c.Category ?? "",
-            Type = c.Type,
+            var cat = new ProtoSymbolCategory
+            {
+                CategoryId = c.CategoryId,
+                Category   = c.Category ?? "",
+                Type       = c.Type,
+            };
+            cat.Symbols.AddRange(c.Symbols.Select(s => new SymbolItem
+            {
+                Id   = s.Id,
+                Code = s.Code,
+            }));
+            return cat;
         }));
         return response;
     }
@@ -225,9 +242,9 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         {
             Data = new ProtoSymbolCategory
             {
-                Id   = newCategoryId,
-                Name = request.Name,
-                Type = request.Type,
+                CategoryId = newCategoryId,
+                Category   = request.Name,
+                Type       = request.Type,
             },
         };
     }
@@ -249,9 +266,9 @@ public class TenantSymbolGrpcService(TenantDbContext db) : TenantSymbolService.T
         {
             Data = new ProtoSymbolCategory
             {
-                Id   = request.CategoryId,
-                Name = request.Model.Name,
-                Type = request.Model.Type,
+                CategoryId = request.CategoryId,
+                Category   = request.Model.Name,
+                Type       = request.Model.Type,
             },
         };
     }
