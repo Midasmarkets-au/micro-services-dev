@@ -138,6 +138,7 @@ const formData = ref<any>({});
 const isSubmitting = ref(false);
 const twoFaRequired = ref(false);
 const twoFaCode = ref<any>(null);
+const twoFaSessionToken = ref<string>("");
 
 provide("currentPage", currentPage);
 provide("formData", formData);
@@ -204,6 +205,9 @@ function setupLoginParams() {
   }
   if (twoFaRequired.value == true) {
     params.append("tf_code", twoFaCode.value);
+    if (twoFaSessionToken.value) {
+      params.append("session_token", twoFaSessionToken.value);
+    }
   }
   return params;
 }
@@ -235,6 +239,7 @@ function errorHandle(errors: any) {
 const handleTwoFA = (login: any) => {
   if (login?.data?.twoFactorRequired == true) {
     twoFaRequired.value = true;
+    twoFaSessionToken.value = login?.data?.sessionToken ?? "";
     isSubmitting.value = false;
     return true;
   }
