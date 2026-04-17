@@ -1,6 +1,7 @@
 FROM node:20-alpine AS builder
 
 ARG PROJECT_NAME=client
+ARG VUE_APP_SITE=cn
 
 WORKDIR /app
 
@@ -12,6 +13,7 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 
 ENV NODE_OPTIONS=--max_old_space_size=4096
+ENV VUE_APP_SITE=${VUE_APP_SITE}
 
 RUN ./node_modules/.bin/cross-env PROJECT_NAME=${PROJECT_NAME} DISABLE_FORK_TS_CHECKER=true DOCKER_BUILD=true ./node_modules/.bin/vue-cli-service build --mode production && \
     mv /app/dist/${PROJECT_NAME} /app/dist/app
