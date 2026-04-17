@@ -82,13 +82,7 @@ const fecthData = async () => {
       return item.tenantId != TenantTypes.jp;
     });
 
-    totalUsers.value = res.reduce((acc: number, item: any) => {
-      if (item.tenantId == tenantId.value || proxy.$can("SuperAdmin")) {
-        return acc + item.total;
-      } else {
-        return acc;
-      }
-    }, 0);
+    totalUsers.value = data.value.reduce((acc: number, item: any) => acc + item.total, 0);
   } catch (e) {
     console.log(e);
   }

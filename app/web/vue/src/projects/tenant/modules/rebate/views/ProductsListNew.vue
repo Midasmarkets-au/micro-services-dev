@@ -183,10 +183,11 @@ const categoryFormRules = {
 };
 
 // 数据转换函数：将API返回的数据转换为组件需要的格式
+// 兼容 gRPC 格式 { id, name, type } 和旧 HTTP 格式 { categoryId, category, type, symbols }
 const transformApiData = (apiData: any[]): Category[] => {
   return apiData.map((item) => ({
-    id: item.categoryId,
-    name: item.category,
+    id: item.id ?? item.categoryId,
+    name: item.name ?? item.category,
     code: item.code || "",
     type: item.type || 0,
     products:
@@ -202,7 +203,9 @@ const fetchCategories = async (type: number) => {
   try {
     loading.value = true;
     const response = await rebateService.getProductsListByType(type);
-    const transformedData = transformApiData(response.data || response);
+    // gRPC 返回 { categories: [...] }，旧 HTTP 返回数组
+    const rawData = response.categories ?? response.data ?? response;
+    const transformedData = transformApiData(Array.isArray(rawData) ? rawData : []);
 
     if (type === 300) {
       rebateCategories.splice(0, rebateCategories.length, ...transformedData);

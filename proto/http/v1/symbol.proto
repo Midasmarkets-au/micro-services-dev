@@ -42,10 +42,8 @@ service TenantSymbolService {
   rpc BatchDeleteSymbols(BatchDeleteSymbolsRequest) returns (BatchDeleteSymbolsResponse) {
     option (google.api.http) = { delete: "/api/v1/tenant/symbol/batch" };
   }
-  // 获取品种分类列表；可按 type 过滤
-  rpc GetCategories(GetCategoriesRequest) returns (GetCategoriesResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/symbol/categories" };
-  }
+  // 获取品种分类列表；可按 type 过滤（由 HTTP Controller 处理，不走 gRPC transcoding）
+  rpc GetCategories(GetCategoriesRequest) returns (GetCategoriesResponse) {}
   // 创建品种分类
   rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse) {
     option (google.api.http) = { post: "/api/v1/tenant/symbol/category", body: "*" };
@@ -88,11 +86,18 @@ message Symbol {
   int32  type        = 5; // 品种类型（枚举值，如 1=Forex、2=Metal、3=Index）
 }
 
+// 品种分类下的品种简要信息
+message SymbolItem {
+  int32  id   = 1;
+  string code = 2;
+}
+
 // 品种分类实体
 message SymbolCategory {
-  int32  id   = 1; // 分类 ID
-  string name = 2; // 分类名称，如 "Forex"、"Metals"
-  int32  type = 3; // 分类类型（与 Symbol.type 对应）
+  int32               category_id = 1; // 分类 ID → JSON: "categoryId"
+  string              category    = 2; // 分类名称 → JSON: "category"
+  int32               type        = 3;
+  repeated SymbolItem symbols     = 4;
 }
 
 // 汇率实体
