@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'path';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
@@ -8,6 +9,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // 生产容器化部署使用 standalone 模式
   output: 'standalone',
+  // 显式指定 workspace root，避免 Next.js 向上找到仓库根的 package-lock.json
+  // 也能让 standalone 产物的 file tracing 不越界
+  turbopack: {
+    root: path.join(__dirname),
+  },
+  outputFileTracingRoot: path.join(__dirname),
   // Server Actions 请求体大小限制（默认 1MB，增加到 5MB 支持文件上传）
   experimental: {
     serverActions: {

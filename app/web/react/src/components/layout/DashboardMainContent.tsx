@@ -79,9 +79,6 @@ export function DashboardMainContent() {
   // 选中的账户（用于弹窗）
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
-  // 防止 Strict Mode 双重调用
-  const isLoadedRef = useRef(false);
-
   // 根据主题选择图片
   const bannerImage = isDark
     ? '/images/dashboard/banner-night.svg'
@@ -132,19 +129,17 @@ export function DashboardMainContent() {
     }
   }, [begin, execute]);
 
-  // Guest 用户状态变化时，同步 Tab 和加载状态
+  // Guest 用户状态变化时，同步 Tab 和加载状态。
+  // 不需要 ref 守卫：loadData 依赖 [begin, execute] 都是稳定的，正常只会在
+  // isGuest 变化时跑；StrictMode 下的双跑由 begin() 的 token 机制去重。
   useEffect(() => {
     if (isGuest) {
       setActiveTab('DemoAccounts');
       setIsInitialLoading(false);
-    } else {
-      // 非 Guest 用户，如果之前未加载过数据则加载
-      if (!isLoadedRef.current) {
-        setIsInitialLoading(true);
-        isLoadedRef.current = true;
-        loadData();
-      }
+      return;
     }
+    setIsInitialLoading(true);
+    loadData();
   }, [isGuest, loadData]);
 
   // 页面加载后触发 EventNotice 弹窗检查
