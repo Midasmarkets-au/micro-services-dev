@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -66,17 +66,13 @@ export function DashboardNotifications() {
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // 防止重复请求
-  const isInitialized = useRef(false);
 
   // 获取当前语言对应的后端语言 key
   const languageKey = localeToLanguageKey[locale] || 'en-us';
 
+  // begin/execute 都是稳定引用，effect 正常只跑一次；StrictMode 双跑由 begin()
+  // 的 token 机制去重，不需要额外 ref 守卫。
   useEffect(() => {
-    if (isInitialized.current) return;
-    isInitialized.current = true;
-
     const { signal, isActive } = begin();
     (async () => {
       const result = await execute<NoticeItem[], [{ signal?: AbortSignal }, number]>(
@@ -97,8 +93,7 @@ export function DashboardNotifications() {
 
       setIsLoading(false);
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [begin, execute]);
 
   // 获取通知的标题（根据当前语言）
   const getNoticeTitle = (notice: NoticeItem): string => {
