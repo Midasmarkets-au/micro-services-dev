@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { usePathname } from 'next/navigation';
-import { useServerAction } from '@/hooks/useServerAction';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
 import { Button, BalanceShow, EmptyState } from '@/components/ui';
 import {
   getIBRebateDailySeries,
   getIBRebateHourlySeries,
   getIBRebateMonthlySeries,
-} from '@/actions';
+} from '@/lib/http/browserActions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import type { IBRebateDailySeries, IBReportValue } from '@/types/ib';
 
@@ -61,11 +61,9 @@ function formatXLabel(dateStr: string | undefined, period: Period): string {
 
 export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidgetProps) {
   const t = useTranslations('ib.dashboard');
-  const pathname = usePathname();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/ib');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
-  const requestIdRef = useRef(0);
-  const pathnameRef = useRef(pathname);
 
   const [period, setPeriod] = useState<Period>('hourly');
   const [data, setData] = useState<IBRebateDailySeries[]>([]);
@@ -75,38 +73,18 @@ export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidg
   const isLoading = !agentAccount || currentKey !== loadKey;
 
   useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!agentAccount || pathname !== '/ib') return;
-    let cancelled = false;
-    const currentRequestId = ++requestIdRef.current;
-    const isStaleRequest = () =>
-      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
-
-    const load = async () => {
-      try {
-        const tz = -(new Date().getTimezoneOffset() / 60);
-        const result = await execute(fetchers[period], agentAccount.uid, tz);
-        if (isStaleRequest()) return;
-        if (result.success && Array.isArray(result.data)) {
-          setData(result.data);
-        }
-      } catch {
-        // ignore
-      } finally {
-        if (!isStaleRequest()) {
-          setLoadKey(`${agentAccount.uid}-${period}`);
-        }
+    if (!agentAccount) return;
+    const { signal, isActive } = begin();
+    (async () => {
+      const tz = -(new Date().getTimezoneOffset() / 60);
+      const result = await execute(fetchers[period], { signal }, agentAccount.uid, tz);
+      if (!isActive()) return;
+      if (result.success && Array.isArray(result.data)) {
+        setData(result.data);
       }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentAccount, period, execute, pathname]);
+      setLoadKey(`${agentAccount.uid}-${period}`);
+    })();
+  }, [agentAccount, period, begin, execute]);
 
   const maxValue = data.length > 0 ? Math.max(...data.map((d) => d.totalValue || 0), 0.01) : 0.05;
   const chartHeight = 200;

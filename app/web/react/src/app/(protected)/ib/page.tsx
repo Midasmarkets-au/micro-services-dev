@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { usePathname } from 'next/navigation';
-import { useServerAction } from '@/hooks/useServerAction';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
 import {
   getIBRebateTodayValue,
   getIBRebateTotalValue,
   getIBTradeTodayVolume,
   getIBTodayAccountCreation,
   getIBDepositTodayValue,
-} from '@/actions';
+} from '@/lib/http/browserActions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { BalanceShow } from '@/components/ui';
 import { IBAccountSelector } from './_components/IBAccountSelector';
@@ -32,7 +32,7 @@ function ReportValueDisplay({ values, sign = '' }: { values: IBReportValue[]; si
       {values.map((v, i) => (
         <span key={i}>
           {i > 0 && ' / '}
-          <BalanceShow balance={v.amount } currencyId={v.currencyId} sign={sign} />
+          <BalanceShow balance={v.amount} currencyId={v.currencyId} sign={sign} />
         </span>
       ))}
     </>
@@ -41,11 +41,9 @@ function ReportValueDisplay({ values, sign = '' }: { values: IBReportValue[]; si
 
 export default function IBDashboardPage() {
   const t = useTranslations('ib.dashboard');
-  const pathname = usePathname();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/ib');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
-  const requestIdRef = useRef(0);
-  const pathnameRef = useRef(pathname);
 
   const [todayRebate, setTodayRebate] = useState<IBReportValue[]>([]);
   const [totalRebate, setTotalRebate] = useState<IBReportValue[]>([]);
@@ -57,28 +55,21 @@ export default function IBDashboardPage() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
+    if (!agentAccount) return;
+    const { signal, isActive } = begin();
 
-  useEffect(() => {
-    if (!agentAccount || pathname !== '/ib') return;
-    let cancelled = false;
-    const currentRequestId = ++requestIdRef.current;
-    const isStaleRequest = () =>
-      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
-
-    const load = async () => {
+    (async () => {
       const tz = -(new Date().getTimezoneOffset() / 60);
-
       const [rebateToday, rebateTotal, volume, newCustomers, depositToday] =
         await Promise.all([
-          execute(getIBRebateTodayValue, agentAccount.uid, tz),
-          execute(getIBRebateTotalValue, agentAccount.uid),
-          execute(getIBTradeTodayVolume, agentAccount.uid, tz),
-          execute(getIBTodayAccountCreation, agentAccount.uid),
-          execute(getIBDepositTodayValue, agentAccount.uid),
+          execute(getIBRebateTodayValue, { signal }, agentAccount.uid, tz),
+          execute(getIBRebateTotalValue, { signal }, agentAccount.uid),
+          execute(getIBTradeTodayVolume, { signal }, agentAccount.uid, tz),
+          execute(getIBTodayAccountCreation, { signal }, agentAccount.uid),
+          execute(getIBDepositTodayValue, { signal }, agentAccount.uid),
         ]);
-      if (isStaleRequest()) return;
+
+      if (!isActive()) return;
 
       if (rebateToday.success) setTodayRebate(rebateToday.data || []);
       if (rebateTotal.success) setTotalRebate(rebateTotal.data || []);
@@ -87,13 +78,8 @@ export default function IBDashboardPage() {
       if (depositToday.success) setTodayDeposit(depositToday.data || []);
 
       setLoadedUid(agentAccount.uid);
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentAccount, execute, pathname]);
+    })();
+  }, [agentAccount, begin, execute]);
 
   return (
     <div className="flex w-full flex-col gap-5">

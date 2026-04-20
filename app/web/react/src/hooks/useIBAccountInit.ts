@@ -1,16 +1,26 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getLiveAccounts } from '@/actions';
+import { useBrowserAction } from '@/lib/http';
+import { getLiveAccounts } from '@/lib/http/browserActions/accounts';
 import { useIBStore } from '@/stores/ibStore';
 import { useUserStore } from '@/stores/userStore';
 import type { AgentAccount } from '@/types/ib';
 
 export function useIBAccountInit() {
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const user = useUserStore((s) => s.user);
   const hasFetched = useRef(false);
+  // 该 hook 可能在布局级别（/ib 多页共享）被调用，
+  // 用本地 AbortController 保证组件卸载时立刻中止请求。
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const state = useIBStore.getState();
@@ -39,10 +49,21 @@ export function useIBAccountInit() {
     }
     hasFetched.current = true;
 
+    // 中止上一次未完成的请求，发起新请求
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
     (async () => {
       try {
         const uids = user.ibAccount.map((uid) => Number(uid));
-        const result = await execute(getLiveAccounts, { uids });
+        const result = await execute(
+          getLiveAccounts,
+          { signal: controller.signal },
+          { uids }
+        );
+        if (controller.signal.aborted) return;
+
         if (result.success && Array.isArray(result.data) && result.data.length > 0) {
           const accounts: AgentAccount[] = result.data.map((acc) => ({
             uid: acc.uid,
@@ -74,11 +95,13 @@ export function useIBAccountInit() {
             } catch {}
             latestState.setAgentAccount(restored ?? accounts[0]);
           }
-        } else {
+        } else if (!result.aborted) {
           useIBStore.getState().clearStore();
         }
       } finally {
-        useIBStore.getState().setInitialized(true);
+        if (!controller.signal.aborted) {
+          useIBStore.getState().setInitialized(true);
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
