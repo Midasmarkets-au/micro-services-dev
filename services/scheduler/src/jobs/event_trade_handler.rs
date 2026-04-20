@@ -1,11 +1,12 @@
-/// EventTradeHandler: consumes BCR_EVENT_TRADE NATS stream and processes trade points.
+/// EventTradeHandler: consumes BCR_EVENT_TRADE NATS stream.
 ///
-/// Mirrors mono's EventService.ProcessTradeSourceAsync logic:
-///   1. Load TradeRebate from trd.trade_rebate_k8s
-///   2. Skip if reason==1/2 (stop-loss/margin-call) or hold duration <=1 min
-///   3. Calculate and award points to client and direct agent
-///   4. Update EventShopClientPoint.Volume for all upstream parents
-///   5. Reward rebate (stub — requires MT API, deferred)
+/// Handles three source types:
+///   source_type=1 (OpenAccount): insert EventShopClientPoint relationships.
+///     Mirrors: EventService.ProcessOpenAccountSourceAsync
+///   source_type=2 (Trade): calculate and award points.
+///     Mirrors: EventService.ProcessTradeSourceAsync
+///   source_type=3 (Deposit): accumulate DepositAmount on EventShopClientPoint.
+///     Mirrors: EventService.ProcessDepositSourceAsync
 use anyhow::Result;
 use chrono::Duration;
 use futures::StreamExt;
@@ -18,15 +19,16 @@ use crate::AppContext;
 
 /// USC currency ID — mirrors CurrencyTypes.USC in mono
 const CURRENCY_USC: i32 = 16;
-/// AccountRoleTypes.Agent
+/// AccountRoleTypes values
 const ROLE_AGENT: i16 = 200;
+const ROLE_SALES: i16 = 300;
 
 /// Redis dedup key format mirrors mono's MQSource.ToRedisKey():
 ///   event_shop_mq_src_tid:{TenantId}_sourceType:{SourceType}_rowId{RowId}
-fn dedup_redis_key(tenant_id: i64, trade_rebate_id: i64) -> String {
+fn dedup_redis_key(tenant_id: i64, source_type: u8, row_id: i64) -> String {
     format!(
-        "event_shop_mq_src_tid:{}_sourceType:2_rowId{}",
-        tenant_id, trade_rebate_id
+        "event_shop_mq_src_tid:{}_sourceType:{}_rowId{}",
+        tenant_id, source_type, row_id
     )
 }
 
@@ -113,21 +115,15 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
         }
     };
 
-    if src.source_type != 2 {
-        warn!("EventTradeHandler: unexpected source_type={}, skipping", src.source_type);
-        msg.ack().await.ok();
-        return Ok(());
-    }
-
-    let trade_rebate_id = src.row_id;
+    let row_id = src.row_id;
     let tenant_id = src.tenant_id;
 
     // 2. Redis dedup (TTL 2h, mirrors mono PollEventTradeHandler)
-    let dedup_key = dedup_redis_key(tenant_id, trade_rebate_id);
+    let dedup_key = dedup_redis_key(tenant_id, src.source_type, row_id);
     if ctx.cache.get_string(&dedup_key).await?.is_some() {
         info!(
-            "EventTradeHandler: duplicate message trade_rebate_id={} tenant={}, skipping",
-            trade_rebate_id, tenant_id
+            "EventTradeHandler: duplicate message source_type={} row_id={} tenant={}, skipping",
+            src.source_type, row_id, tenant_id
         );
         msg.ack().await.ok();
         return Ok(());
@@ -138,15 +134,141 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
 
     let pool = ctx.tenant_pool(tenant_id).await?;
 
-    // 3. Load TradeRebate
-    let trade = match event::get_trade_rebate(&pool, trade_rebate_id).await? {
+    // 3. Dispatch by source_type
+    match src.source_type {
+        1 => process_open_account(&pool, row_id, tenant_id).await?,
+        2 => process_trade(ctx, &pool, row_id, tenant_id).await?,
+        3 => process_deposit(&pool, row_id, tenant_id).await?,
+        _ => {
+            warn!("EventTradeHandler: unknown source_type={}, skipping", src.source_type);
+        }
+    }
+
+    msg.ack().await.ok();
+    info!(
+        "EventTradeHandler: processed source_type={} row_id={} tenant={}",
+        src.source_type, row_id, tenant_id
+    );
+    Ok(())
+}
+
+/// Process OpenAccount event.
+/// Mirrors: EventService.ProcessOpenAccountSourceAsync
+/// Inserts EventShopClientPoint relationships for the new account.
+async fn process_open_account(pool: &sqlx::PgPool, account_id: i64, tenant_id: i64) -> Result<()> {
+    let acc = match event::get_account_for_open_account(pool, account_id).await? {
+        Some(a) => a,
+        None => {
+            warn!("EventTradeHandler[OpenAccount]: account_id={} not found tenant={}", account_id, tenant_id);
+            return Ok(());
+        }
+    };
+
+    // If no SalesAccountId, nothing to register
+    let sales_account_id = match acc.sales_account_id {
+        Some(id) if id != 0 => id,
+        _ => return Ok(()),
+    };
+
+    let sales_event_party_id = event::get_event_party_id(pool, sales_account_id).await?;
+    let sales_has_party = sales_event_party_id.is_some();
+
+    // role constants: Agent=200, Client=400, Sales=300
+    match acc.role {
+        200 if sales_has_party => {
+            // Agent registered under Sales
+            event::insert_client_point_with_open_account(pool, account_id, sales_account_id, ROLE_SALES, 5).await?;
+        }
+        400 => {
+            match acc.agent_account_id {
+                None if sales_has_party => {
+                    // Client with no agent, directly under Sales
+                    event::insert_client_point_with_open_account(pool, account_id, sales_account_id, ROLE_SALES, 6).await?;
+                }
+                Some(agent_account_id) if sales_has_party => {
+                    // Client with Agent under Sales
+                    let agent_event_party_id = event::get_event_party_id(pool, agent_account_id).await?;
+                    if agent_event_party_id.is_some() {
+                        event::insert_client_point_with_open_account(pool, account_id, agent_account_id, ROLE_AGENT, 1).await?;
+                    }
+                    // Insert agent-to-sales link if agent is new for this sales
+                    let is_new = event::is_new_account_for_parent(pool, agent_account_id, sales_account_id).await?;
+                    if is_new {
+                        event::insert_client_point_with_open_account(pool, account_id, sales_account_id, ROLE_SALES, 1).await?;
+                    }
+                }
+                Some(agent_account_id) => {
+                    // Client with Agent but Sales has no event party
+                    let agent_event_party_id = event::get_event_party_id(pool, agent_account_id).await?;
+                    if agent_event_party_id.is_some() {
+                        event::insert_client_point_with_open_account(pool, account_id, agent_account_id, ROLE_AGENT, 1).await?;
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+
+    info!("EventTradeHandler[OpenAccount]: processed account_id={} tenant={}", account_id, tenant_id);
+    Ok(())
+}
+
+/// Process Deposit event.
+/// Mirrors: EventService.ProcessDepositSourceAsync
+/// Accumulates DepositAmount on all upstream Agent EventShopClientPoint rows.
+async fn process_deposit(pool: &sqlx::PgPool, deposit_id: i64, tenant_id: i64) -> Result<()> {
+    let deposit = match event::get_deposit_for_event(pool, deposit_id).await? {
+        Some(d) => d,
+        None => {
+            warn!("EventTradeHandler[Deposit]: deposit_id={} not found tenant={}", deposit_id, tenant_id);
+            return Ok(());
+        }
+    };
+
+    let account_id = match deposit.target_account_id {
+        Some(id) if id != 0 => id,
+        _ => {
+            info!("EventTradeHandler[Deposit]: deposit_id={} has no target_account_id, skipping", deposit_id);
+            return Ok(());
+        }
+    };
+
+    // Ensure ClientPoint exists for direct agent if agent is in event
+    let agent_account_id_opt = event::get_account_for_trade(pool, account_id)
+        .await?
+        .and_then(|a| a.agent_account_id);
+
+    if let Some(agent_id) = agent_account_id_opt {
+        if agent_id != 0 {
+            let agent_event_party = event::get_event_party_id(pool, agent_id).await?;
+            if agent_event_party.is_some() {
+                event::ensure_client_point_exists(pool, account_id, agent_id, ROLE_AGENT).await?;
+            }
+        }
+    }
+
+    // Accumulate deposit amount on all upstream Agent ClientPoint rows
+    let ids = event::get_valid_client_point_ids_for_deposit(pool, account_id).await?;
+    for id in ids {
+        event::add_deposit_amount_to_client_point(pool, id, deposit.amount).await?;
+    }
+
+    info!("EventTradeHandler[Deposit]: processed deposit_id={} account_id={} tenant={}", deposit_id, account_id, tenant_id);
+    Ok(())
+}
+
+/// Process Trade event.
+/// Mirrors: EventService.ProcessTradeSourceAsync
+async fn process_trade(_ctx: &AppContext, pool: &sqlx::PgPool, trade_rebate_id: i64, tenant_id: i64) -> Result<()> {
+    // Load TradeRebate
+    let trade = match event::get_trade_rebate(pool, trade_rebate_id).await? {
         Some(t) => t,
         None => {
             warn!(
                 "EventTradeHandler: trade_rebate_id={} not found for tenant={}",
                 trade_rebate_id, tenant_id
             );
-            msg.ack().await.ok();
             return Ok(());
         }
     };
@@ -158,19 +280,17 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
                 "EventTradeHandler: trade_rebate_id={} has no valid account_id, skipping",
                 trade_rebate_id
             );
-            msg.ack().await.ok();
             return Ok(());
         }
     };
 
-    // 4. Secondary filters (mirrors ProcessTradeSourceAsync)
-    //    reason 1=stop-loss, 2=margin-call → skip
+    // Secondary filters (mirrors ProcessTradeSourceAsync)
+    // reason 1=stop-loss, 2=margin-call → skip
     if trade.reason == 1 || trade.reason == 2 {
         info!(
             "EventTradeHandler: trade_rebate_id={} reason={} skipped (stop-loss/margin-call)",
             trade_rebate_id, trade.reason
         );
-        msg.ack().await.ok();
         return Ok(());
     }
     if closed_less_than_one_minute(trade.opened_on, trade.closed_on) {
@@ -178,7 +298,6 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
             "EventTradeHandler: trade_rebate_id={} hold<=1min skipped",
             trade_rebate_id
         );
-        msg.ack().await.ok();
         return Ok(());
     }
 
@@ -225,11 +344,11 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
         trade.trade_service_id,
     );
 
-    // 7. Client self points
-    //    Mirrors C#: (trade.Volume * 100).ToScaledFromCents() * pointMultiplier
-    //    = Volume * 100 * 10_000 * multiplier = Volume * 1_000_000 * multiplier
-    if let Some(self_event_party_id) = event::get_event_party_id(&pool, account_id).await? {
-        if event::check_point_transaction_exists(&pool, self_event_party_id, account_id, &source_content).await? {
+    // Client self points
+    // Mirrors C#: (trade.Volume * 100).ToScaledFromCents() * pointMultiplier
+    // = Volume * 100 * 10_000 * multiplier = Volume * 1_000_000 * multiplier
+    if let Some(self_event_party_id) = event::get_event_party_id(pool, account_id).await? {
+        if event::check_point_transaction_exists(pool, self_event_party_id, account_id, &source_content).await? {
             info!(
                 "EventTradeHandler: self point transaction already exists trade_rebate_id={} account_id={}",
                 trade_rebate_id, account_id
@@ -239,7 +358,7 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
             let point_scaled = point_scaled as i64;
             if point_scaled > 0 {
                 event::change_point(
-                    &pool,
+                    pool,
                     self_event_party_id,
                     point_scaled,
                     account_id,
@@ -255,22 +374,20 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
         }
     }
 
-    // 8. Agent points (30% of client points)
-    //    Mirrors C#: only awarded when directAgentId != 0 && role == Agent
-    let account = event::get_account_for_trade(&pool, account_id).await?;
+    // Agent points (30% of client points)
+    // Mirrors C#: only awarded when directAgentId != 0 && role == Agent
+    let account = event::get_account_for_trade(pool, account_id).await?;
     if let Some(acc) = &account {
         if let Some(agent_account_id) = acc.agent_account_id {
-            // Verify the agent's own role record (mirrors GetAccountRoleByIdAsync check)
-            let agent_acc = event::get_account_for_trade(&pool, agent_account_id).await?;
+            let agent_acc = event::get_account_for_trade(pool, agent_account_id).await?;
             let is_agent = agent_acc.map(|a| a.role == ROLE_AGENT).unwrap_or(false);
 
             if is_agent {
                 if let Some(agent_event_party_id) =
-                    event::get_event_party_id(&pool, agent_account_id).await?
+                    event::get_event_party_id(pool, agent_account_id).await?
                 {
-                    // Ensure ClientPoint relationship exists
                     event::ensure_client_point_exists(
-                        &pool,
+                        pool,
                         account_id,
                         agent_account_id,
                         ROLE_AGENT,
@@ -278,7 +395,7 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
                     .await?;
 
                     if event::check_point_transaction_exists(
-                        &pool,
+                        pool,
                         agent_event_party_id,
                         agent_account_id,
                         &source_content,
@@ -296,7 +413,7 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
                         let agent_point_scaled = agent_point_scaled as i64;
                         if agent_point_scaled > 0 {
                             event::change_point(
-                                &pool,
+                                pool,
                                 agent_event_party_id,
                                 agent_point_scaled,
                                 agent_account_id,
@@ -311,19 +428,17 @@ async fn process_message(ctx: &AppContext, msg: async_nats::jetstream::Message) 
                         }
                     }
 
-                    // Update agent's upstream ClientPoint Volume
-                    update_parent_volumes(&pool, agent_account_id, trade.volume, trade.currency_id).await?;
+                    update_parent_volumes(pool, agent_account_id, trade.volume, trade.currency_id).await?;
                 }
             }
         }
     }
 
-    // 9. Update ClientPoint Volume for client's direct parents (ProcessTradeForParentAsync)
-    update_parent_volumes(&pool, account_id, trade.volume, trade.currency_id).await?;
+    // Update ClientPoint Volume for client's direct parents (ProcessTradeForParentAsync)
+    update_parent_volumes(pool, account_id, trade.volume, trade.currency_id).await?;
 
-    msg.ack().await.ok();
     info!(
-        "EventTradeHandler: processed trade_rebate_id={} tenant={}",
+        "EventTradeHandler[Trade]: processed trade_rebate_id={} tenant={}",
         trade_rebate_id, tenant_id
     );
     Ok(())

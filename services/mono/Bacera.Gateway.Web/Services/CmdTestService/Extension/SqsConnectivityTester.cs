@@ -115,7 +115,8 @@ public class SqsConnectivityTester
         var queues = new Dictionary<string, string>
         {
             ["BCRSendMessage"] = _sqsOptions.BCRSendMessage,
-            ["BCREventTrade"] = _sqsOptions.BCREventTrade,
+            // [MIGRATED] BCREventTrade removed — events now published to NATS BCR_EVENT_TRADE.
+            // ["BCREventTrade"] = _sqsOptions.BCREventTrade,
             // [MIGRATED] BCRTrade and BCRSalesRebateTrade removed — queues no longer in use.
             // ["BCRTrade"] = _sqsOptions.BCRTrade,
             // ["BCRSalesRebateTrade"] = _sqsOptions.BCRSalesRebateTrade
@@ -175,7 +176,8 @@ public class SqsConnectivityTester
         var queues = new[]
         {
             ("BCRSendMessage", _sqsOptions.BCRSendMessage),
-            ("BCREventTrade", _sqsOptions.BCREventTrade),
+            // [MIGRATED] BCREventTrade removed — events now published to NATS BCR_EVENT_TRADE.
+            // ("BCREventTrade", _sqsOptions.BCREventTrade),
             // [MIGRATED] BCRTrade and BCRSalesRebateTrade removed — queues no longer in use.
             // ("BCRTrade", _sqsOptions.BCRTrade),
             // ("BCRSalesRebateTrade", _sqsOptions.BCRSalesRebateTrade)

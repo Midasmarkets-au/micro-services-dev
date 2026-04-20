@@ -10,7 +10,6 @@ using Hangfire;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Bacera.Gateway.Web.EventHandlers;
 
@@ -26,15 +25,15 @@ public class AccountCreatedEventHandler(
     TradingService tradingSvc,
     AccountManageService accManSvc,
     AuthDbContext authDbContext,
-    IOptions<AmazonSQSOptions> sqsOptions,
     AccountingService accountingService,
     ILogger<AccountCreatedEventHandler> logger,
     UserManager<User> userManager,
     IBackgroundJobClient backgroundJobClient,
-    IMessageQueueService mqService)
+    NatsPublisher natsPublisher)
     : INotificationHandler<AccountCreatedEvent>
 {
-    private readonly string _bcrEventTradeQueue = sqsOptions.Value.BCREventTrade;
+    // [MIGRATED] _bcrEventTradeQueue (SQS) removed — OpenAccount events now published to NATS BCR_EVENT_TRADE.
+    // private readonly string _bcrEventTradeQueue = sqsOptions.Value.BCREventTrade;
 
     public async Task Handle(AccountCreatedEvent notification, CancellationToken cancellationToken)
     {
@@ -160,15 +159,24 @@ public class AccountCreatedEventHandler(
         await tenantCtx.SaveChangesAsync(cancellationToken: cancellationToken);
         
         await accManSvc.UpdateAccountSearchText(account.Id);
+
+        // [MIGRATED] SQS BCREventTrade.fifo publish replaced by NATS BCR_EVENT_TRADE.
+        // Consumed by: scheduler/src/jobs/event_trade_handler.rs (source_type=1, OpenAccount)
+        // Legacy SQS code:
+        // var message = EventShopPointTransaction.MQSource.Build(EventShopPointTransactionSourceTypes.OpenAccount,
+        //     account.Id, tenancy.GetTenantId()).ToString();
+        // await mqService.SendAsync(message, _bcrEventTradeQueue, _bcrEventTradeQueue, cancellationToken);
         try
         {
-            var message = EventShopPointTransaction.MQSource.Build(EventShopPointTransactionSourceTypes.OpenAccount,
-                account.Id, tenancy.GetTenantId()).ToString();
-            await mqService.SendAsync(message, _bcrEventTradeQueue, _bcrEventTradeQueue, cancellationToken);
+            await natsPublisher.PublishAsync(
+                EventShopPointTransactionSourceTypes.OpenAccount,
+                account.Id,
+                tenancy.GetTenantId(),
+                cancellationToken);
         }
         catch (Exception e)
         {
-            logger.LogError(e, "Failed_to_send_message_to_queue_account: {AccountId}", account.Id);
+            logger.LogError(e, "Failed_to_publish_nats_open_account: {AccountId}", account.Id);
         }
     }
 }

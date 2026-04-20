@@ -8,7 +8,8 @@ namespace Bacera.Gateway.Web.BackgroundJobs.GeneralJob;
 
 public partial class GeneralJob
 {
-    private readonly string _bcrEventTradeQueue = sqsOptions.Value.BCREventTrade;
+    // [MIGRATED] _bcrEventTradeQueue (SQS) removed — Deposit events now published to NATS BCR_EVENT_TRADE.
+    // private readonly string _bcrEventTradeQueue = sqsOptions.Value.BCREventTrade;
 
     public async Task<(bool, string)> DepositCreatedAsync(long tenantId, long depositId)
     {
@@ -187,19 +188,26 @@ public partial class GeneralJob
             .SingleAsync();
         if (deposit.TargetAccountId == null) return (true, " __DEPOSIT_HAS_NO_TARGET_ACCOUNT__");
 
+        // [MIGRATED] SQS BCREventTrade.fifo publish replaced by NATS BCR_EVENT_TRADE.
+        // Consumed by: scheduler/src/jobs/event_trade_handler.rs (source_type=3, Deposit)
+        // Legacy SQS code:
+        // var message = new EventShopPointTransaction.MQSource
+        // {
+        //     SourceType = EventShopPointTransactionSourceTypes.Deposit,
+        //     RowId = deposit.Id,
+        //     TenantId = tenantId
+        // }.ToString();
+        // await mqService.SendAsync(message, _bcrEventTradeQueue, _bcrEventTradeQueue);
         try
         {
-            var message = new EventShopPointTransaction.MQSource
-            {
-                SourceType = EventShopPointTransactionSourceTypes.Deposit,
-                RowId = deposit.Id,
-                TenantId = tenantId
-            }.ToString();
-            await mqService.SendAsync(message, _bcrEventTradeQueue, _bcrEventTradeQueue);
+            await natsPublisher.PublishAsync(
+                EventShopPointTransactionSourceTypes.Deposit,
+                deposit.Id,
+                tenantId);
         }
         catch (Exception e)
         {
-            logger.LogError(e, "Failed_to_send_message_to_queue_deposit: {depositId}", deposit.Id);
+            logger.LogError(e, "Failed_to_publish_nats_deposit: {depositId}", deposit.Id);
         }
 
         var account = await ctx.Accounts

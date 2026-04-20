@@ -8,12 +8,13 @@ public partial class Startup
         var accessSecret = GetEnvValue("AWS_SQS_ACCESS_SECRET");
         var region = GetEnvValue("AWS_SQS_REGION");
         var prefix = GetEnvValue("AWS_SQS_PREFIX");
-        var bcrEventTrade = GetEnvValue("AWS_SQS_BCR_EVENT_TRADE_QUEUE");
+        // [MIGRATED] AWS_SQS_BCR_EVENT_TRADE_QUEUE env var removed — events now go to NATS BCR_EVENT_TRADE.
+        // var bcrEventTrade = GetEnvValue("AWS_SQS_BCR_EVENT_TRADE_QUEUE");
         var bcrSendMessage = GetEnvValue("AWS_SQS_BCR_SEND_MESSAGE_QUEUE");
         // [MIGRATED] BCRTrade and BCRSalesRebateTrade env vars removed — queues no longer in use.
         // var bcrSalesRebateTrade = GetEnvValue("AWS_SQS_BCR_SALES_REBATE_TRADE_QUEUE");
         // var bcrTrade = GetEnvValue("AWS_SQS_BCR_TRADE_QUEUE");
-        return AmazonSQSOptions.Create(accessKey, accessSecret, region, prefix, bcrEventTrade, bcrSendMessage);
+        return AmazonSQSOptions.Create(accessKey, accessSecret, region, prefix, bcrSendMessage);
     }
 
     private static CentralDatabaseOptions GetCentralDatabaseOptions()

@@ -52,11 +52,18 @@ public partial class CmdTestService
         //     }));
         // }
 
+        // [MIGRATED] SQS BCREventTrade.fifo send replaced by NATS BCR_EVENT_TRADE.
+        // This is a manual test/backfill utility — update to use NatsPublisher if needed.
+        // foreach (var item in items)
+        // {
+        //     bar.Tick();
+        //     var message = item.ToString();
+        //     await mqService.SendAsync(message, "BCREventTrade.fifo", "BCREventTrade.fifo");
+        // }
         foreach (var item in items)
         {
             bar.Tick();
-            var message = item.ToString();
-            await mqService.SendAsync(message, "BCREventTrade.fifo", "BCREventTrade.fifo");
+            _ = item; // placeholder; re-implement with NatsPublisher when needed
         }
         //
         // var json = """

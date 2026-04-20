@@ -2,8 +2,12 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
-// ── Source type constant (mirrors EventShopPointTransactionSourceTypes.Trade) ──
+// ── Source type constants (mirror EventShopPointTransactionSourceTypes) ───────
+#[allow(dead_code)]
+pub const SOURCE_TYPE_OPEN_ACCOUNT: i16 = 1;
 pub const SOURCE_TYPE_TRADE: i16 = 2;
+#[allow(dead_code)]
+pub const SOURCE_TYPE_DEPOSIT: i16 = 3;
 // ── Status constant (mirrors EventShopPointTransactionStatusTypes.Success) ────
 pub const STATUS_SUCCESS: i16 = 1;
 // ── Hardcoded EventId=1 (system has only one active event) ────────────────────
@@ -221,6 +225,139 @@ pub async fn ensure_client_point_exists(
     .bind(child_account_id)
     .bind(parent_account_id)
     .bind(parent_role)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+// ── OpenAccount helpers ────────────────────────────────────────────────────────
+
+/// Minimal account info needed for OpenAccount processing.
+#[derive(Debug, sqlx::FromRow)]
+#[allow(dead_code)]
+pub struct AccountForOpenAccount {
+    pub id: i64,
+    pub role: i16,
+    #[sqlx(rename = "SalesAccountId")]
+    pub sales_account_id: Option<i64>,
+    #[sqlx(rename = "AgentAccountId")]
+    pub agent_account_id: Option<i64>,
+}
+
+/// Load account fields needed for ProcessOpenAccountSourceAsync.
+pub async fn get_account_for_open_account(pool: &PgPool, account_id: i64) -> Result<Option<AccountForOpenAccount>> {
+    let row = sqlx::query_as::<_, AccountForOpenAccount>(
+        r#"SELECT "Id" as id, "Role" as role, "SalesAccountId", "AgentAccountId"
+           FROM trd."_Account"
+           WHERE "Id" = $1
+           LIMIT 1"#,
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
+/// Insert an EventShopClientPoint row with a specific OpenAccount value.
+/// Mirrors: EventShopClientPoint.Build(accountId, parentId, role, openAccountValue)
+/// parent_role: 200=Agent, 300=Sales
+/// open_account: initial OpenAccount value (5 for Agent-under-Sales, 6 for Client-direct-to-Sales, 1 for Client-to-Agent)
+pub async fn insert_client_point_with_open_account(
+    pool: &PgPool,
+    child_account_id: i64,
+    parent_account_id: i64,
+    parent_role: i16,
+    open_account: i32,
+) -> Result<()> {
+    sqlx::query(
+        r#"INSERT INTO event."_EventShopClientPoint"
+           ("ChildAccountId", "ParentAccountId", "ParentAccountRole",
+            "OpenAccount", "Volume", "DepositAmount", "CreatedOn", "UpdatedOn")
+           VALUES ($1, $2, $3, $4, 0, 0, NOW(), NOW())
+           ON CONFLICT ("ChildAccountId", "ParentAccountId") DO NOTHING"#,
+    )
+    .bind(child_account_id)
+    .bind(parent_account_id)
+    .bind(parent_role)
+    .bind(open_account)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Check if a ClientPoint row already links child→parent.
+/// Used to detect if an Agent is new under a Sales parent.
+/// Mirrors: IsNewAccountForSalesAsync
+pub async fn is_new_account_for_parent(pool: &PgPool, child_account_id: i64, parent_account_id: i64) -> Result<bool> {
+    let row: (bool,) = sqlx::query_as(
+        r#"SELECT NOT EXISTS(
+            SELECT 1 FROM event."_EventShopClientPoint"
+            WHERE "ChildAccountId" = $1
+              AND "ParentAccountId" = $2
+        )"#,
+    )
+    .bind(child_account_id)
+    .bind(parent_account_id)
+    .fetch_one(pool)
+    .await?;
+    Ok(row.0)
+}
+
+// ── Deposit helpers ────────────────────────────────────────────────────────────
+
+/// Minimal deposit info for ProcessDepositSourceAsync.
+#[derive(Debug, sqlx::FromRow)]
+#[allow(dead_code)]
+pub struct DepositForEvent {
+    pub id: i64,
+    #[sqlx(rename = "TargetAccountId")]
+    pub target_account_id: Option<i64>,
+    #[sqlx(rename = "Amount")]
+    pub amount: i64,
+}
+
+/// Load deposit fields needed for ProcessDepositSourceAsync.
+pub async fn get_deposit_for_event(pool: &PgPool, deposit_id: i64) -> Result<Option<DepositForEvent>> {
+    let row = sqlx::query_as::<_, DepositForEvent>(
+        r#"SELECT d."Id" as id, d."TargetAccountId", d."Amount"
+           FROM pmt."_Deposit" d
+           WHERE d."Id" = $1
+           LIMIT 1"#,
+    )
+    .bind(deposit_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row)
+}
+
+/// Get IDs of EventShopClientPoint rows where this account is the child,
+/// filtered to Agent-role parents only (for deposit accumulation).
+/// Mirrors: GetValidClientPointIdsAsync(childAccountId, AccountRoleTypes.Agent)
+pub async fn get_valid_client_point_ids_for_deposit(pool: &PgPool, account_id: i64) -> Result<Vec<i64>> {
+    let rows: Vec<(i64,)> = sqlx::query_as(
+        r#"SELECT "Id"
+           FROM event."_EventShopClientPoint"
+           WHERE "ChildAccountId" = $1
+             AND "ParentAccountRole" = 200"#,
+        // 200 = AccountRoleTypes.Agent
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await?;
+    Ok(rows.into_iter().map(|(id,)| id).collect())
+}
+
+/// UPDATE event._EventShopClientPoint SET DepositAmount += amount WHERE Id = id.
+/// Mirrors: AddDepositPointByIdAsync
+pub async fn add_deposit_amount_to_client_point(pool: &PgPool, client_point_id: i64, amount: i64) -> Result<()> {
+    sqlx::query(
+        r#"UPDATE event."_EventShopClientPoint"
+           SET "DepositAmount" = "DepositAmount" + $1,
+               "UpdatedOn" = NOW()
+           WHERE "Id" = $2"#,
+    )
+    .bind(amount)
+    .bind(client_point_id)
     .execute(pool)
     .await?;
     Ok(())
