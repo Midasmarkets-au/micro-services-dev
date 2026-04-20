@@ -227,7 +227,10 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       if (info.requestValues) {
         setDynamicFields(
           Object.fromEntries(
-            Object.entries(info.requestValues).map(([k, v]) => [k, String(v)])
+            Object.entries(info.requestValues).map(([k, v]) => [
+              k,
+              v === null || v === undefined ? '' : String(v),
+            ])
           )
         );
       }

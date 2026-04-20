@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "Pembatalan gagal",
     "__APPROVE_FAILED__": "Kelulusan gagal",
     "__PAYMENT_EXECUTE_FAILED__": "Pelaksanaan pembayaran gagal. Sila cuba lagi kemudian atau hubungi perkhidmatan pelanggan",
+    "Payment_method_not_enabled": "Kaedah pembayaran ini tidak diaktifkan",
     "__ACCOUNT_CREATE_FAILED__": "Penciptaan akaun gagal",
     "__CHANGE_PASSWORD_FAIL__": "Pertukaran kata laluan gagal",
     "__SYSTEM_MAINTENANCE__": "Sistem sedang dalam penyelenggaraan. Sila cuba lagi kemudian",

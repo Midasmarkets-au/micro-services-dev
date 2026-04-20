@@ -1,8 +1,9 @@
 'use client';
 
 import { forwardRef, useImperativeHandle, useMemo, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { Input, SimpleSelect } from '@/components/ui';
+import { Input, SimpleSelect, SearchableSelect } from '@/components/ui';
 import { getRegionCodes } from '@/core/data/phonesData';
 
 export interface CreditCardFormHandle {
@@ -275,17 +276,26 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
             />
           </div>
           <div className="flex-1">
-            <SelectField
-              label={t('billingCountry')}
-              required
-              value={value.billingCountry || ''}
-              onChange={(v) => handleFieldChange('billingCountry', v)}
-              options={countryOptions}
-              placeholder="--"
-              disabled={disabled}
-              error={errors.billingCountry}
-              contentClassName="max-h-72"
-            />
+            <div className="w-full">
+              <div className="mb-2 flex items-center">
+                <label className="flex items-center text-sm font-normal text-text-secondary">
+                  <span className="mr-0.5 text-primary">*</span>
+                  {t('billingCountry')}
+                </label>
+              </div>
+              <SearchableSelect
+                options={countryOptions}
+                value={countryOptions.find((opt) => opt.value === value.billingCountry) || null}
+                onChange={(option: unknown) => {
+                  const selected = option as { value: string; label: string } | null;
+                  handleFieldChange('billingCountry', selected?.value || '');
+                }}
+                placeholder="--"
+                isDisabled={disabled}
+                error={errors.billingCountry}
+                errorPosition="bottom"
+              />
+            </div>
           </div>
         </div>
 
@@ -316,19 +326,25 @@ function SectionDivider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const CARD_BRANDS: { src: string; alt: string }[] = [
+  { src: '/images/wallet/visa.png', alt: 'Visa' },
+  { src: '/images/wallet/mastercard.png', alt: 'MasterCard' },
+  { src: '/images/wallet/amex.png', alt: 'American Express' },
+  { src: '/images/wallet/discover.png', alt: 'Discover' },
+];
+
 function CardBrandIcons() {
-  // 这里仅用纯 CSS 文字徽标，避免引入新的图片资源；
-  // 如后续上传图标，可以在这里替换为 <Image />
-  const brands = ['VISA', 'MasterCard', 'Amex', 'Discover'];
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      {brands.map((b) => (
-        <span
-          key={b}
-          className="rounded border border-border bg-surface px-2 py-1 text-[10px] font-semibold text-text-secondary"
-        >
-          {b}
-        </span>
+    <div className="flex shrink-0 items-center gap-2">
+      {CARD_BRANDS.map((b) => (
+        <Image
+          key={b.alt}
+          src={b.src}
+          alt={b.alt}
+          width={40}
+          height={24}
+          className="h-6 w-auto object-contain"
+        />
       ))}
     </div>
   );

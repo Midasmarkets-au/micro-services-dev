@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "取消失敗",
     "__APPROVE_FAILED__": "審批失敗",
     "__PAYMENT_EXECUTE_FAILED__": "支付執行失敗，請稍後重試或聯絡客服",
+    "Payment_method_not_enabled": "未開通此支付通道",
     "__ACCOUNT_CREATE_FAILED__": "帳戶建立失敗",
     "__CHANGE_PASSWORD_FAIL__": "修改密碼失敗",
     "__SYSTEM_MAINTENANCE__": "系統維護中，請稍後重試",

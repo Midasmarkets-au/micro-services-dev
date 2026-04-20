@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "취소에 실패했습니다",
     "__APPROVE_FAILED__": "승인에 실패했습니다",
     "__PAYMENT_EXECUTE_FAILED__": "결제 실행에 실패했습니다. 나중에 다시 시도하거나 고객 서비스에 문의해 주세요",
+    "Payment_method_not_enabled": "이 결제 방법이 활성화되어 있지 않습니다",
     "__ACCOUNT_CREATE_FAILED__": "계정 생성에 실패했습니다",
     "__CHANGE_PASSWORD_FAIL__": "비밀번호 변경에 실패했습니다",
     "__SYSTEM_MAINTENANCE__": "시스템 점검 중입니다. 나중에 다시 시도해 주세요",

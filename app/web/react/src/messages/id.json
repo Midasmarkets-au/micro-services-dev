@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "Gagal membatalkan",
     "__APPROVE_FAILED__": "Gagal menyetujui",
     "__PAYMENT_EXECUTE_FAILED__": "Gagal melakukan pembayaran. Silakan coba lagi nanti atau hubungi layanan pelanggan",
+    "Payment_method_not_enabled": "Metode pembayaran ini belum diaktifkan",
     "__ACCOUNT_CREATE_FAILED__": "Gagal membuat akun",
     "__CHANGE_PASSWORD_FAIL__": "Gagal mengubah kata sandi",
     "__SYSTEM_MAINTENANCE__": "Sistem sedang dalam pemeliharaan. Silakan coba lagi nanti",

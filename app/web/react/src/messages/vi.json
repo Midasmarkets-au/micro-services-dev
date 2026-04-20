@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "Hủy thất bại",
     "__APPROVE_FAILED__": "Phê duyệt thất bại",
     "__PAYMENT_EXECUTE_FAILED__": "Thực hiện thanh toán thất bại, vui lòng thử lại sau hoặc liên hệ dịch vụ khách hàng",
+    "Payment_method_not_enabled": "Phương thức thanh toán này chưa được kích hoạt",
     "__ACCOUNT_CREATE_FAILED__": "Tạo tài khoản thất bại",
     "__CHANGE_PASSWORD_FAIL__": "Đổi mật khẩu thất bại",
     "__SYSTEM_MAINTENANCE__": "Hệ thống đang bảo trì, vui lòng thử lại sau",

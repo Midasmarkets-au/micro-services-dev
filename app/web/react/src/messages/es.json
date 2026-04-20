@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "Error al cancelar",
     "__APPROVE_FAILED__": "Error al aprobar",
     "__PAYMENT_EXECUTE_FAILED__": "Error en la ejecución del pago, por favor intente más tarde o contacte al servicio al cliente",
+    "Payment_method_not_enabled": "Este método de pago no está habilitado",
     "__ACCOUNT_CREATE_FAILED__": "Error al crear la cuenta",
     "__CHANGE_PASSWORD_FAIL__": "Error al cambiar la contraseña",
     "__SYSTEM_MAINTENANCE__": "Sistema en mantenimiento, por favor intente más tarde",

@@ -683,6 +683,7 @@
     "__CANCEL_FAILED__": "キャンセルに失敗しました",
     "__APPROVE_FAILED__": "承認に失敗しました",
     "__PAYMENT_EXECUTE_FAILED__": "決済の実行に失敗しました。後でもう一度お試しいただくか、カスタマーサービスにお問い合わせください",
+    "Payment_method_not_enabled": "この支払い方法は有効になっていません",
     "__ACCOUNT_CREATE_FAILED__": "アカウントの作成に失敗しました",
     "__CHANGE_PASSWORD_FAIL__": "パスワードの変更に失敗しました",
     "__SYSTEM_MAINTENANCE__": "システムメンテナンス中です。後でもう一度お試しください",
