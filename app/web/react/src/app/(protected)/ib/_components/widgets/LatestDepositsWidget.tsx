@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { usePathname } from 'next/navigation';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getIBLatestDeposits } from '@/actions';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
+import { getIBLatestDeposits } from '@/lib/http/browserActions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { Avatar, BalanceShow, DataTable } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui/DataTable';
@@ -12,11 +12,9 @@ import type { IBLatestDeposit } from '@/types/ib';
 
 export function LatestDepositsWidget() {
   const t = useTranslations('ib.dashboard');
-  const pathname = usePathname();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/ib');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
-  const requestIdRef = useRef(0);
-  const pathnameRef = useRef(pathname);
 
   const [deposits, setDeposits] = useState<IBLatestDeposit[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -24,32 +22,17 @@ export function LatestDepositsWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!agentAccount || pathname !== '/ib') return;
-    let cancelled = false;
-    const currentRequestId = ++requestIdRef.current;
-    const isStaleRequest = () =>
-      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
-
-    const load = async () => {
-      const result = await execute(getIBLatestDeposits, agentAccount.uid, 5);
-      if (isStaleRequest()) return;
+    if (!agentAccount) return;
+    const { signal, isActive } = begin();
+    (async () => {
+      const result = await execute(getIBLatestDeposits, { signal }, agentAccount.uid, 5);
+      if (!isActive()) return;
       if (result.success && Array.isArray(result.data)) {
         setDeposits(result.data);
       }
-      if (!isStaleRequest()) {
-        setLoadedUid(agentAccount.uid);
-      }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentAccount, execute, pathname]);
+      setLoadedUid(agentAccount.uid);
+    })();
+  }, [agentAccount, begin, execute]);
 
   const columns: DataTableColumn<IBLatestDeposit>[] = useMemo(() => [
     {

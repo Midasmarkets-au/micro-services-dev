@@ -14,6 +14,7 @@ type TabFilter = 'all' | 'deposited' | 'notDeposited';
 
 export default function IBNewCustomersPage() {
   const t = useTranslations('ib.newCustomers');
+  const tType = useTranslations('type');
   const { execute } = useServerAction({ showErrorToast: true });
   const executeRef = useRef(execute);
   useEffect(() => { executeRef.current = execute; });
@@ -127,8 +128,8 @@ export default function IBNewCustomersPage() {
       render: (item) => {
         const hasVerification = item.verification && !item.verification.isEmpty;
         const verificationLabel = hasVerification
-          ? t(`verificationStatus.${item.verification!.status}`)
-          : t('verificationNotStarted');
+          ? tType(`verificationStatus.${item.verification!.status}`)
+          : tType('verificationNotStarted');
         const isApproved = hasVerification && item.verification!.status === 4;
         const isRejected = hasVerification && item.verification!.status === 5;
         return (
@@ -142,12 +143,12 @@ export default function IBNewCustomersPage() {
                   : 'bg-[rgba(128,128,128,0.15)] text-text-secondary',
             ].join(' ')}
           >
-            {t('verification')} {verificationLabel}
+            {tType('verification')} {verificationLabel}
           </span>
         );
       },
     },
-  ], [t]);
+  ], [t, tType]);
 
   return (
     <div className="flex flex-1 flex-col gap-5 rounded bg-surface p-5">

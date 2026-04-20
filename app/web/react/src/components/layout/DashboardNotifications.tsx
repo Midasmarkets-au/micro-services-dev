@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useServerAction } from '@/hooks/useServerAction';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
 import { NotificationsSkeleton } from '@/components/ui';
-import { getNotifications } from '@/actions';
+import { getNotifications } from '@/lib/http/browserActions/notifications';
 
 // 后端返回的通知内容结构
 interface NoticeContent {
@@ -60,42 +61,39 @@ const localeToLanguageKey: Record<string, string> = {
 export function DashboardNotifications() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
-  const { execute } = useServerAction({ showErrorToast: false });
+  const { begin } = useRouteScope('/dashboard');
+  const { execute } = useBrowserAction({ showErrorToast: false });
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // 防止重复请求
-  const isInitialized = useRef(false);
 
   // 获取当前语言对应的后端语言 key
   const languageKey = localeToLanguageKey[locale] || 'en-us';
 
+  // begin/execute 都是稳定引用，effect 正常只跑一次；StrictMode 双跑由 begin()
+  // 的 token 机制去重，不需要额外 ref 守卫。
   useEffect(() => {
-    if (isInitialized.current) return;
-    isInitialized.current = true;
+    const { signal, isActive } = begin();
+    (async () => {
+      const result = await execute<NoticeItem[], [{ signal?: AbortSignal }, number]>(
+        getNotifications,
+        { signal },
+        8
+      );
+      if (!isActive()) return;
 
-    const fetchNotifications = async () => {
-      // 使用 Server Action
-      const result = await execute(getNotifications, 8);
-
-      // 后端直接返回数组，result.data 就是通知数组
-      const items: NoticeItem[] = Array.isArray(result.data) 
-        ? (result.data as unknown as NoticeItem[]).slice(0, 5) 
+      const items: NoticeItem[] = Array.isArray(result.data)
+        ? (result.data as NoticeItem[]).slice(0, 5)
         : [];
-      
+
       if (result.success && items.length > 0) {
         setNotifications(items);
-        // 默认选中第一个
         setSelectedNotification(items[0].id);
       }
-      
-      setIsLoading(false);
-    };
 
-    fetchNotifications();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      setIsLoading(false);
+    })();
+  }, [begin, execute]);
 
   // 获取通知的标题（根据当前语言）
   const getNoticeTitle = (notice: NoticeItem): string => {

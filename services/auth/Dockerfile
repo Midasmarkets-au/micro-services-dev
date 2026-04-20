@@ -12,7 +12,6 @@ COPY vendor/ ./vendor/
 
 # Copy all workspace members needed to resolve the workspace
 COPY services/auth/     ./services/auth/
-COPY services/auth_old/ ./services/auth_old/
 COPY services/otel/     ./services/otel/
 
 # Stub out other workspace members so Cargo can resolve the workspace

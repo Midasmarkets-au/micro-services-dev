@@ -1,22 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { usePathname } from 'next/navigation';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getIBReferralHistory } from '@/actions';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
+import { getIBReferralHistory } from '@/lib/http/browserActions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { Avatar, EmptyState } from '@/components/ui';
 import type { IBReferralHistory } from '@/types/ib';
 
 export function NewCustomerListWidget() {
   const t = useTranslations('ib.dashboard');
-  const pathname = usePathname();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/ib');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
-  const requestIdRef = useRef(0);
-  const pathnameRef = useRef(pathname);
 
   const [customers, setCustomers] = useState<IBReferralHistory[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -24,41 +22,21 @@ export function NewCustomerListWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!agentAccount || pathname !== '/ib') return;
-    let cancelled = false;
-    const currentRequestId = ++requestIdRef.current;
-    const isStaleRequest = () =>
-      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
-
-    const load = async () => {
-      try {
-        const result = await execute(getIBReferralHistory, agentAccount.uid, {
-          page: 1,
-          size: 5,
-          IsUnverified: true,
-        });
-        if (isStaleRequest()) return;
-        if (result.success && result.data?.data) {
-          setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
-        }
-      } catch {
-        // ignore
-      } finally {
-        if (!isStaleRequest()) {
-          setLoadedUid(agentAccount.uid);
-        }
+    if (!agentAccount) return;
+    const { signal, isActive } = begin();
+    (async () => {
+      const result = await execute(getIBReferralHistory, { signal }, agentAccount.uid, {
+        page: 1,
+        size: 5,
+        IsUnverified: true,
+      });
+      if (!isActive()) return;
+      if (result.success && result.data?.data) {
+        setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
       }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentAccount, execute, pathname]);
+      setLoadedUid(agentAccount.uid);
+    })();
+  }, [agentAccount, begin, execute]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-surface p-5">
