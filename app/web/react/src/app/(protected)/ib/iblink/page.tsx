@@ -211,6 +211,12 @@ export default function IBLinkPage() {
       ),
     },
     {
+      key: 'isAutoCreatePaymentMethod',
+      title: t('link.autoCreateAccount'),
+      skeletonWidth: 'w-10',
+      render: (item) => <span className="text-sm">{item.isAutoCreatePaymentMethod === 1 ? t('link.yes') : t('link.no')}</span>,
+    },
+    {
       key: 'copyLink',
       title: t('link.clickCopy'),
       skeletonWidth: 'w-24',

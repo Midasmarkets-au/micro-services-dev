@@ -6,6 +6,7 @@ import { zhCN, enUS } from 'date-fns/locale';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import { CalendarIcon } from '@radix-ui/react-icons';
 import * as Popover from '@radix-ui/react-popover';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 export type { DateRange };
@@ -98,7 +99,8 @@ export function DatePicker(props: DatePickerProps) {
     return '';
   }, [mode, props, dateLocale]);
 
-  const defaultPlaceholder = locale === 'zh' ? '选择日期' : 'Select Date';
+  const t = useTranslations('common');
+  const defaultPlaceholder = t('selectDate');
 
   const handleSingleSelect = (date: Date | undefined) => {
     if (mode === 'single') {
@@ -126,10 +128,10 @@ export function DatePicker(props: DatePickerProps) {
     setOpen(false);
   };
 
-  const titleText = locale === 'zh' ? '选择时间' : 'Select Date';
-  const resetText = locale === 'zh' ? '重置' : 'Reset';
-  const confirmText = locale === 'zh' ? '确定' : 'Confirm';
-  const toText = locale === 'zh' ? '至' : 'to';
+  const titleText = t('selectDate');
+  const resetText = t('reset');
+  const confirmText = t('confirm');
+  const toText = t('to');
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>

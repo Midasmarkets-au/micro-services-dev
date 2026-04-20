@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useServerAction } from '@/hooks/useServerAction';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
 import { NotificationsSkeleton } from '@/components/ui';
-import { getNotifications } from '@/actions';
+import { getNotifications } from '@/lib/http/browserActions/notifications';
 
 // 后端返回的通知内容结构
 interface NoticeContent {
@@ -60,7 +61,8 @@ const localeToLanguageKey: Record<string, string> = {
 export function DashboardNotifications() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
-  const { execute } = useServerAction({ showErrorToast: false });
+  const { begin } = useRouteScope('/dashboard');
+  const { execute } = useBrowserAction({ showErrorToast: false });
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,25 +77,26 @@ export function DashboardNotifications() {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    const fetchNotifications = async () => {
-      // 使用 Server Action
-      const result = await execute(getNotifications, 8);
+    const { signal, isActive } = begin();
+    (async () => {
+      const result = await execute<NoticeItem[], [{ signal?: AbortSignal }, number]>(
+        getNotifications,
+        { signal },
+        8
+      );
+      if (!isActive()) return;
 
-      // 后端直接返回数组，result.data 就是通知数组
-      const items: NoticeItem[] = Array.isArray(result.data) 
-        ? (result.data as unknown as NoticeItem[]).slice(0, 5) 
+      const items: NoticeItem[] = Array.isArray(result.data)
+        ? (result.data as NoticeItem[]).slice(0, 5)
         : [];
-      
+
       if (result.success && items.length > 0) {
         setNotifications(items);
-        // 默认选中第一个
         setSelectedNotification(items[0].id);
       }
-      
-      setIsLoading(false);
-    };
 
-    fetchNotifications();
+      setIsLoading(false);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

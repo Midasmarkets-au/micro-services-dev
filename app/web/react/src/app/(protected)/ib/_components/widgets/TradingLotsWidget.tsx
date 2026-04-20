@@ -1,22 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { usePathname } from 'next/navigation';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getIBTradeReports } from '@/actions';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
+import { getIBTradeReports } from '@/lib/http/browserActions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { EmptyState } from '@/components/ui';
 import type { IBTradeRecord } from '@/types/ib';
 
 export function TradingLotsWidget() {
   const t = useTranslations('ib.dashboard');
-  const pathname = usePathname();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/ib');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
-  const requestIdRef = useRef(0);
-  const pathnameRef = useRef(pathname);
 
   const [trades, setTrades] = useState<IBTradeRecord[]>([]);
   const [loadedUid, setLoadedUid] = useState<number | null>(null);
@@ -24,35 +22,20 @@ export function TradingLotsWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!agentAccount || pathname !== '/ib') return;
-    let cancelled = false;
-    const currentRequestId = ++requestIdRef.current;
-    const isStaleRequest = () =>
-      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
-
-    const load = async () => {
-      const result = await execute(getIBTradeReports, agentAccount.uid, {
+    if (!agentAccount) return;
+    const { signal, isActive } = begin();
+    (async () => {
+      const result = await execute(getIBTradeReports, { signal }, agentAccount.uid, {
         page: 1,
         size: 5,
       });
-      if (isStaleRequest()) return;
+      if (!isActive()) return;
       if (result.success && result.data?.data) {
         setTrades(Array.isArray(result.data.data) ? result.data.data : []);
       }
-      if (!isStaleRequest()) {
-        setLoadedUid(agentAccount.uid);
-      }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentAccount, execute, pathname]);
+      setLoadedUid(agentAccount.uid);
+    })();
+  }, [agentAccount, begin, execute]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-surface p-5">

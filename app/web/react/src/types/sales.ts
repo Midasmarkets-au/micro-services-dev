@@ -1,4 +1,5 @@
 import type { TradeAccount } from './accounts';
+import type { ReferralHistoryVerification } from './verification';
 
 // ============================================
 // Sales Account 相关
@@ -82,6 +83,7 @@ export interface SalesReferralHistory {
   createdOn: string;
   completedOn?: string;
   user?: SalesClientUser;
+  verification?: ReferralHistoryVerification;
 }
 
 export interface SalesReferralHistoryResponse {

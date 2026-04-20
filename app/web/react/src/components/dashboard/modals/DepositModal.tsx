@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import {
@@ -22,7 +22,14 @@ import {
 } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
-import { getDepositGroups, getDepositGroupInfo, postAccountDeposit, postQrCodePaid } from '@/actions/deposit';
+import {
+  getDepositGroups,
+  getDepositGroupInfo,
+  postAccountDeposit,
+  postQrCodePaid,
+  getExLinkCurrencies,
+  getExLinkExchangeRates,
+} from '@/actions/deposit';
 import type {
   DepositGroup,
   DepositGroupInfo,
@@ -32,6 +39,10 @@ import type {
 import { DepositActions } from '@/types/deposit';
 import { CurrencyTypes } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
+import { CreditCardForm, type CreditCardFormHandle } from './CreditCardForm';
+
+const CREDIT_CARD_GROUP = 'Credit Card';
+const EXLINK_GLOBAL_KEYWORD = 'exlink global';
 
 interface DepositModalProps {
   open: boolean;
@@ -126,7 +137,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [paymentCurrency, setPaymentCurrency] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
-  const [amountError, setAmountError] = useState<'' | 'required' | 'range'>('');
+  const [amountError, setAmountError] = useState<'' | 'required' | 'range' | 'integer'>('');
 
   // Step 4 & 5
   const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
@@ -135,6 +146,12 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   // QrCode 支付确认
   const [isPaidSubmitting, setIsPaidSubmitting] = useState(false);
   const [isPaidConfirmed, setIsPaidConfirmed] = useState(false);
+
+  // 信用卡表单 ref
+  const creditCardFormRef = useRef<CreditCardFormHandle>(null);
+
+  // 是否是信用卡渠道
+  const isCreditCard = selectedGroup?.group === CREDIT_CARD_GROUP;
 
   // Step 1: 加载支付渠道
   useEffect(() => {
@@ -175,22 +192,54 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     setIsLoadingInfo(true);
     try {
       const result = await execute(getDepositGroupInfo, account.uid, selectedGroup.group);
-      if (result.success && result.data) {
-        setGroupInfo(result.data);
-        if (selectedGroup.group === 'Credit Card' && result.data.requestValues) {
-          setDynamicFields(
-            Object.fromEntries(
-              Object.entries(result.data.requestValues).map(([k, v]) => [k, String(v)])
-            )
-          );
+      if (!result.success || !result.data) return;
+
+      let info: DepositGroupInfo = result.data;
+
+      // ExLink Global 渠道：用 ExLink 实时汇率覆盖 currencyRates
+      const groupLower = (selectedGroup.group || '').toLowerCase();
+      const nameLower = (selectedGroup.paymentMethodName || '').toLowerCase();
+      const exLink =
+        groupLower.includes(EXLINK_GLOBAL_KEYWORD) || nameLower.includes(EXLINK_GLOBAL_KEYWORD);
+
+      if (exLink) {
+        try {
+          const [currenciesRes, ratesRes] = await Promise.all([
+            execute(getExLinkCurrencies),
+            execute(getExLinkExchangeRates),
+          ]);
+          const rateList = ratesRes.success ? ratesRes.data?.marketPriceList ?? [] : [];
+          if (currenciesRes.success && rateList.length > 0) {
+            const rateMap = new Map<number, number>(
+              rateList.map((r) => [r.sourceCoinId, r.marketInPrice])
+            );
+            const filtered = (info.currencyRates || [])
+              .filter((cr) => rateMap.has(cr.currencyId))
+              .map((cr) => ({ ...cr, rate: rateMap.get(cr.currencyId) ?? cr.rate }));
+            info = { ...info, currencyRates: filtered };
+          }
+        } catch (err) {
+          console.error('Failed to fetch ExLink currency rates:', err);
         }
-        if (result.data.currencyRates?.length === 1) {
-          setPaymentCurrency(String(result.data.currencyRates[0].currencyId));
-        } else if (!result.data.currencyRates?.length && account.currencyId) {
-          setPaymentCurrency(String(account.currencyId));
-        }
-        setStep(2);
       }
+
+      setGroupInfo(info);
+      if (info.requestValues) {
+        setDynamicFields(
+          Object.fromEntries(
+            Object.entries(info.requestValues).map(([k, v]) => [
+              k,
+              v === null || v === undefined ? '' : String(v),
+            ])
+          )
+        );
+      }
+      if (info.currencyRates?.length === 1) {
+        setPaymentCurrency(String(info.currencyRates[0].currencyId));
+      } else if (!info.currencyRates?.length && account.currencyId) {
+        setPaymentCurrency(String(account.currencyId));
+      }
+      setStep(2);
     } finally {
       setIsLoadingInfo(false);
     }
@@ -215,12 +264,17 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   }, [amount, currentRate]);
 
   // 金额校验：
+  // - 必须为正整数
   // - range 为 USD 固定值（如 5000 -> 500 USD），先转成 USD 口径
   // - 输入值按账户币种换算到 USD（1 USD = 100 USC）后再比较
   const validateAmount = useCallback((val: string): boolean => {
     const num = Number(val);
     if (!num || num <= 0) {
       setAmountError('required');
+      return false;
+    }
+    if (!Number.isInteger(num)) {
+      setAmountError('integer');
       return false;
     }
 
@@ -249,15 +303,17 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     );
   }, [groupInfo]);
 
-  // Step 3 是否可前进
+  // Step 3 是否可前进（信用卡的字段校验在 CreditCardForm.validate 内部完成）
   const canProceedStep3 = useMemo(() => {
     if (!amount || Number(amount) <= 0) return false;
     if (amountError) return false;
-    for (const key of visibleRequestKeys) {
-      if (!dynamicFields[key]?.trim()) return false;
+    if (!isCreditCard) {
+      for (const key of visibleRequestKeys) {
+        if (!dynamicFields[key]?.trim()) return false;
+      }
     }
     return true;
-  }, [amount, amountError, visibleRequestKeys, dynamicFields]);
+  }, [amount, amountError, isCreditCard, visibleRequestKeys, dynamicFields]);
 
   const qrCodeImageSrc = useMemo(
     () => (depositResponse?.textForQrCode ? getBase64ImageDataUrl(depositResponse.textForQrCode) : ''),
@@ -464,13 +520,17 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   {t('fill.depositTo')}
                 </h3>
                 {/* 支付币种 */}
-                {groupInfo.currencyRates && (
+                {groupInfo.currencyRates && groupInfo.currencyRates.length > 0 && (
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center text-sm font-medium text-text-secondary">
                       <span className="mr-1 text-primary">*</span>
                       {selectedGroup?.paymentMethodName}{t('fill.currency')}
                     </label>
-                    <Select value={paymentCurrency} onValueChange={setPaymentCurrency}>
+                    <Select
+                      value={paymentCurrency}
+                      onValueChange={setPaymentCurrency}
+                      disabled={groupInfo.currencyRates.length === 1}
+                    >
                       <SelectTrigger className="h-12 w-full bg-input-bg">
                         <SelectValue placeholder={t('fill.selectCurrency')} />
                       </SelectTrigger>
@@ -499,7 +559,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       }}
                       onBlur={() => amount && validateAmount(amount)}
                       placeholder="0"
-                      error={amountError === 'required' ? t('error.amountRequired') : undefined}
+                      disabled={!paymentCurrency}
+                      error={
+                        amountError === 'required'
+                          ? t('error.amountRequired')
+                          : amountError === 'integer'
+                            ? t('error.amountInteger')
+                            : undefined
+                      }
                       errorPosition="bottom"
                     />
                     {amountError === 'range' && groupInfo?.range && (
@@ -527,8 +594,20 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   )}
                 </div>
 
-                {/* 动态表单字段 */}
-                {visibleRequestKeys.length > 0 && (
+                {/* 信用卡专用表单 */}
+                {isCreditCard && (
+                  <CreditCardForm
+                    ref={creditCardFormRef}
+                    value={dynamicFields}
+                    onChange={(key, val) =>
+                      setDynamicFields((prev) => ({ ...prev, [key]: val }))
+                    }
+                    disabled={isLoading}
+                  />
+                )}
+
+                {/* 通用动态表单字段（非信用卡） */}
+                {!isCreditCard && visibleRequestKeys.length > 0 && (
                   <div className="flex flex-row gap-4">
                     {visibleRequestKeys.map((key) => (
                       <div key={key} className="flex-1">
@@ -763,9 +842,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                     if (step === 2) {
                       setStep(3);
                     } else if (step === 3) {
-                      if (validateAmount(amount) && canProceedStep3) {
-                        setStep(4);
+                      if (!validateAmount(amount) || !canProceedStep3) return;
+                      // 信用卡渠道额外校验信用卡表单
+                      if (isCreditCard) {
+                        const validated = creditCardFormRef.current?.validate();
+                        if (!validated) return;
+                        setDynamicFields((prev) => ({ ...prev, ...validated }));
                       }
+                      setStep(4);
                     } else if (step === 4) {
                       handleDeposit();
                     }

@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
-import { useServerAction } from '@/hooks/useServerAction';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
 import { useUserStore } from '@/stores/userStore';
 import { isGuestOnly } from '@/lib/rbac';
 import { Button, Skeleton, Icon } from '@/components/ui';
@@ -14,7 +15,7 @@ import {
   getPendingApplications,
   getDemoAccounts,
   getServiceMap,
-} from '@/actions';
+} from '@/lib/http/browserActions/accounts';
 import type {
   Account,
   Application,
@@ -44,7 +45,8 @@ export function DashboardMainContent() {
   const tAccounts = useTranslations('accounts');
   const router = useRouter();
   const { isDark, mounted } = useTheme();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/dashboard');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   
   // 获取用户信息判断是否为 Guest
   const user = useUserStore((state) => state.user);
@@ -85,12 +87,13 @@ export function DashboardMainContent() {
     ? '/images/dashboard/banner-night.svg'
     : '/images/dashboard/banner-day.svg';
 
-  // 加载数据
+  // 加载数据：每次 loadData 都会 abort 上一次 in-flight 请求
   const loadData = useCallback(async () => {
+    const { signal, isActive } = begin();
     try {
       const [accountsResult, applicationsResult, demoResult, serviceResult] =
         await Promise.all([
-          execute(getLiveAccounts, {
+          execute(getLiveAccounts, { signal }, {
             hasTradeAccount: true,
             status: AccountStatusTypes.Activate,
             roles: [
@@ -101,16 +104,17 @@ export function DashboardMainContent() {
               AccountRoleTypes.Guest,
             ],
           }),
-          execute(getPendingApplications, {
+          execute(getPendingApplications, { signal }, {
             statuses: [
               ApplicationStatusType.AwaitingApproval,
               ApplicationStatusType.Approved,
             ],
             type: ApplicationType.TradeAccount,
           }),
-          execute(getDemoAccounts),
-          execute(getServiceMap),
+          execute(getDemoAccounts, { signal }),
+          execute(getServiceMap, { signal }),
         ]);
+      if (!isActive()) return;
       if (accountsResult.success) {
         setLiveAccounts(accountsResult.data || []);
       }
@@ -124,9 +128,9 @@ export function DashboardMainContent() {
         setServiceMap(serviceResult.data || {});
       }
     } finally {
-      setIsInitialLoading(false);
+      if (isActive()) setIsInitialLoading(false);
     }
-  }, [execute]);
+  }, [begin, execute]);
 
   // Guest 用户状态变化时，同步 Tab 和加载状态
   useEffect(() => {

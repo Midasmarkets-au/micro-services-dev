@@ -27,6 +27,24 @@ export interface DepositGroupInfo {
   instruction: string;
 }
 
+// ExLink Global 币种
+export interface ExLinkCurrency {
+  currencyId: number;
+  name?: string;
+  [key: string]: unknown;
+}
+
+// ExLink Global 汇率
+export interface ExLinkExchangeRate {
+  sourceCoinId: number;
+  marketInPrice: number;
+  [key: string]: unknown;
+}
+
+export interface ExLinkExchangeRatesResponse {
+  marketPriceList: ExLinkExchangeRate[];
+}
+
 // Step 4: 提交入金请求参数
 export interface DepositRequest {
   hashId: string;

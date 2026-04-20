@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { usePathname } from 'next/navigation';
-import { useServerAction } from '@/hooks/useServerAction';
+import { useRouteScope } from '@/hooks/useRouteScope';
+import { useBrowserAction } from '@/lib/http';
 import { QRCodeSVG } from 'qrcode.react';
-import { getIBLinks } from '@/actions';
+import { getIBLinks } from '@/lib/http/browserActions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { useUserStore } from '@/stores/userStore';
 import {
@@ -26,12 +26,10 @@ function buildInviteUrl(code: string, siteId: number, locale: string): string {
 export function IBLinksWidget() {
   const t = useTranslations('ib.dashboard');
   const locale = useLocale();
-  const pathname = usePathname();
-  const { execute } = useServerAction({ showErrorToast: true });
+  const { begin } = useRouteScope('/ib');
+  const { execute } = useBrowserAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
-  const requestIdRef = useRef(0);
-  const pathnameRef = useRef(pathname);
 
   const [links, setLinks] = useState<IBLink[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
@@ -41,35 +39,20 @@ export function IBLinksWidget() {
   const isLoading = !agentAccount || agentAccount.uid !== loadedUid;
 
   useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!agentAccount || pathname !== '/ib') return;
-    let cancelled = false;
-    const currentRequestId = ++requestIdRef.current;
-    const isStaleRequest = () =>
-      cancelled || requestIdRef.current !== currentRequestId || pathnameRef.current !== '/ib';
-
-    const load = async () => {
-      const result = await execute(getIBLinks, agentAccount.uid, { page: 1, size: 20 });
-      if (isStaleRequest()) return;
+    if (!agentAccount) return;
+    const { signal, isActive } = begin();
+    (async () => {
+      const result = await execute(getIBLinks, { signal }, agentAccount.uid, { page: 1, size: 20 });
+      if (!isActive()) return;
       if (result.success && result.data?.data) {
         const items = Array.isArray(result.data.data) ? result.data.data : [];
         setLinks(items);
         const defaultLink = items.find((l) => l.isDefault) || items[0];
         if (defaultLink) setSelectedCode(defaultLink.code);
       }
-      if (!isStaleRequest()) {
-        setLoadedUid(agentAccount.uid);
-      }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentAccount, execute, pathname]);
+      setLoadedUid(agentAccount.uid);
+    })();
+  }, [agentAccount, begin, execute]);
 
   const activeLink = useMemo(
     () => links.find((l) => l.code === selectedCode) || links[0],

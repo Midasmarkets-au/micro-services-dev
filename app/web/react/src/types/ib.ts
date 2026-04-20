@@ -1,4 +1,5 @@
 import type { CurrencyTypes, TradeAccount } from './accounts';
+import type { ReferralHistoryVerification } from './verification';
 
 // ============================================
 // IB Agent 账户相关
@@ -72,10 +73,7 @@ export interface IBClientCriteria extends IBListParams {
 // IB Referral 相关
 // ============================================
 
-export interface IBReferralHistoryVerification {
-  isEmpty: boolean;
-  status: number; // 0=未完成 1=等待审核 2=审核中 3=等待批准 4=已批准 5=已拒绝
-}
+export type { ReferralHistoryVerification as IBReferralHistoryVerification } from './verification';
 
 export interface IBReferralHistory {
   id: number;
@@ -88,7 +86,7 @@ export interface IBReferralHistory {
   createdOn: string;
   completedOn?: string;
   user?: IBClientUser;
-  verification?: IBReferralHistoryVerification;
+  verification?: ReferralHistoryVerification;
 }
 
 export interface IBReferralHistoryResponse {
@@ -156,6 +154,7 @@ export interface IBLink {
   url?: string;
   accountType?: number;
   rebateRuleId?: number;
+  isAutoCreatePaymentMethod?: number;
   summary?: IBLinkSummary;
 }
 
