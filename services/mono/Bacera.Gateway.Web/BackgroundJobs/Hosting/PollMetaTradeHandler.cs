@@ -1,14 +1,7 @@
 using Bacera.Gateway.Context;
-using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.Services;
-using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
-using Bacera.Gateway.Web.Response;
 using Bacera.Gateway.Web.Services.Interface;
 using Hangfire;
-using LinqKit;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 namespace Bacera.Gateway.Web.BackgroundJobs.Hosting;
 
@@ -20,16 +13,17 @@ public class PollMetaTradeHandler : IDisposable
     private readonly MyDbContextPool _myDbContextPool;
     private const int DefaultMaxNumberOfMessages = 10; // thread count
     private const int DelayTime = 5000;
-    // [MIGRATED] BCRTrade queue fields removed — this handler is no longer registered in DI or triggered.
-    // Pipeline replaced by scheduler/src/jobs/trade_monitor.rs + trade_handler.rs (NATS JetStream).
+    // [MIGRATED] All BCRTrade and BCREventTrade queue fields removed — pipelines replaced by NATS JetStream.
+    // BCRTrade: scheduler/src/jobs/trade_monitor.rs + trade_handler.rs
+    // BCREventTrade: scheduler/src/jobs/event_trade_handler.rs
     // private readonly string _bcrTradeQueue;
     // private readonly string _bcrSalesRebateTradeQueue;
-    private readonly string _bcrEventTradeQueue;
+    // private readonly string _bcrEventTradeQueue;
     private readonly IBackgroundJobClient _backgroundJobClient;
 
 
     public PollMetaTradeHandler(ILogger<PollMetaTradeHandler> logger,
-        MyDbContextPool myDbContextPool, IOptions<AmazonSQSOptions> options, IMyCache myCache,
+        MyDbContextPool myDbContextPool, IMyCache myCache,
         IMessageQueueService mqService, IBackgroundJobClient backgroundJobClient)
     {
         _logger = logger;
@@ -37,9 +31,6 @@ public class PollMetaTradeHandler : IDisposable
         _backgroundJobClient = backgroundJobClient;
         _myCache = myCache;
         _myDbContextPool = myDbContextPool;
-        // _bcrTradeQueue = options.Value.BCRTrade;           // [MIGRATED]
-        _bcrEventTradeQueue = options.Value.BCREventTrade;
-        // _bcrSalesRebateTradeQueue = options.Value.BCRSalesRebateTrade; // [MIGRATED]
     }
 
     // [MIGRATED] PollRebateTradeAsync removed — BCRTrade queue no longer consumed here.

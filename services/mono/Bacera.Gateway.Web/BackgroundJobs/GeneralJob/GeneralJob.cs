@@ -1,9 +1,8 @@
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.Extension;
-using Bacera.Gateway.Web.Services.Interface;
+using Bacera.Gateway.Web.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Bacera.Gateway.Web.BackgroundJobs.GeneralJob;
 
@@ -11,8 +10,10 @@ public partial class GeneralJob(
     IServiceProvider serviceProvider,
     AuthDbContext authDbContext,
     IMyCache cache,
-    IMessageQueueService mqService,
-    IOptions<AmazonSQSOptions> sqsOptions,
+    // [MIGRATED] mqService + sqsOptions removed — BCREventTrade SQS publish replaced by NATS.
+    // IMessageQueueService mqService,
+    // IOptions<AmazonSQSOptions> sqsOptions,
+    NatsPublisher natsPublisher,
     ILogger<GeneralJob> logger,
     MyDbContextPool myDbContextPool)
     : IGeneralJob

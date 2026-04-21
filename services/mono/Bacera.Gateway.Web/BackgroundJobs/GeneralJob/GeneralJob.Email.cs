@@ -4,7 +4,6 @@ using Bacera.Gateway.Services.Extension;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Bacera.Gateway.Web.Services.Interface;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Bacera.Gateway.Web.BackgroundJobs.GeneralJob;
 
@@ -17,9 +16,11 @@ public partial class GeneralJob
         var info = await cfgSvc.GetAsync<SendBatchEmailInfo>(nameof(Public), 0, ConfigKeys.SendBatchEmailSpecKey);
         if (info == null) return (false, "No batch email info found");
         if (info.Uuid != uuid) return (false, "Invalid uuid");
-        
-        var mqOptions = scope.ServiceProvider.GetRequiredService<IOptions<AmazonSQSOptions>>();
-        var mqSvc = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
+
+        // [MIGRATED] mqOptions + mqSvc removed — BCRSendMessage SQS publish replaced by NATS BCR_SEND_MESSAGE.
+        // Consumed by: scheduler/src/jobs/send_message_handler.rs (category=2, BatchEmail)
+        // var mqOptions = scope.ServiceProvider.GetRequiredService<IOptions<AmazonSQSOptions>>();
+        // var mqSvc = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
         var sendBatchEmailSvc = scope.ServiceProvider.GetRequiredService<BatchSendEmailService>();
 
         const string lastEnqueuedUserIdKey = "SendEmailByTopicIdWithContent_lastEnqueuedUserIdKey";
@@ -48,12 +49,14 @@ public partial class GeneralJob
                 if (!info.Contents.ContainsKey(user.Language))
                     user.Language = LanguageTypes.English;
 
-                var dto = SendBatchEmailDTO
+                var mqDto = SendBatchEmailDTO
                     .Build(tenantId, user.UserId, user.Email, user.Language, info.TopicId, info.TopicKey)
-                    .ToSendMessageMqDTO()
-                    .ToJson();
+                    .ToSendMessageMqDTO();
 
-                await  mqSvc.SendAsync(dto, mqOptions.Value.BCRSendMessage, messageGroupId: tenantId.ToString());
+                // [MIGRATED] SQS BCRSendMessage.fifo publish replaced by NATS BCR_SEND_MESSAGE.
+                // Legacy SQS code:
+                // await mqSvc.SendAsync(mqDto.ToJson(), mqOptions.Value.BCRSendMessage, messageGroupId: tenantId.ToString());
+                await natsPublisher.PublishSendMessageAsync(mqDto);
                 await cache.SetStringAsync(lastEnqueuedUserIdKey, user.UserId.ToString());
                 total += 1;
             }

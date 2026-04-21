@@ -40,6 +40,7 @@
         <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.0-preview.4.24267.6" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.2" />
         <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="9.0.2" />
+        <PackageReference Include="NATS.Net" Version="2.7.3" />
         <PackageReference Include="NETCore.Encrypt" Version="2.1.1" />
         <PackageReference Include="OpenIddict.AspNetCore" Version="7.2.0" />
         <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.2.0" />
@@ -79,20 +80,20 @@
         <Protobuf Include="..\..\..\proto\google\api\annotations.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
         <Protobuf Include="..\..\..\proto\google\api\http.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
         <!-- HTTP v1 REST API proto definitions (gRPC JSON Transcoding) -->
-        <Protobuf Include="..\..\..\proto\http\v1\common.proto"       ProtoRoot="..\..\..\proto" GrpcServices="None" />
-        <Protobuf Include="..\..\..\proto\http\v1\discovery.proto"    ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\admin.proto"        ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\account.proto"      ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\trade.proto"        ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\payment.proto"      ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\rebate.proto"       ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\user.proto"         ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\report.proto"       ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\common.proto" ProtoRoot="..\..\..\proto" GrpcServices="None" />
+        <Protobuf Include="..\..\..\proto\http\v1\discovery.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\admin.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\account.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\trade.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\payment.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\rebate.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\user.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\report.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
         <Protobuf Include="..\..\..\proto\http\v1\notification.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\config.proto"       ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\symbol.proto"       ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\event.proto"        ProtoRoot="..\..\..\proto" GrpcServices="Server" />
-        <Protobuf Include="..\..\..\proto\http\v1\lead.proto"         ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\config.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\symbol.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\event.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
+        <Protobuf Include="..\..\..\proto\http\v1\lead.proto" ProtoRoot="..\..\..\proto" GrpcServices="Server" />
     </ItemGroup>
 
     <ItemGroup>

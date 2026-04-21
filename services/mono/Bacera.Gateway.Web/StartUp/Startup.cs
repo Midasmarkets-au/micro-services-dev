@@ -36,6 +36,13 @@ namespace Bacera.Gateway.Web;
 
 public static partial class Startup
 {
+    public static void SetupNatsPublisher(this IServiceCollection me)
+    {
+        var natsUrl = GetEnvValue("NATS_URL", "nats://localhost:4222");
+        me.AddSingleton(sp =>
+            new NatsPublisher(natsUrl, sp.GetRequiredService<ILogger<NatsPublisher>>()));
+    }
+
     public static void SetupApplicationServices(this IServiceCollection me)
     {
         me.AddHttpContextAccessor()
@@ -53,7 +60,9 @@ public static partial class Startup
             .AddTransient<EventService>()
             .AddTransient<StartupService>()
             .AddTransient<AcctService>()
-            .AddSingleton<IMessageQueueService, MessageQueueService>()
+            // [MIGRATED] IMessageQueueService removed — no active SQS queues remain.
+            // All queues migrated to NATS JetStream; AmazonSQSClient also removed in SetupAws().
+            // .AddSingleton<IMessageQueueService, MessageQueueService>()
             .AddSingleton<WsMessageProcessor>()
             .AddSingleton<MonitorService>()
             // Security services
@@ -179,8 +188,12 @@ public static partial class Startup
             // has been replaced by scheduler/src/jobs/trade_monitor.rs + trade_handler.rs (NATS JetStream).
             // .AddTransient<TradeMonitorService>()
             // .AddTransient<PollMetaTradeHandler>()
-            .AddTransient<PollEventTradeHandler>()
-            .AddTransient<PollSendMessageHandler>()
+            // [MIGRATED] PollEventTradeHandler removed — BCREventTrade SQS consumer replaced by
+            // NATS BCR_EVENT_TRADE consumer in scheduler/src/jobs/event_trade_handler.rs.
+            // .AddTransient<PollEventTradeHandler>()
+            // [MIGRATED] PollSendMessageHandler removed — BCRSendMessage SQS consumer replaced by
+            // NATS BCR_SEND_MESSAGE consumer in scheduler/src/jobs/send_message_handler.rs.
+            // .AddTransient<PollSendMessageHandler>()
             .AddSingleton<MyDbContextPool>()
             ;
         var commandService = new CommandJob(me.Services.BuildServiceProvider(), me, Environment.GetCommandLineArgs());
