@@ -60,7 +60,9 @@ public static partial class Startup
             .AddTransient<EventService>()
             .AddTransient<StartupService>()
             .AddTransient<AcctService>()
-            .AddSingleton<IMessageQueueService, MessageQueueService>()
+            // [MIGRATED] IMessageQueueService removed — no active SQS queues remain.
+            // All queues migrated to NATS JetStream; AmazonSQSClient also removed in SetupAws().
+            // .AddSingleton<IMessageQueueService, MessageQueueService>()
             .AddSingleton<WsMessageProcessor>()
             .AddSingleton<MonitorService>()
             // Security services
