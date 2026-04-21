@@ -60,9 +60,11 @@ public class CommandJob
                 // case "pull-event-trade-queue":
                 //     result = await RunPullEventTradeQueue(cts);
                 //     break;
-                case "poll-send-message-queue":
-                    result = await RunSendMessageQueue(cts);
-                    break;
+                // [MIGRATED] poll-send-message-queue removed — BCRSendMessage SQS consumer replaced by
+                // NATS BCR_SEND_MESSAGE consumer in scheduler/src/jobs/send_message_handler.rs.
+                // case "poll-send-message-queue":
+                //     result = await RunSendMessageQueue(cts);
+                //     break;
                 // [MIGRATED] pull-trade-queue and mt-monitor commands removed.
                 // BCRTrade pipeline replaced by scheduler NATS JetStream (trade_monitor.rs + trade_handler.rs).
                 // case "pull-trade-queue":
@@ -95,15 +97,13 @@ public class CommandJob
         }
     }
 
-    /// <summary>
-    /// Amazon SQS Queue: Poll SendMessage
-    /// </summary>
-    /// <returns></returns>
-    private async Task<bool> RunSendMessageQueue(CancellationTokenSource cts)
-    {
-        var handler = _serviceProvider.GetRequiredService<PollSendMessageHandler>();
-        return await WithCtsWrapper(handler.RunAsync, cts);
-    }
+    // [MIGRATED] RunSendMessageQueue removed — BCRSendMessage SQS consumer replaced by
+    // NATS BCR_SEND_MESSAGE consumer in scheduler/src/jobs/send_message_handler.rs.
+    // private async Task<bool> RunSendMessageQueue(CancellationTokenSource cts)
+    // {
+    //     var handler = _serviceProvider.GetRequiredService<PollSendMessageHandler>();
+    //     return await WithCtsWrapper(handler.RunAsync, cts);
+    // }
 
     // [MIGRATED] RunPullEventTradeQueue removed — BCREventTrade SQS consumer replaced by
     // NATS BCR_EVENT_TRADE consumer in scheduler/src/jobs/event_trade_handler.rs.

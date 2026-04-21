@@ -87,6 +87,8 @@ impl AppContext {
         nats::client::ensure_trade_stream(&jetstream_ctx).await?;
         nats::client::ensure_event_stream(&jetstream_ctx).await?;
         nats::client::ensure_event_consumer(&jetstream_ctx).await?;
+        nats::client::ensure_send_message_stream(&jetstream_ctx).await?;
+        nats::client::ensure_send_message_consumer(&jetstream_ctx).await?;
         let jetstream = Arc::new(jetstream_ctx);
 
         Ok(Self {
@@ -326,6 +328,17 @@ async fn main() -> Result<()> {
         loop {
             if let Err(e) = jobs::event_trade_handler::run(ctx_eth.clone()).await {
                 error!("EventTradeHandler error: {:#}. Restarting in 5s...", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+        }
+    });
+
+    // ── Spawn SendMessageHandler (BCR_SEND_MESSAGE → batch email via SES) ─
+    let ctx_smh = ctx.clone();
+    tokio::spawn(async move {
+        loop {
+            if let Err(e) = jobs::send_message_handler::run(ctx_smh.clone()).await {
+                error!("SendMessageHandler error: {:#}. Restarting in 5s...", e);
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
         }

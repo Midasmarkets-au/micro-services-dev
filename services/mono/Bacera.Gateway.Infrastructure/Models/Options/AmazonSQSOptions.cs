@@ -16,17 +16,18 @@ public class AmazonSQSOptions
     // MT5 trade monitoring has been moved to scheduler/src/jobs/trade_monitor.rs (NATS JetStream).
     // public string BCRTrade { get; set; } = "";
     // public string BCRSalesRebateTrade { get; set; } = "";
-    public string BCRSendMessage { get; set; } = "";
+    // [MIGRATED] BCRSendMessage queue no longer used — batch email fan-out messages published to NATS BCR_SEND_MESSAGE.
+    // Producer: GeneralJob.Email.cs → NatsPublisher.PublishSendMessageAsync
+    // Consumer: scheduler/src/jobs/send_message_handler.rs
+    // public string BCRSendMessage { get; set; } = "";
 
-    // [MIGRATED] bcrTrade, bcrSalesRebateTrade, and bcrEventTrade parameters removed — queues no longer in use.
-    public static AmazonSQSOptions Create(string accessKey, string accessSecret, string region, string prefix
-        , string bcrSendEmail)
+    // [MIGRATED] bcrTrade, bcrSalesRebateTrade, bcrEventTrade, and bcrSendMessage parameters removed — queues no longer in use.
+    public static AmazonSQSOptions Create(string accessKey, string accessSecret, string region, string prefix)
         => new()
         {
             AccessKey = accessKey,
             AccessSecret = accessSecret,
             Region = region,
             Prefix = prefix,
-            BCRSendMessage = bcrSendEmail
         };
 }

@@ -189,7 +189,9 @@ public static partial class Startup
             // [MIGRATED] PollEventTradeHandler removed — BCREventTrade SQS consumer replaced by
             // NATS BCR_EVENT_TRADE consumer in scheduler/src/jobs/event_trade_handler.rs.
             // .AddTransient<PollEventTradeHandler>()
-            .AddTransient<PollSendMessageHandler>()
+            // [MIGRATED] PollSendMessageHandler removed — BCRSendMessage SQS consumer replaced by
+            // NATS BCR_SEND_MESSAGE consumer in scheduler/src/jobs/send_message_handler.rs.
+            // .AddTransient<PollSendMessageHandler>()
             .AddSingleton<MyDbContextPool>()
             ;
         var commandService = new CommandJob(me.Services.BuildServiceProvider(), me, Environment.GetCommandLineArgs());

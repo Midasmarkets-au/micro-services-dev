@@ -55,6 +55,10 @@ pub async fn publish_event_mq_source(
 
 pub const EVENT_CONSUMER_NAME: &str = "event-trade-handler";
 
+pub const STREAM_SEND_MESSAGE: &str = "BCR_SEND_MESSAGE";
+pub const SUBJECT_SEND_MESSAGE: &str = "send.message";
+pub const SEND_MESSAGE_CONSUMER_NAME: &str = "send-message-handler";
+
 /// Ensures the durable pull consumer for BCR_EVENT_TRADE exists.
 /// Must be called after ensure_event_stream().
 pub async fn ensure_event_consumer(js: &jetstream::Context) -> Result<()> {
@@ -78,6 +82,55 @@ pub async fn ensure_event_consumer(js: &jetstream::Context) -> Result<()> {
         .await
         .map_err(|e| {
             anyhow::anyhow!("Failed to get/create consumer {}: {}", EVENT_CONSUMER_NAME, e)
+        })?;
+
+    Ok(())
+}
+
+/// Ensures the BCR_SEND_MESSAGE JetStream stream exists.
+/// Uses get-or-create semantics so it is safe to call on every startup.
+pub async fn ensure_send_message_stream(js: &jetstream::Context) -> Result<()> {
+    js.get_or_create_stream(stream::Config {
+        name: STREAM_SEND_MESSAGE.to_string(),
+        subjects: vec![SUBJECT_SEND_MESSAGE.to_string()],
+        retention: stream::RetentionPolicy::WorkQueue,
+        ..Default::default()
+    })
+    .await
+    .map_err(|e| {
+        anyhow::anyhow!("Failed to get/create stream {}: {}", STREAM_SEND_MESSAGE, e)
+    })?;
+
+    Ok(())
+}
+
+/// Ensures the durable pull consumer for BCR_SEND_MESSAGE exists.
+/// Must be called after ensure_send_message_stream().
+pub async fn ensure_send_message_consumer(js: &jetstream::Context) -> Result<()> {
+    let stream = js
+        .get_stream(STREAM_SEND_MESSAGE)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to get stream {}: {}", STREAM_SEND_MESSAGE, e))?;
+
+    stream
+        .get_or_create_consumer(
+            SEND_MESSAGE_CONSUMER_NAME,
+            consumer::pull::Config {
+                durable_name: Some(SEND_MESSAGE_CONSUMER_NAME.to_string()),
+                ack_policy: consumer::AckPolicy::Explicit,
+                max_deliver: 3,
+                max_ack_pending: 10,
+                ack_wait: std::time::Duration::from_secs(120),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to get/create consumer {}: {}",
+                SEND_MESSAGE_CONSUMER_NAME,
+                e
+            )
         })?;
 
     Ok(())

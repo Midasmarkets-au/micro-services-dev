@@ -58,6 +58,69 @@ impl RedisCache {
         Ok(())
     }
 
+    /// SISMEMBER key member — returns true if member is in the set.
+    pub async fn sismember(&self, key: &str, member: &str) -> Result<bool> {
+        let mut conn = self.conn.clone();
+        let result: bool = redis::cmd("SISMEMBER")
+            .arg(key)
+            .arg(member)
+            .query_async(&mut conn)
+            .await?;
+        Ok(result)
+    }
+
+    /// SADD key member + EXPIRE key ttl_secs — adds member to set and sets TTL.
+    pub async fn sadd_with_ttl(&self, key: &str, member: &str, ttl: Duration) -> Result<()> {
+        let mut conn = self.conn.clone();
+        let _: () = redis::cmd("SADD")
+            .arg(key)
+            .arg(member)
+            .query_async(&mut conn)
+            .await?;
+        let _: () = redis::cmd("EXPIRE")
+            .arg(key)
+            .arg(ttl.as_secs())
+            .query_async(&mut conn)
+            .await?;
+        Ok(())
+    }
+
+    /// HINCRBY key field increment — increments a hash field by increment.
+    pub async fn hincrby(&self, key: &str, field: &str, increment: i64) -> Result<i64> {
+        let mut conn = self.conn.clone();
+        let result: i64 = redis::cmd("HINCRBY")
+            .arg(key)
+            .arg(field)
+            .arg(increment)
+            .query_async(&mut conn)
+            .await?;
+        Ok(result)
+    }
+
+    /// HGET key field — returns the string value and tries to parse as i64.
+    pub async fn hget_i64(&self, key: &str, field: &str) -> Result<Option<i64>> {
+        let val = self.hget(key, field).await?;
+        Ok(val.and_then(|s| s.parse::<i64>().ok()))
+    }
+
+    /// HSET key field value with TTL on the whole key (if not already set).
+    pub async fn hset_with_ttl(&self, key: &str, field: &str, value: &str, ttl: Duration) -> Result<()> {
+        let mut conn = self.conn.clone();
+        let _: () = redis::cmd("HSET")
+            .arg(key)
+            .arg(field)
+            .arg(value)
+            .query_async(&mut conn)
+            .await?;
+        let _: () = redis::cmd("EXPIRE")
+            .arg(key)
+            .arg(ttl.as_secs())
+            .arg("NX")
+            .query_async(&mut conn)
+            .await?;
+        Ok(())
+    }
+
     /// SET key value EX ttl NX — returns true if the lock was acquired.
     pub async fn set_nx(&self, key: &str, value: &str, ttl: Duration) -> Result<bool> {
         let mut conn = self.conn.clone();

@@ -6,14 +6,19 @@ using NATS.Client.JetStream.Models;
 namespace Bacera.Gateway.Web.Services;
 
 /// <summary>
-/// Publishes EventShopPointTransaction MQSource messages to NATS JetStream BCR_EVENT_TRADE stream.
-/// Replaces the legacy SQS BCREventTrade.fifo publish path.
-/// Consumed by: scheduler/src/jobs/event_trade_handler.rs
+/// Publishes messages to NATS JetStream streams.
+/// BCR_EVENT_TRADE: EventShopPointTransaction events (replaces SQS BCREventTrade.fifo).
+///   Consumed by: scheduler/src/jobs/event_trade_handler.rs
+/// BCR_SEND_MESSAGE: Batch email fan-out messages (replaces SQS BCRSendMessage).
+///   Consumed by: scheduler/src/jobs/send_message_handler.rs
 /// </summary>
 public class NatsPublisher : IAsyncDisposable
 {
     private const string StreamName = "BCR_EVENT_TRADE";
     private const string Subject = "trade.event";
+
+    private const string SendMessageStreamName = "BCR_SEND_MESSAGE";
+    private const string SendMessageSubject = "send.message";
 
     private readonly NatsJSContext _js;
     private readonly NatsConnection _nats;
@@ -56,6 +61,37 @@ public class NatsPublisher : IAsyncDisposable
             _logger.LogError(ex,
                 "NatsPublisher: failed to publish SourceType={SourceType} RowId={RowId} TenantId={TenantId}",
                 sourceType, rowId, tenantId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Publishes a SendMessageMqDTO to BCR_SEND_MESSAGE (batch email fan-out).
+    /// Replaces the legacy SQS BCRSendMessage publish path.
+    /// Consumed by: scheduler/src/jobs/send_message_handler.rs
+    /// </summary>
+    public async Task PublishSendMessageAsync(
+        SendMessageMqDTO dto,
+        CancellationToken cancellationToken = default)
+    {
+        var payload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Category = (int)dto.Category,
+            Data = dto.Data,
+        });
+
+        try
+        {
+            await _js.PublishAsync(SendMessageSubject, payload, cancellationToken: cancellationToken);
+            _logger.LogInformation(
+                "NatsPublisher: published SendMessage Category={Category}",
+                dto.Category);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "NatsPublisher: failed to publish SendMessage Category={Category}",
+                dto.Category);
             throw;
         }
     }
