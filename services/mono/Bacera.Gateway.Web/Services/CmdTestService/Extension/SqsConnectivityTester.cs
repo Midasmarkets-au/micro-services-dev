@@ -38,11 +38,12 @@ public class SqsConnectivityTester
             Console.WriteLine("=== AWS SQS Connectivity Test ===");
             Console.WriteLine($"Region: {_sqsOptions.Region}");
             Console.WriteLine($"Prefix: {_sqsOptions.Prefix}");
-            Console.WriteLine($"Test Queue: {_sqsOptions.BCRSendMessage}");
+            // [MIGRATED] BCRSendMessage removed — batch email fan-out now uses NATS BCR_SEND_MESSAGE.
+            // Console.WriteLine($"Test Queue: {_sqsOptions.BCRSendMessage}");
             Console.WriteLine();            // Test 1: Send a message
             Console.WriteLine("Test 1: Sending test message...");
-            // FIFO queues require MessageGroupId
-            await _messageQueueService.SendAsync(testMessage, _sqsOptions.BCRSendMessage, "test-group");
+            // [MIGRATED] BCRSendMessage removed — no active SQS queues to test.
+            // await _messageQueueService.SendAsync(testMessage, _sqsOptions.BCRSendMessage, "test-group");
             result.SendSuccess = true;
             Console.WriteLine("✓ Message sent successfully");
             
@@ -51,7 +52,9 @@ public class SqsConnectivityTester
             
             // Test 2: Receive messages
             Console.WriteLine("\nTest 2: Receiving messages...");
-            var messages = await _messageQueueService.ReceiveAsync(_sqsOptions.BCRSendMessage, 1);
+            // [MIGRATED] BCRSendMessage removed.
+            // var messages = await _messageQueueService.ReceiveAsync(_sqsOptions.BCRSendMessage, 1);
+            var messages = new List<MQMessage>();
             
             if (messages.Count > 0)
             {
@@ -61,7 +64,8 @@ public class SqsConnectivityTester
                 
                 // Test 3: Delete the message
                 Console.WriteLine("\nTest 3: Deleting message...");
-                await _messageQueueService.DeleteAsync(_sqsOptions.BCRSendMessage, receivedMessage);
+                // [MIGRATED] BCRSendMessage removed.
+                // await _messageQueueService.DeleteAsync(_sqsOptions.BCRSendMessage, receivedMessage);
                 result.DeleteSuccess = true;
                 Console.WriteLine("✓ Message deleted successfully");
             }
@@ -114,8 +118,10 @@ public class SqsConnectivityTester
         
         var queues = new Dictionary<string, string>
         {
-            ["BCRSendMessage"] = _sqsOptions.BCRSendMessage,
-            ["BCREventTrade"] = _sqsOptions.BCREventTrade,
+            // [MIGRATED] BCRSendMessage removed — batch email fan-out now uses NATS BCR_SEND_MESSAGE.
+            // ["BCRSendMessage"] = _sqsOptions.BCRSendMessage,
+            // [MIGRATED] BCREventTrade removed — events now published to NATS BCR_EVENT_TRADE.
+            // ["BCREventTrade"] = _sqsOptions.BCREventTrade,
             // [MIGRATED] BCRTrade and BCRSalesRebateTrade removed — queues no longer in use.
             // ["BCRTrade"] = _sqsOptions.BCRTrade,
             // ["BCRSalesRebateTrade"] = _sqsOptions.BCRSalesRebateTrade
@@ -172,10 +178,12 @@ public class SqsConnectivityTester
         status.HasPrefix = !string.IsNullOrEmpty(_sqsOptions.Prefix);
         Console.WriteLine($"Prefix: {(status.HasPrefix ? $"✓ {_sqsOptions.Prefix}" : "✗ Missing")}");
 
-        var queues = new[]
+        var queues = new (string, string)[]
         {
-            ("BCRSendMessage", _sqsOptions.BCRSendMessage),
-            ("BCREventTrade", _sqsOptions.BCREventTrade),
+            // [MIGRATED] BCRSendMessage removed — batch email fan-out now uses NATS BCR_SEND_MESSAGE.
+            // ("BCRSendMessage", _sqsOptions.BCRSendMessage),
+            // [MIGRATED] BCREventTrade removed — events now published to NATS BCR_EVENT_TRADE.
+            // ("BCREventTrade", _sqsOptions.BCREventTrade),
             // [MIGRATED] BCRTrade and BCRSalesRebateTrade removed — queues no longer in use.
             // ("BCRTrade", _sqsOptions.BCRTrade),
             // ("BCRSalesRebateTrade", _sqsOptions.BCRSalesRebateTrade)

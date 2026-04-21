@@ -55,6 +55,7 @@ builder.Services.SetupSignalR();
 builder.Services.SetupHangFire();
 builder.Services.SetupHttpClientHandlers();
 builder.Services.SetupApplicationServices();
+builder.Services.SetupNatsPublisher();
 builder.Services.SetupCors();
 builder.Services.SetupGeoIp();
 builder.Services.SetupChatGpt();

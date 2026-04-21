@@ -2,19 +2,22 @@ namespace Bacera.Gateway.Web;
 
 public partial class Startup
 {
-    private static AmazonSQSOptions GetAwsSqsOptions()
-    {
-        var accessKey = GetEnvValue("AWS_SQS_ACCESS_KEY");
-        var accessSecret = GetEnvValue("AWS_SQS_ACCESS_SECRET");
-        var region = GetEnvValue("AWS_SQS_REGION");
-        var prefix = GetEnvValue("AWS_SQS_PREFIX");
-        var bcrEventTrade = GetEnvValue("AWS_SQS_BCR_EVENT_TRADE_QUEUE");
-        var bcrSendMessage = GetEnvValue("AWS_SQS_BCR_SEND_MESSAGE_QUEUE");
-        // [MIGRATED] BCRTrade and BCRSalesRebateTrade env vars removed — queues no longer in use.
-        // var bcrSalesRebateTrade = GetEnvValue("AWS_SQS_BCR_SALES_REBATE_TRADE_QUEUE");
-        // var bcrTrade = GetEnvValue("AWS_SQS_BCR_TRADE_QUEUE");
-        return AmazonSQSOptions.Create(accessKey, accessSecret, region, prefix, bcrEventTrade, bcrSendMessage);
-    }
+    // [MIGRATED] GetAwsSqsOptions removed — all SQS queues have been migrated to NATS JetStream.
+    //   BCRTrade / BCRSalesRebateTrade → NATS BCR_TRADE  (scheduler/src/jobs/trade_handler.rs)
+    //   BCREventTrade                  → NATS BCR_EVENT_TRADE (scheduler/src/jobs/event_trade_handler.rs)
+    //   BCRSendMessage                 → NATS BCR_SEND_MESSAGE (scheduler/src/jobs/send_message_handler.rs)
+    // AmazonSQSClient + IMessageQueueService registration also removed in SetupAws() / SetupApplicationServices().
+    // Env vars no longer needed: AWS_SQS_ACCESS_KEY, AWS_SQS_ACCESS_SECRET, AWS_SQS_REGION, AWS_SQS_PREFIX,
+    //   AWS_SQS_BCR_TRADE_QUEUE, AWS_SQS_BCR_SALES_REBATE_TRADE_QUEUE,
+    //   AWS_SQS_BCR_EVENT_TRADE_QUEUE, AWS_SQS_BCR_SEND_MESSAGE_QUEUE.
+    // private static AmazonSQSOptions GetAwsSqsOptions()
+    // {
+    //     var accessKey = GetEnvValue("AWS_SQS_ACCESS_KEY");
+    //     var accessSecret = GetEnvValue("AWS_SQS_ACCESS_SECRET");
+    //     var region = GetEnvValue("AWS_SQS_REGION");
+    //     var prefix = GetEnvValue("AWS_SQS_PREFIX");
+    //     return AmazonSQSOptions.Create(accessKey, accessSecret, region, prefix);
+    // }
 
     private static CentralDatabaseOptions GetCentralDatabaseOptions()
     {

@@ -53,12 +53,17 @@ public partial class Startup
             me.Services.AddTransient<IStorageService, AwsStorageService>();
         }
 
-        var awsSqsOptions = GetAwsSqsOptions();
-        me.Services.AddSingleton(_ => Options.Create(awsSqsOptions));
-        me.Services.AddSingleton(service =>
-        {
-            var option = service.GetRequiredService<IOptions<AmazonSQSOptions>>().Value;
-            return new AmazonSQSClient(option.AccessKey, option.AccessSecret, RegionEndpoint.GetBySystemName(option.Region));
-        });
+        // [MIGRATED] SQS infrastructure removed — all queues have been migrated to NATS JetStream:
+        //   BCREventTrade  → NATS BCR_EVENT_TRADE  (scheduler/src/jobs/event_trade_handler.rs)
+        //   BCRSendMessage → NATS BCR_SEND_MESSAGE  (scheduler/src/jobs/send_message_handler.rs)
+        //   BCRTrade / BCRSalesRebateTrade → NATS BCR_TRADE (scheduler/src/jobs/trade_handler.rs)
+        // AmazonSQSClient and IMessageQueueService are no longer needed.
+        // var awsSqsOptions = GetAwsSqsOptions();
+        // me.Services.AddSingleton(_ => Options.Create(awsSqsOptions));
+        // me.Services.AddSingleton(service =>
+        // {
+        //     var option = service.GetRequiredService<IOptions<AmazonSQSOptions>>().Value;
+        //     return new AmazonSQSClient(option.AccessKey, option.AccessSecret, RegionEndpoint.GetBySystemName(option.Region));
+        // });
     }
 }

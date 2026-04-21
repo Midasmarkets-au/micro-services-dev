@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod event;
 pub mod mt4;
 pub mod mt5;
 pub mod partition;

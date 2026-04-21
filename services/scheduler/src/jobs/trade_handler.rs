@@ -4,7 +4,7 @@ use tracing::{error, info, warn};
 
 use crate::db::{tenant, trade_rebate};
 use crate::models::meta_trade::MetaTrade;
-use crate::nats::client::{CONSUMER_NAME, STREAM_NAME};
+use crate::nats::client::{self, CONSUMER_NAME, STREAM_NAME};
 use crate::AppContext;
 
 const ACCOUNT_TENANT_HASH_KEY: &str = "account:tenant:map";
@@ -94,6 +94,34 @@ async fn process_message(
         "TradeHandler: saved TradeRebateK8s ticket={} service={} tenant={}",
         trade.ticket, trade.service_id, tenant_id
     );
+
+    // Publish Trade event for point calculation, mirroring MM-Back AddToOtherProcessTradeQueue.
+    // Skip market-forced closures (reason 1=stop-loss, 2=margin-call) and scalp trades (<=60s).
+    let hold_duration = rebate.closed_on - rebate.opened_on;
+    let should_publish = rebate.reason != 1
+        && rebate.reason != 2
+        && hold_duration > chrono::Duration::seconds(60);
+
+    if should_publish {
+        if let Err(e) = client::publish_event_mq_source(
+            &ctx.jetstream,
+            tenant_id,
+            rebate.id,
+        )
+        .await
+        {
+            warn!(
+                "TradeHandler: failed to publish event MQ source ticket={} tenant={}: {:#}",
+                trade.ticket, tenant_id, e
+            );
+        } else {
+            info!(
+                "TradeHandler: published event MQ source ticket={} tenant={}",
+                trade.ticket, tenant_id
+            );
+        }
+    }
+
     Ok(())
 }
 
