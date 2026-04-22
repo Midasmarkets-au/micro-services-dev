@@ -51,6 +51,7 @@ export enum AccountTypes {
 // 货币类型
 export enum CurrencyTypes {
   Invalid = -1,
+  Wallet = 0,
   ALL = 8,
   DZD = 12,
   ARS = 32,
