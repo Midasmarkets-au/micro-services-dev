@@ -13,20 +13,14 @@ import {
   Input,
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesLinkDetail, getSalesSymbolCategory } from '@/actions';
+import { getReferralLinkDetail, getSalesSymbolCategory } from '@/actions';
+import { useSalesStore } from '@/stores/salesStore';
 import type { SalesLinkDetail, SalesLinkSchema } from '@/types/sales';
 
 interface SalesRebateSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   code: string | null;
-  /**
-   * 拉取返佣详情使用的 sales uid。
-   * 注意：不同场景下传入的值不同：
-   * - sales 自己的链接管理页，使用当前登录的 salesAccount.uid
-   * - 从 IB/客户列表等弹窗进入时，使用对应账户传入的 uid
-   */
-  salesUid: number | null | undefined;
 }
 
 const SERVICE_TYPE_BROKER = 200;
@@ -43,12 +37,12 @@ export function SalesRebateSettingsDialog({
   open,
   onOpenChange,
   code,
-  salesUid,
 }: SalesRebateSettingsDialogProps) {
   const t = useTranslations('sales');
   const tType = useTranslations('type');
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
+  const salesAccount = useSalesStore((s) => s.salesAccount);
 
   const [isLoading, setIsLoading] = useState(false);
   const [detail, setDetail] = useState<SalesLinkDetail | null>(null);
@@ -63,7 +57,7 @@ export function SalesRebateSettingsDialog({
       return;
     }
 
-    if (!code || !salesUid) {
+    if (!code || !salesAccount) {
       setDetail(null);
       return;
     }
@@ -75,7 +69,7 @@ export function SalesRebateSettingsDialog({
     (async () => {
       try {
         const [detailRes, categoryRes] = await Promise.all([
-          execute(getSalesLinkDetail, salesUid, code),
+          execute(getReferralLinkDetail, code),
           execute(getSalesSymbolCategory),
         ]);
 
@@ -119,7 +113,7 @@ export function SalesRebateSettingsDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, code, salesUid, execute]);
+  }, [open, code, salesAccount, execute]);
 
   const productCategoryMap = useMemo(() => {
     const i18nMap = (() => {

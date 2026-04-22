@@ -3,17 +3,13 @@ import MsgPrompt from "@/core/plugins/MsgPrompt";
 import store from "@/store";
 import { Actions } from "@/store/enums/StoreEnums";
 import router from "@/projects/client/config/router";
-import { setTimerForLogout } from "@/core/plugins/TimerService";
-import Can from "@/core/plugins/ICan";
-import { RoleTypes } from "@/core/types/RoleTypes";
+// Token expiry is managed entirely by the auth service (cookie Max-Age / JWT exp).
+// The frontend no longer runs its own logout timer.
+// import { setTimerForLogout } from "@/core/plugins/TimerService";
+// import Can from "@/core/plugins/ICan";
+// import { RoleTypes } from "@/core/types/RoleTypes";
 
 const handleRequestFulfilled = (config) => {
-  // Token is delivered via HttpOnly cookie (set by auth service on login).
-  // The browser automatically attaches the cookie on every same-origin request,
-  // so no Authorization header is needed here.
-  if (!Can.cans([RoleTypes.TenantAdmin, RoleTypes.SuperAdmin])) {
-    setTimerForLogout();
-  }
   return config;
 };
 
@@ -53,10 +49,10 @@ const handleResponseRejected = async (error) => {
     return Promise.reject(error);
 
   const { status } = error.response;
-  // Access Token was expired
+  // 401: cookie expired or absent — redirect to sign-in without calling LOGOUT
+  // (LOGOUT is only triggered by explicit user action)
   if (status === 401 && process.env.VUE_APP_DEV !== "local") {
     originalConfig._retry = true;
-    await store.dispatch(Actions.LOGOUT);
     router.push({ name: "sign-in" });
     return;
   }

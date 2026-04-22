@@ -41,13 +41,15 @@ const TimerService = {
   },
 };
 // #VUE_APP_API_URL="https://demo.localhost:5100"
+// Session expiry is managed by the auth service (cookie Max-Age / JWT exp).
+// This timer is no longer called — kept for reference only.
 export const setTimerForLogout = (minutes?: number) => {
-  TimerService.startTimer(async () => {
-    await router.push({ name: "sign-in" });
-    await store.dispatch(Actions.LOGOUT);
-    TimerService.clearTimer();
-    MsgPrompt.warning(t("tip.sessionExpiredLoginAgain"));
-  }, minutes);
+  // TimerService.startTimer(async () => {
+  //   await router.push({ name: "sign-in" });
+  //   await store.dispatch(Actions.LOGOUT);
+  //   TimerService.clearTimer();
+  //   MsgPrompt.warning(t("tip.sessionExpiredLoginAgain"));
+  // }, minutes);
 };
 
 export const TimeZoneService = {

@@ -123,7 +123,7 @@ const handleStepSubmit = async () => {
     handleDocument();
     MsgPrompt.success(t("tip.verificationFormSuccess"));
   } catch (e) {
-    MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+    MsgPrompt.error(t("tip.fail"));
   }
 };
 
@@ -141,7 +141,7 @@ const handleStepSubmitSlice = async () => {
       .toISOString()
       .replace(/[-:.]/g, "")}-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    console.log(fieldId);
+    let chunkFailed = false;
     const chunkUploadPromises = chunks.map((chunk, idx) => {
       {
         const chunk = chunks[idx];
@@ -155,26 +155,28 @@ const handleStepSubmitSlice = async () => {
         formData.append(`ChunkSize`, chunk.size.toString());
         formData.append(`TotalChunks`, chunks.length.toString());
         formData.append(`TotalSize`, file.size.toString());
-        formData.append(`File`, chunk);
+        formData.append(`File`, chunk, file.name);
 
         return axios
-          .post("/api/v2/client/media/upload/chunk", formData)
+          .post("/api/v2/client/media/upload/chunk", formData, {
+            headers: { "Content-Type": undefined },
+          })
           .then((response) => {
             console.log(`Chunk ${idx} uploaded`, response.data);
           })
           .catch((error) => {
             console.error(`Chunk ${idx} failed`, error);
-            MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+            chunkFailed = true;
           });
       }
     });
 
-    try {
-      await Promise.all(chunkUploadPromises);
-    } catch (e) {
-      MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+    await Promise.all(chunkUploadPromises);
+
+    if (chunkFailed) {
+      MsgPrompt.error(t("tip.fail"));
+      return;
     }
-    console.log("All chunks uploaded");
 
     const formData = new FormData();
     formData.append(`FieldId`, fieldId);
@@ -186,12 +188,13 @@ const handleStepSubmitSlice = async () => {
     try {
       const { data } = await axios.post(
         "/api/v2/client/media/upload/merge",
-        formData
+        formData,
+        { headers: { "Content-Type": undefined } }
       );
-      console.log(data);
       media.push(data);
     } catch (e) {
-      MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+      MsgPrompt.error(t("tip.fail"));
+      return;
     }
   }
 
@@ -203,7 +206,7 @@ const handleStepSubmitSlice = async () => {
     handleDocument();
     MsgPrompt.success(t("tip.verificationFormSuccess"));
   } catch (e) {
-    MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+    MsgPrompt.error(t("tip.fail"));
   }
 };
 

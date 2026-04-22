@@ -345,6 +345,7 @@ pub struct RegisterRequest {
     /// 国际电话区号（纯数字，如 "61"）
     #[prost(string, tag = "5")]
     #[serde(default)]
+    #[serde(deserialize_with = "crate::serde_helpers::string_or_number::deserialize")]
     pub ccc: ::prost::alloc::string::String,
     /// ISO 国家码（如 "AU"）
     #[prost(string, tag = "6")]
@@ -359,6 +360,7 @@ pub struct RegisterRequest {
     /// SMS OTP（Twilio 验证，未启用时可为空）
     #[prost(string, tag = "9")]
     #[serde(default)]
+    #[serde(deserialize_with = "crate::serde_helpers::string_or_number::deserialize")]
     pub otp: ::prost::alloc::string::String,
     /// 推荐码（大写字母+数字）
     #[prost(string, tag = "10")]
