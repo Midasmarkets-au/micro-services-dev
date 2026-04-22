@@ -282,9 +282,17 @@ export default {
     } catch (err) {
       res = {};
     }
-    return res.verificationItems?.length
-      ? res.verificationItems[0].data
-      : { emptyKycForm: true };
+    // Backend returns PascalCase (Newtonsoft default): VerificationItems[].Content (JSON string)
+    const items = res.VerificationItems ?? res.verificationItems;
+    if (items?.length) {
+      const content = items[0].Content ?? items[0].content ?? items[0].data;
+      try {
+        return typeof content === "string" ? JSON.parse(content) : content;
+      } catch {
+        return content ?? { emptyKycForm: true };
+      }
+    }
+    return { emptyKycForm: true };
   },
 
   getLegacyUserPersonalInfoByPartyId: async (partyId: number) => {

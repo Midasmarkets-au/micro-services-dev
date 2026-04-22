@@ -65,6 +65,26 @@ public class UserController(TenantDbContext tenantDbContext, AuthDbContext authD
         return Ok(detail);
     }
 
+    [HttpGet("{partyId:long}/legacy/personal-info")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> LegacyPersonalInfo(long partyId)
+        => Ok(await GetLegacyInfo(partyId, SupplementTypes.MigrationPersonalInfo));
+
+    [HttpGet("{partyId:long}/legacy/financial-info")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> LegacyFinancialInfo(long partyId)
+        => Ok(await GetLegacyInfo(partyId, SupplementTypes.MigrationFinancialInfo));
+
+    [HttpGet("{partyId:long}/legacy/kyc-form")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> LegacyKycForm(long partyId)
+        => Ok(await GetLegacyInfo(partyId, SupplementTypes.MigrationKycForm));
+
+    [HttpGet("{partyId:long}/legacy/kyc-correction")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> LegacyKycCorrection(long partyId)
+        => Ok(await GetLegacyInfo(partyId, SupplementTypes.MigrationKycCorrection));
+
     /// <summary>
     /// Get social media information
     /// </summary>
@@ -115,5 +135,14 @@ public class UserController(TenantDbContext tenantDbContext, AuthDbContext authD
         supplement.Data = JsonConvert.SerializeObject(data);
         await tenantDbContext.SaveChangesAsync();
         return Ok();
+    }
+
+    private async Task<object?> GetLegacyInfo(long partyId, SupplementTypes type)
+    {
+        var supplement = await tenantDbContext.Supplements
+            .Where(x => x.Type == (int)type)
+            .Where(x => x.RowId == partyId)
+            .SingleOrDefaultAsync();
+        return supplement == null ? null : JsonConvert.DeserializeObject(supplement.Data);
     }
 }

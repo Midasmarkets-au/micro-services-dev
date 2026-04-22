@@ -155,16 +155,18 @@ const handleStepSubmitSlice3 = async () => {
         formData.append(`ChunkSize`, chunk.size.toString());
         formData.append(`TotalChunks`, chunks.length.toString());
         formData.append(`TotalSize`, file.size.toString());
-        formData.append(`File`, chunk);
+        formData.append(`File`, chunk, file.name);
 
         return axios
-          .post("/api/v2/client/media/upload/chunk", formData)
+          .post("/api/v2/client/media/upload/chunk", formData, {
+            headers: { "Content-Type": undefined },
+          })
           .then((response) => {
             console.log(`Chunk ${idx} uploaded`, response.data);
           })
           .catch((error) => {
             console.error(`Chunk ${idx} failed`, error);
-            MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+            MsgPrompt.error(t("tip.fail"));
           });
       }
     });
@@ -172,7 +174,7 @@ const handleStepSubmitSlice3 = async () => {
     try {
       await Promise.all(chunkUploadPromises);
     } catch (e) {
-      MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+      MsgPrompt.error(t("tip.fail"));
     }
     console.log("All chunks uploaded");
 
@@ -186,12 +188,13 @@ const handleStepSubmitSlice3 = async () => {
     try {
       const { data } = await axios.post(
         "/api/v2/client/media/upload/merge",
-        formData
+        formData,
+        { headers: { "Content-Type": undefined } }
       );
       console.log(data);
       media.push(data);
     } catch (e) {
-      MsgPrompt.error(t("tip.fail")).then(() => location.reload());
+      MsgPrompt.error(t("tip.fail"));
     }
   }
 
@@ -279,12 +282,13 @@ const handleStepSubmitSlice2 = async () => {
       formData.append(`ChunkSize`, chunk.size.toString());
       formData.append(`TotalChunks`, chunks.length.toString());
       formData.append(`TotalSize`, file.size.toString());
-      formData.append(`File`, chunk);
+      formData.append(`File`, chunk, file.name);
 
       try {
         const { data } = await axios.post(
           "/api/v2/client/media/upload/chunk",
-          formData
+          formData,
+          { headers: { "Content-Type": undefined } }
         );
         console.log(data);
         fieldId = data;
@@ -302,7 +306,8 @@ const handleStepSubmitSlice2 = async () => {
 
     const { data } = await axios.post(
       "/api/v2/client/media/upload/merge",
-      formData
+      formData,
+      { headers: { "Content-Type": undefined } }
     );
     console.log(data);
     media.push(data);

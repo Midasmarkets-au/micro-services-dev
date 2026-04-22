@@ -110,11 +110,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Compile http/v1/auth.proto — message types only (no server/client).
     // type_attribute adds serde derives so generated types work as Axum Json<T>.
     let http_proto_file = proto_root.join("http/v1/auth.proto");
+    // `ccc` (dial-code) and `otp` were historically sent as bare JSON numbers
+    // by the Vue frontend; match the lenient behaviour of the old mono (.NET)
+    // RegistrationRequest which accepted both string and number for these fields.
+    let string_or_number = "#[serde(deserialize_with = \"crate::serde_helpers::string_or_number::deserialize\")]";
     tonic_build::configure()
         .build_server(false)
         .build_client(false)
         .type_attribute(".", "#[derive(serde::Deserialize, serde::Serialize)]")
         .field_attribute(".", "#[serde(default)]")
+        .field_attribute("RegisterRequest.ccc", string_or_number)
+        .field_attribute("RegisterRequest.otp", string_or_number)
         .out_dir(&generated_dir)
         .compile(&[&http_proto_file], &[&proto_root])?;
 
