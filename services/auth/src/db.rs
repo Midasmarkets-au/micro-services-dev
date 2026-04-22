@@ -243,6 +243,11 @@ pub async fn insert_user(pool: &PgPool, u: &NewUser<'_>) -> Result<i64, sqlx::Er
     let concurrency_stamp = Uuid::new_v4().to_string();
     let now = Utc::now();
 
+    // Epoch date used for DateOnly columns that have no meaningful default (Birthday, IdIssuedOn, IdExpireOn).
+    // mono uses C# default(DateOnly) = 0001-01-01; PostgreSQL date minimum is 4713-01-01 BC,
+    // but EF Core maps default(DateOnly) to '0001-01-01'. Use the same value.
+    let epoch_date = chrono::NaiveDate::from_ymd_opt(1, 1, 1).unwrap();
+
     let id: i64 = sqlx::query_scalar(
         r#"
         INSERT INTO auth."_User" (
@@ -256,6 +261,11 @@ pub async fn insert_user(pool: &PgPool, u: &NewUser<'_>) -> Result<i64, sqlx::Er
             "AccessFailedCount", "Status",
             "FirstName", "LastName", "NativeName", "Language",
             "CCC", "CountryCode", "Currency", "ReferCode",
+            "ReferrerPartyId",
+            "Avatar", "TimeZone", "Citizen", "Address",
+            "IdType", "IdNumber", "IdIssuer",
+            "Birthday", "IdIssuedOn", "IdExpireOn",
+            "Gender", "ReferPath",
             "RegisteredIp", "LastLoginIp",
             "CreatedOn", "UpdatedOn"
         ) VALUES (
@@ -269,8 +279,13 @@ pub async fn insert_user(pool: &PgPool, u: &NewUser<'_>) -> Result<i64, sqlx::Er
             0, 0,
             $13, $14, $15, $16,
             $17, $18, $19, $20,
-            $21, '',
-            $22, $22
+            0,
+            '', '', '', '',
+            0, '', '',
+            $21, $21, $21,
+            0, '',
+            $22, '',
+            $23, $23
         )
         RETURNING "Id"
         "#,
@@ -295,8 +310,9 @@ pub async fn insert_user(pool: &PgPool, u: &NewUser<'_>) -> Result<i64, sqlx::Er
     .bind(u.country_code)
     .bind(u.currency)
     .bind(u.refer_code)
-    .bind(u.register_ip)
-    .bind(now)
+    .bind(epoch_date)       // Birthday / IdIssuedOn / IdExpireOn ($21)
+    .bind(u.register_ip)    // RegisteredIp ($22)
+    .bind(now)              // CreatedOn / UpdatedOn ($23)
     .fetch_one(pool)
     .await?;
 

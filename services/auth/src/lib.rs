@@ -1,4 +1,5 @@
 pub mod cookie;
+pub mod serde_helpers;
 pub mod db;
 pub mod extractors;
 pub mod generated {
