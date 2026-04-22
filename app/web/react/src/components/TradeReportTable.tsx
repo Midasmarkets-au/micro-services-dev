@@ -239,7 +239,7 @@ export function TradeReportTable({
         skeletonWidth: 'w-16',
         render: (item) => (
           <span className="text-text-secondary">
-            {item.sl != null && item.sl > 0 ? toFixedSafe(item.sl, 5) : '--'}
+            {item.sl != null && item.sl > 0 ? toFixedSafe(item.sl, 2) : '--'}
           </span>
         ),
       },
@@ -250,7 +250,7 @@ export function TradeReportTable({
         skeletonWidth: 'w-16',
         render: (item) => (
           <span className="text-text-secondary">
-            {item.tp != null && item.tp > 0 ? toFixedSafe(item.tp, 5) : '--'}
+            {item.tp != null && item.tp > 0 ? toFixedSafe(item.tp, 2) : '--'}
           </span>
         ),
       },
