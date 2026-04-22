@@ -85,6 +85,8 @@ export interface DataTableProps<T> {
   skeletonRows?: number;
   /** 行点击事件 */
   onRowClick?: (item: T, index: number) => void;
+  /** 当前高亮的行 key，匹配 rowKey 返回值时该行显示选中态背景 */
+  activeRowKey?: string | number | null;
   /** 自定义空状态内容 */
   emptyContent?: React.ReactNode;
   /** 表格底部追加的自定义行（如合计行），仅在有数据且非 loading 时渲染 */
@@ -132,6 +134,7 @@ export function DataTable<T>({
   loading = false,
   skeletonRows = 8,
   onRowClick,
+  activeRowKey,
   emptyContent,
   footer,
   groupConfig,
@@ -145,7 +148,7 @@ export function DataTable<T>({
   const shouldStretch = stretchHeight && !singleRowAutoHeight;
 
   if (groupConfig) {
-    return <GroupedDataTable columns={columns} data={data} rowKey={rowKey} loading={loading} skeletonRows={skeletonRows} onRowClick={onRowClick} emptyContent={emptyContent} footer={footer} groupConfig={groupConfig} className={className} />;
+    return <GroupedDataTable columns={columns} data={data} rowKey={rowKey} loading={loading} skeletonRows={skeletonRows} onRowClick={onRowClick} activeRowKey={activeRowKey} emptyContent={emptyContent} footer={footer} groupConfig={groupConfig} className={className} />;
   }
   if (!loading && data.length === 0) {
     return (
@@ -234,6 +237,8 @@ export function DataTable<T>({
               data.map((item, idx) => {
                 const isFirst = idx === 0;
                 const isLast = idx === data.length - 1;
+                const isActive =
+                  activeRowKey != null && rowKey(item, idx) === activeRowKey;
                 return (
                   <React.Fragment key={rowKey(item, idx)}>
                     {idx > 0 && (
@@ -245,7 +250,10 @@ export function DataTable<T>({
                     )}
                     <tr
                       className={cn(
-                        'text-text-table hover:bg-surface-secondary/50',
+                        'text-text-table transition-colors',
+                        isActive
+                          ? 'bg-surface-secondary'
+                          : 'hover:bg-surface-secondary/50',
                         onRowClick && 'cursor-pointer'
                       )}
                       onClick={onRowClick ? () => onRowClick(item, idx) : undefined}
@@ -295,6 +303,7 @@ function GroupedDataTable<T>({
   loading = false,
   skeletonRows = 5,
   onRowClick,
+  activeRowKey,
   emptyContent,
   footer,
   groupConfig,
@@ -354,6 +363,8 @@ function GroupedDataTable<T>({
                   const globalIdx = data.indexOf(item);
                   const isFirst = idx === 0;
                   const isLast = idx === groupLen - 1;
+                  const isActive =
+                    activeRowKey != null && rowKey(item, globalIdx) === activeRowKey;
 
                   const borderCls = (colIdx: number) => {
                     const isFirstCol = colIdx === 0;
@@ -392,7 +403,10 @@ function GroupedDataTable<T>({
                       )}
                       <tr
                         className={cn(
-                          'text-text-table hover:bg-surface-secondary/50',
+                          'text-text-table transition-colors',
+                          isActive
+                            ? 'bg-surface-secondary'
+                            : 'hover:bg-surface-secondary/50',
                           onRowClick && 'cursor-pointer'
                         )}
                         onClick={onRowClick ? () => onRowClick(item, globalIdx) : undefined}

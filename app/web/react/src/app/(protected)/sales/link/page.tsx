@@ -67,6 +67,7 @@ export default function SalesLinkPage() {
 
   const [rebateDialogOpen, setRebateDialogOpen] = useState(false);
   const [rebateDialogCode, setRebateDialogCode] = useState<string | null>(null);
+  const [activeRowId, setActiveRowId] = useState<string | number | null>(null);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editDialogItem, setEditDialogItem] = useState<SalesLink | null>(null);
@@ -107,7 +108,13 @@ export default function SalesLinkPage() {
 
   const handleViewRebateSettings = useCallback((item: SalesLink) => {
     setRebateDialogCode(item.code);
+    setActiveRowId(item.id ?? item.code);
     setRebateDialogOpen(true);
+  }, []);
+
+  const handleRebateDialogOpenChange = useCallback((open: boolean) => {
+    setRebateDialogOpen(open);
+    if (!open) setActiveRowId(null);
   }, []);
 
   const handleEditLink = useCallback((item: SalesLink) => {
@@ -297,13 +304,15 @@ export default function SalesLinkPage() {
         data={data}
         rowKey={(item, idx) => item.id ?? idx}
         loading={isLoading}
+        activeRowKey={activeRowId}
       />
 
       {/* 返佣设置弹窗 */}
       <SalesRebateSettingsDialog
         open={rebateDialogOpen}
-        onOpenChange={setRebateDialogOpen}
+        onOpenChange={handleRebateDialogOpenChange}
         code={rebateDialogCode}
+        salesUid={salesAccount?.uid}
       />
 
       {/* 编辑链接弹窗 */}

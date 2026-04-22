@@ -250,6 +250,16 @@ export default function SalesCustomersPage() {
 
   const showRoleColumn = activeTab === 'ib' || activeTab === 'sales';
 
+  const activeRowId =
+    rebateStatOpen ||
+    openAccountOpen ||
+    rebateRelationOpen ||
+    ibLinksOpen ||
+    editSchemaOpen ||
+    newReferralOpen
+      ? selectedAccount?.uid ?? null
+      : null;
+
   const columns = useMemo<DataTableColumn<SalesClientAccount>[]>(() => {
     const cols: DataTableColumn<SalesClientAccount>[] = [
       {
@@ -512,6 +522,7 @@ export default function SalesCustomersPage() {
         rowKey={(item) => item.uid}
         loading={isLoading}
         stretchHeight={false}
+        activeRowKey={activeRowId}
       />
 
       {/* Pagination */}
