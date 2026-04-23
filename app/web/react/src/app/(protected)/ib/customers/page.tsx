@@ -163,14 +163,14 @@ export default function IBCustomersPage() {
     fetchData({ ...INITIAL_CRITERIA, role: getRoleValue(activeTab), sortFlag: currentSortOrder !== 'oldest' });
   };
 
-  const handleGoToLevel = (idx: number) => {
+  const handleGoToLevel = (idx: number, childParentAccountUid: number) => {
     if (idx === ibChain.length - 1) return;
     const newChain = ibChain.slice(0, idx + 1);
     setIbChain(newChain);
     fetchData({
       ...criteria,
       page: 1,
-      childParentAccountUid: newChain[idx].uid,
+      childParentAccountUid,
       relativeLevel: idx + 2,
       searchText: undefined,
     });
@@ -377,17 +377,21 @@ export default function IBCustomersPage() {
         <div className="flex items-center gap-2 border-b border-border pb-3">
           {ibChain.map((acc, idx) => (
             <div key={idx} className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => handleGoToLevel(idx)}
-                className="text-sm text-primary hover:underline"
-              >
-                {getUserName(acc)}
-              </button>
-              <span className="rounded-full bg-yellow-400 px-1.5 text-xs font-medium text-gray-900">
-                Lv{idx + 2}
-              </span>
-              <span className="text-text-secondary">/</span>
+              <div className="relative inline-block pr-3">
+                <button
+                  type="button"
+                  onClick={() => handleGoToLevel(idx, acc.uid)}
+                  className="text-sm text-primary hover:underline cursor-pointer"
+                >
+                  {getUserName(acc)}
+                </button>
+                <span className="pointer-events-none absolute -top-2 -right-1 rounded-full bg-yellow-400 px-1 py-0 text-[10px] font-medium leading-tight text-gray-900">
+                  Lv{idx + 2}
+                </span>
+              </div>
+              {idx < ibChain.length - 1 && (
+                <span className="text-text-secondary">/</span>
+              )}
             </div>
           ))}
           <button
