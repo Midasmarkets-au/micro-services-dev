@@ -366,7 +366,7 @@ export default function SalesCustomersPage() {
         skeletonWidth: 'w-10',
         render: (item) => {
           const dropdownItems: DropdownMenuItem[] = [];
-
+          console.log('item.role', item.role);
           if (item.role === AccountRoleTypes.IB || item.role === AccountRoleTypes.Sales) {
             dropdownItems.push({
               key: 'viewAccounts',
@@ -412,14 +412,14 @@ export default function SalesCustomersPage() {
               key: 'editSchema',
               label: t('action.editSchema'),
               onClick: () => showEditSchema(item),
-              hidden: !siteConfig?.rebateEnabled || ibChain.length > 0,
+              hidden: !siteConfig?.rebateEnabled ,
             });
 
             dropdownItems.push({
               key: 'newIBReferralCode',
               label: t('action.newIBReferralCode'),
               onClick: () => showNewReferral(item),
-              hidden: !siteConfig?.rebateEnabled || ibChain.length > 0,
+              hidden: !siteConfig?.rebateEnabled,
             });
           }
           if (item.role === AccountRoleTypes.Sales) {
