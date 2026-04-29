@@ -1,0 +1,74 @@
+name: Deploy Portal (Production)
+
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - "app/web/react/**"
+      - ".github/workflows/deploy-front-portal-product.yml"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-2
+  ECR_REGISTRY: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com
+  PROJECT_NAME: portal-product
+
+jobs:
+  build-and-push:
+    name: Build and Push Portal (Production)
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate .env file
+        working-directory: app/web/react
+        run: |
+          cat > .env << ENVEOF
+          JWT_SECRET=${{ secrets.PORTAL_PROD_JWT_SECRET }}
+          JWT_EXPIRES_IN=${{ vars.PORTAL_PROD_JWT_EXPIRES_IN }}
+          API_BASE_URL=${{ vars.PORTAL_PROD_API_BASE_URL }}
+          BACKEND_REQUEST_AUTH_MODE=${{ vars.PORTAL_PROD_BACKEND_REQUEST_AUTH_MODE }}
+          ENVEOF
+
+      - name: Debug .env contents
+        working-directory: app/web/react
+        run: |
+          echo "=== .env contents (secrets masked) ==="
+          grep -v JWT_SECRET .env || true
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: app/web/react
+          push: true
+          platforms: linux/arm64
+          tags: |
+            ${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}:latest
+            ${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}:latest-${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}-cache:latest
+          cache-to: type=registry,ref=${{ env.ECR_REGISTRY }}/front-${{ env.PROJECT_NAME }}-cache:latest,mode=max,image-manifest=true,oci-mediatypes=true
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+
+      - name: Rollout restart deployment
+        run: kubectl rollout restart deployment front-${{ env.PROJECT_NAME }} -n production
