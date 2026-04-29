@@ -1,31 +1,17 @@
 # ============================================================================
-#  Production NGINX Ingress — portal.midasmkts.com
+#  Production NGINX Ingress — portal.midasmkts.com / vu.midasmkts.com
 #
 #  前置条件：
 #    kubectl apply -f deployment/k8s-prod/ingress-nginx-prod.yaml
 #
-#  包含两个 Ingress 对象（namespace: production）：
-#    1. midasmkts-ingress          — 主路由（mono / auth / front-portal-product）
-#    2. midasmkts-event-ingress    — SSE 路由，将 /api/v1/event 重写为 /event
-#
-#  流量路径：
-#    portal.midasmkts.com/api/v1/event               → boardcast:9003/event（rewrite）
-#    portal.midasmkts.com/connect/                   → auth:9002
-#    portal.midasmkts.com/api/v2/auth/               → auth:9002
-#    portal.midasmkts.com/.well-known/               → auth:9002
-#    portal.midasmkts.com/api/v1/2fa/                → auth:9002
-#    portal.midasmkts.com/api/v1/auth/register       → mono:9005
-#    portal.midasmkts.com/api/v1/auth/               → auth:9002
-#    portal.midasmkts.com/(api|hub|live|swagger|...) → mono:9005
-#    portal.midasmkts.com/                           → front-portal-product:80
+#  架构说明：
+#    后端 API 由 Next.js 服务端直接请求外部 https://api.midasmkts.net
+#    Ingress 只负责把流量送到 front-portal-product
 #
 #  IngressClass：nginx-prod（独立 controller，见 ingress-nginx-prod.yaml）
 #  Namespace：production
 # ============================================================================
 ---
-# ============================================================================
-#  midasmkts-ingress — 主路由 Ingress (namespace: production)
-# ============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -37,8 +23,6 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
-    nginx.ingress.kubernetes.io/proxy-set-headers: "ingress-nginx/custom-headers"
-    nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
     nginx.ingress.kubernetes.io/proxy-body-size: "100m"
@@ -48,57 +32,6 @@ spec:
     - host: portal.midasmkts.com
       http:
         paths:
-          - path: /connect/
-            pathType: Prefix
-            backend:
-              service:
-                name: auth
-                port:
-                  number: 9002
-          - path: /api/v2/auth/
-            pathType: Prefix
-            backend:
-              service:
-                name: auth
-                port:
-                  number: 9002
-          - path: /\.well-known/
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: auth
-                port:
-                  number: 9002
-          - path: /api/v1/2fa/
-            pathType: Prefix
-            backend:
-              service:
-                name: auth
-                port:
-                  number: 9002
-          # register 保留在 mono（需在 /api/v1/auth/ 通配规则之前）
-          - path: /api/v1/auth/register
-            pathType: Prefix
-            backend:
-              service:
-                name: mono
-                port:
-                  number: 9005
-          - path: /api/v1/auth/
-            pathType: Prefix
-            backend:
-              service:
-                name: auth
-                port:
-                  number: 9002
-          # 负向前瞻排除 /api/v1/event、/api/v1/auth、/api/v2/auth
-          - path: /(?!api/v1/event(/|$))(?!api/v1/auth(/|$))(?!api/v2/auth(/|$))(api|hub|live|swagger|.well-known/openid-configuration)/
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: mono
-                port:
-                  number: 9005
           - path: /
             pathType: Prefix
             backend:
@@ -106,33 +39,25 @@ spec:
                 name: front-portal-product
                 port:
                   number: 80
----
-# ============================================================================
-#  midasmkts-event-ingress — SSE /api/v1/event → boardcast:9003/event
-# ============================================================================
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: midasmkts-event-ingress
-  namespace: production
-  labels:
-    app: midasmkts
-  annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /event
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
-spec:
-  ingressClassName: nginx-prod
-  rules:
-    - host: portal.midasmkts.com
+    # 临时测试域名（vu.midasmkts.com ACM 已 ISSUED）
+    - host: vu.midasmkts.com
       http:
         paths:
-          - path: /api/v1/event(/|$)
-            pathType: ImplementationSpecific
+          - path: /
+            pathType: Prefix
             backend:
               service:
-                name: boardcast
+                name: front-portal-product
                 port:
-                  number: 9003
+                  number: 80
+    # NLB 直连测试入口（HTTP only）
+    - host: k8s-ingressn-ingressn-d9fbebf220-740d31339032cd06.elb.ap-southeast-2.amazonaws.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-portal-product
+                port:
+                  number: 80
