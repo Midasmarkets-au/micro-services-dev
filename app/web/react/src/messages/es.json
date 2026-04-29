@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "Existe una transferencia pendiente",
     "CODE_NOT_FOUND": "El código de verificación no existe o ha expirado",
     "CODE_ALREADY_SENT": "El código de verificación ya fue enviado, por favor revise su correo",
-    "electronicIdentityVerificationRequired": "La verificación electrónica de identidad es obligatoria, por favor acepte para continuar."
+    "electronicIdentityVerificationRequired": "La verificación electrónica de identidad es obligatoria, por favor acepte para continuar.",
+    "Too_many_pending_deposits": "Demasiados depósitos pendientes, por favor contacte con el servicio de atención al cliente"
   },
   "platforms": {
     "title": "Plataforma de trading",

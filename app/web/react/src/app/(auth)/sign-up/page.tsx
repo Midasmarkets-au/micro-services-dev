@@ -57,7 +57,6 @@ export default function SignUpPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const locale = useLocale();
-  const { execute, isLoading } = useServerAction();
   const { showSuccess } = useToast();
 
   const { isDark, mounted } = useTheme();
@@ -70,6 +69,18 @@ export default function SignUpPage() {
   const [siteConfig, setSiteConfig] = useState<SiteTypes[]>([SiteTypes.Default]);
   const [checked, setChecked] = useState(true); // 澳洲站点第一个条款勾选状态
   const [checkedTwo, setCheckedTwo] = useState(false); // 第二个条款勾选状态
+  // 页面内联错误提示（替代 Toast 弹框）
+  const [inlineError, setInlineError] = useState<string | null>(null);
+
+  const { execute, isLoading } = useServerAction({
+    showErrorToast: false,
+    onError: (message) => setInlineError(message),
+  });
+
+  const goToStep = useCallback((next: StepType) => {
+    setInlineError(null);
+    setStep(next);
+  }, []);
   
   // 防止 useEffect 无限循环的标志
   const isInitialized = useRef(false);
@@ -357,6 +368,7 @@ export default function SignUpPage() {
   }, [formConfig.code, setValue]);
 
   const onStepOneSubmit = () => {
+    setInlineError(null);
     setStep(2);
   };
 
@@ -394,6 +406,7 @@ export default function SignUpPage() {
   // 第二步提交 - 注册
   const onStepTwoSubmit = async (data: StepTwoFormData) => {
     setLoading(true);
+    setInlineError(null);
 
     const stepOneData = getValuesStepOne();
     const ccc = regionsData[data.countryCode]?.dialCode || '';
@@ -425,6 +438,7 @@ export default function SignUpPage() {
       setLoading(false);
       
       if (result.errorCode === '__EMAIL_EXISTS__') {
+        // 错误回到第 1 步展示，保留 inlineError
         setStep(1);
       }
       return;
@@ -436,6 +450,8 @@ export default function SignUpPage() {
     const loginSuccess = await performAutoLogin(stepOneData.email, stepOneData.password);
     
     if (!loginSuccess) {
+      // 自动登录失败时进入邮箱验证页，清除可能的内联错误
+      setInlineError(null);
       setStep(3);
     }
     
@@ -444,6 +460,7 @@ export default function SignUpPage() {
 
   // 重发确认邮件
   const handleResendConfirmation = async () => {
+    setInlineError(null);
     const result = await execute(resendConfirmation, {
       email: registeredEmail,
       confirmUrl: formConfig.confirmUrl,
@@ -503,6 +520,13 @@ export default function SignUpPage() {
         {/* 第一步：账户信息 */}
         {step === 1 && (
           <form onSubmit={handleSubmitStepOne(onStepOneSubmit)} className="flex flex-col gap-6">
+            {/* 错误提示 */}
+            {inlineError && (
+              <div className="error-banner animate-fade-in">
+                {inlineError}
+              </div>
+            )}
+
             <Input
               label={t('email')}
               labelClassName="text-base font-medium text-text-secondary"
@@ -551,11 +575,18 @@ export default function SignUpPage() {
           <form onSubmit={handleSubmitStepTwo(onStepTwoSubmit)} className="flex flex-col gap-6">
             <button
               type="button"
-              onClick={() => setStep(1)}
+              onClick={() => goToStep(1)}
               className="self-start text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
               ← {tCommon('back')}
             </button>
+
+            {/* 错误提示 */}
+            {inlineError && (
+              <div className="error-banner animate-fade-in">
+                {inlineError}
+              </div>
+            )}
 
             <p className="text-sm text-text-secondary -mt-2">
               {t('enterYourInfo')}
@@ -842,6 +873,13 @@ export default function SignUpPage() {
         {/* 第三步：邮箱验证提示 */}
         {step === 3 && (
           <div className="flex flex-col gap-6">
+            {/* 错误提示 */}
+            {inlineError && (
+              <div className="error-banner animate-fade-in">
+                {inlineError}
+              </div>
+            )}
+
             <div className="text-text-secondary space-y-4">
               <p>
                 {t('thankSignUpAndConfirm')}{' '}

@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "保留中の送金があります",
     "CODE_NOT_FOUND": "認証コードが存在しないか期限切れです",
     "CODE_ALREADY_SENT": "認証コードはすでに送信されています。メールをご確認ください",
-    "electronicIdentityVerificationRequired": "電子的な本人確認は必須です。同意を選択して続行してください。"
+    "electronicIdentityVerificationRequired": "電子的な本人確認は必須です。同意を選択して続行してください。",
+    "Too_many_pending_deposits": "保留中の入金が多すぎます。カスタマーサービスにお問い合わせください。"
   },
   "platforms": {
     "title": "取引プラットフォーム",

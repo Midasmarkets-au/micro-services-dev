@@ -33,7 +33,8 @@ export function UnlockEmailAddressModal({
 }: UnlockEmailAddressModalProps) {
   const t = useTranslations('common');
   const tUnlock = useTranslations('unlockEmail');
-  const { execute } = useServerAction({ showErrorToast: true });
+  // 关闭 toast：弹窗内已有 inline 消息区域展示错误（含 CODE_NOT_FOUND/CODE_ALREADY_SENT 等），避免双重提示
+  const { execute } = useServerAction({ showErrorToast: false });
 
   const [emailAddress, setEmailAddress] = useState(email ?? '');
   const [verificationCode, setVerificationCode] = useState('');

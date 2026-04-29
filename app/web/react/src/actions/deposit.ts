@@ -35,11 +35,14 @@ export async function getDepositGroups(
  */
 export async function getDepositGroupInfo(
   uid: number,
-  group: string
+  group: string,
+  type?: string
 ): Promise<ActionResponse<DepositGroupInfo>> {
   try {
+    const params = new URLSearchParams({ group });
+    if (type) params.set('type', type);
     const response = await apiClient.v2.get<{ data: DepositGroupInfo }>(
-      `/client/payment-method/account/${uid}/deposit-group-info?group=${encodeURIComponent(group)}`
+      `/client/payment-method/account/${uid}/deposit-group-info?${params.toString()}`
     );
     return { success: true, data: response.data };
   } catch (error) {

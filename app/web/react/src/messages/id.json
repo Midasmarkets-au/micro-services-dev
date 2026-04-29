@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "Ada transfer yang masih menunggu",
     "CODE_NOT_FOUND": "Kode verifikasi tidak ditemukan atau telah kedaluwarsa",
     "CODE_ALREADY_SENT": "Kode verifikasi sudah dikirim, silakan periksa email Anda",
-    "electronicIdentityVerificationRequired": "Persetujuan verifikasi identitas elektronik diperlukan untuk melanjutkan."
+    "electronicIdentityVerificationRequired": "Persetujuan verifikasi identitas elektronik diperlukan untuk melanjutkan.",
+    "Too_many_pending_deposits": "Terlalu banyak setoran yang tertunda, silakan hubungi layanan pelanggan"
   },
   "platforms": {
     "title": "Platform Trading",
