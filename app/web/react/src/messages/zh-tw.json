@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "存在待處理的轉帳",
     "CODE_NOT_FOUND": "驗證碼不存在或已失效",
     "CODE_ALREADY_SENT": "驗證碼已發送，請檢查您的電子郵件",
-    "electronicIdentityVerificationRequired": "電子身份驗證為必選項，請選擇同意後繼續。"
+    "electronicIdentityVerificationRequired": "電子身份驗證為必選項，請選擇同意後繼續。",
+    "Too_many_pending_deposits": "過多的待處理入金，請聯繫您的客戶經理"
   },
   "platforms": {
     "title": "交易平台",

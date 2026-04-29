@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "Terdapat pemindahan yang tertunda",
     "CODE_NOT_FOUND": "Kod pengesahan tidak wujud atau telah tamat tempoh",
     "CODE_ALREADY_SENT": "Kod pengesahan telah dihantar. Sila semak e-mel anda",
-    "electronicIdentityVerificationRequired": "Pengesahan identiti elektronik adalah wajib. Sila pilih bersetuju dan teruskan."
+    "electronicIdentityVerificationRequired": "Pengesahan identiti elektronik adalah wajib. Sila pilih bersetuju dan teruskan.",
+    "Too_many_pending_deposits": "Terlalu banyak deposit yang belum selesai, sila hubungi perkhidmatan pelanggan"
   },
   "platforms": {
     "title": "Platform dagangan",
