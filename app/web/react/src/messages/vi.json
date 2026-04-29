@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "Có giao dịch chuyển tiền đang chờ xử lý",
     "CODE_NOT_FOUND": "Mã xác minh không tồn tại hoặc đã hết hạn",
     "CODE_ALREADY_SENT": "Mã xác minh đã được gửi, vui lòng kiểm tra email",
-    "electronicIdentityVerificationRequired": "Xác minh danh tính điện tử là bắt buộc, vui lòng chọn đồng ý và tiếp tục"
+    "electronicIdentityVerificationRequired": "Xác minh danh tính điện tử là bắt buộc, vui lòng chọn đồng ý và tiếp tục",
+    "Too_many_pending_deposits": "Quá nhiều khoản tiền gửi đang chờ xử lý, vui lòng liên hệ với dịch vụ khách hàng"
   },
   "platforms": {
     "title": "Nền tảng giao dịch",

@@ -697,7 +697,8 @@
     "__PENDING_TRANSFER_EXIST__": "There is a pending transfer",
     "CODE_NOT_FOUND": "Verification code not found or has expired",
     "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email",
-    "electronicIdentityVerificationRequired": "Electronic identity verification consent is required to continue."
+    "electronicIdentityVerificationRequired": "Electronic identity verification consent is required to continue.",
+    "Too_many_pending_deposits": "Too many pending deposits, please contact customer service"
   },
   "platforms": {
     "title": "Trading Platforms",

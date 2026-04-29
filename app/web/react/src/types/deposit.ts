@@ -9,12 +9,23 @@ export interface DepositGroup {
   paymentMethodName: string;
   isActive?: boolean;
   range?: [number, number];
+  /** 渠道类型标识，例如 "ExLinkGlobal"。后端按类型驱动差异化逻辑 */
+  type?: string;
 }
 
 // Step 2: 支付渠道详情
 export interface CurrencyRate {
   currencyId: number;
   rate: number;
+}
+
+/** 按币种维度的渠道配置（ExLinkGlobal 等以币种为单位维护 hashId / range / 名称） */
+export interface PaymentMethodConfig {
+  currencyId: number;
+  hashId: string;
+  range: [number, number];
+  /** 该币种对应的子渠道展示名（ExLinkGlobal 用它替代 selectedGroup.paymentMethodName） */
+  paymentMethodName?: string;
 }
 
 export interface DepositGroupInfo {
@@ -25,6 +36,8 @@ export interface DepositGroupInfo {
   requestValues: Record<string, any>;
   hashId: string;
   instruction: string;
+  /** 仅 ExLinkGlobal 等按币种独立配置的渠道返回 */
+  paymentMethods?: PaymentMethodConfig[];
 }
 
 // ExLink Global 币种

@@ -93,7 +93,12 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        'relative z-50 max-h-96 min-w-32 overflow-hidden rounded border',
+        'relative z-50 min-w-32 overflow-hidden rounded border',
+        // popper 模式下跟随 Radix 提供的可用高度 CSS 变量，避免在视口底部被裁剪；
+        // item-aligned 模式不暴露该变量，仍用 max-h-96 兜底。
+        position === 'popper'
+          ? 'max-h-[var(--radix-select-content-available-height)]'
+          : 'max-h-96',
         'bg-surface border-border shadow-dropdown',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
