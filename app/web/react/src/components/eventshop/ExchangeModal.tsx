@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -60,6 +60,8 @@ const INITIAL_FORM: AddressFormData = {
 export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSuccess }: ExchangeModalProps) {
   const t = useTranslations('eventshop');
   const { execute } = useServerAction({ showErrorToast: true });
+  const executeRef = useRef(execute);
+  useEffect(() => { executeRef.current = execute; });
   const { showSuccess, showError } = useToast();
 
   const [item, setItem] = useState<ShopItem | null>(null);
@@ -93,7 +95,7 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
 
     try {
       const [itemResult, addrResult] = await Promise.all([
-        execute(getShopItemDetail, itemHashId),
+        executeRef.current(getShopItemDetail, itemHashId),
         getAddressList(),
       ]);
 
@@ -115,7 +117,7 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
     } finally {
       setIsLoading(false);
     }
-  }, [itemHashId, execute]);
+  }, [itemHashId]);
 
   useEffect(() => {
     if (open && itemHashId) {
@@ -141,7 +143,7 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
 
     setIsSubmitting(true);
     try {
-      const result = await execute(purchaseItem, {
+      const result = await executeRef.current(purchaseItem, {
         shopItemHashId: item.hashId,
         quantity,
         addressHashId: selectedAddress,
@@ -219,7 +221,7 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
           createdOn: editingAddress.createdOn,
           updatedOn: editingAddress.updatedOn,
         };
-        result = await execute(updateAddress, editingAddress.hashId, payload);
+        result = await executeRef.current(updateAddress, editingAddress.hashId, payload);
       } else {
         const payload: AddressPayload = {
           name: addressForm.name,
@@ -228,7 +230,7 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
           country: addressForm.country,
           content: contentStr,
         };
-        result = await execute(createAddress, payload);
+        result = await executeRef.current(createAddress, payload);
       }
 
       if (result.success) {
