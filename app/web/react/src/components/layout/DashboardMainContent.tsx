@@ -85,29 +85,34 @@ export function DashboardMainContent() {
     : '/images/dashboard/banner-day.svg';
 
   // 加载数据：每次 loadData 都会 abort 上一次 in-flight 请求
+  // Guest 用户只拉模拟账户和服务映射，跳过真实账户/申请单
   const loadData = useCallback(async () => {
     const { signal, isActive } = begin();
     try {
       const [accountsResult, applicationsResult, demoResult, serviceResult] =
         await Promise.all([
-          execute(getLiveAccounts, { signal }, {
-            hasTradeAccount: true,
-            status: AccountStatusTypes.Activate,
-            roles: [
-              AccountRoleTypes.Client,
-              AccountRoleTypes.SuperAdmin,
-              AccountRoleTypes.TenantAdmin,
-              AccountRoleTypes.Wholesale,
-              AccountRoleTypes.Guest,
-            ],
-          }),
-          execute(getPendingApplications, { signal }, {
-            statuses: [
-              ApplicationStatusType.AwaitingApproval,
-              ApplicationStatusType.Approved,
-            ],
-            type: ApplicationType.TradeAccount,
-          }),
+          isGuest
+            ? Promise.resolve({ success: true as const, data: [] as Account[] })
+            : execute(getLiveAccounts, { signal }, {
+                hasTradeAccount: true,
+                status: AccountStatusTypes.Activate,
+                roles: [
+                  AccountRoleTypes.Client,
+                  AccountRoleTypes.SuperAdmin,
+                  AccountRoleTypes.TenantAdmin,
+                  AccountRoleTypes.Wholesale,
+                  AccountRoleTypes.Guest,
+                ],
+              }),
+          isGuest
+            ? Promise.resolve({ success: true as const, data: [] as Application[] })
+            : execute(getPendingApplications, { signal }, {
+                statuses: [
+                  ApplicationStatusType.AwaitingApproval,
+                  ApplicationStatusType.Approved,
+                ],
+                type: ApplicationType.TradeAccount,
+              }),
           execute(getDemoAccounts, { signal }),
           execute(getServiceMap, { signal }),
         ]);
@@ -127,16 +132,14 @@ export function DashboardMainContent() {
     } finally {
       if (isActive()) setIsInitialLoading(false);
     }
-  }, [begin, execute]);
+  }, [begin, execute, isGuest]);
 
-  // Guest 用户状态变化时，同步 Tab 和加载状态。
-  // 不需要 ref 守卫：loadData 依赖 [begin, execute] 都是稳定的，正常只会在
-  // isGuest 变化时跑；StrictMode 下的双跑由 begin() 的 token 机制去重。
+  // 用户身份变化时同步 Tab 并触发加载。
+  // 不需要 ref 守卫：loadData 依赖稳定，正常只会在 isGuest 变化时重跑；
+  // StrictMode 下的双跑由 begin() 的 token 机制去重。
   useEffect(() => {
     if (isGuest) {
       setActiveTab('DemoAccounts');
-      setIsInitialLoading(false);
-      return;
     }
     setIsInitialLoading(true);
     loadData();
