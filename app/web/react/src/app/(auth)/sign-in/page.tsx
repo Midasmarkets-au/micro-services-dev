@@ -37,7 +37,6 @@ export default function SignInPage() {
   const t = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { execute, isLoading } = useServerAction();
 
   // 页面状态管理
   const [showPage, setShowPage] = useState<PageState>('LoginPage');
@@ -48,6 +47,20 @@ export default function SignInPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // 页面内联错误提示（替代 Toast 弹框）
+  const [inlineError, setInlineError] = useState<string | null>(null);
+
+  const { execute, isLoading } = useServerAction({
+    showErrorToast: false,
+    onError: (message) => setInlineError(message),
+  });
+
+  // 切换子页面时清空错误/成功提示
+  const goToPage = useCallback((page: PageState) => {
+    setInlineError(null);
+    setSuccessMessage(null);
+    setShowPage(page);
+  }, []);
 
   // 登录表单验证 schema
   const loginSchema = z.object({
@@ -99,6 +112,7 @@ export default function SignInPage() {
     tfCode?: string
   ) => {
     clearErrors();
+    setInlineError(null);
     
     // 使用 Server Action
     const result = await execute(login, {
@@ -126,19 +140,21 @@ export default function SignInPage() {
       })));
       setFormEmail(email);
       setFormPassword(password);
+      setInlineError(null);
       setShowPage('SelectTenantPage');
       return;
     }
 
     if (!result.success) {
-      // 处理特殊错误码（需要页面跳转或特殊 UI）
+      // 处理特殊错误码（需要页面跳转或特殊 UI），跳转后不再显示登录页错误
       if (result.errorCode === '__EMAIL_UNCONFIRMED__') {
         setFormEmail(email);
         setFormPassword(password);
+        setInlineError(null);
         setShowPage('EmailVerifyPage');
         return;
       }
-      // 其他错误已通过 Toast 弹窗显示
+      // 其他错误已通过 inlineError 在页面上显示
       return;
     }
 
@@ -167,6 +183,7 @@ export default function SignInPage() {
 
   // 处理忘记密码提交
   const onForgotPasswordSubmit = async (data: ForgotPasswordFormData) => {
+    setInlineError(null);
     const resetUrl = `${window.location.protocol}//${window.location.host}/reset-password`;
     
     // 使用 Server Action
@@ -182,13 +199,13 @@ export default function SignInPage() {
     // 成功发送重置链接
     setSuccessMessage(t('passwordResetLinkSent'));
     setTimeout(() => {
-      setShowPage('LoginPage');
-      setSuccessMessage(null);
+      goToPage('LoginPage');
     }, 3000);
   };
 
   // 处理重发确认邮件
   const handleResendConfirmation = async () => {
+    setInlineError(null);
     const confirmUrl = `${window.location.protocol}//${window.location.host}/confirm-email`;
     
     // 使用 Server Action
@@ -227,9 +244,9 @@ export default function SignInPage() {
       )}
 
       {/* 错误提示 */}
-      {errors.root && (
+      {inlineError && (
         <div className="error-banner animate-fade-in">
-          {errors.root.message}
+          {inlineError}
         </div>
       )}
 
@@ -261,7 +278,7 @@ export default function SignInPage() {
         <div className="mt-2 text-right">
           <button
             type="button"
-            onClick={() => setShowPage('ForgetPasswordPage')}
+            onClick={() => goToPage('ForgetPasswordPage')}
             className="text-sm text-text-link transition-colors hover:underline"
           >
             {t('forgotPassword')}
@@ -318,9 +335,9 @@ export default function SignInPage() {
       )}
 
       {/* 错误提示 */}
-      {forgotErrors.root && (
+      {inlineError && (
         <div className="error-banner animate-fade-in">
-          {forgotErrors.root.message}
+          {inlineError}
         </div>
       )}
 
@@ -346,7 +363,7 @@ export default function SignInPage() {
       <div className="text-center">
         <button
           type="button"
-          onClick={() => setShowPage('LoginPage')}
+          onClick={() => goToPage('LoginPage')}
           className="text-sm text-text-link transition-colors hover:underline"
         >
           {t('backToLogin')}
@@ -361,6 +378,13 @@ export default function SignInPage() {
       <h2 className="text-xl font-semibold text-text-primary">
         {t('verifyYourEmail')}
       </h2>
+
+      {/* 错误提示 */}
+      {inlineError && (
+        <div className="error-banner animate-fade-in">
+          {inlineError}
+        </div>
+      )}
 
       {/* 成功提示 */}
       {successMessage && (
@@ -396,7 +420,7 @@ export default function SignInPage() {
       <div className="mt-4 text-center">
         <button
           type="button"
-          onClick={() => setShowPage('LoginPage')}
+          onClick={() => goToPage('LoginPage')}
           className="text-sm text-text-link transition-colors hover:underline"
         >
           {t('backToLogin')}
@@ -411,6 +435,13 @@ export default function SignInPage() {
       <h2 className="text-xl">
         {t('selectTenant')}
       </h2>
+
+      {/* 错误提示 */}
+      {inlineError && (
+        <div className="error-banner animate-fade-in">
+          {inlineError}
+        </div>
+      )}
 
       {/* 租户选择卡片 */}
       <div className="grid grid-cols-3 gap-4">
@@ -466,9 +497,9 @@ export default function SignInPage() {
         <button
           type="button"
           onClick={() => {
-            setShowPage('LoginPage');
             setSelectedTenant(null);
             setTenantsOptions([]);
+            goToPage('LoginPage');
           }}
           className="text-sm text-text-link transition-colors hover:underline"
         >

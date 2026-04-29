@@ -13,13 +13,7 @@ import {
 import { Button, Input } from '@/components/ui';
 import { BalanceShow } from '@/components/ui/BalanceShow';
 import { Stepper } from '@/components/ui/Stepper';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/radix/Select';
+import { SimpleSelect, type SelectOption } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import {
@@ -35,6 +29,7 @@ import type {
   DepositGroupInfo,
   DepositResponse,
   CurrencyRate,
+  PaymentMethodConfig,
 } from '@/types/deposit';
 import { DepositActions } from '@/types/deposit';
 import { CurrencyTypes } from '@/types/accounts';
@@ -42,7 +37,7 @@ import { useCurrencyName } from '@/i18n/useCurrencyName';
 import { CreditCardForm, type CreditCardFormHandle } from './CreditCardForm';
 
 const CREDIT_CARD_GROUP = 'Credit Card';
-const EXLINK_GLOBAL_KEYWORD = 'exlink global';
+const EXLINK_GLOBAL_TYPE = 'ExLinkGlobal';
 
 interface DepositModalProps {
   open: boolean;
@@ -153,6 +148,9 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   // 是否是信用卡渠道
   const isCreditCard = selectedGroup?.group === CREDIT_CARD_GROUP;
 
+  // 是否是 ExLinkGlobal 渠道（按 type 字段判定）
+  const isExLinkGlobal = selectedGroup?.type === EXLINK_GLOBAL_TYPE;
+
   // Step 1: 加载支付渠道
   useEffect(() => {
     if (open && account) {
@@ -191,16 +189,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     if (selectedGroup.isActive === false) return;
     setIsLoadingInfo(true);
     try {
-      const result = await execute(getDepositGroupInfo, account.uid, selectedGroup.group);
+      const result = await execute(
+        getDepositGroupInfo,
+        account.uid,
+        selectedGroup.group,
+        selectedGroup.type
+      );
       if (!result.success || !result.data) return;
 
       let info: DepositGroupInfo = result.data;
 
-      // ExLink Global 渠道：用 ExLink 实时汇率覆盖 currencyRates
-      const groupLower = (selectedGroup.group || '').toLowerCase();
-      const nameLower = (selectedGroup.paymentMethodName || '').toLowerCase();
-      const exLink =
-        groupLower.includes(EXLINK_GLOBAL_KEYWORD) || nameLower.includes(EXLINK_GLOBAL_KEYWORD);
+      // ExLink Global 渠道：用 ExLink 实时汇率覆盖 currencyRates（保留汇率展示）
+      const exLink = selectedGroup.type === EXLINK_GLOBAL_TYPE;
 
       if (exLink) {
         try {
@@ -234,7 +234,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
           )
         );
       }
-      if (info.currencyRates?.length === 1) {
+      // 自动选中支付币种：
+      // - ExLinkGlobal：优先按 paymentMethods 决定（每个币种一份独立配置）
+      // - 其他渠道：沿用 currencyRates 的旧逻辑
+      if (exLink && info.paymentMethods?.length) {
+        if (info.paymentMethods.length === 1) {
+          setPaymentCurrency(String(info.paymentMethods[0].currencyId));
+        }
+      } else if (info.currencyRates?.length === 1) {
         setPaymentCurrency(String(info.currencyRates[0].currencyId));
       } else if (!info.currencyRates?.length && account.currencyId) {
         setPaymentCurrency(String(account.currencyId));
@@ -253,6 +260,49 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     ) || null;
   }, [groupInfo, paymentCurrency]);
 
+  // ExLinkGlobal：按所选币种命中的 paymentMethod 配置（提供 hashId / range）
+  const currentPaymentMethod = useMemo((): PaymentMethodConfig | null => {
+    if (!isExLinkGlobal || !groupInfo?.paymentMethods?.length || !paymentCurrency) return null;
+    return (
+      groupInfo.paymentMethods.find(
+        (pm) => String(pm.currencyId) === paymentCurrency
+      ) || null
+    );
+  }, [isExLinkGlobal, groupInfo, paymentCurrency]);
+
+  // Step 3 支付币种下拉选项：
+  // - ExLinkGlobal：来源于 paymentMethods（label 优先用 paymentMethods.paymentMethodName）
+  // - 其他渠道：沿用 currencyRates，label 用币种名
+  const currencyOptions = useMemo<SelectOption[]>(() => {
+    if (isExLinkGlobal && groupInfo?.paymentMethods?.length) {
+      return groupInfo.paymentMethods.map((pm) => ({
+        value: String(pm.currencyId),
+        label: pm.paymentMethodName || getCurrencyName(pm.currencyId),
+      }));
+    }
+    return (groupInfo?.currencyRates || []).map((cr) => ({
+      value: String(cr.currencyId),
+      label: getCurrencyName(cr.currencyId),
+    }));
+  }, [isExLinkGlobal, groupInfo, getCurrencyName]);
+
+  // 用于校验/展示的金额区间：ExLinkGlobal 跟随币种切换，其他渠道沿用 groupInfo.range
+  const activeRange = useMemo<[number, number] | undefined>(() => {
+    if (isExLinkGlobal) return currentPaymentMethod?.range;
+    return groupInfo?.range;
+  }, [isExLinkGlobal, currentPaymentMethod, groupInfo]);
+
+  // 当前展示的渠道名：
+  // - ExLinkGlobal 且已选中 paymentMethod -> 用 paymentMethod.paymentMethodName 替换 selectedGroup.paymentMethodName
+  // - ExLinkGlobal 但尚未选中币种 -> 退回 selectedGroup.group
+  // - 其他渠道 -> selectedGroup.paymentMethodName
+  const displayMethodName = useMemo<string>(() => {
+    if (isExLinkGlobal) {
+      return currentPaymentMethod?.paymentMethodName || selectedGroup?.group || '';
+    }
+    return selectedGroup?.paymentMethodName || '';
+  }, [isExLinkGlobal, currentPaymentMethod, selectedGroup]);
+
   // 汇率换算
   useEffect(() => {
     const numAmount = Number(amount);
@@ -267,6 +317,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   // - 必须为正整数
   // - range 为 USD 固定值（如 5000 -> 500 USD），先转成 USD 口径
   // - 输入值按账户币种换算到 USD（1 USD = 100 USC）后再比较
+  // - ExLinkGlobal 渠道按当前币种命中的 paymentMethod.range 校验
   const validateAmount = useCallback((val: string): boolean => {
     const num = Number(val);
     if (!num || num <= 0) {
@@ -278,8 +329,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       return false;
     }
 
-    if (groupInfo?.range && account) {
-      const [rawMin, rawMax] = groupInfo.range;
+    if (activeRange && account) {
+      const [rawMin, rawMax] = activeRange;
       const minInUsd = rawMin / 100;
       const maxInUsd = rawMax / 100;
       const inputInUsd = account.currencyId === CurrencyTypes.USC ? num / 100 : num;
@@ -294,7 +345,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
     setAmountError('');
     return true;
-  }, [groupInfo, account]);
+  }, [activeRange, account]);
+
+  // ExLinkGlobal 切换币种 -> range 改变，需要立即重新校验已有金额
+  useEffect(() => {
+    if (!isExLinkGlobal) return;
+    if (!amount) return;
+    validateAmount(amount);
+  }, [isExLinkGlobal, currentPaymentMethod, amount, validateAmount]);
 
   // 可见的动态字段
   const visibleRequestKeys = useMemo(() => {
@@ -351,8 +409,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       returnUrl: typeof window !== 'undefined' ? window.location.href : '',
     };
 
+    // ExLinkGlobal 的 hashId 由当前所选币种命中的 paymentMethod 决定，
+    // 其他渠道沿用 groupInfo 顶层 hashId
+    const hashId = isExLinkGlobal && currentPaymentMethod
+      ? currentPaymentMethod.hashId
+      : groupInfo.hashId;
+
     const payload = {
-      hashId: groupInfo.hashId,
+      hashId,
       amount: numAmount * 100,
       request: requestData,
     };
@@ -385,7 +449,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
         setStep(5);
       }
     }
-  }, [account, groupInfo, selectedGroup, amount, dynamicFields, paymentCurrency, execute]);
+  }, [account, groupInfo, selectedGroup, amount, dynamicFields, paymentCurrency, isExLinkGlobal, currentPaymentMethod, execute]);
 
   // Stepper 配置
   const stepperSteps = useMemo(() => [
@@ -464,7 +528,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                           )}
                           <div className="flex flex-1 flex-col gap-1">
                             <span className="text-base font-medium text-text-primary">
-                              {group.paymentMethodName}
+                              {group.type ? group.group : group.paymentMethodName}
                             </span>
                             <span className="text-xs text-text-secondary">
                               {t('channel.arrival')}：{t('channel.instant')}
@@ -504,7 +568,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
             {step === 2 && groupInfo && (
               <div className="flex flex-col gap-5">
                 <h3 className="text-lg font-semibold text-text-primary">
-                  {t('notice.title', { name: selectedGroup?.paymentMethodName || '' })}
+             
+                  {t('notice.title', { name: displayMethodName })}
                 </h3>
                 <div
                   className="prose prose-sm max-w-none text-text-secondary dark:prose-invert"
@@ -520,28 +585,21 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   {t('fill.depositTo')}
                 </h3>
                 {/* 支付币种 */}
-                {groupInfo.currencyRates && groupInfo.currencyRates.length > 0 && (
+                {currencyOptions.length > 0 && (
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center text-sm font-medium text-text-secondary">
                       <span className="mr-1 text-primary">*</span>
-                      {selectedGroup?.paymentMethodName}{t('fill.currency')}
+                      {displayMethodName}{t('fill.currency')}
                     </label>
-                    <Select
+                    <SimpleSelect
                       value={paymentCurrency}
-                      onValueChange={setPaymentCurrency}
-                      disabled={groupInfo.currencyRates.length === 1}
-                    >
-                      <SelectTrigger className="h-12 w-full bg-input-bg">
-                        <SelectValue placeholder={t('fill.selectCurrency')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {groupInfo.currencyRates.map((cr) => (
-                          <SelectItem key={cr.currencyId} value={String(cr.currencyId)}>
-                            {getCurrencyName(cr.currencyId)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={setPaymentCurrency}
+                      options={currencyOptions}
+                      placeholder={t('fill.selectCurrency')}
+                      disabled={currencyOptions.length === 1}
+                      triggerSize="md"
+                      className="w-full bg-input-bg"
+                    />
                   </div>
                 )}
                 {/* 金额输入 + 存款金额 */}
@@ -569,12 +627,12 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       }
                       errorPosition="bottom"
                     />
-                    {amountError === 'range' && groupInfo?.range && (
+                    {amountError === 'range' && activeRange && (
                       <p className="error-text mt-1 text-sm">
                         {t('error.amountRange')}
-                        <BalanceShow balance={account.currencyId === CurrencyTypes.USC ? groupInfo.range[0] * 100 : groupInfo.range[0]} currencyId={account.currencyId} />
+                        <BalanceShow balance={account.currencyId === CurrencyTypes.USC ? activeRange[0] * 100 : activeRange[0]} currencyId={account.currencyId} />
                         ~
-                        <BalanceShow balance={account.currencyId === CurrencyTypes.USC ? groupInfo.range[1] * 100 : groupInfo.range[1]} currencyId={account.currencyId} />
+                        <BalanceShow balance={account.currencyId === CurrencyTypes.USC ? activeRange[1] * 100 : activeRange[1]} currencyId={account.currencyId} />
                       </p>
                     )}
                   </div>
@@ -643,7 +701,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-text-secondary">{t('verify.channel')}</span>
                     <span className="text-sm text-text-primary">
-                      {selectedGroup?.paymentMethodName}
+                      {displayMethodName}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -766,7 +824,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       {selectedGroup?.logo && (
                         <Image
                           src={selectedGroup.logo}
-                          alt={selectedGroup.paymentMethodName}
+                          alt={displayMethodName}
                           width={48}
                           height={48}
                           className="shrink-0 rounded"
@@ -774,7 +832,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       )}
                       <div className="flex flex-col gap-1">
                         <span className="text-base font-medium text-text-primary">
-                          {selectedGroup?.paymentMethodName}
+                          {displayMethodName}
                         </span>
                       </div>
                     </div>

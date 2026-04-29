@@ -68,6 +68,19 @@ function unwrapData<T>(raw: unknown): T {
   return raw as T;
 }
 
+/**
+ * 判断字符串是否符合后端错误码命名规范（与 apiClient.ts 保持一致）。
+ *   1. __XXX__：双下划线包裹的全大写错误码
+ *   2. SCREAMING_SNAKE / Mixed_Snake：含至少一个下划线分隔的命名（如 CODE_ALREADY_SENT）
+ * 不命中：单词形态（"Unauthorized"、"BadRequest" 等）。
+ */
+function isErrorCodeLike(value: string): boolean {
+  if (!value) return false;
+  if (/^__[A-Z_]+__$/.test(value)) return true;
+  if (value.length > 64) return false;
+  return /^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)+$/.test(value);
+}
+
 function extractError(
   raw: unknown,
   status: number
@@ -77,7 +90,7 @@ function extractError(
 
   if (typeof raw === 'string') {
     error = raw || error;
-    if (/^__[A-Z_]+__$/.test(raw)) errorCode = raw;
+    if (isErrorCodeLike(raw)) errorCode = raw;
   } else if (raw && typeof raw === 'object') {
     const r = raw as Record<string, unknown>;
     error = String(r.error_description || r.message || r.error || error);
@@ -86,7 +99,7 @@ function extractError(
     if (
       !errorCode &&
       typeof r.message === 'string' &&
-      /^__[A-Z_]+__$/.test(r.message)
+      isErrorCodeLike(r.message)
     ) {
       errorCode = r.message;
     }

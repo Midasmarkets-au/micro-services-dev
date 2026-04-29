@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getIBClients } from '@/actions';
+import { getIBClients, getIBViewEmailCode, getIBEmailByCode } from '@/actions';
 import { useIBStore } from '@/stores/ibStore';
 import { AccountRoleTypes } from '@/types/accounts';
 import {
@@ -26,6 +26,7 @@ import type { IBClientAccount, IBClientCriteria } from '@/types/ib';
 import { useUserStore } from '@/stores';
 import { ViewRebateStatModal } from '../_components/modals/ViewRebateStatModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
+import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
 import { TimeShow } from '@/components/TimeShow';
 type RoleTab = 'all' | 'ib' | 'client';
 
@@ -71,6 +72,10 @@ export default function IBCustomersPage() {
   const [rebateStatOpen, setRebateStatOpen] = useState(false);
   const [editSchemaOpen, setEditSchemaOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<IBClientAccount | null>(null);
+  const [unlockEmailOpen, setUnlockEmailOpen] = useState(false);
+  const [unlockEmailUid, setUnlockEmailUid] = useState<number | null>(null);
+  const [unlockEmailAddress, setUnlockEmailAddress] = useState<string | undefined>(undefined);
+  const [unlockKey, setUnlockKey] = useState(0);
 
   const tabs: TabItem<RoleTab>[] = useMemo(() => [
     { key: 'all', label: t('fields.all') },
@@ -186,6 +191,13 @@ export default function IBCustomersPage() {
     setEditSchemaOpen(true);
   }, []);
 
+  const showUnlockEmailAddress = useCallback((uid: number, email?: string) => {
+    setUnlockEmailUid(uid);
+    setUnlockEmailAddress(email);
+    setUnlockKey((k) => k + 1);
+    setUnlockEmailOpen(true);
+  }, []);
+
   const showRoleColumn = activeTab === 'all';
 
   const columns = useMemo<DataTableColumn<IBClientAccount>[]>(() => {
@@ -207,7 +219,7 @@ export default function IBCustomersPage() {
             <Avatar src={item.user?.avatar} alt={getUserName(item)} size="xs" />
             <div className="flex flex-col">
               <span className="text-sm font-medium text-text-primary">{getUserName(item)}</span>
-              <span className="text-xs text-text-secondary">{item.user?.email}</span>
+              <span className="text-xs cursor-pointer text-text-secondary" onClick={() => showUnlockEmailAddress(item.uid,item.user?.email)}>{item.user?.email}</span>
             </div>
           </div>
         ),
@@ -339,7 +351,7 @@ export default function IBCustomersPage() {
     );
 
     return cols;
-  }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showEditSchema, siteConfig, ibChain.length]);
+  }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showEditSchema, showUnlockEmailAddress, siteConfig, ibChain.length]);
 
   const sortOptions = [
     { value: 'newest', label: t('action.sortNewest') },
@@ -432,6 +444,18 @@ export default function IBCustomersPage() {
         account={selectedAccount}
         onSuccess={() => fetchData(criteria)}
       />
+      {agentAccount && (
+        <UnlockEmailAddressModal
+          key={unlockKey}
+          open={unlockEmailOpen}
+          onOpenChange={setUnlockEmailOpen}
+          uid={unlockEmailUid}
+          email={unlockEmailAddress}
+          sendCodeAction={getIBViewEmailCode}
+          verifyCodeAction={getIBEmailByCode}
+          ownerUid={agentAccount.uid}
+        />
+      )}
     </div>
   );
 }
