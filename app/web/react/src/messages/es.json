@@ -2263,6 +2263,7 @@
       "referCode": "Código de referido",
       "referCodePlaceholder": "Por favor ingrese el código de referido",
       "referCodeValid": "Código de referido válido",
+      "referCodeInvalid": "Código de referido no válido o verificación fallida",
       "role": "Rol",
       "accountType": "Tipo de cuenta",
       "currency": "Moneda",

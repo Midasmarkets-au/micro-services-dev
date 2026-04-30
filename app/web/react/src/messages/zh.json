@@ -2263,6 +2263,7 @@
       "referCode": "推荐码",
       "referCodePlaceholder": "请输入推荐码",
       "referCodeValid": "推荐码有效",
+      "referCodeInvalid": "推荐码无效或校验失败",
       "role": "角色",
       "accountType": "账户类型",
       "currency": "货币",

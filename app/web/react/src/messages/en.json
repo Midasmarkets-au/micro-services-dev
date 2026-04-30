@@ -2263,6 +2263,7 @@
       "referCode": "Refer Code",
       "referCodePlaceholder": "Enter refer code",
       "referCodeValid": "Refer code is valid",
+      "referCodeInvalid": "Refer code is invalid or check failed",
       "role": "Role",
       "accountType": "Account Type",
       "currency": "Currency",

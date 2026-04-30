@@ -2263,6 +2263,7 @@
       "referCode": "លេខកូដបញ្ជូន",
       "referCodePlaceholder": "បញ្ចូលលេខកូដបញ្ជូន",
       "referCodeValid": "លេខកូដបញ្ជូនត្រឹមត្រូវ",
+      "referCodeInvalid": "លេខកូដបញ្ជូនមិនត្រឹមត្រូវ ឬការផ្ទៀងផ្ទាត់បរាជ័យ",
       "role": "តួនាទី",
       "accountType": "ប្រភេទគណនី",
       "currency": "រូបិយប័ណ្ណ",
