@@ -2263,6 +2263,7 @@
       "referCode": "รหัสอ้างอิง",
       "referCodePlaceholder": "ป้อนรหัสอ้างอิง",
       "referCodeValid": "รหัสอ้างอิงถูกต้อง",
+      "referCodeInvalid": "รหัสอ้างอิงไม่ถูกต้องหรือการตรวจสอบล้มเหลว",
       "role": "บทบาท",
       "accountType": "ประเภทบัญชี",
       "currency": "สกุลเงิน",

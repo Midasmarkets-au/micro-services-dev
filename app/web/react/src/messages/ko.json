@@ -2263,6 +2263,7 @@
       "referCode": "추천 코드",
       "referCodePlaceholder": "추천 코드를 입력해 주세요",
       "referCodeValid": "유효한 추천 코드",
+      "referCodeInvalid": "추천 코드가 유효하지 않거나 확인에 실패했습니다",
       "role": "역할",
       "accountType": "계정 유형",
       "currency": "통화",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useUserStore } from '@/stores/userStore';
@@ -11,19 +11,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
-import { Button, Skeleton, Input, SimpleSelect } from '@/components/ui';
+import { Button, Input, SimpleSelect } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useSalesStore } from '@/stores/salesStore';
 import { useToast } from '@/hooks/useToast';
 import {
   salesOpenTradeAccount,
-  getSalesIBAccountConfig,
   getReferralCodeSupplement,
 } from '@/actions';
 import type { SalesClientAccount } from '@/types/sales';
-import { AccountRoleTypes, getPlatformName } from '@/types/accounts';
+import { AccountRoleTypes, PlatformTypes, ServiceTypes, getPlatformName } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
+
+// serviceId → platformType，与 Vue 端 ServiceTypeInfo 保持一致
+const ServiceToPlatform: Record<number, PlatformTypes> = {
+  [ServiceTypes.MetaTrader4Co]:     PlatformTypes.MetaTrader4,
+  [ServiceTypes.MetaTrader4CoDemo]: PlatformTypes.MetaTrader4Demo,
+  [ServiceTypes.MetaTrader4]:       PlatformTypes.MetaTrader4,
+  [ServiceTypes.MetaTrader4Demo]:   PlatformTypes.MetaTrader4Demo,
+  [ServiceTypes.MetaTrader5]:       PlatformTypes.MetaTrader5,
+  [ServiceTypes.MetaTrader5Demo]:   PlatformTypes.MetaTrader5Demo,
+};
 
 interface OpenTradeAccountModalProps {
   open: boolean;
@@ -43,7 +52,6 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   const siteConfig = useUserStore((s) => s.siteConfig);
   const { showToast } = useToast();
 
-  const [isConfigLoading, setIsConfigLoading] = useState(true);
   const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,20 +61,17 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   const [showForm, setShowForm] = useState(false);
 
   const [accountTypeOptions, setAccountTypeOptions] = useState<SelectOption[]>([]);
-  const [leverageOptions, setLeverageOptions] = useState<SelectOption[]>(() =>
-    (siteConfig?.leverageAvailable ?? []).map((lev) => ({ value: String(lev), label: `${lev}:1` }))
+  const leverageOptions = useMemo(
+    () => (siteConfig?.leverageAvailable ?? []).map((lev) => ({ value: String(lev), label: `${lev}:1` })),
+    [siteConfig]
   );
-  const [currencyOptions, setCurrencyOptions] = useState<SelectOption[]>(() =>
-    (siteConfig?.currencyAvailable ?? []).map((id) => ({
-      value: String(id),
-      label: getCurrencyName(id),
-    }))
+  const currencyOptions = useMemo(
+    () => (siteConfig?.currencyAvailable ?? []).map((id) => ({ value: String(id), label: getCurrencyNameRef.current(id) })),
+    [siteConfig]
   );
-  const [platformOptions, setPlatformOptions] = useState<SelectOption[]>(() =>
-    (siteConfig?.tradingPlatformAvailable ?? []).map((platformId) => ({
-      value: String(platformId),
-      label: getPlatformName(platformId),
-    }))
+  const platformOptions = useMemo(
+    () => (siteConfig?.tradingPlatformAvailable ?? []).map((platformId) => ({ value: String(platformId), label: getPlatformName(platformId) })),
+    [siteConfig]
   );
 
   const [selectedAccountType, setSelectedAccountType] = useState('');
@@ -81,54 +86,20 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
     setShowForm(false);
     setAccountTypeOptions([]);
     setSelectedAccountType('');
-    setSelectedCurrency('');
-    setSelectedLeverage('');
-    setSelectedPlatform('');
-  }, []);
-
-  const loadConfig = useCallback(async () => {
-    if (!salesAccount || !account) return;
-    setIsConfigLoading(true);
-    try {
-      const result = await execute(getSalesIBAccountConfig, salesAccount.uid, account.uid);
-      if (result.success && result.data) {
-        const config = result.data as Record<string, unknown>;
-        if (Array.isArray(config.leverages)) {
-          const opts = (config.leverages as number[]).map((lev) => ({
-            value: String(lev),
-            label: `${lev}:1`,
-          }));
-          setLeverageOptions(opts);
-          if (opts.length > 0) setSelectedLeverage(opts[0].value);
-        }
-        if (Array.isArray(config.currencies)) {
-          const opts = (config.currencies as (number | { id: number })[]).map((c) => {
-            const id = typeof c === 'number' ? c : c.id;
-            return { value: String(id), label: getCurrencyNameRef.current(id) };
-          });
-          setCurrencyOptions(opts);
-          if (opts.length > 0) setSelectedCurrency(opts[0].value);
-        }
-        if (Array.isArray(config.platforms)) {
-          const opts = (config.platforms as { id: number; name: string }[]).map((p) => ({
-            value: String(p.id ?? p),
-            label: p.name ?? String(p.id ?? p),
-          }));
-          setPlatformOptions(opts);
-          if (opts.length > 0) setSelectedPlatform(opts[0].value);
-        }
-      }
-    } finally {
-      setIsConfigLoading(false);
-    }
-  }, [salesAccount, account, execute]);
+    // 重置为 siteConfig 第一项默认值（与 Vue 行为一致）
+    const leverages = siteConfig?.leverageAvailable ?? [];
+    setSelectedLeverage(leverages.length > 0 ? String(leverages[0]) : '');
+    const currencies = siteConfig?.currencyAvailable ?? [];
+    setSelectedCurrency(currencies.length > 0 ? String(currencies[0]) : '');
+    const platforms = siteConfig?.tradingPlatformAvailable ?? [];
+    setSelectedPlatform(platforms.length > 0 ? String(platforms[0]) : '');
+  }, [siteConfig]);
 
   useEffect(() => {
     if (open && account) {
       resetForm();
-      loadConfig();
     }
-  }, [open, account, resetForm, loadConfig]);
+  }, [open, account, resetForm]);
 
   const getRoleLabel = (serviceType: number): string => {
     return tAccounts(`accountRole.${serviceType}`);
@@ -148,6 +119,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         let types: { accountType: number }[] = [];
         switch (data.serviceType) {
           case AccountRoleTypes.IB:
+          case AccountRoleTypes.Broker:
             types = data.summary?.schema ?? [];
             break;
           case AccountRoleTypes.Client:
@@ -164,15 +136,15 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         }));
         setAccountTypeOptions(opts);
         if (opts.length > 0) setSelectedAccountType(opts[0].value);
-
-        //showToast({ message: t('openAccount.referCodeValid'), type: 'success' });
       } else {
         setReferCodeValid(false);
         setShowForm(false);
+        showToast({ message: t('openAccount.referCodeInvalid'), type: 'error' });
       }
     } catch {
       setReferCodeValid(false);
       setShowForm(false);
+      showToast({ message: t('openAccount.referCodeInvalid'), type: 'error' });
     } finally {
       setIsCheckingCode(false);
     }
@@ -184,14 +156,15 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
 
     setIsSubmitting(true);
     try {
+      const serviceId = Number(selectedPlatform);
       const formData: Record<string, unknown> = {
         referCode: referCode.trim(),
         accountType: Number(selectedAccountType),
         currencyId: Number(selectedCurrency),
         leverage: Number(selectedLeverage),
-        platform: Number(selectedPlatform),
+        serviceId,
+        platform: ServiceToPlatform[serviceId] ?? serviceId,
       };
-      if (selectedPlatform) formData.serviceId = Number(selectedPlatform);
 
       const result = await execute(salesOpenTradeAccount, salesAccount.uid, account.uid, formData);
       if (result.success) {
@@ -204,7 +177,12 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
     }
   };
 
-  const userName = account?.user?.displayName || account?.user?.nativeName || '';
+  const userName = account?.user?.nativeName?.trim()
+    || account?.user?.displayName?.trim()
+    || (account?.user?.firstName && account?.user?.lastName
+        ? `${account.user.firstName} ${account.user.lastName}`
+        : '')
+    || '';
   const formDisabled = !referCodeValid || isCheckingCode;
   const canSubmit = referCodeValid && selectedAccountType && selectedCurrency && selectedLeverage;
 
@@ -215,14 +193,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
           <DialogTitle>{t('openAccount.title')} - {userName}</DialogTitle>
         </DialogHeader>
 
-        {isConfigLoading ? (
-          <div className="space-y-4 py-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-          <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2">
             {/* 推荐码输入 */}
             <div>
               <label className="mb-1.5 block text-sm text-text-secondary">
@@ -358,8 +329,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
                 </DialogFooter>
               </>
             )}
-          </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -2263,6 +2263,7 @@
       "referCode": "Kode Referral",
       "referCodePlaceholder": "Masukkan kode referral",
       "referCodeValid": "Kode referral valid",
+      "referCodeInvalid": "Kode referral tidak valid atau gagal diverifikasi",
       "role": "Peran",
       "accountType": "Jenis Akun",
       "currency": "Mata Uang",
