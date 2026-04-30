@@ -17,6 +17,7 @@ import type {
   SalesRebateRuleDetail,
   SalesRebateRuleItem,
   SalesDefaultLevelSetting,
+  SalesDefaultLevelSettingMap,
   SalesChildStat,
   SalesAccountStat,
   SalesStatistics,
@@ -429,12 +430,12 @@ export async function getSalesIBAccountConfig(
 export async function getSalesAccountDefaultLevel(
   salesUid: number,
   agentUid: number
-): Promise<ActionResponse<SalesDefaultLevelSetting>> {
+): Promise<ActionResponse<SalesDefaultLevelSettingMap>> {
   try {
-    const response = await apiClient.v1.get<SalesDefaultLevelSetting>(
+    const response = await apiClient.v1.get<SalesDefaultLevelSettingMap>(
       `/sales/${salesUid}/account/${agentUid}/default-level-setting`
     );
-    return { success: true, data: unwrapData<SalesDefaultLevelSetting>(response) };
+    return { success: true, data: unwrapData<SalesDefaultLevelSettingMap>(response) };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch account default level');
   }
