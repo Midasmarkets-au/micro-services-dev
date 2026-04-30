@@ -10,6 +10,7 @@ interface WalletBannerProps {
   currencyId: number;
   onWithdraw: () => void;
   onTransfer: () => void;
+  fractionDigits?: number;
 }
 
 
@@ -18,6 +19,7 @@ export function WalletBanner({
   currencyId = 840,
   onWithdraw,
   onTransfer,
+  fractionDigits,
 }: WalletBannerProps) {
   const t = useTranslations('wallet');
   const { theme } = useTheme();
@@ -62,6 +64,7 @@ export function WalletBanner({
                   balance={balance ?? 0}
                   currencyId={currencyId}
                   className="text-xl font-bold text-white"
+                  fractionDigits={fractionDigits}
                 />
               </div>
             </div>

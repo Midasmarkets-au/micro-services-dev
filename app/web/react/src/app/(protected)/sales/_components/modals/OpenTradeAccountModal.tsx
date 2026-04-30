@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useUserStore } from '@/stores/userStore';
@@ -36,6 +36,8 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
   const t = useTranslations('sales');
   const tAccounts = useTranslations('accounts');
   const getCurrencyName = useCurrencyName();
+  const getCurrencyNameRef = useRef(getCurrencyName);
+  useEffect(() => { getCurrencyNameRef.current = getCurrencyName; });
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
@@ -102,7 +104,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
         if (Array.isArray(config.currencies)) {
           const opts = (config.currencies as (number | { id: number })[]).map((c) => {
             const id = typeof c === 'number' ? c : c.id;
-            return { value: String(id), label: getCurrencyName(id) };
+            return { value: String(id), label: getCurrencyNameRef.current(id) };
           });
           setCurrencyOptions(opts);
           if (opts.length > 0) setSelectedCurrency(opts[0].value);
@@ -119,7 +121,7 @@ export function OpenTradeAccountModal({ open, onOpenChange, account, onSuccess }
     } finally {
       setIsConfigLoading(false);
     }
-  }, [salesAccount, account, execute, getCurrencyName]);
+  }, [salesAccount, account, execute]);
 
   useEffect(() => {
     if (open && account) {
