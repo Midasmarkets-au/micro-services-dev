@@ -61,16 +61,15 @@ export function NotificationBar({ refreshKey = 0 }: NotificationBarProps) {
           height={20}
           className="shrink-0"
         />
-        <p className={`text-sm truncate opacity-60 ${
+        <div className={`text-sm truncate opacity-60 ${
           isDark ? 'text-white' : 'text-[#800020]'
         }`}>
           {t('notification.orderNumber')}:{notification.hashId},
           {t('notification.pointsUsed')}:<ShopPoints value={notification.totalPoint} showIcon={false} className="text-inherit! font-normal!" />,
           {t('notification.itemName')}:{notification.eventShopItemName},
           {t('notification.quantity')}:{notification.quantity},
-          {t('notification.date')}:  <TimeShow dateIsoString="notification.updatedOn" type="customCSSv2"
-        />
-        </p>
+          {t('notification.date')}:<TimeShow dateIsoString={notification.updatedOn} type="eventShop" />
+        </div>
       </div>
       <button
         onClick={() => setDetailOpen(true)}
