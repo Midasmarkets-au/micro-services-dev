@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useSyncExternalStore, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Toast, type ToastType } from './radix/Toast';
 
@@ -94,6 +94,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }, 300);
   }, []);
 
+  // context value 用 useMemo 固定引用，避免 ToastProvider 自身重渲染
+  // （isOpen / toastOptions 变化）时让所有 useToast() 消费者无谓地重渲染
+  const contextValue = useMemo(() => ({ showToast, hideToast }), [showToast, hideToast]);
+
   const handleClose = useCallback(() => {
     toastOptions?.onClose?.();
     hideToast();
@@ -120,7 +124,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ToastContext.Provider value={{ showToast, hideToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       {/* 使用 Portal 渲染到专用 Toast 容器，确保在所有其他元素之上 */}
       {isClient && toastContent && containerRef.current && createPortal(toastContent, containerRef.current)}

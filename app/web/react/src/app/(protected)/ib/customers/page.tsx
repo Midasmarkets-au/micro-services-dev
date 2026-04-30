@@ -60,6 +60,10 @@ export default function IBCustomersPage() {
   const t = useTranslations('ib');
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
+  // execute 引用在 useServerAction 内部 state 变化时会刷新，
+  // 用 ref 固定下来，避免 fetchData/useEffect 因依赖变化触发死循环
+  const executeRef = useRef(execute);
+  useEffect(() => { executeRef.current = execute; });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
 
@@ -88,7 +92,7 @@ export default function IBCustomersPage() {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const result = await execute(getIBClients, agentAccount.uid, params);
+        const result = await executeRef.current(getIBClients, agentAccount.uid, params);
         if (result.success && result.data) {
           const raw = result.data.criteria || params;
           setCriteria({
@@ -108,7 +112,7 @@ export default function IBCustomersPage() {
         setIsLoading(false);
       }
     },
-    [agentAccount, execute]
+    [agentAccount]
   );
 
   useEffect(() => {
