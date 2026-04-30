@@ -196,6 +196,7 @@ export function PointsHistoryTab() {
       key: 'points',
       title: t('columns.points'),
       skeletonWidth: 'w-14',
+      align: 'right',
       render: (item) => <ShopPoints value={item.point} showSign className={`text-sm font-semibold ${getPointColor(item.point)}`} />,
     },
     {
