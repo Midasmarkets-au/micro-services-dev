@@ -229,7 +229,7 @@ export function TradeReportTable({
         align: 'right',
         skeletonWidth: 'w-20',
         render: (item) => (
-          <span className="text-text-primary">{toFixedSafe(item.openPrice, 2)}</span>
+          <span className="text-text-primary">{toFixedSafe(item.openPrice, item.digits ?? 2)}</span>
         ),
       },
       {
@@ -274,7 +274,7 @@ export function TradeReportTable({
           render: (item: TradeRecord) => (
             <span className="text-text-primary">
               {item.closePrice != null && item.closePrice > 0
-                ? toFixedSafe(item.closePrice, 2)
+                ? toFixedSafe(item.closePrice, item.digits ?? 2)
                 : '--'}
             </span>
           ),
