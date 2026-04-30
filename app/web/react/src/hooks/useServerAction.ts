@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useToast } from './useToast';
@@ -48,6 +48,21 @@ export function useServerAction(options: UseServerActionOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const unauthorizedRedirectingRef = useRef(false);
 
+  // 把所有可能在 render 间变化的依赖收进 ref，
+  // 让 execute 自己保持稳定引用（useCallback 空依赖）。
+  // 否则下游 `useCallback([..., execute])` / `useEffect([..., execute])`
+  // 会因为 execute 引用刷新而陷入死循环（典型表现：一打开 Modal/进入页面 API 不停发）。
+  const optionsRef = useRef({ showErrorToast, onSuccess, onError });
+  const showErrorRef = useRef(showError);
+  const tErrorsRef = useRef(tErrors);
+  const routerRef = useRef(router);
+  useEffect(() => {
+    optionsRef.current = { showErrorToast, onSuccess, onError };
+    showErrorRef.current = showError;
+    tErrorsRef.current = tErrors;
+    routerRef.current = router;
+  });
+
   const normalizeErrorPayload = useCallback(
     (payload?: { errorCode?: string; error?: string; statusCode?: number } | null) => {
       if (!payload) return payload;
@@ -94,8 +109,8 @@ export function useServerAction(options: UseServerActionOptions = {}) {
   const translateError = useCallback(
     (errorCode: string): string => {
       try {
-        // 尝试从国际化文件获取翻译
-        const translated = tErrors(errorCode);
+        // 通过 ref 拿到最新的 t 函数，保持本回调引用稳定
+        const translated = tErrorsRef.current(errorCode);
         // next-intl 在找不到翻译时返回类似 "errorCodes.xxx" 的字符串
         // 检查是否是有效翻译（不包含 namespace 前缀）
         if (translated && !translated.startsWith('errorCodes.')) {
@@ -108,7 +123,7 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         return errorCode;
       }
     },
-    [tErrors]
+    []
   );
 
   /**
@@ -122,6 +137,10 @@ export function useServerAction(options: UseServerActionOptions = {}) {
       ...args: Args
     ): Promise<ActionResponse<T>> => {
       setIsLoading(true);
+
+      const { showErrorToast: showErrorToastOpt, onSuccess: onSuccessOpt, onError: onErrorOpt } = optionsRef.current;
+      const showError = showErrorRef.current;
+      const router = routerRef.current;
 
       try {
         const result = await action(...args);
@@ -158,12 +177,12 @@ export function useServerAction(options: UseServerActionOptions = {}) {
             : translateError(rawError);
           
           // 由业务 action 决定是否跳过 Toast（通过 skipToast 字段）
-          if (showErrorToast && !result.skipToast) {
+          if (showErrorToastOpt && !result.skipToast) {
             // 传入原始 key 给 showError，让 Toast 组件也能尝试翻译
             showError(errorCode || rawError);
           }
 
-          onError?.(errorMessage, errorCode);
+          onErrorOpt?.(errorMessage, errorCode);
 
           return {
             ...result,
@@ -171,7 +190,7 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           };
         }
 
-        onSuccess?.(result.data as T);
+        onSuccessOpt?.(result.data as T);
         return result;
       } catch (error) {
 
@@ -208,11 +227,11 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           };
         }
 
-        if (showErrorToast) {
+        if (showErrorToastOpt) {
           showError('networkError');
         }
 
-        onError?.(errorMessage, 'networkError');
+        onErrorOpt?.(errorMessage, 'networkError');
 
         return {
           success: false,
@@ -224,7 +243,7 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         setIsLoading(false);
       }
     },
-    [showErrorToast, showError, translateError, onSuccess, onError, router, isUnauthorizedError, normalizeErrorPayload]
+    [translateError, isUnauthorizedError, normalizeErrorPayload]
   );
 
   /**
