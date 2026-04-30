@@ -499,6 +499,11 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {groups.length === 0 && (
+                      <p className="col-span-full py-6 text-center text-sm text-text-secondary">
+                        {t('channel.noChannel')}
+                      </p>
+                    )}
                     {groups.map((group) => {
                       const isSelected = selectedGroup?.group === group.group;
                       const isGroupActive = group.isActive !== false;

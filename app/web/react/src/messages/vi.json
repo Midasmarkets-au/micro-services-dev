@@ -1194,7 +1194,8 @@
       "fee": "Phí",
       "noFee": "Miễn phí (0%)",
       "processing": "Thời gian xử lý",
-      "hour": "giờ"
+      "hour": "giờ",
+      "noChannel": "Hiện tại chưa có. Vui lòng liên hệ quản lý tài khoản của bạn."
     },
     "notice": {
       "title": "Thông báo nạp tiền {name}"

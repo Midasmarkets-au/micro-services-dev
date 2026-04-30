@@ -1194,7 +1194,8 @@
       "fee": "Fee",
       "noFee": "0% fee",
       "processing": "Processing",
-      "hour": "hour"
+      "hour": "hour",
+      "noChannel": "Not available at the moment. Please contact your account manager."
     },
     "notice": {
       "title": "Notice for {name} Deposit"
