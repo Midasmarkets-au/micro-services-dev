@@ -60,6 +60,8 @@ const INITIAL_FORM: AddressFormData = {
 export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSuccess }: ExchangeModalProps) {
   const t = useTranslations('eventshop');
   const { execute } = useServerAction({ showErrorToast: true });
+  // execute 引用在 useServerAction 内部 state 变化时会刷新，
+  // 用 ref 固定下来，避免 fetchData/useEffect 因依赖变化触发死循环
   const executeRef = useRef(execute);
   useEffect(() => { executeRef.current = execute; });
   const { showSuccess, showError } = useToast();
