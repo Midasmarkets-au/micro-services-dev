@@ -449,6 +449,7 @@ export function IbLinksModal({
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         code={detailCode}
+        agentUid={account?.uid}
       />
 
       {/* 编辑链接名称弹窗 */}

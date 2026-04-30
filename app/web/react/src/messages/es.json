@@ -1194,7 +1194,8 @@
       "fee": "Tarifa",
       "noFee": "Sin tarifa (0%)",
       "processing": "Tiempo de procesamiento",
-      "hour": "horas"
+      "hour": "horas",
+      "noChannel": "No disponible en este momento. Por favor, contacte a su gestor de cuenta."
     },
     "notice": {
       "title": "Aviso de depósito {name}"

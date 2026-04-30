@@ -185,15 +185,42 @@ export interface SalesRebateRuleItem {
   type?: number;
 }
 
+export interface SalesAllowedAccount {
+  accountType: number;
+  optionName?: string;
+  percentage?: number;
+  allowPips?: number[];
+  allowCommissions?: number[];
+  pips?: number | null;
+  commission?: number | null;
+  items?: { cid: number; r: number }[];
+}
+
 export interface SalesRebateRuleDetail {
   id: number;
+  isRoot?: boolean;
   rules?: SalesRebateRuleItem[];
   distributionType?: number;
+  schema?: SalesAllowedAccount[];
+  calculatedLevelSetting?: {
+    distributionType?: number;
+    allowedAccounts: SalesAllowedAccount[];
+  };
   levelSetting?: {
     distributionType: number;
-    levels?: number[];
+    allowedAccounts?: SalesAllowedAccount[];
   };
 }
+
+export interface SalesDefaultLevelSettingOption {
+  optionName?: string;
+  OptionName?: string;
+  category?: Record<string, number>;
+  allowPipSetting?: Record<string, { items: Record<string, number> }>;
+  allowCommissionSetting?: Record<string, { items: Record<string, number> }>;
+}
+
+export type SalesDefaultLevelSettingMap = Record<string, SalesDefaultLevelSettingOption[]>;
 
 export interface SalesDefaultLevelSetting {
   distributionType: number;
