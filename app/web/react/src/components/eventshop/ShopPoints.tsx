@@ -29,10 +29,15 @@ export function ShopPoints({
   if (isNaN(raw)) return <span className={className}>-</span>;
 
   const displayValue = new Decimal(raw).div(10000);
-  const abs = displayValue.abs().toFixed(decimals);
+  const absValue = displayValue.abs();
+  const effectiveDecimals =
+    !absValue.isZero() && Number(absValue.toFixed(decimals)) === 0
+      ? 4
+      : decimals;
+  const abs = absValue.toFixed(effectiveDecimals);
   const formatted = Number(abs).toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    minimumFractionDigits: effectiveDecimals,
+    maximumFractionDigits: effectiveDecimals,
   });
 
   let text: string;

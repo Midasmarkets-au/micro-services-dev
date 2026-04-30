@@ -141,6 +141,7 @@ export function RewardDetails() {
       key: 'amount',
       title: t('columns.amount'),
       skeletonWidth: 'w-16',
+      align: 'right',
       render: (item) => (
         <span className="text-sm font-semibold text-text-primary">
           US${typeof item.amount === 'number' ? item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 }) : item.amount}

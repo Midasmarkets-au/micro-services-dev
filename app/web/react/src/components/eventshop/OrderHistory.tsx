@@ -166,6 +166,7 @@ export function OrderHistory() {
       key: 'points',
       title: t('columns.points'),
       skeletonWidth: 'w-14',
+      align: 'right',
       render: (order) => <ShopPoints value={order.totalPoint} className="text-sm font-semibold text-text-primary" />,
     },
     {
