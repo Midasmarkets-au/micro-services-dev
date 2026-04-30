@@ -2263,6 +2263,7 @@
       "referCode": "Kod rujukan",
       "referCodePlaceholder": "Masukkan kod rujukan",
       "referCodeValid": "Kod rujukan sah",
+      "referCodeInvalid": "Kod rujukan tidak sah atau pengesahan gagal",
       "role": "Peranan",
       "accountType": "Jenis akaun",
       "currency": "Mata wang",

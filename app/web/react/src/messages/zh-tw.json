@@ -2263,6 +2263,7 @@
       "referCode": "推薦碼",
       "referCodePlaceholder": "請輸入推薦碼",
       "referCodeValid": "推薦碼有效",
+      "referCodeInvalid": "推薦碼無效或驗證失敗",
       "role": "角色",
       "accountType": "帳戶類型",
       "currency": "貨幣",
