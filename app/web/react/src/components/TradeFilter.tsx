@@ -501,7 +501,9 @@ export const TradeFilter = forwardRef<TradeFilterRef, TradeFilterProps>(function
       if (visibleFields.has('datePicker')) {
         let fromStr: string | null = null;
         let toStr: string | null = null;
-        const effectiveDateRange = overrides?.dateRange ?? dateRange;
+        const effectiveDateRange = (overrides && 'dateRange' in overrides)
+          ? overrides.dateRange
+          : dateRange;
 
         if (overrides?.fromDate) {
           fromStr = overrides.fromDate;
