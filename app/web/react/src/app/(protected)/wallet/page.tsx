@@ -346,6 +346,7 @@ export default function WalletPage() {
             currencyId={wallet?.currencyId ?? 840}
             onWithdraw={handleWithdraw}
             onTransfer={handleTransfer}
+            fractionDigits={2}
           />
         )}
       </div>

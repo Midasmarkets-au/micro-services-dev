@@ -30,6 +30,8 @@ export interface BalanceShowProps {
   locale?: string;
   sign?: '+' | '-' | '';
   className?: string;
+  /** 固定小数位数，传入后覆盖默认的自动判断逻辑（有小数显示4位，无小数显示2位） */
+  fractionDigits?: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export function BalanceShow({
   locale: localeProp,
   sign = '',
   className,
+  fractionDigits,
 }: BalanceShowProps) {
   const nextIntlLocale = useLocale();
   const locale = localeProp || LOCALE_MAP[nextIntlLocale] || nextIntlLocale || 'en-US';
@@ -54,8 +57,8 @@ export function BalanceShow({
   const displayBalance = sign ? Math.abs(balance) : balance;
 
   const formatted = useMemo(
-    () => formatBalance(displayBalance, effectiveCurrencyId, locale),
-    [displayBalance, effectiveCurrencyId, locale]
+    () => formatBalance(displayBalance, effectiveCurrencyId, locale, fractionDigits),
+    [displayBalance, effectiveCurrencyId, locale, fractionDigits]
   );
 
   return (
@@ -71,22 +74,23 @@ export function BalanceShow({
 export function formatBalance(
   balance: number,
   currencyId: number = 840,
-  locale: string = 'en-US'
+  locale: string = 'en-US',
+  fractionDigits?: number
 ): string {
   const id = currencyId === -1 ? 840 : currencyId;
   const value = balance;
   const hasDecimal = value % 1 !== 0;
-  const fractionDigits = hasDecimal ? 4 : 2;
+  const digits = fractionDigits !== undefined ? fractionDigits : (hasDecimal ? 4 : 2);
   const code = CurrencyCodeMap[id] || 'USD';
 
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: code,
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
     }).format(value/100);
   } catch {
-    return `${code} ${value.toFixed(fractionDigits)}`;
+    return `${code} ${value.toFixed(digits)}`;
   }
 }
