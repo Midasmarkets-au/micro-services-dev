@@ -1194,7 +1194,8 @@
       "fee": "Biaya",
       "noFee": "Biaya 0%",
       "processing": "Diproses",
-      "hour": "jam"
+      "hour": "jam",
+      "noChannel": "Saat ini tidak tersedia. Silakan hubungi manajer akun Anda."
     },
     "notice": {
       "title": "Pemberitahuan Setoran {name}"
