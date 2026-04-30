@@ -1194,7 +1194,8 @@
       "fee": "收取费用",
       "noFee": "0%费用",
       "processing": "处理时间",
-      "hour": "小时"
+      "hour": "小时",
+      "noChannel": "目前未有提供，请联系您的客户经理。"
     },
     "notice": {
       "title": "注意 {name} 入金"

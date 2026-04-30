@@ -1194,7 +1194,8 @@
       "fee": "Yuran",
       "noFee": "Tiada yuran (0%)",
       "processing": "Masa pemprosesan",
-      "hour": "jam"
+      "hour": "jam",
+      "noChannel": "Tidak tersedia buat masa ini. Sila hubungi pengurus akaun anda."
     },
     "notice": {
       "title": "Notis deposit {name}"
