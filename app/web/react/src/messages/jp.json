@@ -2263,6 +2263,7 @@
       "referCode": "紹介コード",
       "referCodePlaceholder": "紹介コードを入力してください",
       "referCodeValid": "紹介コードは有効です",
+      "referCodeInvalid": "紹介コードが無効または確認に失敗しました",
       "role": "役割",
       "accountType": "口座タイプ",
       "currency": "通貨",

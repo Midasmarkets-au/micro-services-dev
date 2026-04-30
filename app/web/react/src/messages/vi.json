@@ -2263,6 +2263,7 @@
       "referCode": "Mã giới thiệu",
       "referCodePlaceholder": "Nhập mã giới thiệu",
       "referCodeValid": "Mã giới thiệu hợp lệ",
+      "referCodeInvalid": "Mã giới thiệu không hợp lệ hoặc kiểm tra thất bại",
       "role": "Vai trò",
       "accountType": "Loại tài khoản",
       "currency": "Tiền tệ",
