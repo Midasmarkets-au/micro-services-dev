@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/hooks/useToast';
@@ -29,17 +29,31 @@ export function useBrowserAction(options: UseBrowserActionOptions = {}) {
   const tErrors = useTranslations('errorCodes');
   const unauthorizedRedirectingRef = useRef(false);
 
+  // 用 ref 收纳所有可能在 render 间变化的依赖，让 execute 引用稳定。
+  // 否则下游 `useCallback([..., execute])` / `useEffect([..., execute])`
+  // 会因 execute 引用刷新而陷入死循环。
+  const optionsRef = useRef({ showErrorToast, onError, onSuccess });
+  const showErrorRef = useRef(showError);
+  const tErrorsRef = useRef(tErrors);
+  const routerRef = useRef(router);
+  useEffect(() => {
+    optionsRef.current = { showErrorToast, onError, onSuccess };
+    showErrorRef.current = showError;
+    tErrorsRef.current = tErrors;
+    routerRef.current = router;
+  });
+
   const translate = useCallback(
     (code: string) => {
       try {
-        const t = tErrors(code);
+        const t = tErrorsRef.current(code);
         if (t && !t.startsWith('errorCodes.')) return t;
       } catch {
         // ignore
       }
       return code;
     },
-    [tErrors]
+    []
   );
 
   /**
@@ -53,6 +67,10 @@ export function useBrowserAction(options: UseBrowserActionOptions = {}) {
       action: (...args: Args) => Promise<BrowserApiResponse<T>>,
       ...args: Args
     ): Promise<BrowserApiResponse<T>> => {
+      const { showErrorToast: showErrorToastOpt, onError: onErrorOpt, onSuccess: onSuccessOpt } = optionsRef.current;
+      const showError = showErrorRef.current;
+      const router = routerRef.current;
+
       const result = await action(...args);
 
       if (result.aborted) {
@@ -60,7 +78,7 @@ export function useBrowserAction(options: UseBrowserActionOptions = {}) {
       }
 
       if (result.success) {
-        onSuccess?.(result.data as T);
+        onSuccessOpt?.(result.data as T);
         return result;
       }
 
@@ -79,20 +97,20 @@ export function useBrowserAction(options: UseBrowserActionOptions = {}) {
         return result;
       }
 
-      if (showErrorToast && errorCode) {
+      if (showErrorToastOpt && errorCode) {
         showError(errorCode);
-      } else if (showErrorToast && result.error) {
+      } else if (showErrorToastOpt && result.error) {
         showError(result.error);
       }
 
-      onError?.(
+      onErrorOpt?.(
         errorCode ? translate(errorCode) : result.error || 'Request failed',
         errorCode
       );
 
       return result;
     },
-    [onError, onSuccess, router, showError, showErrorToast, translate]
+    [translate]
   );
 
   return { execute };
