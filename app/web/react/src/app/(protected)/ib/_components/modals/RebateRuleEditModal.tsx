@@ -294,7 +294,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
 
       const result = await execute(updateIBRebateRule, agentAccount.uid, rebateAgentRuleId, formData);
       if (result.success) {
-        showToast({ message: 'Update Success', type: 'success' });
+        showToast({ message: t('rebateEdit.updateSuccess'), type: 'success' });
         onOpenChange(false);
         onSuccess?.();
       }

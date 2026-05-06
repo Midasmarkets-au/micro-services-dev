@@ -202,7 +202,7 @@ export default function ProfilePage() {
                 <span className="text-primary">*</span>{t('fields.nickname')}
               </label>
               <Input
-                value={user?.name || user?.nativeName || ''}
+                value={ user?.nativeName || user?.name || ''}
                 disabled
                 className="w-full"
               />
