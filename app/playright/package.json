@@ -1,0 +1,26 @@
+{
+  "name": "playrighttest",
+  "version": "1.0.0",
+  "description": "Playwright cross-app comparison tests: Next.js vs Vue3 client portal",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:auth": "playwright test tests/01-auth",
+    "test:dashboard": "playwright test tests/02-dashboard",
+    "test:wallet": "playwright test tests/03-wallet",
+    "test:account": "playwright test tests/04-account",
+    "test:ib": "playwright test tests/05-ib",
+    "test:report": "playwright show-report",
+    "setup": "playwright test --project=setup",
+    "codegen:next": "playwright codegen http://localhost:3000",
+    "codegen:vue": "playwright codegen http://client.localhost:8084"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@types/node": "^20.0.0",
+    "deep-diff": "^1.0.2",
+    "@types/deep-diff": "^1.0.5",
+    "typescript": "^5.4.0"
+  }
+}

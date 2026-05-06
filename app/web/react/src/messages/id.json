@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "Kode verifikasi tidak ditemukan atau telah kedaluwarsa",
     "CODE_ALREADY_SENT": "Kode verifikasi sudah dikirim, silakan periksa email Anda",
     "electronicIdentityVerificationRequired": "Persetujuan verifikasi identitas elektronik diperlukan untuk melanjutkan.",
-    "Too_many_pending_deposits": "Terlalu banyak setoran yang tertunda, silakan hubungi layanan pelanggan"
+    "Too_many_pending_deposits": "Terlalu banyak setoran yang tertunda, silakan hubungi layanan pelanggan",
+    "EuPayment": "Pembayaran EU belum dikonfigurasi, silakan hubungi layanan pelanggan"
   },
   "platforms": {
     "title": "Platform Trading",
@@ -1225,6 +1226,8 @@
       "copyAddress": "Salin Alamat",
       "copied": "Disalin",
       "countdown": "Harap selesaikan pembayaran dalam {minutes} menit",
+      "paymentExpireTime": "Pembayaran berakhir dalam",
+      "expired": "Kadaluarsa",
       "clickRedirect": "Harap klik tautan untuk menyelesaikan pembayaran",
       "redirect": "Klik untuk diarahkan",
       "error": "Pembayaran gagal, silakan coba lagi",
@@ -1267,7 +1270,19 @@
       "cardNumber": "Nomor Kartu",
       "cardHolder": "Nama Pemegang Kartu",
       "expiryDate": "Tanggal Kedaluwarsa",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "Nama Depan",
+      "billingLastName": "Nama Belakang",
+      "billingAddress": "Alamat Penagihan",
+      "billingCity": "Kota",
+      "billingState": "Provinsi/Negara Bagian",
+      "billingZipcode": "Kode Pos",
+      "billingCountry": "Negara",
+      "billingPhone": "Nomor Telepon",
+      "ccNumber": "Nomor Kartu",
+      "ccMonth": "Bulan Kedaluwarsa",
+      "ccYear": "Tahun Kedaluwarsa",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Tutup",
