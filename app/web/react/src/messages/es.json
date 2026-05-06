@@ -2029,7 +2029,8 @@
       "newRule": "Nueva regla",
       "editRule1": "Editar valor de reembolso existente del agente",
       "editRule2": "Establecer valor de reembolso para nueva categoría de producto",
-      "editRule5": "Establecer valor de reembolso inicial para el agente"
+      "editRule5": "Establecer valor de reembolso inicial para el agente",
+      "updateSuccess": "Actualizado exitosamente"
     }
   },
   "sales": {

@@ -150,7 +150,7 @@ export function DashboardHeader() {
   const closeDrawer = () => setIsDrawerOpen(false);
 
   // 用户显示名称
-  const displayName = user?.name || user?.nativeName || user?.email?.split('@')[0] || '-';
+  const displayName =user?.nativeName || user?.name || user?.email?.split('@')[0] || '-';
   const displayEmail = user?.email || '-';
   const displayAvatar = user?.avatar || '/images/default-avatar.svg';
 
