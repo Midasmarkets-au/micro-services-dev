@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "รหัสยืนยันไม่มีอยู่หรือหมดอายุ",
     "CODE_ALREADY_SENT": "รหัสยืนยันถูกส่งแล้ว กรุณาตรวจสอบอีเมล",
     "electronicIdentityVerificationRequired": "การยืนยันตัวตนทางอิเล็กทรอนิกส์เป็นสิ่งจำเป็น กรุณาเลือกยินยอมแล้วดำเนินการต่อ",
-    "Too_many_pending_deposits": "การฝากเงินที่รอดำเนินการมากเกินไป กรุณาติดต่อฝ่ายบริการลูกค้า"
+    "Too_many_pending_deposits": "การฝากเงินที่รอดำเนินการมากเกินไป กรุณาติดต่อฝ่ายบริการลูกค้า",
+    "EuPayment": "การชำระเงิน EU ยังไม่ได้ตั้งค่า กรุณาติดต่อฝ่ายบริการลูกค้า"
   },
   "platforms": {
     "title": "แพลตฟอร์มการซื้อขาย",
@@ -1225,6 +1226,8 @@
       "copyAddress": "คัดลอกที่อยู่",
       "copied": "คัดลอกแล้ว",
       "countdown": "กรุณาชำระเงินภายใน {minutes} นาที",
+      "paymentExpireTime": "การชำระเงินหมดอายุใน",
+      "expired": "หมดอายุแล้ว",
       "clickRedirect": "คลิกลิงก์เพื่อชำระเงิน",
       "redirect": "คลิกเพื่อไปยัง",
       "error": "การชำระเงินล้มเหลว กรุณาลองใหม่",
@@ -1267,7 +1270,19 @@
       "cardNumber": "หมายเลขบัตร",
       "cardHolder": "ชื่อผู้ถือบัตร",
       "expiryDate": "วันหมดอายุ",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "ชื่อ",
+      "billingLastName": "นามสกุล",
+      "billingAddress": "ที่อยู่สำหรับเรียกเก็บเงิน",
+      "billingCity": "เมือง",
+      "billingState": "จังหวัด/รัฐ",
+      "billingZipcode": "รหัสไปรษณีย์",
+      "billingCountry": "ประเทศ",
+      "billingPhone": "เบอร์โทรศัพท์",
+      "ccNumber": "หมายเลขบัตร",
+      "ccMonth": "เดือนหมดอายุ",
+      "ccYear": "ปีหมดอายุ",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "ปิด",

@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "លេខកូដផ្ទៀងផ្ទាត់មិនមាន ឬផុតកំណត់",
     "CODE_ALREADY_SENT": "លេខកូដផ្ទៀងផ្ទាត់ត្រូវបានផ្ញើហើយ សូមពិនិត្យអ៊ីមែល",
     "electronicIdentityVerificationRequired": "ការផ្ទៀងផ្ទាត់អត្តសញ្ញាណអេឡិចត្រូនិកជាកាតព្វកិច្ច សូមជ្រើសរើសយល់ព្រម ហើយបន្ត",
-    "Too_many_pending_deposits": "មានការដាក់ប្រាក់រង់ចាំច្រើនពេក សូមទាក់ទងផ្នែកសេវាកម្មអតិថិជន"
+    "Too_many_pending_deposits": "មានការដាក់ប្រាក់រង់ចាំច្រើនពេក សូមទាក់ទងផ្នែកសេវាកម្មអតិថិជន",
+    "EuPayment": "ការទូទាត់ EU មិនទាន់ត្រូវបានកំណត់រចនាសម្ព័ន្ធ សូមទាក់ទងផ្នែកសេវាកម្មអតិថិជន"
   },
   "platforms": {
     "title": "វេទិកាជួញដូរ",
@@ -1225,6 +1226,8 @@
       "copyAddress": "ចម្លងអាសយដ្ឋាន",
       "copied": "ចម្លងហើយ",
       "countdown": "សូមបញ្ចប់ការទូទាត់ក្នុង {minutes} នាទី",
+      "paymentExpireTime": "ការទូទាត់នឹងផុតកំណត់ក្នុង",
+      "expired": "ផុតកំណត់",
       "clickRedirect": "ចុចតំណ ដើម្បីបញ្ចប់ការទូទាត់",
       "redirect": "ចុចដើម្បីទៅ",
       "error": "ការទូទាត់បរាជ័យ សូមព្យាយាមម្ដងទៀត",
@@ -1267,7 +1270,19 @@
       "cardNumber": "លេខកាត",
       "cardHolder": "ម្ចាស់កាត",
       "expiryDate": "ថ្ងៃផុតកំណត់",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "នាមខ្លួន",
+      "billingLastName": "នាមត្រកូល",
+      "billingAddress": "អាសយដ្ឋានវិក្កយបត្រ",
+      "billingCity": "ក្រុង",
+      "billingState": "រដ្ឋ/ខេត្ត",
+      "billingZipcode": "លេខកូដប្រៃសណីយ៍",
+      "billingCountry": "ប្រទេស",
+      "billingPhone": "លេខទូរស័ព្ទ",
+      "ccNumber": "លេខកាត",
+      "ccMonth": "ខែផុតកំណត់",
+      "ccYear": "ឆ្នាំផុតកំណត់",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "បិទ",

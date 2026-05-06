@@ -1,0 +1,8 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+.auth/next.json
+.auth/vue.json
+.env
+/snapshots

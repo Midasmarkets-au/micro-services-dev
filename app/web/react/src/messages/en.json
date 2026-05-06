@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "Verification code not found or has expired",
     "CODE_ALREADY_SENT": "Verification code has already been sent, please check your email",
     "electronicIdentityVerificationRequired": "Electronic identity verification consent is required to continue.",
-    "Too_many_pending_deposits": "Too many pending deposits, please contact customer service"
+    "Too_many_pending_deposits": "Too many pending deposits, please contact customer service",
+    "EuPayment": "EU payment is not configured, please contact customer service"
   },
   "platforms": {
     "title": "Trading Platforms",
@@ -1225,6 +1226,8 @@
       "copyAddress": "Copy Address",
       "copied": "Copied",
       "countdown": "Please complete payment within {minutes} minutes",
+      "paymentExpireTime": "Payment expires in",
+      "expired": "Expired",
       "clickRedirect": "Please click the link to complete payment",
       "redirect": "Click to redirect",
       "error": "Payment failed, please try again",
@@ -1267,7 +1270,19 @@
       "cardNumber": "Card Number",
       "cardHolder": "Cardholder Name",
       "expiryDate": "Expiry Date",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "First Name",
+      "billingLastName": "Last Name",
+      "billingAddress": "Billing Address",
+      "billingCity": "City",
+      "billingState": "State",
+      "billingZipcode": "Zip Code",
+      "billingCountry": "Country",
+      "billingPhone": "Phone",
+      "ccNumber": "Card Number",
+      "ccMonth": "Expiry Month",
+      "ccYear": "Expiry Year",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Close",

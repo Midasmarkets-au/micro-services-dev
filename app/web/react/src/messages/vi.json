@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "Mã xác minh không tồn tại hoặc đã hết hạn",
     "CODE_ALREADY_SENT": "Mã xác minh đã được gửi, vui lòng kiểm tra email",
     "electronicIdentityVerificationRequired": "Xác minh danh tính điện tử là bắt buộc, vui lòng chọn đồng ý và tiếp tục",
-    "Too_many_pending_deposits": "Quá nhiều khoản tiền gửi đang chờ xử lý, vui lòng liên hệ với dịch vụ khách hàng"
+    "Too_many_pending_deposits": "Quá nhiều khoản tiền gửi đang chờ xử lý, vui lòng liên hệ với dịch vụ khách hàng",
+    "EuPayment": "Thanh toán EU chưa được cấu hình, vui lòng liên hệ bộ phận hỗ trợ"
   },
   "platforms": {
     "title": "Nền tảng giao dịch",
@@ -1225,6 +1226,8 @@
       "copyAddress": "Sao chép địa chỉ",
       "copied": "Đã sao chép",
       "countdown": "Vui lòng thanh toán trong vòng {minutes} phút",
+      "paymentExpireTime": "Thanh toán hết hạn sau",
+      "expired": "Đã hết hạn",
       "clickRedirect": "Nhấp liên kết để thanh toán",
       "redirect": "Nhấp để đến",
       "error": "Thanh toán thất bại, vui lòng thử lại",
@@ -1267,7 +1270,19 @@
       "cardNumber": "Số thẻ",
       "cardHolder": "Tên chủ thẻ",
       "expiryDate": "Ngày hết hạn",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "Tên",
+      "billingLastName": "Họ",
+      "billingAddress": "Địa chỉ thanh toán",
+      "billingCity": "Thành phố",
+      "billingState": "Tỉnh/Bang",
+      "billingZipcode": "Mã bưu chính",
+      "billingCountry": "Quốc gia",
+      "billingPhone": "Số điện thoại",
+      "ccNumber": "Số thẻ",
+      "ccMonth": "Tháng hết hạn",
+      "ccYear": "Năm hết hạn",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Đóng",
