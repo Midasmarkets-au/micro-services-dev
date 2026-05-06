@@ -2029,7 +2029,8 @@
       "newRule": "Aturan Baru",
       "editRule1": "Ubah nilai rabat yang ada untuk agen",
       "editRule2": "Tetapkan nilai rabat untuk kategori produk baru",
-      "editRule5": "Tetapkan nilai rabat awal untuk agen"
+      "editRule5": "Tetapkan nilai rabat awal untuk agen",
+      "updateSuccess": "Berhasil diperbarui"
     }
   },
   "sales": {

@@ -30,12 +30,14 @@ export function TransactionTabs({
   ];
 
   return (
-    <Tabs
-      tabs={tabs}
-      activeKey={activeTab}
-      onChange={onTabChange}
-      size="lg"
-      showDivider={false}
-    />
+    <div data-testid="wallet-tabs">
+      <Tabs
+        tabs={tabs}
+        activeKey={activeTab}
+        onChange={onTabChange}
+        size="lg"
+        showDivider={false}
+      />
+    </div>
   );
 }

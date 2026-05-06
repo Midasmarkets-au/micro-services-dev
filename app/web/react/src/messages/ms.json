@@ -2029,7 +2029,8 @@
       "newRule": "Peraturan baharu",
       "editRule1": "Edit nilai rebat sedia ada ejen",
       "editRule2": "Tetapkan nilai rebat untuk kategori produk baharu",
-      "editRule5": "Tetapkan nilai rebat awal ejen"
+      "editRule5": "Tetapkan nilai rebat awal ejen",
+      "updateSuccess": "Berjaya dikemas kini"
     }
   },
   "sales": {

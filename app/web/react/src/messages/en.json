@@ -2029,7 +2029,8 @@
       "newRule": "New Rule",
       "editRule1": "Edit existing rebate values for the agent",
       "editRule2": "Set rebate values for new product categories",
-      "editRule5": "Set initial rebate values for the agent"
+      "editRule5": "Set initial rebate values for the agent",
+      "updateSuccess": "Updated successfully"
     }
   },
   "sales": {
