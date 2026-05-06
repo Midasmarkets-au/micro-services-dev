@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "El código de verificación no existe o ha expirado",
     "CODE_ALREADY_SENT": "El código de verificación ya fue enviado, por favor revise su correo",
     "electronicIdentityVerificationRequired": "La verificación electrónica de identidad es obligatoria, por favor acepte para continuar.",
-    "Too_many_pending_deposits": "Demasiados depósitos pendientes, por favor contacte con el servicio de atención al cliente"
+    "Too_many_pending_deposits": "Demasiados depósitos pendientes, por favor contacte con el servicio de atención al cliente",
+    "EuPayment": "El pago EU no está configurado, por favor contacte con el servicio de atención al cliente"
   },
   "platforms": {
     "title": "Plataforma de trading",
@@ -1225,6 +1226,8 @@
       "copyAddress": "Copiar dirección",
       "copied": "Copiado",
       "countdown": "Por favor complete el pago en {minutes} minutos",
+      "paymentExpireTime": "El pago expira en",
+      "expired": "Expirado",
       "clickRedirect": "Por favor haga clic en el enlace para completar el pago",
       "redirect": "Hacer clic para redirigir",
       "error": "Pago fallido, por favor intente de nuevo",
@@ -1267,7 +1270,19 @@
       "cardNumber": "Número de tarjeta",
       "cardHolder": "Nombre del titular de la tarjeta",
       "expiryDate": "Fecha de vencimiento",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "Nombre",
+      "billingLastName": "Apellido",
+      "billingAddress": "Dirección de facturación",
+      "billingCity": "Ciudad",
+      "billingState": "Estado/Provincia",
+      "billingZipcode": "Código postal",
+      "billingCountry": "País",
+      "billingPhone": "Teléfono",
+      "ccNumber": "Número de tarjeta",
+      "ccMonth": "Mes de vencimiento",
+      "ccYear": "Año de vencimiento",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Cerrar",

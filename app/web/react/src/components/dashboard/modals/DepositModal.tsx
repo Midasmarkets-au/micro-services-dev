@@ -49,6 +49,11 @@ type Step = 1 | 2 | 3 | 4 | 5;
 
 const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId'];
 
+function formatAmount(amount: number): string {
+  if (amount == null) return '';
+  return new Intl.NumberFormat('en-US').format(amount);
+}
+
 function getBase64ImageDataUrl(text?: string): string {
   const value = text?.trim();
   if (!value) return '';
@@ -138,9 +143,17 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
   const [targetAmount, setTargetAmount] = useState<number>(0);
 
+  // Step 5 显示控制
+  const [showInstruction, setShowInstruction] = useState(false);
+
   // QrCode 支付确认
   const [isPaidSubmitting, setIsPaidSubmitting] = useState(false);
   const [isPaidConfirmed, setIsPaidConfirmed] = useState(false);
+
+  // QrCode 倒计时
+  const [countDown, setCountDown] = useState(0);
+  const [isExpired, setIsExpired] = useState(false);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // 信用卡表单 ref
   const creditCardFormRef = useRef<CreditCardFormHandle>(null);
@@ -178,8 +191,11 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       setAmountError('');
       setDepositResponse(null);
       setTargetAmount(0);
+      setShowInstruction(false);
       setIsPaidSubmitting(false);
       setIsPaidConfirmed(false);
+      setCountDown(0);
+      setIsExpired(false);
     }, 200);
   }, [onOpenChange]);
 
@@ -397,6 +413,65 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
   }, [isPaidConfirmed, qrTransactionId, execute, showSuccess, t]);
 
+  // QrCode 倒计时：当 depositResponse.message 变化时启动
+  useEffect(() => {
+    if (countdownTimerRef.current !== null) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setIsExpired(false);
+    setCountDown(0);
+
+    const raw: unknown = depositResponse?.message;
+    if (!raw || depositResponse?.action !== DepositActions.QrCode) return;
+
+    // 解析 message：数字（分钟数）、数字字符串，或 UTC 绝对时间戳字符串
+    let expiresAt: Date | null = null;
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      expiresAt = new Date(Date.now() + raw * 60_000);
+    } else if (typeof raw === 'string' && /^\d+(\.\d+)?$/.test(raw.trim())) {
+      expiresAt = new Date(Date.now() + Number(raw.trim()) * 60_000);
+    } else if (typeof raw === 'string') {
+      // 服务端返回 UTC+0 时间字符串，强制按 UTC 解析（等价于 moment.utc(raw).local()）
+      const utcStr = /Z$|[+-]\d{2}:\d{2}$/.test(raw.trim()) ? raw.trim() : raw.trim() + 'Z';
+      const parsed = new Date(utcStr);
+      if (!Number.isNaN(parsed.getTime())) expiresAt = parsed;
+    }
+    if (!expiresAt) return;
+
+    const computeRemaining = () => Math.max(0, Math.floor((expiresAt!.getTime() - Date.now()) / 1000));
+
+    const initial = computeRemaining();
+    if (initial <= 0) { setIsExpired(true); return; }
+    setCountDown(initial);
+
+    countdownTimerRef.current = setInterval(() => {
+      const remaining = computeRemaining();
+      setCountDown(remaining);
+      if (remaining <= 0 && countdownTimerRef.current !== null) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+        setIsExpired(true);
+      }
+    }, 1000);
+
+    return () => {
+      if (countdownTimerRef.current !== null) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
+    };
+  }, [depositResponse?.message, depositResponse?.action]);
+
+  const countDownText = useMemo(() => {
+    const total = Math.max(0, countDown);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }, [countDown]);
+
   // Step 4: 提交入金
   const handleDeposit = useCallback(async () => {
     if (!account || !groupInfo || !selectedGroup) return;
@@ -425,6 +500,10 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     if (result.success && result.data) {
       setDepositResponse(result.data);
       const { action, redirectUrl, endPoint, form } = result.data;
+
+      // Post / Redirect：不显示 instruction，显示 MethodCard + 跳转链接
+      const isRedirectAction = action === DepositActions.Post || action === DepositActions.Redirect;
+      setShowInstruction(!isRedirectAction);
 
       if (action === DepositActions.Redirect && redirectUrl) {
         window.open(redirectUrl, '_blank');
@@ -671,19 +750,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
 
                 {/* 通用动态表单字段（非信用卡） */}
                 {!isCreditCard && visibleRequestKeys.length > 0 && (
-                  <div className="flex flex-row gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     {visibleRequestKeys.map((key) => (
-                      <div key={key} className="flex-1">
-                        <Input
-                          label={t(`requestKeys.${key}`, { defaultMessage: key })}
-                          required
-                          inputSize="md"
-                          value={dynamicFields[key] || ''}
-                          onChange={(e) =>
-                            setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
-                          }
-                        />
-                      </div>
+                      <Input
+                        key={key}
+                        label={t(`requestKeys.${key}`, { defaultMessage: key })}
+                        required
+                        inputSize="md"
+                        value={dynamicFields[key] || ''}
+                        onChange={(e) =>
+                          setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -780,15 +858,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                         )}
 
                         {depositResponse.message && (
-                          <p className="text-xs">
-                            {t('guide.countdown', { minutes: depositResponse.message })}
+                          <p className="text-xs text-text-secondary">
+                            {t('guide.paymentExpireTime')}：{' '}
+                            <span className={`font-bold ${isExpired ? 'text-error' : 'text-danger'}`}>
+                              {isExpired ? t('guide.expired') : countDownText}
+                            </span>
                           </p>
                         )}
 
                         {qrTransactionId && (
                           <Button
                             variant="primary"
-                            disabled={isPaidSubmitting || isPaidConfirmed}
+                            disabled={isPaidSubmitting || isPaidConfirmed || isExpired}
                             loading={isPaidSubmitting}
                             onClick={notifyPaid}
                           >
@@ -798,30 +879,67 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       </div>
                     )}
 
-                    {/* Instruction */}
-                    {depositResponse.instruction && (
-                      <div
-                        className="prose prose-sm max-w-none text-text-secondary dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: depositResponse.instruction }}
-                      />
-                    )}
+                    {/* v-if="showInstruction": instruction + 存款金额；v-else: MethodCard + 跳转链接 */}
+                    {showInstruction ? (
+                      <div className="flex flex-col gap-2">
+                        <div
+                          className="prose prose-sm max-w-none text-text-secondary dark:prose-invert"
+                          dangerouslySetInnerHTML={{ __html: depositResponse.instruction || '' }}
+                        />
+                        {targetAmount > 0 && (
+                          <>
+                            <p className="text-sm text-text-secondary">{t('fill.depositAmount')}</p>
+                            <p className="text-base font-semibold text-text-primary">
+                              {formatAmount(targetAmount)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {/* MethodCard */}
+                        {selectedGroup && (
+                          <div className="w-[200px] min-h-[160px] rounded-lg border border-border bg-surface-secondary p-5 flex flex-col gap-0">
+                            <div className="flex items-center justify-between text-xs text-text-secondary">
+                              <span>{t('channel.noFee')}</span>
+                              <span>{'< 1'} {t('channel.hour')}</span>
+                            </div>
+                            <hr className="my-1 border-border" />
+                            <div className="text-right text-xs text-text-secondary">24/5</div>
+                            <div className="flex flex-1 items-center justify-center py-2">
+                              {selectedGroup.logo && (
+                                <Image
+                                  src={selectedGroup.logo}
+                                  alt={displayMethodName}
+                                  width={110}
+                                  height={45}
+                                  className="max-h-[45px] w-auto object-contain"
+                                  unoptimized
+                                />
+                              )}
+                            </div>
+                            <div className="text-center text-xs text-text-secondary mt-2">
+                              {displayMethodName}
+                            </div>
+                          </div>
+                        )}
 
-                    {/* Redirect / Post 跳转链接 */}
-                    {(depositResponse.action === DepositActions.Redirect ||
-                      depositResponse.action === DepositActions.Post) &&
-                      depositResponse.redirectUrl && (
-                        <p className="text-sm text-text-secondary">
-                          {t('guide.clickRedirect')}：{' '}
-                          <a
-                            href={depositResponse.redirectUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline"
-                          >
-                            {t('guide.redirect')}
-                          </a>
-                        </p>
-                      )}
+                        {/* 跳转链接（Post / Redirect 分支必然有 redirectUrl） */}
+                        {depositResponse.redirectUrl && (
+                          <p className="text-sm text-text-secondary">
+                            {t('guide.clickRedirect')}：{' '}
+                            <a
+                              href={depositResponse.redirectUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline"
+                            >
+                              {t('guide.redirect')}
+                            </a>
+                          </p>
+                        )}
+                      </>
+                    )}
                   </>
                 ) : (
                   <div className="flex flex-col gap-4">

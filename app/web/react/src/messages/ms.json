@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "Kod pengesahan tidak wujud atau telah tamat tempoh",
     "CODE_ALREADY_SENT": "Kod pengesahan telah dihantar. Sila semak e-mel anda",
     "electronicIdentityVerificationRequired": "Pengesahan identiti elektronik adalah wajib. Sila pilih bersetuju dan teruskan.",
-    "Too_many_pending_deposits": "Terlalu banyak deposit yang belum selesai, sila hubungi perkhidmatan pelanggan"
+    "Too_many_pending_deposits": "Terlalu banyak deposit yang belum selesai, sila hubungi perkhidmatan pelanggan",
+    "EuPayment": "Pembayaran EU belum dikonfigurasi, sila hubungi perkhidmatan pelanggan"
   },
   "platforms": {
     "title": "Platform dagangan",
@@ -1225,6 +1226,8 @@
       "copyAddress": "Salin alamat",
       "copied": "Disalin",
       "countdown": "Sila lengkapkan pembayaran dalam {minutes} minit",
+      "paymentExpireTime": "Pembayaran tamat tempoh dalam",
+      "expired": "Tamat tempoh",
       "clickRedirect": "Klik pautan untuk melengkapkan pembayaran",
       "redirect": "Klik untuk redirect",
       "error": "Pembayaran gagal. Sila cuba lagi",
@@ -1267,7 +1270,19 @@
       "cardNumber": "Nombor kad",
       "cardHolder": "Nama pemegang kad",
       "expiryDate": "Tarikh luput",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "Nama Pertama",
+      "billingLastName": "Nama Akhir",
+      "billingAddress": "Alamat Pengebilan",
+      "billingCity": "Bandar",
+      "billingState": "Negeri",
+      "billingZipcode": "Poskod",
+      "billingCountry": "Negara",
+      "billingPhone": "Nombor Telefon",
+      "ccNumber": "Nombor Kad",
+      "ccMonth": "Bulan Tamat",
+      "ccYear": "Tahun Tamat",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Tutup",

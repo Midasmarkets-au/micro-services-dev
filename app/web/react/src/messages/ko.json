@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "인증 코드가 존재하지 않거나 만료되었습니다",
     "CODE_ALREADY_SENT": "인증 코드가 이미 전송되었습니다. 이메일을 확인해 주세요",
     "electronicIdentityVerificationRequired": "전자 신원 확인은 필수입니다. 동의를 선택한 후 계속 진행해 주세요.",
-    "Too_many_pending_deposits": "보류 중인 입금이 너무 많습니다. 고객 서비스에 문의해 주세요."
+    "Too_many_pending_deposits": "보류 중인 입금이 너무 많습니다. 고객 서비스에 문의해 주세요.",
+    "EuPayment": "EU 결제가 구성되지 않았습니다. 고객 서비스에 문의해 주세요."
   },
   "platforms": {
     "title": "거래 플랫폼",
@@ -1225,6 +1226,8 @@
       "copyAddress": "주소 복사",
       "copied": "복사됨",
       "countdown": "{minutes}분 내에 결제를 완료해 주세요",
+      "paymentExpireTime": "결제 만료까지",
+      "expired": "만료됨",
       "clickRedirect": "링크를 클릭하여 결제를 완료해 주세요",
       "redirect": "클릭하여 이동",
       "error": "결제에 실패했습니다. 다시 시도해 주세요",
@@ -1267,7 +1270,19 @@
       "cardNumber": "카드 번호",
       "cardHolder": "카드 소지자 이름",
       "expiryDate": "유효 기간",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "이름",
+      "billingLastName": "성",
+      "billingAddress": "청구 주소",
+      "billingCity": "도시",
+      "billingState": "주/도",
+      "billingZipcode": "우편번호",
+      "billingCountry": "국가",
+      "billingPhone": "전화번호",
+      "ccNumber": "카드 번호",
+      "ccMonth": "만료 월",
+      "ccYear": "만료 연도",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "닫기",

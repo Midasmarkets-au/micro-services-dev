@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "验证码不存在或已失效",
     "CODE_ALREADY_SENT": "验证码已发送，请检查您的邮箱",
     "electronicIdentityVerificationRequired": "电子身份验证为必选项，请选择同意后继续。",
-    "Too_many_pending_deposits": "过多的待处理入金，请联系您的客户经理"
+    "Too_many_pending_deposits": "过多的待处理入金，请联系您的客户经理",
+    "EuPayment": "EU支付未配置，请联系客服"
   },
   "platforms": {
     "title": "交易平台",
@@ -1225,6 +1226,8 @@
       "copyAddress": "复制地址",
       "copied": "已复制",
       "countdown": "请在 {minutes} 分钟内完成支付",
+      "paymentExpireTime": "支付剩余时间",
+      "expired": "已过期",
       "clickRedirect": "请点击链接完成支付",
       "redirect": "点击跳转",
       "error": "支付失败，请重试",
@@ -1267,7 +1270,19 @@
       "cardNumber": "卡号",
       "cardHolder": "持卡人姓名",
       "expiryDate": "有效期",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "名",
+      "billingLastName": "姓",
+      "billingAddress": "账单地址",
+      "billingCity": "城市",
+      "billingState": "省/州",
+      "billingZipcode": "邮政编码",
+      "billingCountry": "国家",
+      "billingPhone": "手机号码",
+      "ccNumber": "卡号",
+      "ccMonth": "到期月份",
+      "ccYear": "到期年份",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "关闭",

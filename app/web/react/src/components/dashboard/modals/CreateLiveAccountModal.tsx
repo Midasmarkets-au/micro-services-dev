@@ -67,10 +67,12 @@ export function CreateLiveAccountModal({
               setAccountType(String(result.data.accountTypeAvailable[0]));
             }
             if (result.data.currencyAvailable?.length > 0) {
-              setCurrency(String(result.data.currencyAvailable[0]));
+              const defaultCurrency = result.data.currencyAvailable.includes(840) ? 840 : result.data.currencyAvailable[0];
+              setCurrency(String(defaultCurrency));
             }
             if (result.data.leverageAvailable?.length > 0) {
-              setLeverage(String(result.data.leverageAvailable[0]));
+              const defaultLeverage = result.data.leverageAvailable.includes(1000) ? 1000 : result.data.leverageAvailable[0];
+              setLeverage(String(defaultLeverage));
             }
           }
         } finally {

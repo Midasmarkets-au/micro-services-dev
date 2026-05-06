@@ -698,7 +698,8 @@
     "CODE_NOT_FOUND": "認証コードが存在しないか期限切れです",
     "CODE_ALREADY_SENT": "認証コードはすでに送信されています。メールをご確認ください",
     "electronicIdentityVerificationRequired": "電子的な本人確認は必須です。同意を選択して続行してください。",
-    "Too_many_pending_deposits": "保留中の入金が多すぎます。カスタマーサービスにお問い合わせください。"
+    "Too_many_pending_deposits": "保留中の入金が多すぎます。カスタマーサービスにお問い合わせください。",
+    "EuPayment": "EU決済が設定されていません。カスタマーサービスにお問い合わせください。"
   },
   "platforms": {
     "title": "取引プラットフォーム",
@@ -1225,6 +1226,8 @@
       "copyAddress": "アドレスをコピー",
       "copied": "コピーしました",
       "countdown": "{minutes}分以内に支払いを完了してください",
+      "paymentExpireTime": "お支払いの残り時間",
+      "expired": "期限切れ",
       "clickRedirect": "リンクをクリックして支払いを完了してください",
       "redirect": "クリックしてリダイレクト",
       "error": "支払いに失敗しました。もう一度お試しください",
@@ -1267,7 +1270,19 @@
       "cardNumber": "カード番号",
       "cardHolder": "カード名義人",
       "expiryDate": "有効期限",
-      "cvv": "CVV"
+      "cvv": "CVV",
+      "billingFirstName": "名",
+      "billingLastName": "姓",
+      "billingAddress": "請求先住所",
+      "billingCity": "市区町村",
+      "billingState": "都道府県",
+      "billingZipcode": "郵便番号",
+      "billingCountry": "国",
+      "billingPhone": "電話番号",
+      "ccNumber": "カード番号",
+      "ccMonth": "有効期限（月）",
+      "ccYear": "有効期限（年）",
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "閉じる",
