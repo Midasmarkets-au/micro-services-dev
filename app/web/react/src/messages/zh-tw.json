@@ -2029,7 +2029,8 @@
       "newRule": "新規則",
       "editRule1": "編輯代理的現有返佣值",
       "editRule2": "為新產品類別設定返佣值",
-      "editRule5": "為代理設定初始返佣值"
+      "editRule5": "為代理設定初始返佣值",
+      "updateSuccess": "更新成功"
     }
   },
   "sales": {

@@ -43,7 +43,7 @@ export function DashboardSidebar({ user: propUser }: DashboardSidebarProps) {
   const storeUser = useUserStore((state) => state.user);
   // 优先使用 store 中的数据，其次使用 props
   const user = {
-    nickname: storeUser?.name || storeUser?.nativeName || propUser?.nickname,
+    nickname:  storeUser?.nativeName || storeUser?.name || propUser?.nickname,
     email: storeUser?.email || propUser?.email,
     avatar: storeUser?.avatar || propUser?.avatar,
   };

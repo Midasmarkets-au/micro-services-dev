@@ -2029,7 +2029,8 @@
       "newRule": "Quy tắc mới",
       "editRule1": "Chỉnh sửa giá trị hoàn phí hiện có của đại lý",
       "editRule2": "Đặt hoàn phí cho danh mục sản phẩm mới",
-      "editRule5": "Đặt hoàn phí mặc định của đại lý"
+      "editRule5": "Đặt hoàn phí mặc định của đại lý",
+      "updateSuccess": "Cập nhật thành công"
     }
   },
   "sales": {

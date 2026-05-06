@@ -32,7 +32,7 @@ export function WalletBanner({
       : '/images/verification/verify-day.svg';
 
   return (
-    <div className="relative overflow-hidden rounded h-[170px]">
+    <div data-testid="wallet-banner" className="relative overflow-hidden rounded h-[170px]">
       {/* 背景渐变 */}
       <div className="absolute inset-0 verification-banner-bg" />
       <div className="absolute inset-0 verification-banner-grid" />
