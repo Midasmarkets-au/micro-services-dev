@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { cookies } from 'next/headers';
 import type { User } from '@/types/auth';
 import type { UserInfo } from '@/types/user';
@@ -141,7 +142,7 @@ async function hasCookieAuthContext(): Promise<boolean> {
   try {
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
-    console.log('[API Client] cookie store keys:', allCookies.map(c => c.name));
+    logger.info('[API Client] cookie store keys:', allCookies.map(c => c.name));
     // 有 access_token（后端 session cookie）或 auth-token（token 模式）或 auth-mode=cookie 标记即视为已认证
     const hasAccessToken = allCookies.some(c => c.name === 'access_token');
     const hasAuthToken = allCookies.some(c => c.name === 'auth-token');
@@ -293,20 +294,20 @@ async function request<T>(
     const responseClone = response.clone();
     try {
       const responseBody = await responseClone.json();
-      console.log('[API Client] 请求后端API:', {
+      logger.info('[API Client] 请求后端API:', {
         url,
         status: response.status,
         body: responseBody
       });
     } catch {
-      console.log('[API Client] 请求后端API:', {
+      logger.info('[API Client] 请求后端API:', {
         url,
         status: response.status,
         body: '(JSON 解析失败)'
       });
     }
   } else {
-    console.log('[API Client] 请求后端API:', {
+    logger.info('[API Client] 请求后端API:', {
       url,
       status: response.status,
       body: response.status === 204 ? '(No Content)' : '(非 JSON 响应)'
@@ -321,7 +322,7 @@ async function request<T>(
     try {
       const errorData = await response.json();
       const errorDataString = JSON.stringify(errorData);
-      console.error('[API Client] 请求失败:', {
+      logger.error('[API Client] 请求失败:', {
         url,
         status: response.status,
         statusText: response.statusText,
@@ -350,7 +351,7 @@ async function request<T>(
         }
       }
     } catch {
-      console.error('[API Client] 请求失败 (无法解析错误):', {
+      logger.error('[API Client] 请求失败 (无法解析错误):', {
         url,
         status: response.status,
         statusText: response.statusText
@@ -375,10 +376,10 @@ async function request<T>(
         errorMessage = 'Forbidden';
       }
     }
-    console.log('errorCode==抛出议程', errorCode);
-    console.log('errorMessage抛出议程', errorMessage);
-    console.log('errors抛出议程', errors);
-    console.log('response.status抛出议程', response.status);
+    logger.info('errorCode==抛出议程', errorCode);
+    logger.info('errorMessage抛出议程', errorMessage);
+    logger.info('errors抛出议程', errors);
+    logger.info('response.status抛出议程', response.status);
     throw new ApiError(errorMessage, response.status, errors, errorCode);
   }
 
@@ -408,7 +409,7 @@ async function authenticatedRequest<T>(
   token: string,
   options: RequestInit = {}
 ): Promise<T> {
-  console.log('[API Client] 发送认证请求:', {
+  logger.info('[API Client] 发送认证请求:', {
     url,
     tokenPrefix: token?.substring(0, 50) + '...',
   });
@@ -464,7 +465,7 @@ export const apiClient = {
   auth: {
     // 登录 - 使用 OAuth2 password grant
     async login(email: string, password: string, options?: LoginOptions): Promise<ExtendedLoginResponse> {
-      console.log('[API Client] 准备调用 connect/token:', {
+      logger.info('[API Client] 准备调用 connect/token:', {
         endpoint: TOKEN_ENDPOINT,
         email,
         hasTenantId: !!options?.tenantId,
@@ -488,7 +489,7 @@ export const apiClient = {
         formData.append('tf_code', options.twoFaCode);
       }
 
-      console.log('[API Client] 请求参数:', formData.toString());
+      logger.info('[API Client] 请求参数:', formData.toString());
 
       // 直接用原始 fetch 请求 connect/token，以便提取 Set-Cookie 用于后续请求
       const tokenRawResponse = await fetch(TOKEN_ENDPOINT, {
@@ -501,7 +502,7 @@ export const apiClient = {
 
       // 提取 Set-Cookie，用于链式传递给下一个请求
       const tokenSetCookies = extractCookiesFromResponse(tokenRawResponse);
-      console.log('[API Client] connect/token Set-Cookie cookies:', tokenSetCookies || '(none)');
+      logger.info('[API Client] connect/token Set-Cookie cookies:', tokenSetCookies || '(none)');
 
       // 同步写入 Next.js cookie store（供后续页面请求使用）
       await syncAuthCookies({ response: tokenRawResponse });
@@ -523,7 +524,7 @@ export const apiClient = {
 
       // 检查是否需要2FA
       if (tokenData.twoFactorRequired) {
-        console.log('[API Client] 需要双因素认证');
+        logger.info('[API Client] 需要双因素认证');
         return {
           user: null,
           accessToken: '',
@@ -533,7 +534,7 @@ export const apiClient = {
 
       // 检查是否有多租户
       if (tokenData.hasMultipleTenants && tokenData.tenantIds) {
-        console.log('[API Client] 需要选择租户:', tokenData.tenantIds);
+        logger.info('[API Client] 需要选择租户:', tokenData.tenantIds);
         return {
           user: null,
           accessToken: '',
@@ -550,7 +551,7 @@ export const apiClient = {
         if (!accessToken) {
           throw new ApiError('Login failed: no access_token in response', 401);
         }
-        console.log('[API Client] Token 获取成功，准备获取用户信息（token 模式，Bearer token）');
+        logger.info('[API Client] Token 获取成功，准备获取用户信息（token 模式，Bearer token）');
         // 同时把 token 写入 cookie store 供后续请求使用
         await syncAuthCookies({ token: accessToken, refreshToken: tokenData.refresh_token, rememberMe: true });
         // /user/me 在多实例环境（AWS ALB）下偶发 401（token 传播延迟），最多重试 2 次
@@ -560,14 +561,14 @@ export const apiClient = {
       } else {
         // cookie 模式：将 connect/token 返回的 Set-Cookie 直接传给 user/me
         // 因为 Next.js cookie store 在同一请求周期内无法读取刚写入的 cookie
-        console.log('[API Client] Token 获取成功，准备获取用户信息（cookie 模式，直接传递 Set-Cookie）');
+        logger.info('[API Client] Token 获取成功，准备获取用户信息（cookie 模式，直接传递 Set-Cookie）');
         userInfoResponse = await fetchUserMeWithRetry(
           () => request<{ data: UserMeResponse }>(USER_ME_ENDPOINT, {}, tokenSetCookies || undefined)
         );
       }
 
       const userInfo = userInfoResponse.data;
-      console.log('[API Client] 用户信息获取成功:', { userId: userInfo.uid });
+      logger.info('[API Client] 用户信息获取成功:', { userId: userInfo.uid });
 
       // 构建用户对象（从 UserInfo 映射到 User）
       const user: User = {
@@ -632,7 +633,7 @@ export const apiClient = {
       const firstName = data.FirstName || data.firstName;
       const lastName = data.LastName || data.lastName;
 
-      console.log('[API Client] 准备调用注册接口:', {
+      logger.info('[API Client] 准备调用注册接口:', {
         endpoint: REGISTER_ENDPOINT,
         email: data.email,
         FirstName: firstName,
@@ -664,7 +665,7 @@ export const apiClient = {
       if (data.utm) requestBody.utm = data.utm;
       if (data.code) requestBody.code = data.code;
 
-      console.log('[API Client] 发送到后端的 requestBody:', JSON.stringify(requestBody, null, 2));
+      logger.info('[API Client] 发送到后端的 requestBody:', JSON.stringify(requestBody, null, 2));
 
       const response = await request<RegisterResponse>(REGISTER_ENDPOINT, {
         method: 'POST',
@@ -674,7 +675,7 @@ export const apiClient = {
         body: JSON.stringify(requestBody),
       });
 
-      console.log('[API Client] 注册成功');
+      logger.info('[API Client] 注册成功');
       return response;
     },
   },
