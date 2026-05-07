@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { cookies } from 'next/headers';
@@ -37,7 +38,7 @@ export async function getUserInfo(): Promise<ActionResponse<UserInfo>> {
       data: response.data,
     };
   } catch (error) {
-    console.error('[getUserInfo] Error:', error);
+    logger.error('[getUserInfo] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -65,9 +66,9 @@ export async function getConfiguration(): Promise<ActionResponse<Configuration>>
       success: true,
       data: response.data,
     };
-    console.log('response', response);
+    logger.info('response', response);
   } catch (error) {
-    console.error('[getConfiguration] Error:', error);
+    logger.error('[getConfiguration] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -105,11 +106,11 @@ export async function uploadAvatar(file: File): Promise<ActionResponse<AvatarUpl
       data: response.data,
     };
   } catch (error) {
-    console.error('[uploadAvatar] Error:', error);
+    logger.error('[uploadAvatar] Error:', error);
 
     if (error instanceof ApiError) {
       // 打印完整的错误详情
-      console.error('[uploadAvatar] ApiError details:', {
+      logger.error('[uploadAvatar] ApiError details:', {
         message: error.message,
         statusCode: error.statusCode,
         errors: JSON.stringify(error.errors, null, 2),
@@ -150,7 +151,7 @@ export async function sendPhoneVerificationCode(
       success: true,
     };
   } catch (error) {
-    console.error('[sendPhoneVerificationCode] Error:', error);
+    logger.error('[sendPhoneVerificationCode] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -189,7 +190,7 @@ export async function updatePhoneNumber(
       success: true,
     };
   } catch (error) {
-    console.error('[updatePhoneNumber] Error:', error);
+    logger.error('[updatePhoneNumber] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -221,7 +222,7 @@ export async function enable2FA(code: string): Promise<ActionResponse<void>> {
       success: true,
     };
   } catch (error) {
-    console.error('[enable2FA] Error:', error);
+    logger.error('[enable2FA] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -253,7 +254,7 @@ export async function disable2FA(code: string): Promise<ActionResponse<void>> {
       success: true,
     };
   } catch (error) {
-    console.error('[disable2FA] Error:', error);
+    logger.error('[disable2FA] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -304,7 +305,7 @@ export async function changePassword(
       success: true,
     };
   } catch (error) {
-    console.error('[changePassword] Error:', error);
+    logger.error('[changePassword] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -343,7 +344,7 @@ export async function getMediaUrl(guid: string): Promise<ActionResponse<string>>
       data: mediaUrl,
     };
   } catch (error) {
-    console.error('[getMediaUrl] Error:', error);
+    logger.error('[getMediaUrl] Error:', error);
     return {
       success: false,
       error: '获取文件 URL 失败',

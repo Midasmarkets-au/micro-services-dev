@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { cache } from 'react';
 import { getAuthCookie, getAuthMode, clearAuthCookies } from './cookies';
 import { apiClient, ApiError } from '@/lib/api';
@@ -19,21 +20,21 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   const shouldTryCookieMode = authMode === 'cookie';
 
   if (!token && !shouldTryCookieMode) {
-    console.log('[Session] Token 为空，用户未登录');
+    logger.info('[Session] Token 为空，用户未登录');
     return null;
   }
 
   // token 模式下，如果缓存的 token 匹配，直接返回缓存用户
   if (token && userCache.token === token && userCache.user) {
-    console.log('[Session] 使用缓存的用户');
+    logger.info('[Session] 使用缓存的用户');
     return userCache.user;
   }
 
   try {
-    console.log('[Session] 调用后端 /user/me 验证 token');
+    logger.info('[Session] 调用后端 /user/me 验证 token');
     // 调用后端 API 验证 token 并获取用户信息
     const userInfo = await apiClient.auth.me(token);
-    console.log('userInfo', userInfo)
+    logger.info('userInfo', userInfo)
     // 从 UserInfo 映射到 User
     const user: User = {
       id: String(userInfo.uid),
@@ -53,18 +54,18 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     
     return user;
   } catch (error) {
-    console.error('[Session] 验证用户失败:', error);
+    logger.error('[Session] 验证用户失败:', error);
     
     // Token 无效或过期，清除 cookies
     if (error instanceof ApiError && error.statusCode === 401) {
-      console.log('[Session] Token 无效 (401)，清除 cookies');
+      logger.info('[Session] Token 无效 (401)，清除 cookies');
       if (!tokenInvalid) {
         tokenInvalid = true;
         try {
           await clearAuthCookies();
-          console.log('[Session] Cookies 已清除');
+          logger.info('[Session] Cookies 已清除');
         } catch (clearError) {
-          console.error('[Session] 清除 cookies 失败:', clearError);
+          logger.error('[Session] 清除 cookies 失败:', clearError);
         }
       }
     }

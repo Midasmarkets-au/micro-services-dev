@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
@@ -87,7 +88,7 @@ export async function getVerificationStatus(): Promise<ActionResponse<Verificati
       },
     };
   } catch (error) {
-    console.error('[getVerificationStatus] Error:', error);
+    logger.error('[getVerificationStatus] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -117,7 +118,7 @@ export async function saveStartedInfo(data: StartedInfoData): Promise<ActionResp
       data: result.data,
     };
   } catch (error) {
-    console.error('[saveStartedInfo] Error:', error);
+    logger.error('[saveStartedInfo] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -149,7 +150,7 @@ export async function checkClientAnswer(data: QuizAnswerData): Promise<ActionRes
       skipToast: true,
     };
   } catch (error) {
-    console.error('[checkClientAnswer] Error:', error);
+    logger.error('[checkClientAnswer] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -180,7 +181,7 @@ export async function checkClientProfessionalAnswer(data: QuizAnswerData): Promi
       skipToast: true,
     };
   } catch (error) {
-    console.error('[checkClientProfessionalAnswer] Error:', error);
+    logger.error('[checkClientProfessionalAnswer] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -210,7 +211,7 @@ export async function getMyReferralCode(): Promise<ActionResponse<MyReferralCode
       data: result,
     };
   } catch (error) {
-    console.error('[getMyReferralCode] Error:', error);
+    logger.error('[getMyReferralCode] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -240,7 +241,7 @@ export async function getReferralInfoByReferralCode(code: string): Promise<Actio
       data: result,
     };
   } catch (error) {
-    console.error('[getReferralInfoByReferralCode] Error:', error);
+    logger.error('[getReferralInfoByReferralCode] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -270,7 +271,7 @@ export async function savePersonalInfo(data: PersonalInfoData): Promise<ActionRe
       data: result.data,
     };
   } catch (error) {
-    console.error('[savePersonalInfo] Error:', error);
+    logger.error('[savePersonalInfo] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -300,7 +301,7 @@ export async function saveFinancialInfo(data: FinancialInfoData): Promise<Action
       data: result.data,
     };
   } catch (error) {
-    console.error('[saveFinancialInfo] Error:', error);
+    logger.error('[saveFinancialInfo] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -330,7 +331,7 @@ export async function saveAgreement(data: AgreementData): Promise<ActionResponse
       data: result.data,
     };
   } catch (error) {
-    console.error('[saveAgreement] Error:', error);
+    logger.error('[saveAgreement] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -363,7 +364,7 @@ export async function submitDocument(data: DocumentSubmitData): Promise<ActionRe
       data: result.data,
     };
   } catch (error) {
-    console.error('[submitDocument] Error:', error);
+    logger.error('[submitDocument] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -416,7 +417,7 @@ export async function uploadFile(formDataEntries: {
       data: { guid: response.data.guid || response.data.id || '' },
     };
   } catch (error) {
-    console.error('[uploadFile] Error:', error);
+    logger.error('[uploadFile] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -457,7 +458,7 @@ export async function uploadVerificationDocument(
       data: { guid: response.data.guid || '' },
     };
   } catch (error) {
-    console.error('[uploadVerificationDocument] Error:', error);
+    logger.error('[uploadVerificationDocument] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -503,7 +504,7 @@ export async function uploadChunk(formDataEntries: {
       data: response.data,
     };
   } catch (error) {
-    console.error('[uploadChunk] Error:', error);
+    logger.error('[uploadChunk] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -546,7 +547,7 @@ export async function mergeChunks(formDataEntries: {
       data: { guid: response.data.guid || response.data.id || '' },
     };
   } catch (error) {
-    console.error('[mergeChunks] Error:', error);
+    logger.error('[mergeChunks] Error:', error);
 
     if (error instanceof ApiError) {
       return {

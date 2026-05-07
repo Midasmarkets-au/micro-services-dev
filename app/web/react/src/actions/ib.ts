@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
@@ -738,9 +739,9 @@ export async function getIBRebateDailySeries(
     const response = await apiClient.v1.get<IBRebateDailySeries[]>(
       `/ib/${agentUid}/report/rebate/daily${buildQuery({ timezoneOffset })}`
     );
-    console.log('response===', response);
+    logger.info('response===', response);
     const data = unwrapData<IBRebateDailySeries[]>(response);
-    console.log('data===', data);
+    logger.info('data===', data);
     return {
       success: true,
       data: Array.isArray(data) ? normalizeAmountList(data, 'totalValue' as never) as IBRebateDailySeries[] : [],

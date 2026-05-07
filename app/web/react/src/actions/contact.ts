@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { z } from 'zod';
@@ -68,7 +69,7 @@ export async function submitContact(data: ContactData): Promise<ActionResponse> 
       message: '提交成功',
     };
   } catch (error) {
-    console.error('[submitContact] Error:', error);
+    logger.error('[submitContact] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -112,7 +113,7 @@ export async function createLead(data: LeadData): Promise<ActionResponse> {
       message: 'Lead created successfully',
     };
   } catch (error) {
-    console.error('[createLead] Error:', error);
+    logger.error('[createLead] Error:', error);
     // 即使后端 API 失败，也返回成功
     return {
       success: true,
@@ -144,7 +145,7 @@ export async function getNotices(): Promise<ActionResponse<NoticeItem[]>> {
       data: notices,
     };
   } catch (error) {
-    console.error('[getNotices] Error:', error);
+    logger.error('[getNotices] Error:', error);
 
     if (error instanceof ApiError) {
       return {
@@ -176,7 +177,7 @@ export async function getNotifications(size: number = 8): Promise<ActionResponse
       data: response.data || [],
     };
   } catch (error) {
-    console.error('[getNotifications] Error:', error);
+    logger.error('[getNotifications] Error:', error);
 
     if (error instanceof ApiError) {
       return {

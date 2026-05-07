@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
@@ -236,7 +237,7 @@ export async function getWalletWithdrawGroups(
     const response = await apiClient.v2.get<{ data: PaymentMethodGroup[] }>(
       path
     );
-    console.log('response', response);
+    logger.info('response', response);
     return { success: true, data: response.data || [] };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch withdrawal payment methods');

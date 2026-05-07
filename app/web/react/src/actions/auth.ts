@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { z } from 'zod';
@@ -243,7 +244,7 @@ export async function login(data: LoginData): Promise<ActionResponse<LoginRespon
       message: '登录成功',
     };
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     return {
       success: false,
       error: '服务器错误，请稍后重试',
@@ -262,7 +263,7 @@ export async function logout(): Promise<ActionResponse> {
       message: '退出登录成功',
     };
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error:', error);
     return {
       success: false,
       error: '退出登录失败',
@@ -314,7 +315,7 @@ export async function register(data: RegisterData): Promise<ActionResponse> {
       message: backendResponse.message || '注册成功',
     };
   } catch (error) {
-    console.error('Register error:', error);
+    logger.error('Register error:', error);
     return {
       success: false,
       error: '服务器错误，请稍后重试',
@@ -341,7 +342,7 @@ export async function getMe(): Promise<ActionResponse<{ user: unknown }>> {
       data: { user },
     };
   } catch (error) {
-    console.error('Get current user error:', error);
+    logger.error('Get current user error:', error);
     return {
       success: false,
       error: '获取用户信息失败',
@@ -382,7 +383,7 @@ export async function forgotPassword(data: ForgotPasswordData): Promise<ActionRe
       message: '重置密码链接已发送到您的邮箱',
     };
   } catch (error) {
-    console.error('Forgot password error:', error);
+    logger.error('Forgot password error:', error);
     return {
       success: false,
       error: '服务器错误，请稍后重试',
@@ -423,7 +424,7 @@ export async function resetPassword(data: PasswordResetData): Promise<ActionResp
       message: '密码重置成功',
     };
   } catch (error) {
-    console.error('Password reset error:', error);
+    logger.error('Password reset error:', error);
     return {
       success: false,
       error: '服务器错误，请稍后重试',
@@ -464,7 +465,7 @@ export async function resendConfirmation(data: ResendConfirmationData): Promise<
       message: '确认邮件已重新发送',
     };
   } catch (error) {
-    console.error('Resend confirmation error:', error);
+    logger.error('Resend confirmation error:', error);
     return {
       success: false,
       error: '服务器错误，请稍后重试',
@@ -493,7 +494,7 @@ export async function setToken(data: { token: string }): Promise<ActionResponse>
       message: 'Token 设置成功',
     };
   } catch (error) {
-    console.error('Set token error:', error);
+    logger.error('Set token error:', error);
     return {
       success: false,
       error: '服务器错误，请稍后重试',
@@ -522,7 +523,7 @@ export async function setLocale(data: { locale: string }): Promise<ActionRespons
       message: '语言设置已更新',
     };
   } catch (error) {
-    console.error('Set locale error:', error);
+    logger.error('Set locale error:', error);
     return {
       success: false,
       error: '设置语言失败',
@@ -593,7 +594,7 @@ export async function getSiteConfig(openAt: string = 'bvi'): Promise<ActionRespo
       data: response.data || [0],
     };
   } catch (error) {
-    console.error('Get site config error:', error);
+    logger.error('Get site config error:', error);
     // 返回默认值，不阻塞页面
     return {
       success: true,

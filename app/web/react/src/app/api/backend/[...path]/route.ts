@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import {
   API_BASE_URL,
@@ -112,7 +113,7 @@ async function proxy(request: Request, ctx: Ctx): Promise<Response> {
     if (error instanceof DOMException && error.name === 'AbortError') {
       return new NextResponse(null, { status: 499 });
     }
-    console.error('[api/backend] upstream fetch failed:', error);
+    logger.error('[api/backend] upstream fetch failed:', error);
     return NextResponse.json(
       { error: 'Upstream request failed', errorCode: 'networkError' },
       { status: 502 }
@@ -123,7 +124,7 @@ async function proxy(request: Request, ctx: Ctx): Promise<Response> {
   try {
     await syncAuthCookies({ response: backendResponse });
   } catch (error) {
-    console.warn('[api/backend] syncAuthCookies failed:', error);
+    logger.warn('[api/backend] syncAuthCookies failed:', error);
   }
 
   const responseHeaders = new Headers();
