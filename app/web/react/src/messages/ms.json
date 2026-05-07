@@ -652,6 +652,7 @@
     "submitError": "Penghantaran gagal. Sila cuba lagi kemudian"
   },
   "errorCodes": {
+    "loginFailedRetry": "Log masuk gagal, sila cuba lagi",
     "Unauthorized": "Tidak disahkan. Sila log masuk dahulu",
     "__USER_IS_LOCKED_OUT__": "Pengguna dikunci",
     "invalid_username_or_password": "Nama pengguna atau kata laluan tidak sah",

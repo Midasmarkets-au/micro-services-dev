@@ -425,6 +425,30 @@ async function authenticatedRequest<T>(
   });
 }
 
+/**
+ * /user/me 重试包装器：登录后 /user/me 在 AWS ALB 多实例环境下偶发 401
+ * （新 token 的后端传播有短暂延迟），自动重试最多 2 次，间隔 500ms。
+ */
+async function fetchUserMeWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 2,
+  delayMs = 500
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      const is401 = error instanceof ApiError && error.statusCode === 401;
+      if (!is401 || attempt === maxRetries) throw error;
+      console.warn(`[API Client] /user/me 返回 401，第 ${attempt + 1} 次重试（共 ${maxRetries} 次）...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 // 扩展的登录响应类型
 interface ExtendedLoginResponse {
   user: User | null;
@@ -529,12 +553,17 @@ export const apiClient = {
         console.log('[API Client] Token 获取成功，准备获取用户信息（token 模式，Bearer token）');
         // 同时把 token 写入 cookie store 供后续请求使用
         await syncAuthCookies({ token: accessToken, refreshToken: tokenData.refresh_token, rememberMe: true });
-        userInfoResponse = await authenticatedRequest<{ data: UserMeResponse }>(USER_ME_ENDPOINT, accessToken);
+        // /user/me 在多实例环境（AWS ALB）下偶发 401（token 传播延迟），最多重试 2 次
+        userInfoResponse = await fetchUserMeWithRetry(
+          () => authenticatedRequest<{ data: UserMeResponse }>(USER_ME_ENDPOINT, accessToken)
+        );
       } else {
         // cookie 模式：将 connect/token 返回的 Set-Cookie 直接传给 user/me
         // 因为 Next.js cookie store 在同一请求周期内无法读取刚写入的 cookie
         console.log('[API Client] Token 获取成功，准备获取用户信息（cookie 模式，直接传递 Set-Cookie）');
-        userInfoResponse = await request<{ data: UserMeResponse }>(USER_ME_ENDPOINT, {}, tokenSetCookies || undefined);
+        userInfoResponse = await fetchUserMeWithRetry(
+          () => request<{ data: UserMeResponse }>(USER_ME_ENDPOINT, {}, tokenSetCookies || undefined)
+        );
       }
 
       const userInfo = userInfoResponse.data;

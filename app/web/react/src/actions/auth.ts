@@ -169,10 +169,18 @@ export async function login(data: LoginData): Promise<ActionResponse<LoginRespon
       });
     } catch (error) {
       if (error instanceof ApiError) {
+        // 登录流程内部（如 /connect/token 成功但 /user/me 偶发 401）不能把 Unauthorized
+        // errorCode 透传出去，否则 useServerAction 会把它当 session 过期处理，
+        // 静默跳转到 ?expired=true 且不显示任何错误信息，导致用户反复重试。
+        // /connect/token 凭据错误时后端返回 400（OAuth2 规范），不会触发此逻辑。
+        const isInternalUnauthorized =
+          error.statusCode === 401 ||
+          error.errorCode?.toLowerCase() === 'unauthorized';
         return {
           success: false,
-          error: error.message || '登录失败，请检查邮箱和密码',
-          errorCode: error.errorCode,
+          // 使用 errorCode 让客户端通过 errorCodes i18n 命名空间自动翻译
+          errorCode: isInternalUnauthorized ? 'loginFailedRetry' : (error.errorCode ?? undefined),
+          error: error.message || 'Login failed',
         };
       }
       throw error;

@@ -54,11 +54,12 @@ export async function middleware(request: NextRequest) {
     
     const expired = request.nextUrl.searchParams.get('expired');
     if (expired === 'true') {
-      // Token 已失效，清除 cookie 并允许访问登录页
+      // Token 已失效，清除所有认证 cookie 并允许访问登录页
       const response = NextResponse.next();
       response.cookies.delete('auth-token');
       response.cookies.delete('refresh-token');
       response.cookies.delete('auth-mode');
+      response.cookies.delete('access_token');  // cookie 模式下后端设置的真实认证 cookie
       return response;
     }
     

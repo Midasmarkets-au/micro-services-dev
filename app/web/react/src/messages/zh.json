@@ -652,6 +652,7 @@
     "submitError": "提交失败，请稍后重试"
   },
   "errorCodes": {
+    "loginFailedRetry": "登录失败，请重试",
     "Unauthorized": "未授权，请先登录",
     "__USER_IS_LOCKED_OUT__": "用户已被锁定",
     "invalid_username_or_password": "用户名或密码无效",

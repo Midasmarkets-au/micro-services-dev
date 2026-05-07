@@ -652,6 +652,7 @@
     "submitError": "Error al enviar, por favor intente más tarde"
   },
   "errorCodes": {
+    "loginFailedRetry": "Error al iniciar sesión, por favor intente de nuevo",
     "Unauthorized": "No autorizado, por favor inicie sesión primero",
     "__USER_IS_LOCKED_OUT__": "Usuario bloqueado",
     "invalid_username_or_password": "Nombre de usuario o contraseña inválidos",
