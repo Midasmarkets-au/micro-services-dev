@@ -19,8 +19,8 @@ spec:
           operator: In
           values: ["on-demand", "spot"]
   disruption:
-    consolidationPolicy: WhenEmpty   # Only reclaim fully empty nodes, prevents pod eviction for consolidation
-    consolidateAfter: 1h
+    consolidationPolicy: WhenEmptyOrUnderutilized   # Only reclaim fully empty nodes, prevents pod eviction for consolidation
+    consolidateAfter: 30s
     budgets:
       - nodes: 10%
   weight: 10
