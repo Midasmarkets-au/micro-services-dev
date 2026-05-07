@@ -195,6 +195,19 @@ export function useServerAction(options: UseServerActionOptions = {}) {
       } catch (error) {
 
         console.log('error---catch', error);
+
+        // Server Action ID 过期：重新部署后客户端缓存的旧页面仍引用旧 Action ID，
+        // 服务器找不到对应 Action 时会抛出此错误，强制刷新页面获取最新版本。
+        const rawErrMsg = error instanceof Error ? error.message : String(error ?? '');
+        if (
+          rawErrMsg.includes('not found on the server') ||
+          rawErrMsg.includes('Failed to find server action')
+        ) {
+          console.warn('[useServerAction] Server Action ID 已过期，页面需要刷新');
+          window.location.reload();
+          return { success: false, error: 'reloading', errorCode: 'reloading' };
+        }
+
         if (unauthorizedRedirectingRef.current) {
           return {
             success: false,
