@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiClient, ApiError } from '@/lib/api';
 
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error('Chunk upload error:', error);
+    logger.error('Chunk upload error:', error);
     
     if (error instanceof ApiError) {
       return NextResponse.json(

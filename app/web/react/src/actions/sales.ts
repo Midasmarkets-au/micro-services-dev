@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
@@ -336,13 +337,13 @@ export async function createSalesLinkForIB(
   salesUid: number,
   formData: Record<string, unknown>
 ): Promise<ActionResponse<unknown>> {
-  console.log('createSalesLinkForIB-formData', formData);
+  logger.info('createSalesLinkForIB-formData', formData);
   try {
     const response = await apiClient.v1.post<unknown>(
       `/sales/${salesUid}/referral/top-agent`,
       formData
     );
-    console.log('createSalesLinkForIB-response', response);
+    logger.info('createSalesLinkForIB-response', response);
     return { success: true, data: response };
   } catch (error) {
     return handleApiError(error, 'Failed to create sales link for IB');
