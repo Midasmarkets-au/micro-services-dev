@@ -652,6 +652,7 @@
     "submitError": "Gửi thất bại, vui lòng thử lại sau"
   },
   "errorCodes": {
+    "loginFailedRetry": "Đăng nhập thất bại, vui lòng thử lại",
     "Unauthorized": "Chưa xác thực, vui lòng đăng nhập trước",
     "__USER_IS_LOCKED_OUT__": "Người dùng bị khóa",
     "invalid_username_or_password": "Tên người dùng hoặc mật khẩu không đúng",

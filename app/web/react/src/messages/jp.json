@@ -652,6 +652,7 @@
     "submitError": "送信に失敗しました。後でもう一度お試しください"
   },
   "errorCodes": {
+    "loginFailedRetry": "ログインに失敗しました。もう一度お試しください",
     "Unauthorized": "未認証です。先にログインしてください",
     "__USER_IS_LOCKED_OUT__": "ユーザーがロックされています",
     "invalid_username_or_password": "ユーザー名またはパスワードが無効です",

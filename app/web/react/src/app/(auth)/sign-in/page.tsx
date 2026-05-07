@@ -161,7 +161,6 @@ export default function SignInPage() {
     // 登录成功，优先回跳 callbackUrl
     const callbackUrl = searchParams.get('callbackUrl');
     router.push(callbackUrl || '/dashboard');
-    router.refresh();
   }, [clearErrors, execute, router, searchParams, t]);
 
   // 表单提交

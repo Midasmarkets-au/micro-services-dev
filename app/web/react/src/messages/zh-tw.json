@@ -652,6 +652,7 @@
     "submitError": "提交失敗，請稍後重試"
   },
   "errorCodes": {
+    "loginFailedRetry": "登入失敗，請重試",
     "Unauthorized": "未授權，請先登入",
     "__USER_IS_LOCKED_OUT__": "用戶已被鎖定",
     "invalid_username_or_password": "用戶名或密碼無效",

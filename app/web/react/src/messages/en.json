@@ -652,6 +652,7 @@
     "submitError": "Failed to submit, please try again"
   },
   "errorCodes": {
+    "loginFailedRetry": "Login failed, please try again",
     "Unauthorized": "Unauthorized, please login first",
     "__USER_IS_LOCKED_OUT__": "User is locked out",
     "invalid_username_or_password": "Invalid username or password",

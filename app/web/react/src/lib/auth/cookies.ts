@@ -74,11 +74,28 @@ export async function syncAuthCookies({
   const cookieHeaders =
     setCookieHeaders.length > 0 ? setCookieHeaders : response ? extractSetCookieHeaders(response) : [];
   const hasSetCookie = cookieHeaders.length > 0;
-  // 规则：
-  // 1) 若后端返回 Set-Cookie，优先认为是 cookie 模式（不再依赖 token）
-  // 2) 若没有 Set-Cookie 且有 token，走 token 模式
-  if (hasSetCookie) {
-    cookieStore.set(AUTH_MODE_COOKIE_NAME, 'cookie', cookieOptions);
+
+  // 只有在 cookie 模式下，且 Set-Cookie 里包含真实认证 cookie（如 access_token）时，
+  // 才将 auth-mode 设为 'cookie'。
+  // 避免 AWS ALB 等基础设施 cookie（AWSALB / AWSALBCORS 等）误触发 cookie 模式。
+  const backendAuthMode = (process.env.BACKEND_REQUEST_AUTH_MODE ?? 'cookie').toLowerCase();
+  const AUTH_COOKIE_NAMES = ['access_token', 'idsrv', '.aspnetcore'];
+  const hasRealAuthSetCookie =
+    backendAuthMode === 'cookie' &&
+    hasSetCookie &&
+    cookieHeaders.some((cookieStr) =>
+      AUTH_COOKIE_NAMES.some((name) =>
+        cookieStr.toLowerCase().startsWith(name + '=')
+      )
+    );
+
+  if (hasRealAuthSetCookie) {
+    // auth-mode 必须是持久化 cookie（与 access_token 生命周期对齐），
+    // 否则浏览器重启后 session cookie 消失，但 access_token 仍在，导致认证状态不一致
+    cookieStore.set(AUTH_MODE_COOKIE_NAME, 'cookie', {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60, // 7天，与后端 access_token 默认有效期一致
+    });
   } else if (token) {
     const maxAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60;
     cookieStore.set(AUTH_COOKIE_NAME, token, {
@@ -172,6 +189,7 @@ export async function clearAuthCookies(): Promise<void> {
   cookieStore.delete(AUTH_COOKIE_NAME);
   cookieStore.delete(REFRESH_COOKIE_NAME);
   cookieStore.delete(AUTH_MODE_COOKIE_NAME);
+  cookieStore.delete('access_token');  // cookie 模式下后端设置的真实认证 cookie
 }
 
 // 设置语言 Cookie
