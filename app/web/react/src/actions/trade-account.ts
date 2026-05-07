@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { z } from 'zod';
@@ -44,7 +45,7 @@ export async function changeTradeAccountPassword(
 
     const { referenceId, partyId, token, password, tenantId } = validationResult.data;
 
-    console.log('[changeTradeAccountPassword] 开始修改交易账户密码:', { tenantId, referenceId, partyId });
+    logger.info('[changeTradeAccountPassword] 开始修改交易账户密码:', { tenantId, referenceId, partyId });
 
     await apiClient.put(`/trade-account/${tenantId}/change-password`, {
       referenceId,
@@ -53,14 +54,14 @@ export async function changeTradeAccountPassword(
       password,
     });
 
-    console.log('[changeTradeAccountPassword] 密码修改成功');
+    logger.info('[changeTradeAccountPassword] 密码修改成功');
 
     return {
       success: true,
       message: 'Password changed successfully',
     };
   } catch (error) {
-    console.error('[changeTradeAccountPassword] 修改密码失败:', error);
+    logger.error('[changeTradeAccountPassword] 修改密码失败:', error);
 
     if (error instanceof ApiError) {
       return {

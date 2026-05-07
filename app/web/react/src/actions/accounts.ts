@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 'use server';
 
 import { apiClient, ApiError } from '@/lib/api/client';
@@ -370,7 +371,7 @@ export async function getAccountTransactions(
   params?: TransactionQueryParams
 ): Promise<ActionResponse<PaginatedResponse<AccountTransaction>>> {
   try {
-    console.log('params===', params);
+    logger.info('params===', params);
     const queryString = buildQuery(params)
     const url = `/client/trade-account/${tradeAccountUid}/transaction${queryString}`;
 

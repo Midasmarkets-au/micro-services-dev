@@ -1,3 +1,4 @@
+import logger from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiClient, ApiError } from '@/lib/api';
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       guid: data.guid || data.id 
     });
   } catch (error) {
-    console.error('Merge upload error:', error);
+    logger.error('Merge upload error:', error);
     
     if (error instanceof ApiError) {
       return NextResponse.json(
