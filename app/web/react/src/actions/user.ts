@@ -1,5 +1,5 @@
-import logger from '@/lib/logger';
 'use server';
+import logger from '@/lib/logger';
 
 import { cookies } from 'next/headers';
 import { apiClient, ApiError, API_BASE_URL } from '@/lib/api/client';
