@@ -652,6 +652,7 @@
     "submitError": "Gagal mengirim, silakan coba lagi"
   },
   "errorCodes": {
+    "loginFailedRetry": "Login gagal, silakan coba lagi",
     "Unauthorized": "Tidak diotorisasi, silakan login terlebih dahulu",
     "__USER_IS_LOCKED_OUT__": "Pengguna terkunci",
     "invalid_username_or_password": "Nama pengguna atau kata sandi tidak valid",
