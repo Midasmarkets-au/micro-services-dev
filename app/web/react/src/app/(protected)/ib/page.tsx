@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
+import { useServerAction } from '@/hooks/useServerAction';
 import {
   getIBRebateTodayValue,
   getIBRebateTotalValue,
   getIBTradeTodayVolume,
   getIBTodayAccountCreation,
   getIBDepositTodayValue,
-} from '@/lib/http/browserActions/ib';
+} from '@/actions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { BalanceShow } from '@/components/ui';
 import { IBAccountSelector } from './_components/IBAccountSelector';
@@ -42,7 +42,7 @@ function ReportValueDisplay({ values, sign = '' }: { values: IBReportValue[]; si
 export default function IBDashboardPage() {
   const t = useTranslations('ib.dashboard');
   const { begin } = useRouteScope('/ib');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
   const [todayRebate, setTodayRebate] = useState<IBReportValue[]>([]);
@@ -56,17 +56,17 @@ export default function IBDashboardPage() {
 
   useEffect(() => {
     if (!agentAccount) return;
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
 
     (async () => {
       const tz = -(new Date().getTimezoneOffset() / 60);
       const [rebateToday, rebateTotal, volume, newCustomers, depositToday] =
         await Promise.all([
-          execute(getIBRebateTodayValue, { signal }, agentAccount.uid, tz),
-          execute(getIBRebateTotalValue, { signal }, agentAccount.uid),
-          execute(getIBTradeTodayVolume, { signal }, agentAccount.uid, tz),
-          execute(getIBTodayAccountCreation, { signal }, agentAccount.uid),
-          execute(getIBDepositTodayValue, { signal }, agentAccount.uid),
+          execute(getIBRebateTodayValue, agentAccount.uid, tz),
+          execute(getIBRebateTotalValue, agentAccount.uid),
+          execute(getIBTradeTodayVolume, agentAccount.uid, tz),
+          execute(getIBTodayAccountCreation, agentAccount.uid),
+          execute(getIBDepositTodayValue, agentAccount.uid),
         ]);
 
       if (!isActive()) return;

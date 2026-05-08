@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
+import { useServerAction } from '@/hooks/useServerAction';
 import { useUserStore } from '@/stores/userStore';
 import { isGuestOnly } from '@/lib/rbac';
 import { Button, Skeleton, Icon } from '@/components/ui';
@@ -15,7 +15,7 @@ import {
   getPendingApplications,
   getDemoAccounts,
   getServiceMap,
-} from '@/lib/http/browserActions/accounts';
+} from '@/actions/accounts';
 import type {
   Account,
   Application,
@@ -46,7 +46,7 @@ export function DashboardMainContent() {
   const router = useRouter();
   const { isDark, mounted } = useTheme();
   const { begin } = useRouteScope('/dashboard');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   
   // 获取用户信息判断是否为 Guest
   const user = useUserStore((state) => state.user);
@@ -87,13 +87,13 @@ export function DashboardMainContent() {
   // 加载数据：每次 loadData 都会 abort 上一次 in-flight 请求
   // Guest 用户只拉模拟账户和服务映射，跳过真实账户/申请单
   const loadData = useCallback(async () => {
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     try {
       const [accountsResult, applicationsResult, demoResult, serviceResult] =
         await Promise.all([
           isGuest
             ? Promise.resolve({ success: true as const, data: [] as Account[] })
-            : execute(getLiveAccounts, { signal }, {
+            : execute(getLiveAccounts, {
                 hasTradeAccount: true,
                 status: AccountStatusTypes.Activate,
                 roles: [
@@ -106,15 +106,15 @@ export function DashboardMainContent() {
               }),
           isGuest
             ? Promise.resolve({ success: true as const, data: [] as Application[] })
-            : execute(getPendingApplications, { signal }, {
+            : execute(getPendingApplications, {
                 statuses: [
                   ApplicationStatusType.AwaitingApproval,
                   ApplicationStatusType.Approved,
                 ],
                 type: ApplicationType.TradeAccount,
               }),
-          execute(getDemoAccounts, { signal }),
-          execute(getServiceMap, { signal }),
+          execute(getDemoAccounts),
+          execute(getServiceMap),
         ]);
       if (!isActive()) return;
       if (accountsResult.success) {

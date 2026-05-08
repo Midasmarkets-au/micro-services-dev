@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
-import { getIBLatestDeposits } from '@/lib/http/browserActions/ib';
+import { useServerAction } from '@/hooks/useServerAction';
+import { getIBLatestDeposits } from '@/actions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { Avatar, BalanceShow, DataTable } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui/DataTable';
@@ -13,7 +13,7 @@ import type { IBLatestDeposit } from '@/types/ib';
 export function LatestDepositsWidget() {
   const t = useTranslations('ib.dashboard');
   const { begin } = useRouteScope('/ib');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
   const [deposits, setDeposits] = useState<IBLatestDeposit[]>([]);
@@ -23,9 +23,9 @@ export function LatestDepositsWidget() {
 
   useEffect(() => {
     if (!agentAccount) return;
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     (async () => {
-      const result = await execute(getIBLatestDeposits, { signal }, agentAccount.uid, 5);
+      const result = await execute(getIBLatestDeposits, agentAccount.uid, 5);
       if (!isActive()) return;
       if (result.success && Array.isArray(result.data)) {
         setDeposits(result.data);
