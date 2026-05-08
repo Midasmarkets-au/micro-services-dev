@@ -1,18 +1,12 @@
 import logger from '@/lib/logger';
 import { cache } from 'react';
-import { getAuthCookie, getAuthMode, clearAuthCookies } from './cookies';
+import { getAuthCookie, getAuthMode } from './cookies';
 import { apiClient, ApiError } from '@/lib/api';
 import type { User, Role, Permission } from '@/types/auth';
 
-// 用户信息缓存（避免重复请求后端）
-let userCache: { user: User | null; token: string | null } = { user: null, token: null };
-
-// 标记 token 是否无效（用于避免重复清除）
-let tokenInvalid = false;
-
 /**
  * 获取当前用户（通过后端 API 验证 token）
- * 使用 React cache 避免同一请求中重复调用
+ * 使用 React cache 避免同一请求中重复调用（per-request 级别，不跨请求共享）
  */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const token = await getAuthCookie();
@@ -24,18 +18,10 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
-  // token 模式下，如果缓存的 token 匹配，直接返回缓存用户
-  if (token && userCache.token === token && userCache.user) {
-    logger.info('[Session] 使用缓存的用户');
-    return userCache.user;
-  }
-
   try {
     logger.info('[Session] 调用后端 /user/me 验证 token');
-    // 调用后端 API 验证 token 并获取用户信息
+    // cookie 模式下 token 为 undefined，apiClient.auth.me 会透传 cookie header
     const userInfo = await apiClient.auth.me(token);
-    logger.info('userInfo', userInfo)
-    // 从 UserInfo 映射到 User
     const user: User = {
       id: String(userInfo.uid),
       email: userInfo.email,
@@ -47,30 +33,12 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
       createdAt: userInfo.createdOn || new Date().toISOString(),
       updatedAt: userInfo.createdOn || new Date().toISOString(),
     };
-
-    // 仅 token 模式做跨请求缓存，cookie 模式避免缓存污染
-    userCache = token ? { user, token } : { user: null, token: null };
-    tokenInvalid = false;
-    
     return user;
   } catch (error) {
     logger.error('[Session] 验证用户失败:', error);
-    
-    // Token 无效或过期，清除 cookies
     if (error instanceof ApiError && error.statusCode === 401) {
-      logger.info('[Session] Token 无效 (401)，清除 cookies');
-      if (!tokenInvalid) {
-        tokenInvalid = true;
-        try {
-          await clearAuthCookies();
-          logger.info('[Session] Cookies 已清除');
-        } catch (clearError) {
-          logger.error('[Session] 清除 cookies 失败:', clearError);
-        }
-      }
+      logger.info('[Session] Token 无效 (401)，用户需重新登录');
     }
-    
-    userCache = { user: null, token: null };
     return null;
   }
 });
@@ -102,11 +70,3 @@ export async function checkRole(role: Role): Promise<boolean> {
   if (!user) return false;
   return user.role === role;
 }
-
-/**
- * 清除用户缓存（登出时调用）
- */
-export function clearUserCache(): void {
-  userCache = { user: null, token: null };
-}
-
