@@ -1,0 +1,37 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: production
+spec:
+  limits:
+    cpu: "4"      # max 2 nodes x 4 vCPU
+    memory: 8Gi  # max 2 nodes x 16Gi
+  template:
+    metadata:
+      labels:
+        workload-type: production
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["c6g.large", "c6gd.large", "m6g.large"]
+      taints:
+        - key: workload-type
+          value: production
+          effect: NoSchedule
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+    budgets:
+      - nodes: "1"
+  weight: 20
