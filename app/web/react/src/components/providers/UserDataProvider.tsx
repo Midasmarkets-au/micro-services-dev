@@ -65,7 +65,11 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
         if (userLocale && userLocale !== currentLocale) {
           console.log(`[UserDataProvider] 语言同步: ${currentLocale} -> ${userLocale}`);
           await setLocale({ locale: userLocale });
-          window.location.reload();
+          // 用软刷新替代 window.location.reload()：
+          // reload() 在 Next.js 软导航期间会读到旧的 window.location（还是导航前的路由），
+          // 导致用户被"拉回"上一个页面。router.refresh() 是软刷新，
+          // 不中断正在进行的导航，且能让服务端组件读到最新的 locale cookie。
+          router.refresh();
           return;
         }
       } else {
