@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
-import { getIBTradeReports } from '@/lib/http/browserActions/ib';
+import { useServerAction } from '@/hooks/useServerAction';
+import { getIBTradeReports } from '@/actions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { EmptyState } from '@/components/ui';
 import type { IBTradeRecord } from '@/types/ib';
@@ -13,7 +13,7 @@ import type { IBTradeRecord } from '@/types/ib';
 export function TradingLotsWidget() {
   const t = useTranslations('ib.dashboard');
   const { begin } = useRouteScope('/ib');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
   const [trades, setTrades] = useState<IBTradeRecord[]>([]);
@@ -23,9 +23,9 @@ export function TradingLotsWidget() {
 
   useEffect(() => {
     if (!agentAccount) return;
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     (async () => {
-      const result = await execute(getIBTradeReports, { signal }, agentAccount.uid, {
+      const result = await execute(getIBTradeReports, agentAccount.uid, {
         page: 1,
         size: 5,
       });

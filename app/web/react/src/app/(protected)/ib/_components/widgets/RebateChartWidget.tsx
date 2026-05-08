@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
+import { useServerAction } from '@/hooks/useServerAction';
 import { Button, BalanceShow, EmptyState } from '@/components/ui';
 import {
   getIBRebateDailySeries,
   getIBRebateHourlySeries,
   getIBRebateMonthlySeries,
-} from '@/lib/http/browserActions/ib';
+} from '@/actions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import type { IBRebateDailySeries, IBReportValue } from '@/types/ib';
 
@@ -62,7 +62,7 @@ function formatXLabel(dateStr: string | undefined, period: Period): string {
 export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidgetProps) {
   const t = useTranslations('ib.dashboard');
   const { begin } = useRouteScope('/ib');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
   const [period, setPeriod] = useState<Period>('hourly');
@@ -74,10 +74,10 @@ export function RebateChartWidget({ totalRebate, totalLoading }: RebateChartWidg
 
   useEffect(() => {
     if (!agentAccount) return;
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     (async () => {
       const tz = -(new Date().getTimezoneOffset() / 60);
-      const result = await execute(fetchers[period], { signal }, agentAccount.uid, tz);
+      const result = await execute(fetchers[period], agentAccount.uid, tz);
       if (!isActive()) return;
       if (result.success && Array.isArray(result.data)) {
         setData(result.data);

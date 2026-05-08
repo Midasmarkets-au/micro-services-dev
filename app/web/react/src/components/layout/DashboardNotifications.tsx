@@ -5,9 +5,9 @@ import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
+import { useServerAction } from '@/hooks/useServerAction';
 import { NotificationsSkeleton } from '@/components/ui';
-import { getNotifications } from '@/lib/http/browserActions/notifications';
+import { getNotifications } from '@/actions/contact';
 
 // 后端返回的通知内容结构
 interface NoticeContent {
@@ -62,7 +62,7 @@ export function DashboardNotifications() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
   const { begin } = useRouteScope('/dashboard');
-  const { execute } = useBrowserAction({ showErrorToast: false });
+  const { execute } = useServerAction({ showErrorToast: false });
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,13 +73,9 @@ export function DashboardNotifications() {
   // begin/execute 都是稳定引用，effect 正常只跑一次；StrictMode 双跑由 begin()
   // 的 token 机制去重，不需要额外 ref 守卫。
   useEffect(() => {
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     (async () => {
-      const result = await execute<NoticeItem[], [{ signal?: AbortSignal }, number]>(
-        getNotifications,
-        { signal },
-        8
-      );
+      const result = await execute(getNotifications, 8);
       if (!isActive()) return;
 
       const items: NoticeItem[] = Array.isArray(result.data)

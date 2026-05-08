@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
-import { getIBReferralHistory } from '@/lib/http/browserActions/ib';
+import { useServerAction } from '@/hooks/useServerAction';
+import { getIBReferralHistory } from '@/actions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { Avatar, EmptyState } from '@/components/ui';
 import type { IBReferralHistory } from '@/types/ib';
@@ -13,7 +13,7 @@ import type { IBReferralHistory } from '@/types/ib';
 export function NewCustomerListWidget() {
   const t = useTranslations('ib.dashboard');
   const { begin } = useRouteScope('/ib');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
 
   const [customers, setCustomers] = useState<IBReferralHistory[]>([]);
@@ -23,9 +23,9 @@ export function NewCustomerListWidget() {
 
   useEffect(() => {
     if (!agentAccount) return;
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     (async () => {
-      const result = await execute(getIBReferralHistory, { signal }, agentAccount.uid, {
+      const result = await execute(getIBReferralHistory, agentAccount.uid, {
         page: 1,
         size: 5,
         IsUnverified: true,

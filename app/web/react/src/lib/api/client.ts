@@ -285,34 +285,8 @@ async function request<T>(
   const response = await fetch(url, config);
   await syncAuthCookies({ response });
 
-  // 打印请求日志
   const contentType = response.headers.get('content-type');
   const hasJsonBody = response.status !== 204 && contentType?.includes('application/json');
-
-  if (hasJsonBody) {
-    // 克隆 response 以便打印内容（body 只能读取一次）
-    const responseClone = response.clone();
-    try {
-      const responseBody = await responseClone.json();
-      logger.info('[API Client] 请求后端API:', {
-        url,
-        status: response.status,
-        body: responseBody
-      });
-    } catch {
-      logger.info('[API Client] 请求后端API:', {
-        url,
-        status: response.status,
-        body: '(JSON 解析失败)'
-      });
-    }
-  } else {
-    logger.info('[API Client] 请求后端API:', {
-      url,
-      status: response.status,
-      body: response.status === 204 ? '(No Content)' : '(非 JSON 响应)'
-    });
-  }
 
   if (!response.ok) {
     let errorMessage = 'Request failed';
@@ -321,31 +295,25 @@ async function request<T>(
 
     try {
       const errorData = await response.json();
-      const errorDataString = JSON.stringify(errorData);
       logger.error('[API Client] 请求失败:', {
         url,
         status: response.status,
         statusText: response.statusText,
-        errorDataString
+        body: errorData,
       });
-      // 处理后端直接返回字符串的情况
       // 格式4: "Wallet address already exists" - 纯字符串错误信息
       if (typeof errorData === 'string') {
         errorMessage = errorData;
-        // 检查字符串是否是错误码格式
         if (isErrorCodeLike(errorData)) {
           errorCode = errorData;
         }
       } else {
-        // 处理对象格式的错误
         errorMessage = errorData.error_description || errorData.message || errorMessage;
         errors = errorData.errors || errorData;
-        // 提取错误码（可能的格式）：
         // 1. { error: '__ERROR_CODE__' } - OAuth 错误
         // 2. { errors: ['__ERROR_CODE__'] } - 验证错误数组
         // 3. { message: '__ERROR_CODE__' } - 后端返回的错误码在 message 字段中
         errorCode = errorData.error || (Array.isArray(errorData.errors) ? errorData.errors[0] : undefined);
-        // 如果 message 是错误码格式（__XXX__ 或 SCREAMING_SNAKE），也作为 errorCode
         if (!errorCode && typeof errorData.message === 'string' && isErrorCodeLike(errorData.message)) {
           errorCode = errorData.message;
         }
@@ -354,33 +322,38 @@ async function request<T>(
       logger.error('[API Client] 请求失败 (无法解析错误):', {
         url,
         status: response.status,
-        statusText: response.statusText
+        statusText: response.statusText,
       });
     }
 
     // HTTP 状态兜底：仅当后端未返回 errorCode 时，补充标准错误码。
     // 避免覆盖后端业务错误码，保证 errorCode 语义一致。
     if (response.status === 401) {
-      if (!errorCode) {
-        errorCode = 'Unauthorized';
-      }
-      if (!errorMessage || errorMessage === 'Request failed') {
-        errorMessage = 'Unauthorized';
-      }
+      if (!errorCode) errorCode = 'Unauthorized';
+      if (!errorMessage || errorMessage === 'Request failed') errorMessage = 'Unauthorized';
     }
     if (response.status === 403) {
-      if (!errorCode) {
-        errorCode = 'Forbidden';
-      }
-      if (!errorMessage || errorMessage === 'Request failed') {
-        errorMessage = 'Forbidden';
-      }
+      if (!errorCode) errorCode = 'Forbidden';
+      if (!errorMessage || errorMessage === 'Request failed') errorMessage = 'Forbidden';
     }
-    logger.info('errorCode==抛出议程', errorCode);
-    logger.info('errorMessage抛出议程', errorMessage);
-    logger.info('errors抛出议程', errors);
-    logger.info('response.status抛出议程', response.status);
     throw new ApiError(errorMessage, response.status, errors, errorCode);
+  }
+
+  // 成功响应才打请求日志
+  if (hasJsonBody) {
+    const responseClone = response.clone();
+    try {
+      const responseBody = await responseClone.json();
+      logger.info('[API Client] 请求后端API:', { url, status: response.status, body: responseBody });
+    } catch {
+      logger.info('[API Client] 请求后端API:', { url, status: response.status, body: '(JSON 解析失败)' });
+    }
+  } else {
+    logger.info('[API Client] 请求后端API:', {
+      url,
+      status: response.status,
+      body: response.status === 204 ? '(No Content)' : '(非 JSON 响应)',
+    });
   }
 
   // 检查是否有响应体（204 No Content、空内容、非 JSON 都返回空）
@@ -409,12 +382,6 @@ async function authenticatedRequest<T>(
   token: string,
   options: RequestInit = {}
 ): Promise<T> {
-  logger.info('[API Client] 发送认证请求:', {
-    url,
-    tokenPrefix: token?.substring(0, 50) + '...',
-  });
-
-
   const sendAuthorization = await shouldSendAuthorization(token);
 
   return request<T>(url, {
