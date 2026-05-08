@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
-import { useBrowserAction } from '@/lib/http';
+import { useServerAction } from '@/hooks/useServerAction';
 import { QRCodeSVG } from 'qrcode.react';
-import { getIBLinks } from '@/lib/http/browserActions/ib';
+import { getIBLinks } from '@/actions/ib';
 import { useIBStore } from '@/stores/ibStore';
 import { useUserStore } from '@/stores/userStore';
 import {
@@ -27,7 +27,7 @@ export function IBLinksWidget() {
   const t = useTranslations('ib.dashboard');
   const locale = useLocale();
   const { begin } = useRouteScope('/ib');
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
 
@@ -40,9 +40,9 @@ export function IBLinksWidget() {
 
   useEffect(() => {
     if (!agentAccount) return;
-    const { signal, isActive } = begin();
+    const { isActive } = begin();
     (async () => {
-      const result = await execute(getIBLinks, { signal }, agentAccount.uid, { page: 1, size: 20 });
+      const result = await execute(getIBLinks, agentAccount.uid, { page: 1, size: 20 });
       if (!isActive()) return;
       if (result.success && result.data?.data) {
         const items = Array.isArray(result.data.data) ? result.data.data : [];

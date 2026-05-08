@@ -133,6 +133,37 @@ async function proxy(request: Request, ctx: Ctx): Promise<Response> {
   responseHeaders.set('cache-control', 'no-store');
 
   const arrayBuffer = await backendResponse.arrayBuffer();
+
+  const isJson = contentType?.includes('application/json');
+  if (backendResponse.ok) {
+    if (isJson) {
+      try {
+        const body = JSON.parse(new TextDecoder().decode(arrayBuffer));
+        logger.info('[api/backend] 请求后端API:', { method, url: targetUrl, status: backendResponse.status, body });
+      } catch {
+        logger.info('[api/backend] 请求后端API:', { method, url: targetUrl, status: backendResponse.status, body: '(JSON 解析失败)' });
+      }
+    } else {
+      logger.info('[api/backend] 请求后端API:', {
+        method,
+        url: targetUrl,
+        status: backendResponse.status,
+        body: backendResponse.status === 204 ? '(No Content)' : '(非 JSON 响应)',
+      });
+    }
+  } else {
+    if (isJson) {
+      try {
+        const body = JSON.parse(new TextDecoder().decode(arrayBuffer));
+        logger.error('[api/backend] 请求失败:', { method, url: targetUrl, status: backendResponse.status, statusText: backendResponse.statusText, body });
+      } catch {
+        logger.error('[api/backend] 请求失败 (无法解析错误):', { method, url: targetUrl, status: backendResponse.status, statusText: backendResponse.statusText });
+      }
+    } else {
+      logger.error('[api/backend] 请求失败 (无法解析错误):', { method, url: targetUrl, status: backendResponse.status, statusText: backendResponse.statusText });
+    }
+  }
+
   return new NextResponse(arrayBuffer, {
     status: backendResponse.status,
     statusText: backendResponse.statusText,

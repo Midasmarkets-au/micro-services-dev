@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useBrowserAction } from '@/lib/http';
-import { getLiveAccounts } from '@/lib/http/browserActions/accounts';
+import { useServerAction } from '@/hooks/useServerAction';
+import { getLiveAccounts } from '@/actions/accounts';
 import { useIBStore } from '@/stores/ibStore';
 import { useUserStore } from '@/stores/userStore';
 import type { AgentAccount } from '@/types/ib';
 
 export function useIBAccountInit() {
-  const { execute } = useBrowserAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const user = useUserStore((s) => s.user);
 
   // 把 ibAccount 数组变成稳定的字符串 key：
@@ -21,23 +21,16 @@ export function useIBAccountInit() {
 
   // token + controller：和 useRouteScope 同构，用来并发去重 + 安全取消
   const tokenRef = useRef(0);
-  const controllerRef = useRef<AbortController | null>(null);
 
   const beginScope = useCallback(() => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
     const myToken = ++tokenRef.current;
-    const isActive = () =>
-      myToken === tokenRef.current && !controller.signal.aborted;
-    return { signal: controller.signal, isActive };
+    const isActive = () => myToken === tokenRef.current;
+    return { isActive };
   }, []);
 
   useEffect(() => {
     return () => {
       tokenRef.current += 1;
-      controllerRef.current?.abort();
-      controllerRef.current = null;
     };
   }, []);
 
@@ -67,11 +60,11 @@ export function useIBAccountInit() {
       return;
     }
 
-    const { signal, isActive } = beginScope();
+    const { isActive } = beginScope();
 
     (async () => {
       const uids = user.ibAccount!.map((uid) => Number(uid));
-      const result = await execute(getLiveAccounts, { signal }, { uids });
+      const result = await execute(getLiveAccounts, { uids });
       if (!isActive()) return;
 
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
@@ -105,7 +98,7 @@ export function useIBAccountInit() {
           } catch {}
           latestState.setAgentAccount(restored ?? accounts[0]);
         }
-      } else if (!result.aborted) {
+      } else if (!result.success) {
         useIBStore.getState().clearStore();
       }
 
