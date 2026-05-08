@@ -17,6 +17,5 @@ export {
   isAuthenticated,
   checkPermission,
   checkRole,
-  clearUserCache,
 } from './session';
 
