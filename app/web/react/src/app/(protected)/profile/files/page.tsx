@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useUserStore } from '@/stores/userStore';
 import { isGuestOnly } from '@/lib/rbac';
-import { getVerificationStatus, uploadVerificationDocument } from '@/actions';
+import { uploadVerificationDocument } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/useToast';
 import { FileCard } from '@/components/ui/FileCard';
@@ -159,12 +160,10 @@ export default function FilesPage() {
       }
 
       try {
-        const result = await getVerificationStatus();
+        const result = await fetchAction<{ document?: DocumentMedia[] }>('getVerificationStatus');
         console.log('[FilesPage] result:', result);
         if (result.success && result.data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const verificationData = result.data as any;
-          setDocuments(verificationData.document ?? []);
+          setDocuments(result.data.document ?? []);
         }
       } catch (error) {
         console.error('[FilesPage] Failed to fetch documents:', error);
@@ -210,11 +209,9 @@ export default function FilesPage() {
         });
         
         // 重新获取文档列表
-        const statusResult = await getVerificationStatus();
+        const statusResult = await fetchAction<{ document?: DocumentMedia[] }>('getVerificationStatus');
         if (statusResult.success && statusResult.data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const verificationData = statusResult.data as any;
-          setDocuments(verificationData.document ?? []);
+          setDocuments(statusResult.data.document ?? []);
         }
       } else {
         showToast({

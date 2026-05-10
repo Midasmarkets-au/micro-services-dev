@@ -7,7 +7,7 @@ const protectedPaths = ['/dashboard', '/admin', '/settings', '/profile', '/verif
 // 公开路径（不需要认证）
 const publicPaths = ['/sign-in', '/sign-up', '/forgot-password', '/reset-password', '/set-token', '/login', '/register', '/lead-create', '/change-account-password', '/demo-account'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 跳过静态资源

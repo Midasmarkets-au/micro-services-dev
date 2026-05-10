@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui';
-import { getMediaUrl } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 
 // 文件类型
 enum FileType {
@@ -60,7 +60,7 @@ export function FilePreviewModal({ isOpen, onClose, media }: FilePreviewModalPro
 
       try {
         // 通过 action 获取带 token 的媒体 URL
-        const result = await getMediaUrl(media.guid!);
+        const result = await fetchAction<string>('getMediaUrl', media.guid!);
         
         if (!result.success || !result.data) {
           throw new Error(result.error || 'Failed to get media URL');

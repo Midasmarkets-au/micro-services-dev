@@ -6,13 +6,11 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import {
-  getShopItemDetail,
-  getMediaUrl,
   purchaseItem,
-  getAddressList,
   createAddress,
   updateAddress,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type { ShopItem } from '@/types/eventshop';
 import type { AddressInfo, AddressPayload, UpdateAddressPayload } from '@/actions';
 import { ShopPoints } from './ShopPoints';
@@ -97,15 +95,15 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
 
     try {
       const [itemResult, addrResult] = await Promise.all([
-        executeRef.current(getShopItemDetail, itemHashId),
-        getAddressList(),
+        executeRef.current(async () => fetchAction<ShopItem>('getShopItemDetail', itemHashId)),
+        fetchAction<AddressInfo[]>('getAddressList'),
       ]);
 
       if (itemResult.success && itemResult.data) {
         setItem(itemResult.data);
         const guid = itemResult.data.images?.[0];
         if (guid) {
-          const imgResult = await getMediaUrl(guid);
+          const imgResult = await fetchAction<string>('getMediaUrl', guid);
           if (imgResult.success && imgResult.data) setImageUrl(imgResult.data);
         }
       }
@@ -237,7 +235,7 @@ export function ExchangeModal({ open, onOpenChange, itemHashId, userPoints, onSu
 
       if (result.success) {
         showSuccess(t('exchange.addressSaveSuccess'));
-        const addrResult = await getAddressList();
+        const addrResult = await fetchAction<AddressInfo[]>('getAddressList');
         if (addrResult.success && addrResult.data) {
           setAddresses(addrResult.data);
           if (result.data?.hashId) {

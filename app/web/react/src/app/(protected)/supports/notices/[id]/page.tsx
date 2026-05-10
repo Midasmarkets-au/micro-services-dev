@@ -7,7 +7,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import DOMPurify from 'dompurify';
 import { useServerAction } from '@/hooks/useServerAction';
 import { Skeleton } from '@/components/ui';
-import { getNotices } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 
 // 单个语言版本的公告内容
 interface NoticeContent {
@@ -168,7 +168,7 @@ export default function NoticeDetailPage() {
     const fetchNotice = async () => {
       setIsLoading(true);
       try {
-        const result = await execute(getNotices);
+        const result = await execute(async () => fetchAction<ApiNotice[]>('getNotices'));
         if (result.success && result.data) {
           const rawData = result.data as unknown as ApiNotice[];
           // 找到对应 ID 的公告

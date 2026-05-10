@@ -13,7 +13,8 @@ import { getRegionCodes } from '@/core/data/phonesData';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { useTheme } from '@/hooks/useTheme';
-import { login, register as registerAction, resendConfirmation, getSiteConfig } from '@/actions';
+import { login, register as registerAction, resendConfirmation } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import {
   TenantTypes,
   Tenancies,
@@ -106,7 +107,7 @@ export default function SignUpPage() {
       }
       
       // 使用 Server Action
-      const result = await execute(getSiteConfig, openAt);
+      const result = await execute(async () => fetchAction<SiteTypes[]>('getSiteConfig', openAt));
       
       if (result.success && result.data) {
         let siteData = result.data;

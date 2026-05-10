@@ -16,13 +16,7 @@ import {
 } from '@/components/ui';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
-import {
-  getIBClients,
-  getIBDeposits,
-  getIBWithdrawals,
-  getIBAccountTrades,
-  getIBAccountTransactions,
-} from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import type {
   IBClientAccount,
@@ -150,11 +144,11 @@ export default function IBCustomerDetailPage({
 
   const loadCustomer = useCallback(async () => {
     if (!agentAccount || !accountUid) return;
-    const result = await execute(getIBClients, agentAccount.uid, {
+    const result = await execute(async () => fetchAction<{ data: IBClientAccount[] }>('getIBClients', agentAccount.uid, {
       page: 1,
       size: 1,
       uid: String(accountUid),
-    });
+    }));
     if (result.success && result.data?.data?.length) {
       const found = result.data.data.find((c) => c.uid === accountUid);
       if (found) setCustomer(found);
@@ -200,31 +194,31 @@ export default function IBCustomerDetailPage({
       const params = { ...filterParams, ...extraParams, ...tabFixedParams };
 
       if (tab === 'deposit') {
-        const result = await execute(getIBDeposits, agentAccount.uid, {
+        const result = await execute(async () => fetchAction<{ data: IBDepositRecord[]; criteria?: { total?: number } }>('getIBDeposits', agentAccount.uid, {
           page: p,
           size: pageSize,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setDeposits(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'withdrawal') {
-        const result = await execute(getIBWithdrawals, agentAccount.uid, {
+        const result = await execute(async () => fetchAction<{ data: IBWithdrawalRecord[]; criteria?: { total?: number } }>('getIBWithdrawals', agentAccount.uid, {
           page: p,
           size: pageSize,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'transfer') {
-        const result = await execute(getIBAccountTransactions, agentAccount.uid, accountUid, {
+        const result = await execute(async () => fetchAction<{ data: unknown[]; criteria?: Record<string, number> }>('getIBAccountTransactions', agentAccount.uid, accountUid, {
           page: p,
           size: pageSize,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           const raw = Array.isArray(result.data.data) ? result.data.data : [];
           setTransfers(raw.map((r: unknown) => {
@@ -274,7 +268,7 @@ export default function IBCustomerDetailPage({
   };
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!agentAccount || !accountUid) return null;
-    const result = await execute(getIBAccountTrades, agentAccount.uid, accountUid, params);
+    const result = await execute(async () => fetchAction<{ data: unknown[]; criteria: unknown }>('getIBAccountTrades', agentAccount.uid, accountUid, params));
     if (result.success && result.data) {
       return { data: result.data.data, criteria: result.data.criteria };
     }

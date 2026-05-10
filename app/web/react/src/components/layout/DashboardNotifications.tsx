@@ -6,8 +6,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouteScope } from '@/hooks/useRouteScope';
 import { useServerAction } from '@/hooks/useServerAction';
+import { fetchAction } from '@/lib/api/browser-client';
 import { NotificationsSkeleton } from '@/components/ui';
-import { getNotifications } from '@/actions/contact';
 
 // 后端返回的通知内容结构
 interface NoticeContent {
@@ -75,7 +75,7 @@ export function DashboardNotifications() {
   useEffect(() => {
     const { isActive } = begin();
     (async () => {
-      const result = await execute(getNotifications, 8);
+      const result = await execute(async () => fetchAction<NoticeItem[]>('getNotifications', 8));
       if (!isActive()) return;
 
       const items: NoticeItem[] = Array.isArray(result.data)

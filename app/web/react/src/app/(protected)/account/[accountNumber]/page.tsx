@@ -24,15 +24,7 @@ import { DepositModal } from '@/components/dashboard/modals/DepositModal';
 import { WithdrawalModal } from '@/components/dashboard/modals/WithdrawalModal';
 import { TransferToAccountModal } from '@/components/dashboard/modals/TransferToAccountModal';
 import { UploadReceiptModal } from '@/components/dashboard/modals/UploadReceiptModal';
-import {
-  getAccountByNumber,
-  getLiveAccounts,
-  getServiceMap,
-  getAccountDeposits,
-  getAccountWithdrawals,
-  getAccountTransactions,
-  getAccountTrades,
-} from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type {
   Account,
   ServiceMap,
@@ -168,8 +160,8 @@ export default function AccountDetailPage() {
     setIsLoading(true);
     try {
       const [accountResult, accountsResult, serviceResult] = await Promise.all([
-        execute(getAccountByNumber, accountNumber),
-        execute(getLiveAccounts, {
+        execute(async () => fetchAction<Account>('getAccountByNumber', accountNumber)),
+        execute(async () => fetchAction<Account[]>('getLiveAccounts', {
           hasTradeAccount: true,
           status: AccountStatusTypes.Activate,
           roles: [
@@ -179,8 +171,8 @@ export default function AccountDetailPage() {
             AccountRoleTypes.Wholesale,
             AccountRoleTypes.Guest,
           ],
-        }),
-        execute(getServiceMap),
+        })),
+        execute(async () => fetchAction<ServiceMap>('getServiceMap')),
       ]);
 
       if (accountResult.success && accountResult.data) {
@@ -227,7 +219,7 @@ export default function AccountDetailPage() {
       const params = { ...filterParams, ...extraParams, ...tabFixedParams };
       switch (activeTab) {
         case 'deposit': {
-          const result = await execute(getAccountDeposits, uid, params);
+          const result = await execute(async () => fetchAction<{ data: AccountDeposit[]; criteria?: { total?: number } }>('getAccountDeposits', uid, params));
           if (result.success) {
             const rows = result.data?.data || [];
             setDeposits(rows);
@@ -236,7 +228,7 @@ export default function AccountDetailPage() {
           break;
         }
         case 'withdrawal': {
-          const result = await execute(getAccountWithdrawals, uid, params);
+          const result = await execute(async () => fetchAction<{ data: AccountWithdrawal[]; criteria?: { total?: number } }>('getAccountWithdrawals', uid, params));
           if (result.success) {
             const rows = result.data?.data || [];
             setWithdrawals(rows);
@@ -245,7 +237,7 @@ export default function AccountDetailPage() {
           break;
         }
         case 'transfer': {
-          const result = await execute(getAccountTransactions, uid, params);
+          const result = await execute(async () => fetchAction<{ data: AccountTransaction[]; criteria?: { total?: number } }>('getAccountTransactions', uid, params));
           if (result.success) {
             const rows = result.data?.data || [];
             setTransactions(rows);
@@ -318,7 +310,7 @@ export default function AccountDetailPage() {
 
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!currentAccount) return null;
-    const result = await execute(getAccountTrades, currentAccount.uid, params);
+    const result = await execute(async () => fetchAction<{ data: unknown[]; criteria: unknown }>('getAccountTrades', currentAccount.uid, params));
     if (result.success && result.data) {
       return { data: result.data.data, criteria: result.data.criteria };
     }

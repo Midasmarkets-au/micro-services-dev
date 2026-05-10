@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { getPointsHistory, getMediaUrl } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { PointTransactionStatus, PointTransactionSource } from '@/types/eventshop';
 import type { PointTransaction } from '@/types/eventshop';
 import { Button, Input, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
@@ -42,7 +42,7 @@ export function PointsHistoryTab() {
       };
       if (status !== undefined) criteria.status = status;
       if (search) criteria.eventShopItemName = search;
-      const result = await getPointsHistory(criteria);
+      const result = await fetchAction<{ items: PointTransaction[]; total: number }>('getPointsHistory', criteria);
       if (result.success && result.data) {
         setItems(result.data.items);
         setTotal(result.data.total);
@@ -60,7 +60,7 @@ export function PointsHistoryTab() {
     const urls: Record<string, string> = {};
     await Promise.all(
       guids.map(async (guid) => {
-        const result = await getMediaUrl(guid);
+        const result = await fetchAction<string>('getMediaUrl', guid);
         if (result.success && result.data) urls[guid] = result.data;
       })
     );

@@ -14,7 +14,8 @@ import { Button } from '@/components/ui';
 import { Stepper } from '@/components/ui/Stepper';
 import { SimpleSelect } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getLiveAccountConfig, createLiveAccount } from '@/actions';
+import { createLiveAccount } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useToast } from '@/hooks/useToast';
 import type { AccountConfig, ServiceMap, CreateLiveAccountParams } from '@/types/accounts';
 import { getPlatformName } from '@/types/accounts';
@@ -56,7 +57,7 @@ export function CreateLiveAccountModal({
       const loadConfig = async () => {
         setIsLoadingConfig(true);
         try {
-          const result = await execute(getLiveAccountConfig);
+          const result = await execute(async () => fetchAction<AccountConfig>('getLiveAccountConfig'));
           if (result.success && result.data) {
             setConfig(result.data);
             if (result.data.tradingPlatformAvailable?.length > 0) {

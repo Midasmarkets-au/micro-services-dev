@@ -6,11 +6,11 @@ import Image from 'next/image';
 import { Button, Icon } from '@/components/ui';
 import { AddressModal, type AddressFormData } from '../components/AddressModal';
 import {
-  getAddressList,
   createAddress,
   updateAddress,
   type AddressInfo,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { getDataByCode } from '@/core/data/phonesData';
@@ -35,7 +35,7 @@ export default function AddressPage() {
   // Fetch address list
   const fetchAddresses = useCallback(async () => {
     setLoading(true);
-    const result = await execute(getAddressList);
+    const result = await execute(async () => fetchAction<AddressInfo[]>('getAddressList'));
     if (result.success && result.data) {
       setAddresses(result.data);
     }

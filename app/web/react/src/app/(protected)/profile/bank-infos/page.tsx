@@ -6,12 +6,12 @@ import Image from 'next/image';
 import { Button, ConfirmDialog } from '@/components/ui';
 import { BankAccountModal, type BankAccountFormData, type BankFormData, type USDTFormData } from '../components/BankAccountModal';
 import {
-  getPaymentInfoList,
   deletePaymentInfo,
   createPaymentInfo,
   updatePaymentInfo,
   type PaymentInfo,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { getDataByCode } from '@/core/data/phonesData';
@@ -38,7 +38,7 @@ export default function BankInfosPage() {
   // Fetch payment info list
   const fetchPaymentInfos = useCallback(async () => {
     setLoading(true);
-    const result = await execute(getPaymentInfoList);
+    const result = await execute(async () => fetchAction<PaymentInfo[]>('getPaymentInfoList'));
     if (result.success && result.data) {
       setPaymentInfos(result.data);
     }

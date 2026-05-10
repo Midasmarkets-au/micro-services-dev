@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesReferralHistory } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { Avatar, DataTable, Tabs, Pagination } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
@@ -40,12 +40,12 @@ export default function SalesNewCustomersPage() {
       if (!salesUid) return;
       setIsLoading(true);
       try {
-        const result = await executeRef.current(getSalesReferralHistory, salesUid, {
+        const result = await executeRef.current(async () => fetchAction<{ data: SalesReferralHistory[]; criteria?: { total: number } }>('getSalesReferralHistory', salesUid, {
           page: p,
           size,
           IsUnverified: true,
           ...getStatusFilter(tab),
-        });
+        }));
         console.log('result',result);
         if (result.success && result.data) {
           setData(Array.isArray(result.data.data) ? result.data.data : []);

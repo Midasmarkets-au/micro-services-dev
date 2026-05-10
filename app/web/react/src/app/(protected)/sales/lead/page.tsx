@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesLeads, getSalesLeadDetail, addSalesLeadComment } from '@/actions';
+import { getSalesLeadDetail, addSalesLeadComment } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { Avatar, Button, Input, Pagination, DataTable } from '@/components/ui';
 import { TimeShow } from '@/components/TimeShow';
@@ -29,7 +30,7 @@ export default function SalesLeadPage() {
     async (p: number) => {
       if (!salesAccount) return;
       setIsLoading(true);
-      const result = await execute(getSalesLeads, salesAccount.uid, { page: p, size });
+      const result = await execute(async () => fetchAction<{ data: SalesLead[]; criteria?: { total: number } }>('getSalesLeads', salesAccount.uid, { page: p, size }));
       if (result.success && result.data) {
         setData(Array.isArray(result.data.data) ? result.data.data : []);
         setTotal(result.data.criteria?.total || 0);

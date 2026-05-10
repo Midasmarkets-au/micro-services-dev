@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesClients, getSalesAccountDetail, getSalesViewEmailCode, getSalesEmailByCode } from '@/actions';
+import { getSalesAccountDetail, getSalesViewEmailCode, getSalesEmailByCode } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { AccountRoleTypes } from '@/types/accounts';
 import {
@@ -108,7 +109,7 @@ export default function SalesCustomersPage() {
       if (!salesAccount) return;
       setIsLoading(true);
       try {
-        const result = await execute(getSalesClients, salesAccount.uid, params);
+        const result = await execute(async () => fetchAction<{ data: SalesClientAccount[]; criteria?: SalesClientCriteria }>('getSalesClients', salesAccount.uid, params));
         if (result.success && result.data) {
           const raw = result.data.criteria || params;
           setCriteria({

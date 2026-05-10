@@ -1,14 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getLiveAccounts } from '@/actions/accounts';
+import { fetchApiRoute } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { useUserStore } from '@/stores/userStore';
 import type { AgentAccount } from '@/types/ib';
 
+// Account type fragment for mapping (matches getLiveAccounts return shape)
+type LiveAccount = {
+  uid: number;
+  currencyId?: number;
+  fundType?: number;
+  role?: number;
+  type?: number;
+  name?: string;
+  siteId?: number;
+  hasLevelRule?: boolean;
+  group?: string;
+  alias?: string;
+  tradeAccount?: string;
+  code?: string;
+  createdOn?: string;
+};
+
 export function useIBAccountInit() {
-  const { execute } = useServerAction({ showErrorToast: true });
   const user = useUserStore((s) => s.user);
 
   // 把 ibAccount 数组变成稳定的字符串 key：
@@ -61,50 +76,56 @@ export function useIBAccountInit() {
     }
 
     const { isActive } = beginScope();
+    const uids = user.ibAccount.map((uid) => Number(uid));
 
     (async () => {
-      const uids = user.ibAccount!.map((uid) => Number(uid));
-      const result = await execute(getLiveAccounts, { uids });
-      if (!isActive()) return;
+      try {
+        // 使用 Route Handler 替代 Server Action，避免触发 RSC 导航
+        const result = await fetchApiRoute<LiveAccount[]>('/api/account/live', { uids });
+        if (!isActive()) return;
 
-      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        const accounts: AgentAccount[] = result.data.map((acc) => ({
-          uid: acc.uid,
-          currencyId: acc.currencyId,
-          fundType: acc.fundType,
-          role: acc.role ?? 0,
-          type: acc.type,
-          name: acc.name,
-          siteId: acc.siteId,
-          hasLevelRule: acc.hasLevelRule ?? false,
-          salesGroupName: acc.code,
-          createdOn: acc.createdOn,
-          agentSelfGroupName: acc.group,
-          alias: acc.alias,
-          tradeAccount: acc.tradeAccount,
-        }));
-        const latestState = useIBStore.getState();
-        latestState.setAgentAccountList(accounts);
-        const cachedUid = latestState.agentAccount?.uid;
-        const stillValid = cachedUid && accounts.some((a) => a.uid === cachedUid);
-        if (!stillValid) {
-          let restored: AgentAccount | undefined;
-          try {
-            const raw = localStorage.getItem('ib-storage');
-            if (raw) {
-              const saved = JSON.parse(raw) as AgentAccount;
-              restored = accounts.find((a) => a.uid === saved.uid);
-            }
-          } catch {}
-          latestState.setAgentAccount(restored ?? accounts[0]);
+        if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+          const accounts: AgentAccount[] = result.data.map((acc) => ({
+            uid: acc.uid,
+            currencyId: acc.currencyId,
+            fundType: acc.fundType,
+            role: acc.role ?? 0,
+            type: acc.type,
+            name: acc.name,
+            siteId: acc.siteId,
+            hasLevelRule: acc.hasLevelRule ?? false,
+            salesGroupName: acc.code,
+            createdOn: acc.createdOn,
+            agentSelfGroupName: acc.group,
+            alias: acc.alias,
+            tradeAccount: acc.tradeAccount,
+          }));
+          const latestState = useIBStore.getState();
+          latestState.setAgentAccountList(accounts);
+          const cachedUid = latestState.agentAccount?.uid;
+          const stillValid = cachedUid && accounts.some((a) => a.uid === cachedUid);
+          if (!stillValid) {
+            let restored: AgentAccount | undefined;
+            try {
+              const raw = localStorage.getItem('ib-storage');
+              if (raw) {
+                const saved = JSON.parse(raw) as AgentAccount;
+                restored = accounts.find((a) => a.uid === saved.uid);
+              }
+            } catch {}
+            latestState.setAgentAccount(restored ?? accounts[0]);
+          }
+        } else if (!result.success) {
+          if (isActive()) useIBStore.getState().clearStore();
         }
-      } else if (!result.success) {
-        useIBStore.getState().clearStore();
+      } catch (err) {
+        console.error('[useIBAccountInit] 拉取账号失败:', err);
+        if (isActive()) useIBStore.getState().clearStore();
+      } finally {
+        if (isActive()) useIBStore.getState().setInitialized(true);
       }
-
-      useIBStore.getState().setInitialized(true);
     })();
     // user.ibAccount 的内容已通过 ibAccountKey 表达；其他引用都是稳定的
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ibAccountKey, execute, beginScope]);
+  }, [ibAccountKey, beginScope]);
 }

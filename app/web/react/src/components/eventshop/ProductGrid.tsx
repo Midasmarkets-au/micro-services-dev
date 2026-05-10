@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
-import { getShopItems, getShopCategories, getMediaUrl } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { Button, Tabs } from '@/components/ui';
 import type { ShopItem } from '@/types/eventshop';
 import { ShopPoints } from './ShopPoints';
@@ -33,7 +33,7 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
   const isLoadedRef = useRef(false);
 
   const loadCategories = useCallback(async () => {
-    const result = await getShopCategories();
+    const result = await fetchAction<Record<string, string>>('getShopCategories');
     if (result.success && result.data) {
       const entries = Object.entries(result.data).map(([id, name]) => ({ id, name }));
       setCategories(entries);
@@ -53,7 +53,7 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
       if (category) {
         criteria.category = category;
       }
-      const result = await getShopItems(criteria);
+      const result = await fetchAction<{ items: ShopItem[]; total?: number }>('getShopItems', criteria);
       if (result.success && result.data?.items) {
         setItems(result.data.items);
         const guids = result.data.items
@@ -71,7 +71,7 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
     await Promise.all(
       guids.map(async (guid) => {
         if (!guid) return;
-        const result = await getMediaUrl(guid);
+        const result = await fetchAction<string>('getMediaUrl', guid);
         if (result.success && result.data) {
           urls[guid] = result.data;
         }

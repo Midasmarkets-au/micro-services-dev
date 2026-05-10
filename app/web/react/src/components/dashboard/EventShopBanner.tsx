@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getEventDetail } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { TimeShow } from '@/components/TimeShow';
 import {
   MiniLoading,
@@ -47,7 +47,7 @@ export function EventShopBanner() {
 
     (async () => {
       try {
-        const result = await execute(getEventDetail, 'EventShop');
+        const result = await execute(async () => fetchAction<EventDetail>('getEventDetail', 'EventShop'));
         if (result.success && result.data) {
           setEventData(result.data);
         }

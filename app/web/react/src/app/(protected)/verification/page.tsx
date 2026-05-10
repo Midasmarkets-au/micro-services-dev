@@ -27,17 +27,14 @@ import { PageLoading } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useUserStore } from '@/stores/userStore';
 import {
-  getVerificationStatus,
   saveStartedInfo,
   checkClientAnswer,
-  getMyReferralCode,
-  getReferralInfoByReferralCode,
-  getConfiguration,
   savePersonalInfo,
   saveAgreement,
   submitDocument,
   logout,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import {
   prepareChunkedUpload,
   createChunkFormData,
@@ -175,7 +172,7 @@ export default function VerificationPage() {
   };
 
   const fetchReferralData = async () => {
-    const referralCodeResult = await execute(getMyReferralCode);
+    const referralCodeResult = await execute(async () => fetchAction<{ referCode: string }>('getMyReferralCode'));
     if (!referralCodeResult.success || !referralCodeResult.data?.referCode) {
       setIsAccountTypeRestricted(false);
       setAccountTypeSelections(defaultAccountTypeOptions);
@@ -185,7 +182,7 @@ export default function VerificationPage() {
     const code = referralCodeResult.data.referCode;
     setReferralCode(code);
 
-    const referralInfoResult = await execute(getReferralInfoByReferralCode, code);
+    const referralInfoResult = await execute(async () => fetchAction<{ data?: { serviceType?: number; summary?: { allowAccountTypes?: { accountType: number }[]; schema?: { accountType: number }[] } }; serviceType?: number; summary?: { allowAccountTypes?: { accountType: number }[]; schema?: { accountType: number }[] } }>('getReferralInfoByReferralCode', code));
     if (!referralInfoResult.success || !referralInfoResult.data) {
       setIsAccountTypeRestricted(false);
       setAccountTypeSelections(defaultAccountTypeOptions);
@@ -222,14 +219,14 @@ export default function VerificationPage() {
     isInitialized.current = true;
 
     const initializePage = async () => {
-      const configResult = await execute(getConfiguration);
+      const configResult = await execute(async () => fetchAction<{ verificationQuizEnabled?: boolean }>('getConfiguration'));
       if (configResult.success) {
         setQuizEnabled(Boolean(configResult.data?.verificationQuizEnabled));
       }
 
       await fetchReferralData();
 
-      const verificationResult = await execute(getVerificationStatus);
+      const verificationResult = await execute(async () => fetchAction<VerificationData>('getVerificationStatus'));
       if (verificationResult.success && verificationResult.data) {
         const data = verificationResult.data as unknown as VerificationData;
         setVerificationData(data);

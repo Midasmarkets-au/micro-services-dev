@@ -7,15 +7,10 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useRouteScope } from '@/hooks/useRouteScope';
 import { useServerAction } from '@/hooks/useServerAction';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useUserStore } from '@/stores/userStore';
 import { isGuestOnly } from '@/lib/rbac';
 import { Button, Skeleton, Icon } from '@/components/ui';
-import {
-  getLiveAccounts,
-  getPendingApplications,
-  getDemoAccounts,
-  getServiceMap,
-} from '@/actions/accounts';
 import type {
   Account,
   Application,
@@ -89,11 +84,12 @@ export function DashboardMainContent() {
   const loadData = useCallback(async () => {
     const { isActive } = begin();
     try {
+      // 使用 Action Bridge 替代 Server Actions，避免触发 RSC 导航
       const [accountsResult, applicationsResult, demoResult, serviceResult] =
         await Promise.all([
           isGuest
             ? Promise.resolve({ success: true as const, data: [] as Account[] })
-            : execute(getLiveAccounts, {
+            : execute(async () => fetchAction<Account[]>('getLiveAccounts', {
                 hasTradeAccount: true,
                 status: AccountStatusTypes.Activate,
                 roles: [
@@ -103,18 +99,18 @@ export function DashboardMainContent() {
                   AccountRoleTypes.Wholesale,
                   AccountRoleTypes.Guest,
                 ],
-              }),
+              })),
           isGuest
             ? Promise.resolve({ success: true as const, data: [] as Application[] })
-            : execute(getPendingApplications, {
+            : execute(async () => fetchAction<Application[]>('getPendingApplications', {
                 statuses: [
                   ApplicationStatusType.AwaitingApproval,
                   ApplicationStatusType.Approved,
                 ],
                 type: ApplicationType.TradeAccount,
-              }),
-          execute(getDemoAccounts),
-          execute(getServiceMap),
+              })),
+          execute(async () => fetchAction<DemoAccount[]>('getDemoAccounts')),
+          execute(async () => fetchAction<ServiceMap>('getServiceMap')),
         ]);
       if (!isActive()) return;
       if (accountsResult.success) {
