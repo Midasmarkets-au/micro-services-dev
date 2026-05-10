@@ -7,15 +7,9 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { useTheme } from '@/hooks/useTheme';
 import {
-  getPrimaryWallet,
-  getWithdrawalTransactions,
-  getTransferTransactions,
-  getAdjustTransactions,
-  getRefundTransactions,
-  getRebateTransactions,
-  getDownlineRewardTransactions,
   cancelWithdrawal,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import {
   TransactionType,
   Transaction,
@@ -71,7 +65,7 @@ export default function WalletPage() {
   const loadWallet = useCallback(async () => {
     setIsLoadingWallet(true);
     try {
-      const result = await execute(getPrimaryWallet);
+      const result = await execute(async () => fetchAction<Wallet>('getPrimaryWallet'));
       if (result.success && result.data) {
         setWallet(result.data);
       }
@@ -103,22 +97,22 @@ export default function WalletPage() {
         let result;
         switch (tab) {
           case TransactionType.Withdrawal:
-            result = await execute(getWithdrawalTransactions, wallet.hashId, queryParams);
+            result = await execute(async () => fetchAction<{ data: Transaction[]; total: number }>('getWithdrawalTransactions', wallet.hashId, queryParams));
             break;
           case TransactionType.Transfer:
-            result = await execute(getTransferTransactions, wallet.hashId, queryParams);
+            result = await execute(async () => fetchAction<{ data: Transaction[]; total: number }>('getTransferTransactions', wallet.hashId, queryParams));
             break;
           case TransactionType.Adjust:
-            result = await execute(getAdjustTransactions, wallet.hashId, queryParams);
+            result = await execute(async () => fetchAction<{ data: Transaction[]; total: number }>('getAdjustTransactions', wallet.hashId, queryParams));
             break;
           case TransactionType.Refund:
-            result = await execute(getRefundTransactions, wallet.hashId, queryParams);
+            result = await execute(async () => fetchAction<{ data: Transaction[]; total: number }>('getRefundTransactions', wallet.hashId, queryParams));
             break;
           case TransactionType.Rebate:
-            result = await execute(getRebateTransactions, wallet.hashId, queryParams);
+            result = await execute(async () => fetchAction<{ data: Transaction[]; total: number }>('getRebateTransactions', wallet.hashId, queryParams));
             break;
           case TransactionType.DownlineReward:
-            result = await execute(getDownlineRewardTransactions, wallet.hashId, queryParams);
+            result = await execute(async () => fetchAction<{ data: Transaction[]; total: number }>('getDownlineRewardTransactions', wallet.hashId, queryParams));
             break;
         }
         if (result?.success && result.data) {

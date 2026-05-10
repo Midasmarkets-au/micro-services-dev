@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getEventDetail, getEventUserDetail } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useUserStore } from '@/stores/userStore';
 import { RegistrationCard } from '@/components/eventshop/RegistrationCard';
 import { EventShopContent } from '@/components/eventshop/EventShopContent';
@@ -24,7 +24,7 @@ export default function EventShopPage() {
   const fetchData = useCallback(async (forceRegistered = false) => {
     setIsLoading(true);
     try {
-      const eventResult = await execute(getEventDetail, 'EventShop');
+      const eventResult = await execute(async () => fetchAction<EventDetail>('getEventDetail', 'EventShop'));
       if (eventResult.success && eventResult.data) {
         setEventDetail(eventResult.data);
       }
@@ -35,7 +35,7 @@ export default function EventShopPage() {
       if (hasEventShopRole) {
         setStep(EventPartyStatusTypes.Applied);
 
-        const userResult = await getEventUserDetail();
+        const userResult = await fetchAction<EventUserDetail>('getEventUserDetail');
         if (userResult.success && userResult.data) {
           setUserDetail(userResult.data);
           if (userResult.data.status !== undefined) {

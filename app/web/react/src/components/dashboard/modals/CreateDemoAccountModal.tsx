@@ -13,7 +13,8 @@ import { Button } from '@/components/ui';
 import { Stepper } from '@/components/ui/Stepper';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getDemoAccountConfig, createDemoAccount } from '@/actions';
+import { createDemoAccount } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useToast } from '@/hooks/useToast';
 import type { AccountConfig, ServiceMap, CreateDemoAccountParams } from '@/types/accounts';
 import { getPlatformName } from '@/types/accounts';
@@ -54,7 +55,7 @@ export function CreateDemoAccountModal({
       const loadConfig = async () => {
         setIsLoadingConfig(true);
         try {
-          const result = await execute(getDemoAccountConfig);
+          const result = await execute(async () => fetchAction<AccountConfig>('getDemoAccountConfig'));
           if (result.success && result.data) {
             setConfig(result.data);
             if (result.data.tradingPlatformAvailable?.length > 0) {

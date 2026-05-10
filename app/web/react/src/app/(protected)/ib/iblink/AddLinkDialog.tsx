@@ -16,13 +16,10 @@ import {
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
-  getIBRebateRuleDetailFull,
-  getIBProductCategory,
-  getIBDefaultLevelSettingMap,
-  getIBAccountsWithConfig,
   createIBLinkForIB,
   createIBLinkForClient,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type {
   IBRebateRuleDetailFull,
   IBProductCategory,
@@ -493,10 +490,10 @@ export function AddLinkDialog({ isOpen, onClose, onSuccess, agentUid, userName }
     setInitLoading(true);
     try {
       const [ruleRes, catRes, defaultRes, accountsRes] = await Promise.all([
-        executeRef.current(getIBRebateRuleDetailFull, agentUid),
-        executeRef.current(getIBProductCategory),
-        executeRef.current(getIBDefaultLevelSettingMap, agentUid),
-        executeRef.current(getIBAccountsWithConfig),
+        executeRef.current(async () => fetchAction<IBRebateRuleDetailFull>('getIBRebateRuleDetailFull', agentUid)),
+        executeRef.current(async () => fetchAction<IBProductCategory[]>('getIBProductCategory')),
+        executeRef.current(async () => fetchAction<IBDefaultLevelSettingMap>('getIBDefaultLevelSettingMap', agentUid)),
+        executeRef.current(async () => fetchAction<{ data: { uid: number; configurations: { key: string; value: string }[] }[] }>('getIBAccountsWithConfig')),
       ]);
 
       if (ruleRes.success && ruleRes.data) setRuleDetail(ruleRes.data);

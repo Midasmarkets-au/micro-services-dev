@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getIBLinks, getReferralCodeSupplement } from '@/actions';
+import { getReferralCodeSupplement } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
@@ -67,10 +68,10 @@ export default function IBLinkPage() {
     if (!agentAccount) return;
     setIsLoading(true);
     try {
-      const result = await executeRef.current(getIBLinks, agentAccount.uid, {
+      const result = await executeRef.current(async () => fetchAction<{ data: IBLink[] }>('getIBLinks', agentAccount.uid, {
         page: 1,
         size: 100,
-      });
+      }));
       if (result.success && result.data) {
         setData(Array.isArray(result.data.data) ? result.data.data : []);
       }

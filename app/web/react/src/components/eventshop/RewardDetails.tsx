@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { getRewardRebateList } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { RewardRebateStatus } from '@/types/eventshop';
 import type { RewardRebate } from '@/types/eventshop';
 import {  Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
@@ -38,7 +38,7 @@ export function RewardDetails() {
         eventKey: 'EventShop',
       };
       if (status !== undefined) criteria.status = status;
-      const result = await getRewardRebateList(criteria);
+      const result = await fetchAction<{ items: RewardRebate[]; total: number }>('getRewardRebateList', criteria);
       if (result.success && result.data) {
         setItems(result.data.items);
         setTotal(result.data.total);

@@ -1,13 +1,28 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getLiveAccounts } from '@/actions';
+import { fetchApiRoute } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import type { SalesAccount } from '@/types/sales';
 
+// Account type fragment for mapping (matches getLiveAccounts return shape)
+type LiveAccount = {
+  uid: number;
+  currencyId?: number;
+  fundType?: number;
+  role?: number;
+  type?: number;
+  name?: string;
+  siteId?: number;
+  hasLevelRule?: boolean;
+  group?: string;
+  alias?: string;
+  tradeAccount?: string;
+  code?: string;
+  createdOn?: string;
+};
+
 export function useSalesAccountInit() {
-  const { execute } = useServerAction({ showErrorToast: true });
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -22,7 +37,8 @@ export function useSalesAccountInit() {
 
     (async () => {
       try {
-        const result = await execute(getLiveAccounts, { roles: [100] });
+        // 使用 Route Handler 替代 Server Action，避免触发 RSC 导航
+        const result = await fetchApiRoute<LiveAccount[]>('/api/account/live', { roles: [100] });
         if (result.success && Array.isArray(result.data) && result.data.length > 0) {
           const accounts: SalesAccount[] = result.data.map((acc) => ({
             uid: acc.uid,
@@ -51,6 +67,8 @@ export function useSalesAccountInit() {
             latestState.setSalesAccount(restored ?? accounts[0]);
           }
         }
+      } catch (err) {
+        console.error('[useSalesAccountInit] 拉取账号失败:', err);
       } finally {
         useSalesStore.getState().setInitialized(true);
       }
@@ -58,3 +76,4 @@ export function useSalesAccountInit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
+

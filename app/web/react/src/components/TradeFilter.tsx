@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getAllSymbols } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useUserStore } from '@/stores';
 import { ServiceTypes } from '@/types/accounts';
 import {
@@ -385,7 +385,7 @@ export const TradeFilter = forwardRef<TradeFilterRef, TradeFilterProps>(function
       }
       if (!symbolCodesRequest) {
         symbolCodesRequest = (async () => {
-          const result = await executeRef.current(getAllSymbols);
+          const result = await executeRef.current(async () => fetchAction<{ code: string }[]>('getAllSymbols'));
           if (!result.success || !Array.isArray(result.data)) return [];
           const codes = result.data
             .map((s) => s.code)

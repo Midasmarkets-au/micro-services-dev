@@ -61,12 +61,10 @@ export async function getUserInfo(): Promise<ActionResponse<UserInfo>> {
 export async function getConfiguration(): Promise<ActionResponse<Configuration>> {
   try {
     const response = await apiClient.v1.get<{ data: Configuration }>('/configuration/public');
-
     return {
       success: true,
       data: response.data,
     };
-    logger.info('response', response);
   } catch (error) {
     logger.error('[getConfiguration] Error:', error);
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesTransactionReports } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { AccountRoleTypes, CurrencyTypes } from '@/types/accounts';
 import {
@@ -69,12 +69,12 @@ export default function SalesTransactionPage() {
       setIsLoading(true);
       try {
         const params = { ...filterParams, ...extraParams, ...FIXED_PARAMS };
-        const result = await executeRef.current(getSalesTransactionReports, salesAccount.uid, {
+        const result = await executeRef.current(async () => fetchAction<SalesTransactionListResponse>('getSalesTransactionReports', salesAccount.uid, {
           page: p,
           size: pageSize,
           role: isClient ? AccountRoleTypes.Client : AccountRoleTypes.IB,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setData(Array.isArray(result.data.data) ? result.data.data : []);
           setCriteria(result.data.criteria || null);
