@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getIBReferralCodes } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { Button } from '@/components/ui';
 import type { IBReferralCode } from '@/types/ib';
@@ -18,9 +18,9 @@ export default function IBReferralPage() {
   const fetchData = useCallback(async () => {
     if (!agentAccount) return;
     setIsLoading(true);
-    const result = await execute(getIBReferralCodes, agentAccount.uid, {
+    const result = await execute(async () => fetchAction<IBReferralCode[]>('getIBReferralCodes', agentAccount.uid, {
       status: 0,
-    });
+    }));
     if (result.success && result.data) {
       const list = Array.isArray(result.data)
         ? result.data

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesStatistics } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { Button } from '@/components/ui';
 import type { SalesStatistics, SalesHierarchyNode } from '@/types/sales';
@@ -86,7 +86,7 @@ export default function SalesStatisticsPage() {
 
   const loadStatistics = useCallback(async () => {
     setIsLoading(true);
-    const result = await execute(getSalesStatistics, buildParams);
+    const result = await execute(async () => fetchAction<SalesStatistics>('getSalesStatistics', buildParams));
     if (result.success && result.data) {
       setStatistics(result.data);
     }

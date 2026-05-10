@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getRepClients, repFuzzySearchAccount, getRepViewEmailCode, getRepEmailByCode } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useRepStore } from '@/stores/repStore';
 import { AccountRoleTypes } from '@/types/accounts';
 import {
@@ -74,7 +75,7 @@ export default function RepCustomersPage() {
       setIsLoading(true);
       const params = { ...criteriaRef.current, ...overrideCriteria, page };
       try {
-        const result = await execute(getRepClients, repAccount.uid, params);
+        const result = await execute(async () => fetchAction<{ data: RepClientAccount[]; criteria: RepClientCriteria }>('getRepClients', repAccount.uid, params));
         if (result.success && result.data) {
           const raw = result.data.criteria || params;
           setCriteria({

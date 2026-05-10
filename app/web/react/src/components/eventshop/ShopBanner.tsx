@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
-import { getMediaUrl } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type { EventDetail } from '@/types/eventshop';
 import { TimeShow } from '../TimeShow';
 
@@ -38,7 +38,7 @@ export function ShopBanner({ eventDetail }: ShopBannerProps) {
 
   useEffect(() => {
     if (!bannerGuid || bannerGuid.startsWith('http')) return;
-    getMediaUrl(bannerGuid).then((res) => {
+    fetchAction<string>('getMediaUrl', bannerGuid).then((res) => {
       if (res.success && res.data) setBannerUrl(res.data);
     });
   }, [bannerGuid]);

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getIBRebates } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import {
   BalanceShow,
@@ -52,11 +52,11 @@ export default function IBRebatePage() {
       setIsLoading(true);
       try {
         const params = { ...filterParams, ...extraParams };
-        const result = await executeRef.current(getIBRebates, agentAccount.uid, {
+        const result = await executeRef.current(async () => fetchAction<IBRebateListResponse>('getIBRebates', agentAccount.uid, {
           page: p,
           size: pageSize,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setData(Array.isArray(result.data.data) ? result.data.data : []);
           setCriteria(result.data.criteria || null);

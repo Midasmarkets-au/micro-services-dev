@@ -17,13 +17,7 @@ import {
 } from '@/components/ui';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import type { TagVariant } from '@/components/ui';
-import {
-  getSalesClients,
-  getSalesClientTrades,
-  getSalesClientTransactions,
-  getSalesDeposits,
-  getSalesWithdrawals,
-} from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import {
   AccountRoleTypes,
@@ -154,7 +148,7 @@ export default function SalesCustomerDetailPage({
     if (!salesAccount || !accountUid) return;
     (async () => {
       try {
-        const result = await execute(getSalesClients, salesAccount.uid, { uid: accountUid });
+        const result = await execute(async () => fetchAction<{ data: SalesClientAccount[] }>('getSalesClients', salesAccount.uid, { uid: accountUid }));
         if (result.success && result.data?.data?.length) {
           setAccountDetail(result.data.data[0]);
         } else {
@@ -210,34 +204,34 @@ export default function SalesCustomerDetailPage({
       const tabFixedParams = TAB_FIXED_FILTER_PARAMS[tab] ?? {};
       const params = { ...filterParams, ...extraParams, ...tabFixedParams };
       if (tab === 'transaction') {
-        const result = await execute(getSalesClientTransactions, salesAccount.uid, accountUid, {
+        const result = await execute(async () => fetchAction<{ data?: SalesTransactionRecord[]; criteria?: { total?: number } }>('getSalesClientTransactions', salesAccount.uid, accountUid, {
           page: p,
           size: pageSize,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           const d = result.data as { data?: SalesTransactionRecord[]; criteria?: { total?: number } };
           setTransactions(Array.isArray(d.data) ? d.data : []);
           setTotal(d.criteria?.total || 0);
         }
       } else if (tab === 'deposit') {
-        const result = await execute(getSalesDeposits, salesAccount.uid, {
+        const result = await execute(async () => fetchAction<{ data: SalesDepositRecord[]; criteria?: { total?: number } }>('getSalesDeposits', salesAccount.uid, {
           page: p,
           size: pageSize,
           accountUid,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setDeposits(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
         }
       } else if (tab === 'withdrawal') {
-        const result = await execute(getSalesWithdrawals, salesAccount.uid, {
+        const result = await execute(async () => fetchAction<{ data: SalesWithdrawalRecord[]; criteria?: { total?: number } }>('getSalesWithdrawals', salesAccount.uid, {
           page: p,
           size: pageSize,
           accountUid,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setWithdrawals(Array.isArray(result.data.data) ? result.data.data : []);
           setTotal(result.data.criteria?.total || 0);
@@ -270,7 +264,7 @@ export default function SalesCustomerDetailPage({
   };
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!salesAccount || !accountUid) return null;
-    const result = await execute(getSalesClientTrades, salesAccount.uid, accountUid, params);
+    const result = await execute(async () => fetchAction<{ data: unknown[]; criteria: unknown }>('getSalesClientTrades', salesAccount.uid, accountUid, params));
     if (result.success && result.data) {
       return { data: result.data.data, criteria: result.data.criteria };
     }

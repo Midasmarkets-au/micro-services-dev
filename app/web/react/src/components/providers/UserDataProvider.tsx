@@ -4,9 +4,11 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useUserStore } from '@/stores/userStore';
-import { getUserInfo, getConfiguration, setLocale } from '@/actions';
+import { setLocale } from '@/actions';
+import { fetchApiRoute } from '@/lib/api/browser-client';
 import { localeMap } from '@/i18n/config';
 import type { UserInfo, SiteConfiguration } from '@/types/user';
+import type { ActionResponse } from '@/hooks/useServerAction';
 
 // 缓存有效期：5 分钟。超过后切回 tab 或重新 mount 时会静默后台更新
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -20,8 +22,12 @@ interface UserDataProviderProps {
 
 /**
  * 用户数据提供者
- * 在受保护的布局中使用，自动获取和缓存用户数据
- * 如果 token 无效会重定向到登录页
+ * 在受保护的布局中使用，自动获取和缓存用户数据。
+ *
+ * 数据拉取通过 Route Handler（/api/user/info、/api/user/config）而非 Server Actions，
+ * 避免 Server Actions 触发 RSC 导航的 Bug。
+ *
+ * 如果 token 无效会重定向到登录页。
  */
 export function UserDataProvider({ children }: UserDataProviderProps) {
   const router = useRouter();
@@ -33,7 +39,7 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
     setInitialized,
     clearStore,
   } = useUserStore();
-  
+
   const fetchingRef = useRef(false);
   const mountedRef = useRef(false);
 
@@ -50,9 +56,10 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
     try {
       console.log('[UserDataProvider] 开始获取用户数据...');
 
+      // 使用 Route Handler 而非 Server Actions，避免触发 RSC 导航
       const [userResult, configResult] = await Promise.allSettled([
-        getUserInfo(),
-        getConfiguration(),
+        fetchApiRoute<UserInfo>('/api/user/info'),
+        fetchApiRoute<SiteConfiguration>('/api/user/config'),
       ]);
 
       if (userResult.status === 'fulfilled' && userResult.value?.success && userResult.value?.data) {
@@ -73,8 +80,11 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
           return;
         }
       } else {
-        console.error('[UserDataProvider] 获取用户数据失败:',
-          userResult.status === 'rejected' ? userResult.reason : 'No data');
+        const reason =
+          userResult.status === 'rejected'
+            ? userResult.reason
+            : (userResult.value as ActionResponse<UserInfo>)?.error || 'No data';
+        console.error('[UserDataProvider] 获取用户数据失败:', reason);
         // 静默刷新失败时不清除缓存，保留旧数据继续展示
         if (!hasCachedData) {
           clearStore();
@@ -85,8 +95,7 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
 
       if (configResult.status === 'fulfilled' && configResult.value?.success && configResult.value?.data) {
         console.log('[UserDataProvider] 站点配置获取成功');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setSiteConfig(configResult.value.data as any as SiteConfiguration);
+        setSiteConfig(configResult.value.data as SiteConfiguration);
       } else {
         console.warn('[UserDataProvider] 获取站点配置失败:',
           configResult.status === 'rejected' ? configResult.reason : 'No data');
@@ -104,7 +113,7 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
       fetchingRef.current = false;
     }
   }, [currentLocale, setUser, setSiteConfig, setLoading, setInitialized, clearStore, router]);
-  
+
   useEffect(() => {
     if (mountedRef.current) return;
     mountedRef.current = true;
@@ -134,6 +143,6 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [fetchData, setInitialized, setLoading]);
-  
+
   return <>{children}</>;
 }

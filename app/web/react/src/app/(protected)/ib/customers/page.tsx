@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getIBClients, getIBViewEmailCode, getIBEmailByCode } from '@/actions';
+import { getIBViewEmailCode, getIBEmailByCode } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { AccountRoleTypes } from '@/types/accounts';
 import {
@@ -92,7 +93,7 @@ export default function IBCustomersPage() {
       if (!agentAccount) return;
       setIsLoading(true);
       try {
-        const result = await executeRef.current(getIBClients, agentAccount.uid, params);
+        const result = await executeRef.current(async () => fetchAction<{ data: IBClientAccount[]; criteria?: IBClientCriteria }>('getIBClients', agentAccount.uid, params));
         if (result.success && result.data) {
           const raw = result.data.criteria || params;
           setCriteria({

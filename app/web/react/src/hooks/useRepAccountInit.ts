@@ -1,13 +1,26 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getLiveAccounts } from '@/actions';
+import { fetchApiRoute } from '@/lib/api/browser-client';
 import { useRepStore } from '@/stores/repStore';
 import type { RepAccount } from '@/types/rep';
 
+// Account type fragment for mapping (matches getLiveAccounts return shape)
+type LiveAccount = {
+  uid: number;
+  currencyId?: number;
+  fundType?: number;
+  role?: number;
+  type?: number;
+  name?: string;
+  siteId?: number;
+  hasLevelRule?: boolean;
+  group?: string;
+  alias?: string;
+  tradeAccount?: string;
+};
+
 export function useRepAccountInit() {
-  const { execute } = useServerAction({ showErrorToast: true });
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -22,7 +35,8 @@ export function useRepAccountInit() {
 
     (async () => {
       try {
-        const result = await execute(getLiveAccounts, { roles: [110] });
+        // 使用 Route Handler 替代 Server Action，避免触发 RSC 导航
+        const result = await fetchApiRoute<LiveAccount[]>('/api/account/live', { roles: [110] });
         if (result.success && Array.isArray(result.data) && result.data.length > 0) {
           const accounts: RepAccount[] = result.data.map((acc) => ({
             uid: acc.uid,
@@ -51,6 +65,8 @@ export function useRepAccountInit() {
             latestState.setRepAccount(restored ?? accounts[0]);
           }
         }
+      } catch (err) {
+        console.error('[useRepAccountInit] 拉取账号失败:', err);
       } finally {
         useRepStore.getState().setInitialized(true);
       }

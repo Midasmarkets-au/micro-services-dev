@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { getShopOrderList, getMediaUrl } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { Button, Input, Tag, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Tabs, DataTable, Pagination } from '@/components/ui';
 import type { TagVariant, DataTableColumn } from '@/components/ui';
 import { OrderStatus } from '@/types/eventshop';
@@ -47,7 +47,7 @@ export function OrderHistory() {
       };
       if (status !== undefined) criteria.status = status;
       if (search) criteria.eventShopItemName = search;
-      const result = await getShopOrderList(criteria);
+      const result = await fetchAction<{ items: ShopOrder[]; total: number }>('getShopOrderList', criteria);
       if (result.success && result.data) {
         setOrders(result.data.items);
         setTotal(result.data.total);
@@ -65,7 +65,7 @@ export function OrderHistory() {
     const urls: Record<string, string> = {};
     await Promise.all(
       guids.map(async (guid) => {
-        const result = await getMediaUrl(guid);
+        const result = await fetchAction<string>('getMediaUrl', guid);
         if (result.success && result.data) urls[guid] = result.data;
       })
     );

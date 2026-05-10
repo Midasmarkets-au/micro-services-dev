@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getRepDeposits } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useRepStore } from '@/stores/repStore';
 import { AccountRoleTypes } from '@/types/accounts';
 import {
@@ -74,12 +74,12 @@ export default function RepDepositPage() {
       setIsLoading(true);
       try {
         const params = { ...filterParams, ...extraParams, ...TAB_FIXED_FILTER_PARAMS };
-        const result = await executeRef.current(getRepDeposits, repAccount.uid, {
+        const result = await executeRef.current(async () => fetchAction<SalesDepositListResponse>('getRepDeposits', repAccount.uid, {
           page: p,
           size: pageSize,
           role: isClient ? AccountRoleTypes.Client : AccountRoleTypes.IB,
           ...params,
-        });
+        }));
         if (result.success && result.data) {
           setData(Array.isArray(result.data.data) ? result.data.data : []);
           setCriteria(result.data.criteria || null);

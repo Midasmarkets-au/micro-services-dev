@@ -6,7 +6,7 @@ import Link from 'next/link';
 import DOMPurify from 'dompurify';
 import { useServerAction } from '@/hooks/useServerAction';
 import { Skeleton } from '@/components/ui';
-import { getNotices } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useNoticesStore } from '@/stores';
 
 // 单个语言版本的公告内容
@@ -220,7 +220,7 @@ export default function NoticesPage() {
       setIsLoading(true);
       try {
         // 使用 Server Action
-        const result = await execute(getNotices);
+        const result = await execute(async () => fetchAction<ApiNotice[]>('getNotices'));
         if (result.success && result.data) {
           // 处理多语言数据：从每个公告中提取当前语言的内容
           const rawData = result.data as unknown as ApiNotice[];

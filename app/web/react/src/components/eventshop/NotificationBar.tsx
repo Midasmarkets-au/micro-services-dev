@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getShopOrderList } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type { ShopOrder } from '@/types/eventshop';
 import { ShopPoints } from './ShopPoints';
 import { OrderDetailModal } from './OrderDetailModal';
@@ -24,11 +24,11 @@ export function NotificationBar({ refreshKey = 0 }: NotificationBarProps) {
   const isLoadedRef = useRef(false);
 
   const fetchLatestOrder = async () => {
-    const result = await execute(getShopOrderList, {
+    const result = await execute(async () => fetchAction<{ items: ShopOrder[] }>('getShopOrderList', {
       page: 1,
       size: 10,
       sortField: 'createdOn',
-    });
+    }));
     if (result.success && result.data?.items?.length) {
       setNotification(result.data.items[0]);
       setClosed(false);

@@ -10,7 +10,8 @@ import { useTranslations } from 'next-intl';
 import { AuthIllustration } from '@/components/layout';
 import { AuthSuccessState, Button, Input, SearchableSelect, SelectInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
-import { createDemoAccountFromNonAuth, getSiteConfig } from '@/actions';
+import { createDemoAccountFromNonAuth } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { getRegionCodes } from '@/core/data/phonesData';
 import { SiteTypes, TenantTypes, getOpenAtByTenantId, getTenancy, getTenantIdByTenancy } from '@/core/types/TenantTypes';
 import { getPlatformName } from '@/types/accounts';
@@ -101,7 +102,7 @@ export default function DemoAccountPage() {
     const initPageData = async () => {
       let resolvedTenantId = Number(searchParams.get('tenantId')) || getTenantIdByTenancy(getTenancy());
       const openAt = searchParams.get('open_at') || getOpenAtByTenantId(resolvedTenantId);
-      const siteConfig = await execute(getSiteConfig, openAt);
+      const siteConfig = await execute(async () => fetchAction<SiteTypes[]>('getSiteConfig', openAt));
       if (siteConfig.success && siteConfig.data?.[0] === SiteTypes.Vietnam) {
         resolvedTenantId = TenantTypes.sea;
       }

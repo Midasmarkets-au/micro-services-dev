@@ -4,13 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouteScope } from '@/hooks/useRouteScope';
 import { useServerAction } from '@/hooks/useServerAction';
-import {
-  getIBRebateTodayValue,
-  getIBRebateTotalValue,
-  getIBTradeTodayVolume,
-  getIBTodayAccountCreation,
-  getIBDepositTodayValue,
-} from '@/actions/ib';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { BalanceShow } from '@/components/ui';
 import { IBAccountSelector } from './_components/IBAccountSelector';
@@ -60,13 +54,14 @@ export default function IBDashboardPage() {
 
     (async () => {
       const tz = -(new Date().getTimezoneOffset() / 60);
+      // 使用 Action Bridge 替代 Server Actions，避免触发 RSC 导航
       const [rebateToday, rebateTotal, volume, newCustomers, depositToday] =
         await Promise.all([
-          execute(getIBRebateTodayValue, agentAccount.uid, tz),
-          execute(getIBRebateTotalValue, agentAccount.uid),
-          execute(getIBTradeTodayVolume, agentAccount.uid, tz),
-          execute(getIBTodayAccountCreation, agentAccount.uid),
-          execute(getIBDepositTodayValue, agentAccount.uid),
+          execute(async () => fetchAction<IBReportValue[]>('getIBRebateTodayValue', agentAccount.uid, tz)),
+          execute(async () => fetchAction<IBReportValue[]>('getIBRebateTotalValue', agentAccount.uid)),
+          execute(async () => fetchAction<number>('getIBTradeTodayVolume', agentAccount.uid, tz)),
+          execute(async () => fetchAction<number>('getIBTodayAccountCreation', agentAccount.uid)),
+          execute(async () => fetchAction<IBReportValue[]>('getIBDepositTodayValue', agentAccount.uid)),
         ]);
 
       if (!isActive()) return;
