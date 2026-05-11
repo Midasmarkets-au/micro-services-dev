@@ -30,6 +30,7 @@ import {
 } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 import { TradeReportTable } from '@/components/TradeReportTable';
+import type { TradeRecord, TradeCriteria } from '@/components/TradeReportTable';
 import { TradeFilter } from '@/components/TradeFilter';
 import type { TradeFilterType } from '@/components/TradeFilter';
 import type {
@@ -264,7 +265,7 @@ export default function SalesCustomerDetailPage({
   };
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!salesAccount || !accountUid) return null;
-    const result = await execute(async () => fetchAction<{ data: unknown[]; criteria: unknown }>('getSalesClientTrades', salesAccount.uid, accountUid, params));
+    const result = await execute(async () => fetchAction<{ data: TradeRecord[]; criteria: TradeCriteria }>('getSalesClientTrades', salesAccount.uid, accountUid, params));
     if (result.success && result.data) {
       return { data: result.data.data, criteria: result.data.criteria };
     }

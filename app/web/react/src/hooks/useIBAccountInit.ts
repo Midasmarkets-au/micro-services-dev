@@ -5,23 +5,7 @@ import { fetchApiRoute } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { useUserStore } from '@/stores/userStore';
 import type { AgentAccount } from '@/types/ib';
-
-// Account type fragment for mapping (matches getLiveAccounts return shape)
-type LiveAccount = {
-  uid: number;
-  currencyId?: number;
-  fundType?: number;
-  role?: number;
-  type?: number;
-  name?: string;
-  siteId?: number;
-  hasLevelRule?: boolean;
-  group?: string;
-  alias?: string;
-  tradeAccount?: string;
-  code?: string;
-  createdOn?: string;
-};
+import type { Account as LiveAccount } from '@/types/accounts';
 
 export function useIBAccountInit() {
   const user = useUserStore((s) => s.user);
@@ -87,8 +71,8 @@ export function useIBAccountInit() {
         if (result.success && Array.isArray(result.data) && result.data.length > 0) {
           const accounts: AgentAccount[] = result.data.map((acc) => ({
             uid: acc.uid,
-            currencyId: acc.currencyId,
-            fundType: acc.fundType,
+            currencyId: acc.currencyId ?? 0,
+            fundType: acc.fundType ?? 0,
             role: acc.role ?? 0,
             type: acc.type,
             name: acc.name,
