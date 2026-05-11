@@ -10,6 +10,7 @@ import { useServerAction } from '@/hooks/useServerAction';
 import { TimeShow } from '@/components/TimeShow';
 import { BalanceShow, Button, Skeleton, Tabs, DataTable, Pagination } from '@/components/ui';
 import { TradeReportTable } from '@/components/TradeReportTable';
+import type { TradeRecord, TradeCriteria } from '@/components/TradeReportTable';
 import type { TabItem, DataTableColumn, DataTableGroupConfig } from '@/components/ui';
 import {
   Select,
@@ -310,7 +311,7 @@ export default function AccountDetailPage() {
 
   const fetchTradeData = useCallback(async (params: Record<string, unknown>) => {
     if (!currentAccount) return null;
-    const result = await execute(async () => fetchAction<{ data: unknown[]; criteria: unknown }>('getAccountTrades', currentAccount.uid, params));
+    const result = await execute(async () => fetchAction<{ data: TradeRecord[]; criteria: TradeCriteria }>('getAccountTrades', currentAccount.uid, params));
     if (result.success && result.data) {
       return { data: result.data.data, criteria: result.data.criteria };
     }
