@@ -14,6 +14,7 @@ import * as ibActions from '@/actions/ib';
 import * as salesActions from '@/actions/sales';
 import * as repActions from '@/actions/rep';
 import * as depositActions from '@/actions/deposit';
+import * as authActions from '@/actions/auth';
 
 /**
  * Action Bridge — 通用只读 Server Action 代理
@@ -57,6 +58,7 @@ registerReadActions(ibActions);
 registerReadActions(salesActions);
 registerReadActions(repActions);
 registerReadActions(depositActions);
+registerReadActions(authActions);
 
 // 额外注册的非 get* 前缀只读函数
 if (typeof walletActions.searchTransferTarget === 'function') {
