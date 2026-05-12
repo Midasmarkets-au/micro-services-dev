@@ -71,11 +71,13 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
         const userLocale = localeMap[userData.language];
         if (userLocale && userLocale !== currentLocale) {
           console.log(`[UserDataProvider] 语言同步: ${currentLocale} -> ${userLocale}`);
-          await setLocale({ locale: userLocale });
-          // 用软刷新替代 window.location.reload()：
-          // reload() 在 Next.js 软导航期间会读到旧的 window.location（还是导航前的路由），
-          // 导致用户被"拉回"上一个页面。router.refresh() 是软刷新，
-          // 不中断正在进行的导航，且能让服务端组件读到最新的 locale cookie。
+          await fetch('/api/auth/set-locale', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locale: userLocale }),
+          });
+          // 先 setInitialized 再 refresh，确保 RouteGuard 不会卡在 loading
+          setInitialized(true);
           router.refresh();
           return;
         }
