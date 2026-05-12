@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageLoading } from '@/components/ui';
 import { useUserStore } from '@/stores/userStore';
-import { setToken as setTokenAction } from '@/actions';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -41,8 +40,13 @@ export default function SetTokenPage() {
           sessionStorage.clear();
         }
 
-        // 调用 Server Action 设置 token
-        const result = await setTokenAction({ token });
+        // 通过 Route Handler 设置 token，避免 Server Action 的 RSC 重渲染 Bug
+        const res = await fetch('/api/auth/set-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const result = await res.json() as { success: boolean; message?: string; error?: string };
 
         if (result.success) {
           setStatus('success');
