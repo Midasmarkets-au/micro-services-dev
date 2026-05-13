@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Button, BalanceShow } from '@/components/ui';
+import { useFitText } from '@/hooks/useFitText';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,6 +73,7 @@ export function TradeAccountCard({
 }: TradeAccountCardProps) {
   const t = useTranslations('accounts');
   const [copied, setCopied] = useState(false);
+  const balanceRef = useFitText(20, 12);
 
   // 根据类型提取数据
   const getData = () => {
@@ -257,9 +259,10 @@ export function TradeAccountCard({
                     {t('fields.equity')}：
                   </span>
                   <BalanceShow
+                    ref={balanceRef}
                     balance={data.equityInCents}
                     currencyId={data.currencyId}
-                    className="font-bold text-xl text-text-primary truncate"
+                    className="font-bold text-text-primary"
                   />
                 </div>
                 <div className="flex items-center gap-2">
