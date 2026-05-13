@@ -235,7 +235,7 @@ export function TradeAccountCard({
         {/* 余额信息 */}
         <div className="flex items-center gap-5">
           {/* 货币图标 */}
-          <div className="relative size-10 rounded-full overflow-hidden bg-surface-secondary">
+          <div className="relative size-10 shrink-0 rounded-full overflow-hidden bg-surface-secondary">
             <Image
               src={getCurrencyFlag(data.currencyId)}
               alt="currency"
@@ -245,21 +245,21 @@ export function TradeAccountCard({
           </div>
 
           {/* 净值和账号 */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 min-w-0 flex-1">
             {type === 'application' ? (
               <span className="font-bold text-xl text-text-primary">
                 {t('status.pending')}
               </span>
             ) : (
               <>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-text-secondary">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-medium text-text-secondary shrink-0">
                     {t('fields.equity')}：
                   </span>
                   <BalanceShow
                     balance={data.equityInCents}
                     currencyId={data.currencyId}
-                    className="font-bold text-xl text-text-primary"
+                    className="font-bold text-xl text-text-primary truncate"
                   />
                 </div>
                 <div className="flex items-center gap-2">
