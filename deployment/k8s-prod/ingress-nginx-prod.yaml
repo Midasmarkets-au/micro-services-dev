@@ -165,7 +165,7 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
     service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
     service.beta.kubernetes.io/aws-load-balancer-ssl-cert: >-
-      arn:aws:acm:ap-southeast-2:961341529237:certificate/b72136fc-a987-419b-9827-1a46edfb1517
+      arn:aws:acm:ap-southeast-2:961341529237:certificate/76f7a7e6-4509-4227-8019-2ee2a560489e
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local

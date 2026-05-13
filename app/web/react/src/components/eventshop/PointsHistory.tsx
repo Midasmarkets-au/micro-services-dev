@@ -136,8 +136,8 @@ export function PointsHistoryTab() {
   const renderItemImage = (item: PointTransaction) => {
     if (item.sourceType === PointTransactionSource.Trade) {
       return (
-        <div className="shrink-0 size-10 rounded overflow-hidden flex items-center justify-center bg-amber-50 dark:bg-amber-900/20">
-          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-400 dark:border-amber-500 rounded px-1">Trade</span>
+        <div className="shrink-0 size-10 rounded overflow-hidden flex items-center justify-center">
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-400 dark:border-amber-500 rounded px-1 bg-amber-50 dark:bg-amber-900/20">Trade</span>
         </div>
       );
     }
