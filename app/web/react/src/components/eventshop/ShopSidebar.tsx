@@ -38,7 +38,7 @@ export function ShopSidebar({ activeTab, onTabChange }: ShopSidebarProps) {
   return (
     <>
       {/* Desktop: vertical sidebar */}
-      <div className="hidden md:flex bg-surface border border-border rounded p-5 flex-col gap-5 w-full">
+      <div className="hidden md:flex bg-surface border border-border rounded p-5 flex-col gap-5 w-full overflow-hidden">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.key;

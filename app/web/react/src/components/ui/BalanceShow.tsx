@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, forwardRef } from 'react';
 import { useLocale } from 'next-intl';
 import { CurrencyTypes } from '@/types/accounts';
 
@@ -42,31 +42,25 @@ export interface BalanceShowProps {
  * - 有小数部分时显示4位，否则2位
  * - currencyId == -1 时回退为 USD
  */
-export function BalanceShow({
-  balance,
-  currencyId = 840,
-  locale: localeProp,
-  sign = '',
-  className,
-  fractionDigits,
-}: BalanceShowProps) {
-  const nextIntlLocale = useLocale();
-  const locale = localeProp || LOCALE_MAP[nextIntlLocale] || nextIntlLocale || 'en-US';
-  const effectiveCurrencyId = currencyId === -1 ? 840 : currencyId;
+export const BalanceShow = forwardRef<HTMLSpanElement, BalanceShowProps>(
+  function BalanceShow({ balance, currencyId = 840, locale: localeProp, sign = '', className, fractionDigits }, ref) {
+    const nextIntlLocale = useLocale();
+    const locale = localeProp || LOCALE_MAP[nextIntlLocale] || nextIntlLocale || 'en-US';
+    const effectiveCurrencyId = currencyId === -1 ? 840 : currencyId;
+    const displayBalance = sign ? Math.abs(balance) : balance;
 
-  const displayBalance = sign ? Math.abs(balance) : balance;
+    const formatted = useMemo(
+      () => formatBalance(displayBalance, effectiveCurrencyId, locale, fractionDigits),
+      [displayBalance, effectiveCurrencyId, locale, fractionDigits]
+    );
 
-  const formatted = useMemo(
-    () => formatBalance(displayBalance, effectiveCurrencyId, locale, fractionDigits),
-    [displayBalance, effectiveCurrencyId, locale, fractionDigits]
-  );
-
-  return (
-    <span className={className}>
-      {sign}{formatted}
-    </span>
-  );
-}
+    return (
+      <span ref={ref} className={className}>
+        {sign}{formatted}
+      </span>
+    );
+  }
+);
 
 /**
  * 纯函数版本，完全对应旧项目 filters.toCurrency
