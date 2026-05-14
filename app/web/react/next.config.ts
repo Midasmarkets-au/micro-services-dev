@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
   // 也能让 standalone 产物的 file tracing 不越界
   turbopack: {
     root: path.join(__dirname),
+    rules: {
+      './src/assets/icons/**/*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+      './public/images/icons/**/*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
   },
   outputFileTracingRoot: path.join(__dirname),
   // Server Actions 请求体大小限制（默认 1MB，增加到 5MB 支持文件上传）
