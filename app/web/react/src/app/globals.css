@@ -1289,212 +1289,66 @@ input:-webkit-autofill:active {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
-/* ===== react-day-picker (mdm-calendar) 样式 ===== */
-.mdm-calendar {
-  --rdp-accent-color: var(--color-primary);
-  --rdp-accent-background-color: rgba(128, 0, 32, 0.12);
-  --rdp-day-height: 36px;
-  --rdp-day-width: 36px;
-  --rdp-day_button-border-radius: 4px;
-  --rdp-day_button-border: none;
-  --rdp-day_button-height: 34px;
-  --rdp-day_button-width: 34px;
-  --rdp-selected-border: none;
-  --rdp-outside-opacity: 0.4;
-  --rdp-disabled-opacity: 0.3;
-  --rdp-today-color: var(--rdp-accent-color);
-  --rdp-months-gap: 16px;
-  --rdp-nav-height: 2rem;
-  --rdp-nav_button-height: 28px;
-  --rdp-nav_button-width: 28px;
-  --rdp-weekday-opacity: 1;
-  --rdp-weekday-padding: 4px 0;
-  --rdp-range_start-color: #fff;
-  --rdp-range_start-background: var(--rdp-accent-color);
-  --rdp-range_start-date-background-color: var(--rdp-accent-color);
-  --rdp-range_end-color: #fff;
-  --rdp-range_end-background: var(--rdp-accent-color);
-  --rdp-range_end-date-background-color: var(--rdp-accent-color);
-  --rdp-range_middle-background-color: var(--rdp-accent-color);
-  --rdp-range_middle-color: #fff;
-}
-
-.mdm-calendar.rdp-root {
-  position: relative;
-}
-
-.mdm-calendar .rdp-months {
-  display: flex;
-  gap: var(--rdp-months-gap);
-  max-width: fit-content;
-}
-
-.mdm-calendar .rdp-month {
-  width: 100%;
-}
-
-.mdm-calendar .rdp-month_caption {
-  display: flex;
-  align-items: center;
-  height: var(--rdp-nav-height);
-  margin-bottom: 12px;
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.mdm-calendar .rdp-caption_label {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-}
-
-.mdm-calendar .rdp-nav {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-end: 0;
-  display: flex;
-  align-items: center;
-  height: var(--rdp-nav-height);
-  gap: 4px;
-}
-
-.mdm-calendar .rdp-button_previous,
-.mdm-calendar .rdp-button_next {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--rdp-nav_button-width);
-  height: var(--rdp-nav_button-height);
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-  padding: 0;
-  margin: 0;
-}
-
-.mdm-calendar .rdp-button_previous:hover,
-.mdm-calendar .rdp-button_next:hover {
+/* ===== Calendar day button background ===== */
+.calendar-day-btn {
   background-color: var(--color-surface-secondary);
-  color: var(--color-text-primary);
+}
+.calendar-day-btn[data-outside='true'],
+.calendar-day-btn[data-disabled='true'] {
+  background-color: transparent;
+}
+.calendar-day-btn[data-selected-single='true'],
+.calendar-day-btn[data-range-start='true'],
+.calendar-day-btn[data-range-end='true'] {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+.calendar-day-btn[data-range-middle='true'] {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
-.mdm-calendar .rdp-chevron {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
+/* ===== Calendar (shadcn-style) dropdown selector ===== */
+/* Styles the native <select> overlay used by captionLayout="dropdown" */
 
-.mdm-calendar .rdp-month_grid {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 2px;
-}
-
-.mdm-calendar .rdp-weekday {
-  padding: 4px 0;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--color-text-secondary);
-  text-align: center;
-  width: var(--rdp-day-width);
-  opacity: 1;
-}
-
-.mdm-calendar .rdp-day {
-  width: var(--rdp-day-width);
-  height: var(--rdp-day-height);
-  text-align: center;
-  vertical-align: middle;
-  padding: 0;
+.calendar-dropdown-root {
   position: relative;
-}
-
-.mdm-calendar .rdp-day_button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: var(--rdp-day_button-width);
-  height: var(--rdp-day_button-height);
-  border: none;
-  border-radius: var(--rdp-day_button-border-radius);
-  background: var(--color-surface-secondary);
-  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  transition: border-color 0.15s;
+}
+
+.calendar-dropdown-root:has(.calendar-dropdown:focus) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.15);
+}
+
+/* The visible label rendered on top of the invisible <select> */
+.calendar-dropdown-root .rdp-caption_label,
+.calendar-dropdown-root [data-slot="caption-label"] {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 24px 0 8px;
+  height: 28px;
   font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Invisible native <select> stretched over the visible label */
+.calendar-dropdown {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-  padding: 0;
-  margin: 0;
-}
-
-.mdm-calendar .rdp-day_button:hover {
-  background: var(--rdp-accent-color);
-  color: #ffffff;
-  opacity: 0.85;
-}
-
-.mdm-calendar .rdp-today:not(.rdp-outside) .rdp-day_button {
-  border: 1px solid var(--rdp-accent-color);
-  font-weight: 600;
-  color: bg-white;
-}
-
-.mdm-calendar .rdp-outside .rdp-day_button {
-  color: var(--color-text-placeholder);
-  opacity: var(--rdp-outside-opacity);
-  background: transparent;
-}
-
-.mdm-calendar .rdp-disabled .rdp-day_button {
-  color: var(--color-text-placeholder);
-  opacity: var(--rdp-disabled-opacity);
-  cursor: not-allowed;
-}
-
-.mdm-calendar .rdp-selected .rdp-day_button {
-  background: var(--rdp-accent-color);
-  color: #ffffff;
-  font-weight: 500;
-  border: none;
-}
-
-.mdm-calendar .rdp-range_start .rdp-day_button {
-  background: var(--rdp-accent-color);
-  color: #ffffff;
-  border-radius: 4px 0 0 4px;
-  font-weight: 500;
-}
-
-.mdm-calendar .rdp-range_end .rdp-day_button {
-  background: var(--rdp-accent-color);
-  color: #ffffff;
-  border-radius: 0 4px 4px 0;
-  font-weight: 500;
-}
-
-.mdm-calendar .rdp-range_middle {
-  background-color: var(--rdp-accent-color);
-}
-
-.mdm-calendar .rdp-range_middle .rdp-day_button {
-  background: var(--rdp-accent-color);
-  color: #ffffff;
-  border-radius: 0;
-  opacity: 0.7;
-}
-
-.mdm-calendar .rdp-range_start.rdp-range_end .rdp-day_button {
-  border-radius: 4px;
-}
-
-.mdm-calendar .rdp-hidden {
-  visibility: hidden;
-}
-
-.mdm-calendar .rdp-footer {
-  margin-top: 8px;
+  width: 100%;
+  height: 100%;
 }
 
 /* ===== React Select 样式覆盖 ===== */

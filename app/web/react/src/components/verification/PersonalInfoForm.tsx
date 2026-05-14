@@ -269,6 +269,9 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                         onChange={field.onChange}
                         placeholder={t('placeholders.birthday')}
                         error={!!errors.birthday}
+                        captionLayout="dropdown"
+                        startMonth={new Date(1930, 0)}
+                        endMonth={new Date()}
                       />
                     )}
                   />

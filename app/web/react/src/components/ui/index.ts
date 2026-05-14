@@ -28,6 +28,10 @@ export {
 } from './radix/Select';
 export type { SelectOption, SimpleSelectProps } from './radix/Select';
 
+// Calendar
+export { Calendar, CalendarDayButton } from './radix/Calendar';
+export type { CalendarProps } from './radix/Calendar';
+
 // DatePicker & TimePicker
 export { DatePicker, formatDateForApi } from './radix/DatePicker';
 export type { DatePickerProps, DateRange } from './radix/DatePicker';
