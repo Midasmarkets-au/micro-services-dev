@@ -436,31 +436,27 @@ export function WithdrawalModal({
     const selectedInfo = paymentInfos[Number(selectedPaymentIndex)];
     if (!selectedInfo || !selectedGroup) return;
 
-    const isUSDT = selectedInfo.paymentPlatform === USDT_PLATFORM;
     const info = selectedInfo.info;
 
     const returnUrl = typeof window !== 'undefined' ? window.location.href : '';
-    const holderName = 'holder' in info ? info.holder : ('accountName' in info ? (info as Record<string, string>).accountName : '');
-    const requestData = isUSDT && 'walletAddress' in info
+    const requestData = 'walletAddress' in info
       ? { returnUrl, walletAddress: info.walletAddress }
-      : holderName
-      ? {
+      : {
           returnUrl,
-          name: holderName,
-          accountName: holderName,
-          holder: holderName,
-          bsb: 'bsb' in info ? (info as Record<string, string>).bsb : '',
-          swiftCode: 'swiftCode' in info ? (info as Record<string, string>).swiftCode : '',
+          name: info.holder,
+          accountName: info.holder,
+          holder: info.holder,
+          bsb: info.bsb ?? '',
+          swiftCode: info.swiftCode ?? '',
           bankName: info.bankName,
           branchName: info.branchName,
           state: info.state,
           city: info.city,
           accountNo: info.accountNo,
           accountNumber: info.accountNo,
-          confirmAccountNo: 'confirmAccountNo' in info ? (info as Record<string, string>).confirmAccountNo : info.accountNo,
+          confirmAccountNo: info.confirmAccountNo ?? info.accountNo,
           bankCountry: info.bankCountry,
-        }
-      : { returnUrl };
+        };
 
     if (!withdrawalTargetId) {
       return;
