@@ -27,13 +27,15 @@ interface BankAccountModalProps {
 export interface BankFormData {
   name: string;
   holder: string;
+  bankCountry: string;
+  bsb: string;
+  swiftCode: string;
   bankName: string;
   branchName: string;
   state: string;
   city: string;
   accountNo: string;
   confirmAccountNo: string;
-  bankCountry: string;
 }
 
 export interface USDTFormData {
@@ -42,6 +44,20 @@ export interface USDTFormData {
 }
 
 export type BankAccountFormData = BankFormData | USDTFormData;
+
+const INITIAL_BANK_FORM: BankFormData = {
+  name: '',
+  holder: '',
+  bankCountry: 'cn',
+  bsb: '',
+  swiftCode: '',
+  bankName: '',
+  branchName: '',
+  state: '',
+  city: '',
+  accountNo: '',
+  confirmAccountNo: '',
+};
 
 export function BankAccountModal({
   isOpen,
@@ -57,39 +73,29 @@ export function BankAccountModal({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Bank account form state
-  const [bankFormData, setBankFormData] = useState<BankFormData>({
-    name: '',
-    holder: '',
-    bankName: '',
-    branchName: '',
-    state: '',
-    city: '',
-    accountNo: '',
-    confirmAccountNo: '',
-    bankCountry: 'cn',
-  });
+  const [bankFormData, setBankFormData] = useState<BankFormData>(INITIAL_BANK_FORM);
 
-  // USDT wallet form state
   const [usdtFormData, setUsdtFormData] = useState<USDTFormData>({
     name: '',
     walletAddress: '',
   });
 
-  // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen && mode === 'edit' && initialData) {
       if (paymentPlatform === 100 && 'holder' in initialData.info) {
+        const info = initialData.info;
         setBankFormData({
           name: initialData.name,
-          holder: initialData.info.holder,
-          bankName: initialData.info.bankName,
-          branchName: initialData.info.branchName,
-          state: initialData.info.state,
-          city: initialData.info.city,
-          accountNo: initialData.info.accountNo,
-          confirmAccountNo: initialData.info.accountNo,
-          bankCountry: initialData.info.bankCountry,
+          holder: info.holder,
+          bankCountry: info.bankCountry,
+          bsb: info.bsb ?? '',
+          swiftCode: info.swiftCode ?? '',
+          bankName: info.bankName,
+          branchName: info.branchName,
+          state: info.state,
+          city: info.city,
+          accountNo: info.accountNo,
+          confirmAccountNo: info.accountNo,
         });
       } else if (paymentPlatform === 240 && 'walletAddress' in initialData.info) {
         setUsdtFormData({
@@ -100,7 +106,6 @@ export function BankAccountModal({
     }
   }, [isOpen, mode, initialData, paymentPlatform]);
 
-  // Get country options for select
   const countryOptions = Object.entries(getRegionCodes()).map(([code, data]) => ({
     value: code,
     label: data.name,
@@ -109,33 +114,17 @@ export function BankAccountModal({
   const validateBankForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!bankFormData.name.trim()) {
-      newErrors.name = t('errors.nameRequired');
-    }
-    if (!bankFormData.holder.trim()) {
-      newErrors.holder = t('errors.holderRequired');
-    }
-    if (!bankFormData.bankName.trim()) {
-      newErrors.bankName = t('errors.bankNameRequired');
-    }
-    if (!bankFormData.branchName.trim()) {
-      newErrors.branchName = t('errors.branchNameRequired');
-    }
-    if (!bankFormData.state.trim()) {
-      newErrors.state = t('errors.stateRequired');
-    }
-    if (!bankFormData.city.trim()) {
-      newErrors.city = t('errors.cityRequired');
-    }
-    if (!bankFormData.accountNo.trim()) {
-      newErrors.accountNo = t('errors.accountNoRequired');
-    }
-    if (!bankFormData.confirmAccountNo.trim()) {
+    if (!bankFormData.name.trim()) newErrors.name = t('errors.nameRequired');
+    if (!bankFormData.holder.trim()) newErrors.holder = t('errors.holderRequired');
+    if (!bankFormData.bankName.trim()) newErrors.bankName = t('errors.bankNameRequired');
+    if (!bankFormData.branchName.trim()) newErrors.branchName = t('errors.branchNameRequired');
+    if (!bankFormData.state.trim()) newErrors.state = t('errors.stateRequired');
+    if (!bankFormData.city.trim()) newErrors.city = t('errors.cityRequired');
+    if (!bankFormData.accountNo.trim()) newErrors.accountNo = t('errors.accountNoRequired');
+    if (!bankFormData.confirmAccountNo.trim())
       newErrors.confirmAccountNo = t('errors.confirmAccountNoRequired');
-    }
-    if (bankFormData.accountNo !== bankFormData.confirmAccountNo) {
+    if (bankFormData.accountNo !== bankFormData.confirmAccountNo)
       newErrors.confirmAccountNo = t('errors.accountNoMismatch');
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -144,12 +133,9 @@ export function BankAccountModal({
   const validateUSDTForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!usdtFormData.name.trim()) {
-      newErrors.name = t('errors.nameRequired');
-    }
-    if (!usdtFormData.walletAddress.trim()) {
+    if (!usdtFormData.name.trim()) newErrors.name = t('errors.nameRequired');
+    if (!usdtFormData.walletAddress.trim())
       newErrors.walletAddress = t('errors.walletAddressRequired');
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -175,21 +161,8 @@ export function BankAccountModal({
   const handleClose = () => {
     if (!loading) {
       setErrors({});
-      setBankFormData({
-        name: '',
-        holder: '',
-        bankName: '',
-        branchName: '',
-        state: '',
-        city: '',
-        accountNo: '',
-        confirmAccountNo: '',
-        bankCountry: 'cn',
-      });
-      setUsdtFormData({
-        name: '',
-        walletAddress: '',
-      });
+      setBankFormData(INITIAL_BANK_FORM);
+      setUsdtFormData({ name: '', walletAddress: '' });
       onClose();
     }
   };
@@ -207,14 +180,11 @@ export function BankAccountModal({
 
         <div className="space-y-5 mt-5">
           {paymentPlatform === 100 ? (
-            // Bank Account Form
             <>
               <Input
                 label={t('accountName')}
                 value={bankFormData.name}
-                onChange={(e) =>
-                  setBankFormData({ ...bankFormData, name: e.target.value })
-                }
+                onChange={(e) => setBankFormData({ ...bankFormData, name: e.target.value })}
                 error={errors.name}
                 required
               />
@@ -223,18 +193,13 @@ export function BankAccountModal({
                 <Input
                   label={t('accountHolder')}
                   value={bankFormData.holder}
-                  onChange={(e) =>
-                    setBankFormData({ ...bankFormData, holder: e.target.value })
-                  }
+                  onChange={(e) => setBankFormData({ ...bankFormData, holder: e.target.value })}
                   error={errors.holder}
                   required
                 />
-
                 <SearchableSelect
                   label={t('bankCountry')}
-                  value={countryOptions.find(
-                    (opt) => opt.value === bankFormData.bankCountry
-                  )}
+                  value={countryOptions.find((opt) => opt.value === bankFormData.bankCountry)}
                   onChange={(option) => {
                     const selected = option as { value: string; label: string } | null;
                     setBankFormData({ ...bankFormData, bankCountry: selected?.value || 'cn' });
@@ -245,43 +210,52 @@ export function BankAccountModal({
                 />
               </div>
 
-              <Input
-                label={t('bsb')}
-                value={bankFormData.branchName}
-                onChange={(e) =>
-                  setBankFormData({ ...bankFormData, branchName: e.target.value })
-                }
-                error={errors.branchName}
-                placeholder={t('bsbPlaceholder')}
-              />
-
-              <Input
-                label={t('swiftCode')}
-                value={bankFormData.state}
-                onChange={(e) =>
-                  setBankFormData({ ...bankFormData, state: e.target.value })
-                }
-                error={errors.state}
-                placeholder={t('swiftPlaceholder')}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <Input
+                  label={t('bsb')}
+                  value={bankFormData.bsb}
+                  onChange={(e) => setBankFormData({ ...bankFormData, bsb: e.target.value })}
+                  error={errors.bsb}
+                  placeholder={t('bsbPlaceholder')}
+                />
+                <Input
+                  label={t('swiftCode')}
+                  value={bankFormData.swiftCode}
+                  onChange={(e) => setBankFormData({ ...bankFormData, swiftCode: e.target.value })}
+                  error={errors.swiftCode}
+                  placeholder={t('swiftPlaceholder')}
+                />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Input
                   label={t('bankName')}
                   value={bankFormData.bankName}
-                  onChange={(e) =>
-                    setBankFormData({ ...bankFormData, bankName: e.target.value })
-                  }
+                  onChange={(e) => setBankFormData({ ...bankFormData, bankName: e.target.value })}
                   error={errors.bankName}
                   required
                 />
-
                 <Input
                   label={t('branchName')}
+                  value={bankFormData.branchName}
+                  onChange={(e) => setBankFormData({ ...bankFormData, branchName: e.target.value })}
+                  error={errors.branchName}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <Input
+                  label={t('state')}
+                  value={bankFormData.state}
+                  onChange={(e) => setBankFormData({ ...bankFormData, state: e.target.value })}
+                  error={errors.state}
+                  required
+                />
+                <Input
+                  label={t('city')}
                   value={bankFormData.city}
-                  onChange={(e) =>
-                    setBankFormData({ ...bankFormData, city: e.target.value })
-                  }
+                  onChange={(e) => setBankFormData({ ...bankFormData, city: e.target.value })}
                   error={errors.city}
                   required
                 />
@@ -291,21 +265,15 @@ export function BankAccountModal({
                 <Input
                   label={t('accountNumber')}
                   value={bankFormData.accountNo}
-                  onChange={(e) =>
-                    setBankFormData({ ...bankFormData, accountNo: e.target.value })
-                  }
+                  onChange={(e) => setBankFormData({ ...bankFormData, accountNo: e.target.value })}
                   error={errors.accountNo}
                   required
                 />
-
                 <Input
                   label={t('confirmAccountNumber')}
                   value={bankFormData.confirmAccountNo}
                   onChange={(e) =>
-                    setBankFormData({
-                      ...bankFormData,
-                      confirmAccountNo: e.target.value,
-                    })
+                    setBankFormData({ ...bankFormData, confirmAccountNo: e.target.value })
                   }
                   error={errors.confirmAccountNo}
                   required
@@ -313,26 +281,19 @@ export function BankAccountModal({
               </div>
             </>
           ) : (
-            // USDT Wallet Form
             <>
               <Input
                 label={t('accountName')}
                 value={usdtFormData.name}
-                onChange={(e) =>
-                  setUsdtFormData({ ...usdtFormData, name: e.target.value })
-                }
+                onChange={(e) => setUsdtFormData({ ...usdtFormData, name: e.target.value })}
                 error={errors.name}
                 required
               />
-
               <Input
                 label={t('usdtWalletAddress')}
                 value={usdtFormData.walletAddress}
                 onChange={(e) =>
-                  setUsdtFormData({
-                    ...usdtFormData,
-                    walletAddress: e.target.value,
-                  })
+                  setUsdtFormData({ ...usdtFormData, walletAddress: e.target.value })
                 }
                 error={errors.walletAddress}
                 placeholder={t('walletPlaceholder')}
