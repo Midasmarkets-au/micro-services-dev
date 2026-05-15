@@ -45,13 +45,15 @@ import type { TradeAccount as AccountTradeAccount } from '@/types/accounts';
 interface BankFormData {
   name: string;
   holder: string;
+  bankCountry: string;
+  bsb: string;
+  swiftCode: string;
   bankName: string;
   branchName: string;
   state: string;
   city: string;
   accountNo: string;
   confirmAccountNo: string;
-  bankCountry: string;
 }
 
 interface USDTFormData {
@@ -62,13 +64,15 @@ interface USDTFormData {
 const INITIAL_BANK_FORM: BankFormData = {
   name: '',
   holder: '',
+  bankCountry: 'cn',
+  bsb: '',
+  swiftCode: '',
   bankName: '',
   branchName: '',
   state: '',
   city: '',
   accountNo: '',
   confirmAccountNo: '',
-  bankCountry: 'cn',
 };
 
 const INITIAL_USDT_FORM: USDTFormData = {
@@ -313,13 +317,15 @@ export function WithdrawalModal({
         : {
             name: bankFormData.name,
             holder: bankFormData.holder,
+            bankCountry: bankFormData.bankCountry,
+            bsb: bankFormData.bsb,
+            swiftCode: bankFormData.swiftCode,
             bankName: bankFormData.bankName,
             branchName: bankFormData.branchName,
             state: bankFormData.state,
             city: bankFormData.city,
             accountNo: bankFormData.accountNo,
             confirmAccountNo: bankFormData.confirmAccountNo,
-            bankCountry: bankFormData.bankCountry,
           },
     };
 
@@ -433,27 +439,28 @@ export function WithdrawalModal({
     const isUSDT = selectedInfo.paymentPlatform === USDT_PLATFORM;
     const info = selectedInfo.info;
 
+    const returnUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const holderName = 'holder' in info ? info.holder : ('accountName' in info ? (info as Record<string, string>).accountName : '');
     const requestData = isUSDT && 'walletAddress' in info
+      ? { returnUrl, walletAddress: info.walletAddress }
+      : holderName
       ? {
-          returnUrl: typeof window !== 'undefined' ? window.location.href : '',
-          walletAddress: info.walletAddress,
-        }
-      : 'holder' in info
-      ? {
-          returnUrl: typeof window !== 'undefined' ? window.location.href : '',
-          name: info.holder,
-          accountName: info.holder,
-          accountNo: info.accountNo,
-          accountNumber: info.accountNo,
+          returnUrl,
+          name: holderName,
+          accountName: holderName,
+          holder: holderName,
+          bsb: 'bsb' in info ? (info as Record<string, string>).bsb : '',
+          swiftCode: 'swiftCode' in info ? (info as Record<string, string>).swiftCode : '',
           bankName: info.bankName,
           branchName: info.branchName,
           state: info.state,
           city: info.city,
+          accountNo: info.accountNo,
+          accountNumber: info.accountNo,
+          confirmAccountNo: 'confirmAccountNo' in info ? (info as Record<string, string>).confirmAccountNo : info.accountNo,
           bankCountry: info.bankCountry,
         }
-      : {
-          returnUrl: typeof window !== 'undefined' ? window.location.href : '',
-        };
+      : { returnUrl };
 
     if (!withdrawalTargetId) {
       return;
@@ -911,20 +918,20 @@ export function WithdrawalModal({
                               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <Input
                                   label={tBank('bsb')}
-                                  value={bankFormData.branchName}
+                                  value={bankFormData.bsb}
                                   onChange={(e) =>
-                                    setBankFormData({ ...bankFormData, branchName: e.target.value })
+                                    setBankFormData({ ...bankFormData, bsb: e.target.value })
                                   }
-                                  error={formErrors.branchName}
+                                  error={formErrors.bsb}
                                   placeholder={tBank('bsbPlaceholder')}
                                 />
                                 <Input
                                   label={tBank('swiftCode')}
-                                  value={bankFormData.state}
+                                  value={bankFormData.swiftCode}
                                   onChange={(e) =>
-                                    setBankFormData({ ...bankFormData, state: e.target.value })
+                                    setBankFormData({ ...bankFormData, swiftCode: e.target.value })
                                   }
-                                  error={formErrors.state}
+                                  error={formErrors.swiftCode}
                                   placeholder={tBank('swiftPlaceholder')}
                                 />
                               </div>
@@ -940,6 +947,26 @@ export function WithdrawalModal({
                                 />
                                 <Input
                                   label={tBank('branchName')}
+                                  value={bankFormData.branchName}
+                                  onChange={(e) =>
+                                    setBankFormData({ ...bankFormData, branchName: e.target.value })
+                                  }
+                                  error={formErrors.branchName}
+                                  required
+                                />
+                              </div>
+                              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <Input
+                                  label={tBank('state')}
+                                  value={bankFormData.state}
+                                  onChange={(e) =>
+                                    setBankFormData({ ...bankFormData, state: e.target.value })
+                                  }
+                                  error={formErrors.state}
+                                  required
+                                />
+                                <Input
+                                  label={tBank('city')}
                                   value={bankFormData.city}
                                   onChange={(e) =>
                                     setBankFormData({ ...bankFormData, city: e.target.value })
@@ -1267,7 +1294,7 @@ export function WithdrawalModal({
                     }
                   }}
                   disabled={
-                    (step === 3 && (!amount || selectedPaymentIndex === '' || !confirmed)) ||
+                    (step === 3 && (!amount || selectedPaymentIndex === '' || !confirmed || showAddAccountForm)) ||
                     (step === 4 && isLoading)
                   }
                   loading={

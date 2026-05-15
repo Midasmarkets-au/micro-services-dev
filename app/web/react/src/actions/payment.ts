@@ -15,13 +15,15 @@ export interface PaymentInfo {
         // Bank account (platform 100)
         name: string;
         holder: string;
+        bankCountry: string;
+        bsb?: string;
+        swiftCode?: string;
         bankName: string;
         branchName: string;
         state: string;
         city: string;
         accountNo: string;
         confirmAccountNo?: string;
-        bankCountry: string;
       }
     | {
         // USDT wallet (platform 240)
