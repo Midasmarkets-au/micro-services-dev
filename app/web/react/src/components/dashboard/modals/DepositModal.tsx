@@ -6,6 +6,7 @@ import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -560,6 +561,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
         <div className="flex flex-1 flex-col gap-6 overflow-hidden">
           <DialogHeader>
             <DialogTitle>{t('title')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('title')}</DialogDescription>
           </DialogHeader>
 
           <Stepper

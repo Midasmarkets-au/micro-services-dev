@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -196,6 +197,7 @@ export function TransferToAccountModal({
       <DialogContent >
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('title')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-5 py-4">

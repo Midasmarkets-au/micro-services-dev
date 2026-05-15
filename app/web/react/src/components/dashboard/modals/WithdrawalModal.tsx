@@ -6,6 +6,7 @@ import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -114,6 +115,11 @@ function resolvePaymentLogoSrc(logo: string | undefined, name: string): string {
   }
 
   if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(src)) {
+    return fallback;
+  }
+
+  // Bare strings with no slash or dot are not valid paths (e.g. "b")
+  if (!src.includes('/') && !src.includes('.')) {
     return fallback;
   }
 
@@ -545,6 +551,7 @@ export function WithdrawalModal({
         <div className="flex flex-1 flex-col gap-6 overflow-hidden">
           <DialogHeader>
             <DialogTitle>{t('action.withdraw')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('action.withdraw')}</DialogDescription>
           </DialogHeader>
 
           {isPasswordChangedWithin24h && (
@@ -559,7 +566,7 @@ export function WithdrawalModal({
             completedSteps={stepperCompletedSteps}
           />
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pr-2">
             {/* Step 1: Select Channel */}
             {step === 1 && (
               <div className="flex flex-col gap-5">
@@ -606,6 +613,7 @@ export function WithdrawalModal({
                               width={48}
                               height={48}
                               className="shrink-0 rounded"
+                              style={{ width: 48, height: 48, objectFit: 'contain' }}
                             />
                           )}
                           <div className="flex flex-1 flex-col gap-1">
