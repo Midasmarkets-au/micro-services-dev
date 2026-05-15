@@ -96,13 +96,15 @@ export default function BankInfosPage() {
         ? {
             name: formData.name,
             holder: (formData as BankFormData).holder,
+            bankCountry: (formData as BankFormData).bankCountry,
+            bsb: (formData as BankFormData).bsb,
+            swiftCode: (formData as BankFormData).swiftCode,
             bankName: (formData as BankFormData).bankName,
             branchName: (formData as BankFormData).branchName,
             state: (formData as BankFormData).state,
             city: (formData as BankFormData).city,
             accountNo: (formData as BankFormData).accountNo,
             confirmAccountNo: (formData as BankFormData).confirmAccountNo,
-            bankCountry: (formData as BankFormData).bankCountry,
           }
         : {
             name: formData.name,

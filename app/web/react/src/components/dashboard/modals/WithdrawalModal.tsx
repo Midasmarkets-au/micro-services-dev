@@ -317,13 +317,15 @@ export function WithdrawalModal({
         : {
             name: bankFormData.name,
             holder: bankFormData.holder,
+            bankCountry: bankFormData.bankCountry,
+            bsb: bankFormData.bsb,
+            swiftCode: bankFormData.swiftCode,
             bankName: bankFormData.bankName,
             branchName: bankFormData.branchName,
             state: bankFormData.state,
             city: bankFormData.city,
             accountNo: bankFormData.accountNo,
             confirmAccountNo: bankFormData.confirmAccountNo,
-            bankCountry: bankFormData.bankCountry,
           },
     };
 
@@ -455,6 +457,7 @@ export function WithdrawalModal({
           city: info.city,
           accountNo: info.accountNo,
           accountNumber: info.accountNo,
+          confirmAccountNo: 'confirmAccountNo' in info ? (info as Record<string, string>).confirmAccountNo : info.accountNo,
           bankCountry: info.bankCountry,
         }
       : { returnUrl };
@@ -1291,7 +1294,7 @@ export function WithdrawalModal({
                     }
                   }}
                   disabled={
-                    (step === 3 && (!amount || selectedPaymentIndex === '' || !confirmed)) ||
+                    (step === 3 && (!amount || selectedPaymentIndex === '' || !confirmed || showAddAccountForm)) ||
                     (step === 4 && isLoading)
                   }
                   loading={
