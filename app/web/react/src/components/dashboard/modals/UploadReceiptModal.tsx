@@ -6,6 +6,7 @@ import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -34,11 +35,10 @@ export function UploadReceiptModal({
   onOpenChange,
   accountUid,
   depositHashId,
-  paymentMethodName,
   onSuccess,
 }: UploadReceiptModalProps) {
   const t = useTranslations('accounts');
-  const { execute, isLoading } = useServerAction({ showErrorToast: true });
+  const { execute } = useServerAction({ showErrorToast: true });
   const { showSuccess } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,6 +131,7 @@ export function UploadReceiptModal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('action.uploadReceipt')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('action.uploadReceipt')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-4">
