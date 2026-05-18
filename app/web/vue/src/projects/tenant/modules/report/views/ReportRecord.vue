@@ -53,108 +53,145 @@
       </div>
 
       <div class="card-body">
-        <table
-          class="table align-middle table-row-dashed fs-6 gy-5"
-          id="table_accounts_requests"
-        >
-          <thead>
-            <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-              <th style="width: 50px">
-                <el-checkbox
-                  v-model="selectAll"
-                  :indeterminate="isIndeterminate"
-                  @change="handleSelectAll"
-                  v-if="!isLoading && reports.length > 0"
-                />
-              </th>
-              <th class="">id</th>
-              <th class="">{{ $t("fields.name") }}</th>
-              <th class="">{{ $t("fields.type") }}</th>
-              <th class="">{{ $t("fields.createdOn") }}</th>
-              <th class="">{{ $t("fields.generatedOn") }}</th>
-              <th class="">{{ $t("fields.startTime") }}</th>
-              <th class="">{{ $t("fields.endTime") }}</th>
-              <th class="">{{ $t("fields.hasData") }}</th>
-              <th class="">{{ $t("fields.valid") }}</th>
-              <th class="">{{ $t("fields.status") }}</th>
-              <th class="">{{ $t("fields.action") }}</th>
-            </tr>
-          </thead>
+        <div style="overflow-x: auto">
+          <table
+            class="table align-middle table-row-dashed fs-6 gy-5"
+            id="table_accounts_requests"
+            style="min-width: 1200px"
+          >
+            <thead>
+              <tr
+                class="text-start text-muted fw-bold fs-7 text-uppercase gs-0"
+              >
+                <th style="width: 50px">
+                  <el-checkbox
+                    v-model="selectAll"
+                    :indeterminate="isIndeterminate"
+                    @change="handleSelectAll"
+                    v-if="!isLoading && reports.length > 0"
+                  />
+                </th>
+                <th class="">id</th>
+                <th class="">{{ $t("fields.name") }}</th>
+                <th class="">{{ $t("fields.type") }}</th>
+                <th class="">{{ $t("fields.createdOn") }}</th>
+                <th class="">{{ $t("fields.generatedOn") }}</th>
+                <th class="">{{ $t("fields.startTime") }}</th>
+                <th class="">{{ $t("fields.endTime") }}</th>
+                <th class="">{{ $t("fields.hasData") }}</th>
+                <th class="">{{ $t("fields.valid") }}</th>
+                <th class="">{{ $t("fields.status") }}</th>
+                <th class="">{{ $t("fields.action") }}</th>
+              </tr>
+            </thead>
 
-          <tbody v-if="isLoading">
-            <LoadingRing />
-          </tbody>
-          <tbody v-else-if="!isLoading && reports.length === 0">
-            <NoDataBox />
-          </tbody>
+            <tbody v-if="isLoading">
+              <LoadingRing />
+            </tbody>
+            <tbody v-else-if="!isLoading && reports.length === 0">
+              <NoDataBox />
+            </tbody>
 
-          <tbody v-else class="fw-semibold">
-            <tr v-for="(item, index) in reports" :key="index">
-              <td @click.stop>
-                <el-checkbox
-                  :model-value="selectedReportIds.includes(item.id)"
-                  @change="handleItemSelect(item.id, $event)"
-                />
-              </td>
-              <td>{{ item.id }}</td>
-              <td>{{ item.name }}</td>
-              <td>{{ $t(`type.reportRequest.${item.type}`) }}</td>
-              <td><TimeShow :date-iso-string="item.createdOn" /></td>
-              <td><TimeShow :date-iso-string="item.generatedOn" /></td>
-              <td><TimeShow :date-iso-string="item.query.from" /></td>
-              <td><TimeShow :date-iso-string="item.query.to" /></td>
-              <td>
-                <template v-if="!item.isEmpty"
-                  ><i
-                    class="fa-solid fa-check fa-xl"
-                    style="color: #4ed06e"
-                  ></i>
-                </template>
-                <template v-else>
-                  <i class="fa-solid fa-xmark fa-xl" style="color: #d92626"></i>
-                </template>
-              </td>
-              <td>
-                <template v-if="!item.isExpired"
-                  ><i
-                    class="fa-solid fa-check fa-xl"
-                    style="color: #4ed06e"
-                  ></i>
-                </template>
-                <template v-else>
-                  <i class="fa-solid fa-xmark fa-xl" style="color: #d92626"></i>
-                </template>
-              </td>
-              <td style="color: rgb(124, 143, 162)">
-                <template v-if="item.isGenerated"
-                  >{{ $t("status.readyForDownload") }}
-                </template>
-                <template v-else> {{ $t("status.processing") }} ... </template>
-              </td>
-              <td>
-                <div class="d-flex gap-1">
-                  <a
-                    v-if="item.isGenerated"
-                    href="#"
-                    @click="downloadReportFile(item)"
-                    class="me-2"
+            <tbody v-else class="fw-semibold">
+              <tr v-for="(item, index) in reports" :key="index">
+                <td @click.stop>
+                  <el-checkbox
+                    :model-value="selectedReportIds.includes(item.id)"
+                    @change="handleItemSelect(item.id, $event)"
+                  />
+                </td>
+                <td>{{ item.id }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ $t(`type.reportRequest.${item.type}`) }}</td>
+                <td>
+                  <TimeShow
+                    :date-iso-string="item.createdOn"
+                    type="exactTimeGMT"
+                    :gmt-option="{ isconvert: false, islocal: false }"
+                  />
+                </td>
+                <td>
+                  <TimeShow
+                    :date-iso-string="item.generatedOn"
+                    type="exactTimeGMT"
+                    :gmt-option="{ isconvert: false, islocal: false }"
+                  />
+                </td>
+                <td>
+                  <TimeShow
+                    :date-iso-string="item.query.from"
+                    type="exactTimeGMT"
+                    :gmt-option="{ isconvert: false, islocal: true }"
+                  />
+                </td>
+                <td>
+                  <TimeShow
+                    :date-iso-string="item.query.to"
+                    type="exactTimeGMT"
+                    :gmt-option="{ isconvert: false, islocal: true }"
+                  />
+                </td>
+                <td>
+                  <template v-if="!item.isEmpty"
                     ><i
-                      class="fa-solid fa-download fa-xl"
-                      style="color: #5b6b86"
-                    ></i
-                  ></a>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="handleSingleRegenerate(item.id)"
-                  >
-                    {{ $t("action.regenerateReport") }}
-                  </el-button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                      class="fa-solid fa-check fa-xl"
+                      style="color: #4ed06e"
+                    ></i>
+                  </template>
+                  <template v-else>
+                    <i
+                      class="fa-solid fa-xmark fa-xl"
+                      style="color: #d92626"
+                    ></i>
+                  </template>
+                </td>
+                <td>
+                  <template v-if="!item.isExpired"
+                    ><i
+                      class="fa-solid fa-check fa-xl"
+                      style="color: #4ed06e"
+                    ></i>
+                  </template>
+                  <template v-else>
+                    <i
+                      class="fa-solid fa-xmark fa-xl"
+                      style="color: #d92626"
+                    ></i>
+                  </template>
+                </td>
+                <td style="color: rgb(124, 143, 162)">
+                  <template v-if="item.isGenerated"
+                    >{{ $t("status.readyForDownload") }}
+                  </template>
+                  <template v-else>
+                    {{ $t("status.processing") }} ...
+                  </template>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <a
+                      v-if="item.isGenerated"
+                      href="#"
+                      @click="downloadReportFile(item)"
+                      class="me-2"
+                      ><i
+                        class="fa-solid fa-download fa-xl"
+                        style="color: #5b6b86"
+                      ></i
+                    ></a>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      @click="handleSingleRegenerate(item.id)"
+                    >
+                      {{ $t("action.regenerateReport") }}
+                    </el-button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <TableFooter @page-change="fetchData" :criteria="criteria" />
       </div>

@@ -7,12 +7,20 @@
     style="width: 600px"
   >
     <div class="mx-5 mb-5">
-      <el-form label-width="70px" class="demo-ruleForm" status-icon>
+      <el-form label-width="120px" class="demo-ruleForm" status-icon>
         <el-form-item :label="$t('fields.name')" required>
           <el-input v-model="formData.name" :disabled="isLoading" />
         </el-form-item>
 
-        <el-form-item :label="$t('fields.date')" required>
+        <el-form-item
+          :label="
+            $t('fields.date') +
+            '(GMT+' +
+            convertToLocalGMT(null, 'America/Los_Angeles') +
+            ')'
+          "
+          required
+        >
           <el-date-picker
             class="w-400px"
             v-model="period"
@@ -70,7 +78,7 @@ import { ReportRequestTypes } from "@/core/types/ReportRequestTypes";
 import TenantGlobalService from "@/projects/tenant/services/TenantGlobalService";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 import { getTradeRebateStatusSelections } from "@/core/types/RebateStatus";
-
+import { convertToLocalGMT } from "@/core/plugins/TimerService";
 const props = withDefaults(
   defineProps<{
     customTitle?: string;

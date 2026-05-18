@@ -10,7 +10,12 @@
         v-if="paymentRequireData.groupInfo.currencyRates.length > 0"
       >
         <label class="d-flex align-items-center fs-6 mb-2 required">
-          {{ paymentRequireData.paymentMethodName }} {{ $t("fields.currency") }}
+          {{
+            isExLinkGlobal()
+              ? paymentRequireData.group
+              : paymentRequireData.paymentMethodName
+          }}
+          {{ $t("fields.currency") }}
         </label>
 
         <Field
@@ -26,7 +31,9 @@
           </option>
           <option
             v-for="item in paymentRequireData.groupInfo.currencyRates"
-            :label="$t('type.currency.' + item.currencyId)"
+            :label="
+              item.paymentMethodName || $t('type.currency.' + item.currencyId)
+            "
             :key="item.currencyId"
             :value="item.currencyId"
           ></option>
@@ -83,32 +90,24 @@
             </div>
             <div v-if="amountError" style="color: #900000">
               <div v-if="paymentRequireData.account.currencyId === 841">
-                <!-- {{ $t("error.amountRule") }} ${{
-                  paymentRequireData.groupInfo.range[0]
-                }}
-                - ${{ paymentRequireData.groupInfo.range[1] }} -->
                 <BalanceShow
-                  :balance="paymentRequireData.groupInfo.range[0] * 100"
+                  :balance="currentRange[0] * 100"
                   :currency-id="paymentRequireData.account.currencyId"
                 />
                 -
                 <BalanceShow
-                  :balance="paymentRequireData.groupInfo.range[1] * 100"
+                  :balance="currentRange[1] * 100"
                   :currency-id="paymentRequireData.account.currencyId"
                 />
               </div>
               <div v-else>
-                <!-- {{ $t("error.amountRule") }} ${{
-                  paymentRequireData.groupInfo.range[0] / 100
-                }}
-                - ${{ paymentRequireData.groupInfo.range[1] / 100 }} -->
                 <BalanceShow
-                  :balance="paymentRequireData.groupInfo.range[0]"
+                  :balance="currentRange[0]"
                   :currency-id="paymentRequireData.account.currencyId"
                 />
                 -
                 <BalanceShow
-                  :balance="paymentRequireData.groupInfo.range[1]"
+                  :balance="currentRange[1]"
                   :currency-id="paymentRequireData.account.currencyId"
                 />
               </div>
@@ -169,11 +168,12 @@
 import * as Yup from "yup";
 import { useI18n } from "vue-i18n";
 import { useForm } from "vee-validate";
-import { ref, onMounted, inject, watch } from "vue";
+import { ref, onMounted, inject, computed, watch } from "vue";
 import { Field, ErrorMessage } from "vee-validate";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 import CreditCardForm from "./components/CreditCardForm.vue";
 import clientGlobalService from "@/projects/client/services/ClientGlobalService";
+import { pa } from "element-plus/es/locale";
 
 const creditCardFormRef = ref<InstanceType<typeof CreditCardForm>>();
 const paymentRequireData = inject<any>("paymentRequireData");
@@ -244,15 +244,30 @@ const nextStep = handleSubmit(async () => {
   currentStep.value += 1;
 });
 
+const currentRange = computed(() => {
+  if (isExLinkGlobal()) {
+    const list = paymentRequireData.value.groupInfo.currencyRates || [];
+    const findCurrency = list.find(
+      (item: any) =>
+        item.currencyId === paymentRequireData.value.request.currencyId
+    );
+    if (findCurrency?.range) {
+      return findCurrency.range;
+    }
+  }
+  return paymentRequireData.value.groupInfo.range;
+});
+
 const checkAmount = () => {
+  const range = currentRange.value;
   const range1 =
     paymentRequireData.value.account.currencyId === 841
-      ? paymentRequireData.value.groupInfo.range[1]
-      : paymentRequireData.value.groupInfo.range[1] / 100;
+      ? range[1]
+      : range[1] / 100;
   const range0 =
     paymentRequireData.value.account.currencyId === 841
-      ? paymentRequireData.value.groupInfo.range[0]
-      : paymentRequireData.value.groupInfo.range[0] / 100;
+      ? range[0]
+      : range[0] / 100;
   if (
     paymentRequireData.value.request.amount > range1 ||
     paymentRequireData.value.request.amount < range0
@@ -277,6 +292,10 @@ const updateExchangeRate = () => {
     return;
   }
 
+  if (isExLinkGlobal() && findCurrency.hashId != null) {
+    paymentRequireData.value.groupInfo.hashId = findCurrency.hashId;
+  }
+
   exchangeRate.value = findCurrency.rate;
   calculateTargetAmount();
 };
@@ -293,32 +312,33 @@ const calculateTargetAmount = () => {
 };
 
 const isExLinkGlobal = () => {
-  const group = paymentRequireData.value.group || "";
-  const name = paymentRequireData.value.paymentMethodName || "";
-  console.log("group", group.toLowerCase().includes("exlink global"));
-  return group.toLowerCase().includes("exlink global");
+  return paymentRequireData.value.type == "ExLinkGlobal";
 };
 
 const fetchExLinkCurrencyRates = async () => {
-  const [currenciesRes, ratesRes] = await Promise.all([
+  const [, ratesRes] = await Promise.all([
     clientGlobalService.getExLinkCurrencies(),
     clientGlobalService.getExLinkExchangeRates(),
   ]);
 
-  const currencies = currenciesRes.data || [];
   const rateList = ratesRes.data?.marketPriceList || [];
 
   const rateMap = new Map(
     rateList.map((r: any) => [r.sourceCoinId, r.marketInPrice])
   );
 
-  paymentRequireData.value.groupInfo.currencyRates =
-    paymentRequireData.value.groupInfo.currencyRates
-      .filter((cr: any) => rateMap.has(cr.currencyId))
-      .map((cr: any) => ({
-        ...cr,
-        rate: rateMap.get(cr.currencyId),
-      }));
+  const paymentMethods =
+    paymentRequireData.value.groupInfo.paymentMethods || [];
+
+  paymentRequireData.value.groupInfo.currencyRates = paymentMethods
+    .filter((pm: any) => rateMap.has(pm.currencyId))
+    .map((pm: any) => ({
+      currencyId: pm.currencyId,
+      hashId: pm.hashId,
+      range: pm.range,
+      rate: rateMap.get(pm.currencyId),
+      paymentMethodName: pm.paymentMethodName,
+    }));
 };
 
 onMounted(async () => {

@@ -277,14 +277,18 @@
                 <td class="text-center">
                   <button
                     v-if="tab === TabStatus.awaiting"
-                    :disabled="item.sourceAccountBalanceInCents < item.amount"
+                    :disabled="
+                      item.sourceAccountBalanceInCents <
+                      (item.currencyId === 841
+                        ? item.amount / 100
+                        : item.amount)
+                    "
                     class="btn btn-light btn-primary btn-sm me-3"
                     @click="openConfirmPanel(ActionType.Approve, item.id)"
                   >
-                    <template
-                      v-if="item.sourceAccountBalanceInCents < item.amount"
-                      >{{ $t("status.notAllowed") }}</template
-                    >
+                    <template v-if="!item.isBalanceEnough">{{
+                      $t("status.notAllowed")
+                    }}</template>
                     <template v-else>{{ $t("action.approve") }}</template>
                   </button>
 

@@ -178,6 +178,7 @@
         </div>
         <div class="modal-body" style="max-height: 80vh; overflow: auto">
           <SaleLinks
+            v-if="selectedSalesUid != null"
             ref="SaleLinksRef"
             :saleId="selectedSalesUid"
             isHideTitle
@@ -329,7 +330,6 @@ const showSalesLinkList = (_item: any) => {
   selectedSalesUid.value = _item.uid;
   title.value = _item.user.displayName + " " + "Refer Code List";
   showModal(SalesLinkListsModalRef.value);
-  SaleLinksRef.value?.fetchData();
 };
 const showAddSalesLinkModal = (item: any) => {
   selectedSalesUid.value = item.uid;
@@ -390,12 +390,12 @@ const getDropdownItems = (item) => {
       action: () => showLinkList(item),
       label: t("title.refferalCodeList"),
     },
-    // {
-    //   condition: item.role == AccountRoleTypes.Sales,
-    //   isLink: false,
-    //   action: () => showSalesLinkList(item),
-    //   label: t("title.refferalCodeList"),
-    // },
+    {
+      condition: item.role == AccountRoleTypes.Sales,
+      isLink: false,
+      action: () => showSalesLinkList(item),
+      label: t("title.refferalCodeList"),
+    },
 
     {
       condition:
@@ -411,13 +411,13 @@ const getDropdownItems = (item) => {
       action: () => showAddLinkModal(item),
       label: t("action.newIBReferraCode"),
     },
-    // {
-    //   condition:
-    //     item.role == AccountRoleTypes.Sales && projectConfig.rebateEnabled,
-    //   isLink: false,
-    //   action: () => showAddSalesLinkModal(item),
-    //   label: t("action.newIBReferraCode"),
-    // },
+    {
+      condition:
+        item.role == AccountRoleTypes.Sales && projectConfig.rebateEnabled,
+      isLink: false,
+      action: () => showAddSalesLinkModal(item),
+      label: t("action.newIBReferraCode"),
+    },
   ];
 };
 </script>
