@@ -641,6 +641,9 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
             entity.Property(e => e.CreatedOn).HasDefaultValueSql("now()");
             entity.Property(e => e.UpdatedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.ExtraInfo)
+                .HasColumnType("jsonb")
+                .HasDefaultValueSql("'{}'::jsonb");
 
             entity.HasOne(d => d.PaymentMethod).WithMany(p => p.AccountPaymentMethodAccesses)
                 .HasForeignKey(d => d.PaymentMethodId)
@@ -3643,6 +3646,9 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
             entity.Property(e => e.CreatedOn).HasDefaultValueSql("now()");
             entity.Property(e => e.UpdatedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.ExtraInfo)
+                .HasColumnType("jsonb")
+                .HasDefaultValueSql("'{}'::jsonb");
 
             entity.HasOne(d => d.PaymentMethod).WithMany(p => p.WalletPaymentMethodAccesses)
                 .HasForeignKey(d => d.PaymentMethodId)

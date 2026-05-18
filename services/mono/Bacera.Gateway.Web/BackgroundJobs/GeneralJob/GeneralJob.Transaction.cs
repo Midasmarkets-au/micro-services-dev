@@ -291,7 +291,7 @@ public partial class GeneralJob
             Email = selfUser.Email ?? string.Empty,
             // In Development environment, Bcc to internal team for testing
             BccEmails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
-                    ? new List<string> { "xinsong.rao@edgeark.com.au", "renjie.jiang@edgeark.com.au" }
+                    ? (Environment.GetEnvironmentVariable("DEV_BCC_EMAILS") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                     : null,
             SourceAccountNumber = transaction.SourceAccountId, // Wallet ID as source
             TargetAccountNumber = transaction.TargetAccountId, // Wallet ID as target
@@ -309,7 +309,7 @@ public partial class GeneralJob
                 Email = parentUser.Email ?? string.Empty,
                 // In Development environment, Bcc to internal team for testing
                 BccEmails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
-                    ? new List<string> { "xinsong.rao@edgeark.com.au", "renjie.jiang@edgeark.com.au" }
+                    ? (Environment.GetEnvironmentVariable("DEV_BCC_EMAILS") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                     : null,
                 SourceAccountNumber = transaction.SourceAccountId,
                 TargetAccountNumber = transaction.TargetAccountId,

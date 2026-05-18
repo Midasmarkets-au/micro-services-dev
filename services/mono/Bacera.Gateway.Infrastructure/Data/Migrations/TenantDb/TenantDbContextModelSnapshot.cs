@@ -512,6 +512,12 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<string>("ExtraInfo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
                     b.Property<long>("OperatedPartyId")
                         .HasColumnType("bigint");
 
@@ -2587,6 +2593,9 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("MarginOut")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Mt5Adjust")
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("NetInOut")
@@ -7142,6 +7151,12 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<string>("ExtraInfo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'{}'::jsonb");
 
                     b.Property<long>("OperatedPartyId")
                         .HasColumnType("bigint");

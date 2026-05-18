@@ -73,10 +73,16 @@ public partial class AcctService
     }
 
     /// <summary>
-    /// Create transaction from wallet to trade account with currency conversion support
+    /// Create transaction from wallet to trade account with currency conversion support.
     /// </summary>
+    /// <param name="walletAmount">
+    /// Amount in WALLET currency, raw-scaled (cents * 10000). The controller pre-scales
+    /// <c>spec.Amount</c> via <c>ToScaledFromCents()</c> before calling, so this is the value
+    /// that should be debited from the wallet. The account-side amount (and the value persisted
+    /// in <c>Transaction.Amount</c>) is derived by applying the FX rate.
+    /// </param>
     public async Task<Transaction?> CreateTransactionFromWalletToTradeAccountWithConversionAsync(
-        long walletId, long accountId, long accountAmount, 
+        long walletId, long accountId, long walletAmount,
         CurrencyTypes walletCurrency, CurrencyTypes accountCurrency,
         long operatorPartyId = 1, string note = "")
     {
@@ -88,25 +94,18 @@ public partial class AcctService
                 .Select(x => new { x.PartyId, x.FundType, x.CurrencyId })
                 .SingleAsync();
 
-            // Calculate wallet amount if currencies differ
-            long walletAmount = accountAmount;
+            // Derive account-currency amount from wallet-currency amount via FX rate.
+            // Tx.Amount is persisted in the ACCOUNT currency (matches Tx.CurrencyId = accountCurrency).
+            long accountAmount = walletAmount;
             decimal exchangeRate = 1.0m;
-            
+
             if (walletCurrency != accountCurrency)
             {
                 exchangeRate = await GetExchangeRateAsync(walletCurrency, accountCurrency);
                 if (exchangeRate <= 0)
                     throw new InvalidOperationException($"Exchange rate not available for {walletCurrency} to {accountCurrency}");
-                
-                // Do it in controller already
-                // walletAmount = (long)Math.Ceiling(accountAmount / (double)exchangeRate);
-            }
 
-            // *** Apply exchange rate to transaction amount. Original it seems only store USD ***
-            long transactionAmount = accountAmount;
-            if (walletCurrency != accountCurrency)
-            {
-                transactionAmount = (long)(accountAmount * exchangeRate); // Apply exchange rate multiplier
+                accountAmount = (long)Math.Round(walletAmount * exchangeRate, MidpointRounding.AwayFromZero);
             }
 
             var item = Transaction.Build(
@@ -116,12 +115,11 @@ public partial class AcctService
                 wallet.PartyId,
                 TransactionAccountTypes.Account,
                 accountId,
-                LedgerSideTypes.Debit, transactionAmount, // Use transactionAmount instead of accountAmount
+                LedgerSideTypes.Debit, accountAmount,
                 (FundTypes)wallet.FundType,
-                accountCurrency // Use account currency as transaction currency
+                accountCurrency
             );
 
-            // Store conversion info in transaction note if currencies differ
             if (walletCurrency != accountCurrency)
             {
                 note += $" [Conversion: {walletAmount} {walletCurrency} -> {accountAmount} {accountCurrency} @ {exchangeRate:F6}]";
@@ -144,10 +142,10 @@ public partial class AcctService
                     comparableAmount = (long)(comparableAmount * exchangeRateToUsd);
                 }
             }
-            
+
             if (setting?.Enabled == true && comparableAmount <= setting.Amount)
             {
-                await TransferFromWalletToAccountWithConversionAsync(item, walletAmount, accountAmount, transactionAmount, operatorPartyId);
+                await TransferFromWalletToAccountWithConversionAsync(item, walletAmount, accountAmount, accountAmount, operatorPartyId);
                 TransitRaw(item, StateTypes.TransferCompleted, operatorPartyId, note);
                 await tenantCtx.SaveChangesAsync();
             }
@@ -496,8 +494,33 @@ public partial class AcctService
         if (account == null) throw new ProcessMatterException("Account not found");
         if (account.Status != 0) throw new ProcessMatterException("Account Status not valid");
 
+        // item.Amount is stored in the TARGET-side currency (see CreateTransactionFromWalletToTradeAccountWithConversionAsync,
+        // which sets Tx.CurrencyId = accountCurrency for cross-currency transfers).
+        // The wallet must be debited in the WALLET (source) currency; for cross-currency we must convert via FX rate.
+        // Without this, manually-approved cross-currency transfers debit the wallet by `accountAmount` raw, which for
+        // USD->USC at rate 100 over-debits the wallet by 100x (e.g. $12 transfer drains $1200).
+        var sourceWallet = await tenantCtx.Wallets
+            .Where(x => x.Id == item.SourceAccountId)
+            .Select(x => new { x.CurrencyId })
+            .SingleOrDefaultAsync();
+        if (sourceWallet == null) throw new ProcessMatterException("Wallet not found");
+
+        long walletDebitAmount = item.Amount;
+        if (sourceWallet.CurrencyId != item.CurrencyId)
+        {
+            var fxRate = await GetExchangeRateAsync(
+                (CurrencyTypes)sourceWallet.CurrencyId,
+                (CurrencyTypes)item.CurrencyId);
+            if (fxRate <= 0)
+                throw new ProcessMatterException(
+                    $"Exchange rate not available for {(CurrencyTypes)sourceWallet.CurrencyId} -> {(CurrencyTypes)item.CurrencyId}");
+
+            // walletAmount = accountAmount / rate  (rounded UP so we never under-debit the wallet)
+            walletDebitAmount = (long)Math.Ceiling((decimal)item.Amount / fxRate);
+        }
+
         var amountForAccount = (decimal)item.Amount / 100; // item.Amount is from db; Divide by 10000 logic is moved to central TradingApiService.ChangeBalance()
-        var amountOutCentsFromWallet = -1 * item.Amount; // Fixed: Use direct amount without extra multiplication
+        var amountOutCentsFromWallet = -1 * walletDebitAmount;
         await WalletChangeBalanceRawAsync(item.SourceAccountId, item.Id, amountOutCentsFromWallet);
 
         var (result, ticket) = await apiService.ChangeBalance(account.ServiceId, account.AccountNumber, amountForAccount,
@@ -524,7 +547,9 @@ public partial class AcctService
         {
             AccountId = account.Id,
             OperatorPartyId = operatorPartyId,
-            Action = $"TransferFromWallet:{item.SourceAccountId}",
+            Action = sourceWallet.CurrencyId != item.CurrencyId
+                ? $"TransferFromWallet:{item.SourceAccountId} (Conversion: {walletDebitAmount} {(CurrencyTypes)sourceWallet.CurrencyId} -> {item.Amount} {(CurrencyTypes)item.CurrencyId})"
+                : $"TransferFromWallet:{item.SourceAccountId}",
             Before = $"Balance: {account.Balance}",
             After = $"Balance: {updatedBalance}",
             CreatedOn = DateTime.UtcNow,

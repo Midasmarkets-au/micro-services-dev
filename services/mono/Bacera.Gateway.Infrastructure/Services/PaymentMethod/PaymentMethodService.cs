@@ -174,6 +174,112 @@ public class PaymentMethodService(
         return true;
     }
 
+    public async Task<bool> SetAccountAccessIsDisplayAsync(long accountId, long methodId, bool isDisplay,
+        long operatorPartyId = 1)
+    {
+        var methods = await GetMethodsAsync();
+        if (methods.All(x => x.Id != methodId)) return false;
+
+        var item = await ctx.AccountPaymentMethodAccesses.SingleOrDefaultAsync(x =>
+            x.PaymentMethodId == methodId && x.AccountId == accountId);
+        if (item == null)
+        {
+            item = new AccountPaymentMethodAccess
+            {
+                AccountId = accountId,
+                PaymentMethodId = methodId,
+                OperatedPartyId = operatorPartyId,
+                Status = (short)PaymentMethodAccessStatusTypes.Inactive
+            };
+            item.SetExtraInfo(new AccountPaymentMethodAccess.ExtraInfoModel { IsDisplay = isDisplay });
+            ctx.AccountPaymentMethodAccesses.Add(item);
+        }
+        else
+        {
+            var extra = item.GetExtraInfo();
+            extra.IsDisplay = isDisplay;
+            item.SetExtraInfo(extra);
+            item.OperatedPartyId = operatorPartyId;
+            ctx.AccountPaymentMethodAccesses.Update(item);
+        }
+
+        item.UpdatedOn = DateTime.UtcNow;
+        await ctx.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> SetWalletAccessIsDisplayAsync(long walletId, long methodId, bool isDisplay,
+        long operatorPartyId = 1)
+    {
+        var methods = await GetMethodsAsync();
+        if (methods.All(x => x.Id != methodId)) return false;
+
+        var item = await ctx.WalletPaymentMethodAccesses.SingleOrDefaultAsync(x =>
+            x.PaymentMethodId == methodId && x.WalletId == walletId);
+        if (item == null)
+        {
+            item = new WalletPaymentMethodAccess
+            {
+                WalletId = walletId,
+                PaymentMethodId = methodId,
+                OperatedPartyId = operatorPartyId,
+                Status = (short)PaymentMethodAccessStatusTypes.Inactive
+            };
+            item.SetExtraInfo(new WalletPaymentMethodAccess.ExtraInfoModel { IsDisplay = isDisplay });
+            ctx.WalletPaymentMethodAccesses.Add(item);
+        }
+        else
+        {
+            var extra = item.GetExtraInfo();
+            extra.IsDisplay = isDisplay;
+            item.SetExtraInfo(extra);
+            item.OperatedPartyId = operatorPartyId;
+            ctx.WalletPaymentMethodAccesses.Update(item);
+        }
+
+        item.UpdatedOn = DateTime.UtcNow;
+        await ctx.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Returns per-method visibility for an account: dictionary of MethodId -> (IsActive, IsDisplay).
+    /// Only methods that have an access row are included.
+    /// </summary>
+    public async Task<Dictionary<long, (bool IsActive, bool IsDisplay)>> GetAccountVisibilityAsync(long accountId,
+        string? methodTypes = null)
+    {
+        var rows = await GetAccountAccessQuery(accountId, methodTypes)
+            .Select(x => new { x.PaymentMethodId, x.Status, x.ExtraInfo })
+            .ToListAsync();
+
+        return rows.ToDictionary(
+            x => x.PaymentMethodId,
+            x => (
+                IsActive: x.Status == (short)PaymentMethodAccessStatusTypes.Active,
+                IsDisplay: Utils.JsonDeserializeObjectWithDefault<AccountPaymentMethodAccess.ExtraInfoModel>(x.ExtraInfo).IsDisplay
+            ));
+    }
+
+    /// <summary>
+    /// Returns per-method visibility for a wallet: dictionary of MethodId -> (IsActive, IsDisplay).
+    /// Only methods that have an access row are included.
+    /// </summary>
+    public async Task<Dictionary<long, (bool IsActive, bool IsDisplay)>> GetWalletVisibilityAsync(long walletId,
+        string? methodTypes = null)
+    {
+        var rows = await GetWalletAccessQuery(walletId, methodTypes)
+            .Select(x => new { x.PaymentMethodId, x.Status, x.ExtraInfo })
+            .ToListAsync();
+
+        return rows.ToDictionary(
+            x => x.PaymentMethodId,
+            x => (
+                IsActive: x.Status == (short)PaymentMethodAccessStatusTypes.Active,
+                IsDisplay: Utils.JsonDeserializeObjectWithDefault<WalletPaymentMethodAccess.ExtraInfoModel>(x.ExtraInfo).IsDisplay
+            ));
+    }
+
     public async Task<bool> EnableAccountAccessByGroupAsync(long accountId, string group, long operatorPartyId = 1)
     {
         var existing = await GetAccountAccessQuery(accountId, group: group).ToListAsync();

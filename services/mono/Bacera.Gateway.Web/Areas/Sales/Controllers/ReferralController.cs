@@ -339,9 +339,25 @@ public class ReferralController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByCode(long salesUid, string code)
     {
+        // Look up the sales account's ReferPath so we can allow
+        // 1. access to parent (ancestor) whose Uid appears in the sales' path,
+        // 2. to child accounts whose ReferPath contains salesUid.
+        var salesReferPath = await tenantCtx.Accounts
+            .Where(x => x.Uid == salesUid)
+            .Select(x => x.ReferPath)
+            .SingleOrDefaultAsync();
+        if (salesReferPath == null)
+            return NotFound();
+
+        var ancestorUids = salesReferPath.Split('.', StringSplitOptions.RemoveEmptyEntries)
+            .Select(long.Parse)
+            .ToList();
+        var salesUidStr = salesUid.ToString();
+
         var referralCode = await tenantCtx.ReferralCodes
             .Where(x => x.Code == code.Trim().ToUpper())
-            .Where(x => x.PartyId == GetPartyId())
+            .Where(x => x.Account.ReferPath.Contains(salesUidStr)
+                        || ancestorUids.Contains(x.Account.Uid))
             .ToClientResponse()
             .SingleOrDefaultAsync();
         if (referralCode == null)

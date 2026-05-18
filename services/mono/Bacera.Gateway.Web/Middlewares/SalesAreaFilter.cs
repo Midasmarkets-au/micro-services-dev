@@ -44,6 +44,14 @@ public class SalesAreaFilter(AccountManageService accManageSvc) : AreaFilter
         if (partyId == -1) return false;
 
         var accountId = await accManageSvc.GetAccountIdByUidAsync(uid);
-        return await accManageSvc.IsAccountBelongToPartyAsync(partyId, accountId, true);
+        if (await accManageSvc.IsAccountBelongToPartyAsync(partyId, accountId, true))
+            return true;
+
+        // Allow access when the target sales account is in the logged-in user's referral downline.
+        // e.g. syd-s1 (parent sales) accessing syd-s2 whose ReferPath contains syd-s1's UID.
+        var salesUids = context?.HttpContext.User.GetAccountUidsInClaim(UserClaimTypes.SalesAccount) ?? [];
+        if (salesUids.Count == 0) return false;
+
+        return await accManageSvc.IsAccountInReferPathAsync(accountId, salesUids);
     }
 }

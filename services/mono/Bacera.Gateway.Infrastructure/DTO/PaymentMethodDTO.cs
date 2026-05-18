@@ -12,6 +12,7 @@ public sealed class PaymentMethodDTO
         public CurrencyTypes CurrencyId { get; set; } 
         public PaymentMethodStatusTypes Status { get; set; }
         public PaymentMethodAccessStatusTypes AccessStatus { get; set; }
+        public bool IsDisplay { get; set; }
     }
 
     public sealed class TenantAccessManagement
@@ -28,6 +29,17 @@ public sealed class PaymentMethodDTO
         public object Info { get; set; } = new();
     }
 
+    /// <summary>
+    /// One ExLink Global deposit variant (tenant-configured rail). Used on deposit-group-info when group is ExLink Global.
+    /// </summary>
+    public sealed class ExLinkGlobalPaymentMethodInfo
+    {
+        public CurrencyTypes CurrencyId { get; set; }
+        public string HashId { get; set; } = null!;
+        public long[] Range { get; set; } = null!;
+        public string PaymentMethodName { get; set; } = null!;
+    }
+
     public sealed class GroupInfo
     {
         public string HashId { get; set; } = null!;
@@ -37,6 +49,12 @@ public sealed class PaymentMethodDTO
         public long[] Range { get; set; } = null!;
 
         public List<CurrencyRate> CurrencyRates { get; set; } = [];
+
+        /// <summary>
+        /// All active named ExLink Global deposit methods for this tenant (hashId + range per primary CurrencyId).
+        /// <see cref="CurrencyRates"/> stays driven by the opened method's configured currency list (may be a subset).
+        /// </summary>
+        public List<ExLinkGlobalPaymentMethodInfo> PaymentMethods { get; set; } = [];
 
         public List<string> RequestKeys { get; set; } = [];
 
@@ -60,5 +78,15 @@ public sealed class PaymentMethodDTO
     {
         public CurrencyTypes CurrencyId { get; set; }
         public decimal Rate { get; set; }
+
+        /// <summary>
+        /// HashId of the specific payment method for this currency (ExLinkGlobal only).
+        /// </summary>
+        public string? HashId { get; set; }
+
+        /// <summary>
+        /// [min, max] deposit range in base units for this currency method (ExLinkGlobal only).
+        /// </summary>
+        public long[]? Range { get; set; }
     }
 }

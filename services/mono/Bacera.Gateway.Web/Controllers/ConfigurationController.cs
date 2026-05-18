@@ -9,7 +9,7 @@ namespace Bacera.Gateway.Web.Controllers;
 [ApiController]
 [Route("/api/configuration")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
-    Roles = UserRoleTypesString.Guest + "," + UserRoleTypesString.ClientOrTenantAdmin)]
+    Roles = UserRoleTypesString.Guest + "," + UserRoleTypesString.ClientOrTenantAdminOrAdmin)]
 [Tags("Public/Configuration")]
 public class ConfigurationController(
     // ConfigurationService configurationService,

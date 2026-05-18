@@ -13,6 +13,11 @@ public partial class PaymentMethod
         [Required] public string Group { get; set; } = null!;
     }
 
+    public sealed class UpdateDisplaySpec
+    {
+        public bool IsDisplay { get; set; }
+    }
+
     public sealed class UpdateSpec
     {
         public int Percentage { get; set; }

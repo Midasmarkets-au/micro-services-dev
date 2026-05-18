@@ -59,7 +59,10 @@ namespace Bacera.Gateway.Infrastructure.Data.Seeds
                 //new AdminUserConfig { Email = "viann.yeung@midasmkts.com", FirstName = "Viann", LastName = "Yeung", Password = "V!@nnY3ung#9X", Uid = 9020, PartyId = 19020 },
 
                 // GZ Admin 3
-                new AdminUserConfig { Email = "gz-admin3@midasmkts.com", FirstName = "GZ", LastName = "Admin 3", Password = "Gz@dm!n3#8Xq", Uid = 9021, PartyId = 19021 }
+                //new AdminUserConfig { Email = "gz-admin3@midasmkts.com", FirstName = "GZ", LastName = "Admin 3", Password = "Gz@dm!n3#8Xq", Uid = 9021, PartyId = 19021 },
+
+                // Freddie Cheng admin
+                new AdminUserConfig { Email = "freddie.cheng@midasmkts.com", FirstName = "Freddie", LastName = "Cheng", Password = "Fr3dd!3Ch@ng#X", Uid = 9022, PartyId = 19022 }
             };
             return admins;
         }

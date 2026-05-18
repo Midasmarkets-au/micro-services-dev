@@ -479,11 +479,6 @@ partial class AccountingService
             .Select(x => new { x.Amount, x.CurrencyId })
             .ToListAsync();
 
-        var foreignCurrencies = transactionsForSum
-            .Select(t => (CurrencyTypes)t.CurrencyId)
-            .Where(c => c != CurrencyTypes.USD && c != CurrencyTypes.USC);
-        var exchangeRates = await GetExchangeRatesForCurrenciesAsync(foreignCurrencies, CurrencyTypes.USD);
-
         decimal totalAmountInUSD = 0;
         foreach (var tx in transactionsForSum)
         {
@@ -492,20 +487,29 @@ partial class AccountingService
 
             if (currency == CurrencyTypes.USD)
             {
+                // USD: Amount is already scaled, convert to USD units
                 amountInUSD = tx.Amount / 1_000_000m;
             }
             else if (currency == CurrencyTypes.USC)
             {
+                // USC: scaled amount -> USC units -> USD
                 var uscUnits = tx.Amount.ToCentsFromScaled();
-                amountInUSD = uscUnits / 100m;
+                amountInUSD = uscUnits / 100m; // 1 USC = 0.01 USD
             }
             else
             {
-                if (!exchangeRates.TryGetValue(currency, out var exchangeRate) || exchangeRate.SellingRate <= 0)
+                // Other currencies: convert via exchange rate to USD
+                var exchangeRate = await GetExchangeRateAsync(currency, CurrencyTypes.USD);
+                if (exchangeRate?.SellingRate > 0)
+                {
+                    var amountInCurrencyUnits = tx.Amount / 1_000_000m; // scaled to units
+                    amountInUSD = amountInCurrencyUnits * exchangeRate.SellingRate;
+                }
+                else
+                {
+                    // Skip if no exchange rate available
                     continue;
-
-                var amountInCurrencyUnits = tx.Amount / 1_000_000m;
-                amountInUSD = amountInCurrencyUnits * exchangeRate.SellingRate;
+                }
             }
 
             totalAmountInUSD += amountInUSD;
@@ -585,39 +589,62 @@ partial class AccountingService
             .Where(x => x.SourceAccountType == TransactionAccountTypes.Account)
             .Select(x => x.SourceAccountId).ToList());
 
-        var walletBalances = await _tenantDbContext.Wallets.Where(x => walletIds.Contains(x.Id))
-            .Select(x => Tuple.Create(x.Id, x.Balance, 0L)).ToListAsync();
-        var accountBalances = await _tenantDbContext.TradeAccountStatuses.Where(x => accountIds.Contains(x.Id))
-            .Select(x => Tuple.Create(x.Id, ((long)Math.Round(x.Balance * 100, 0)).ToScaledFromCents(), x.IdNavigation.AccountNumber))
-            .ToListAsync();
+        var walletById = (await _tenantDbContext.Wallets.Where(x => walletIds.Contains(x.Id))
+                .Select(x => new { x.Id, x.Balance, x.CurrencyId })
+                .ToListAsync())
+            .ToDictionary(x => x.Id);
+
+        var accountById = (await _tenantDbContext.TradeAccountStatuses.Where(x => accountIds.Contains(x.Id))
+                .Select(x => new
+                {
+                    x.Id,
+                    BalanceInScaled = ((long)Math.Round(x.Balance * 100, 0)).ToScaledFromCents(),
+                    x.IdNavigation.AccountNumber,
+                    x.IdNavigation.CurrencyId
+                })
+                .ToListAsync())
+            .ToDictionary(x => x.Id);
+
+        // Local helper: resolve currency + scaled balance for source / target lookups.
+        (int CurrencyId, long BalanceScaled, long AccountNumber) ResolveSide(
+            TransactionAccountTypes type, long id)
+        {
+            if (type == TransactionAccountTypes.Account && accountById.TryGetValue(id, out var a))
+                return (a.CurrencyId, a.BalanceInScaled, a.AccountNumber);
+            if (type == TransactionAccountTypes.Wallet && walletById.TryGetValue(id, out var w))
+                return (w.CurrencyId, w.Balance, 0L);
+            return (0, 0L, 0L);
+        }
 
         foreach (var item in trans)
         {
+            var src = ResolveSide(item.SourceAccountType, item.SourceAccountId);
+            item.SourceAccountBalanceInCents = src.BalanceScaled;
             if (item.SourceAccountType == TransactionAccountTypes.Account)
+                item.SourceAccountNumber = src.AccountNumber;
+
+            var tgt = ResolveSide(item.TargetAccountType, item.TargetAccountId);
+            item.TargetAccountBalanceInCents = tgt.BalanceScaled;
+            if (item.TargetAccountType == TransactionAccountTypes.Account)
+                item.TargetAccountNumber = tgt.AccountNumber;
+
+            if (src.CurrencyId == 0)
             {
-                var balance = accountBalances
-                    .FirstOrDefault(x => x.Item1 == item.SourceAccountId);
-                item.SourceAccountNumber = balance?.Item3 ?? 0;
-                item.SourceAccountBalanceInCents = balance?.Item2 ?? 0;
-            }
-            else if (item.SourceAccountType == TransactionAccountTypes.Wallet)
-            {
-                item.SourceAccountBalanceInCents = walletBalances
-                    .FirstOrDefault(x => x.Item1 == item.SourceAccountId)?.Item2 ?? 0;
+                item.IsBalanceEnough = false;
+                continue;
             }
 
-            if (item.TargetAccountType == TransactionAccountTypes.Account)
+            // Add IsBalanceEnough flag
+            long amountInSourceScaled = item.Amount;
+            if (src.CurrencyId != (int)item.CurrencyId)
             {
-                var balance = accountBalances
-                    .FirstOrDefault(x => x.Item1 == item.TargetAccountId);
-                item.TargetAccountNumber = balance?.Item3 ?? 0;
-                item.TargetAccountBalanceInCents = balance?.Item2 ?? 0;
+                var rate = await _acctSvc.GetExchangeRateAsync(
+                    item.CurrencyId, (CurrencyTypes)src.CurrencyId);
+                if (rate > 0)
+                    amountInSourceScaled = (long)Math.Ceiling(item.Amount * (double)rate);
             }
-            else if (item.TargetAccountType == TransactionAccountTypes.Wallet)
-            {
-                item.TargetAccountBalanceInCents = walletBalances
-                    .FirstOrDefault(x => x.Item1 == item.TargetAccountId)?.Item2 ?? 0;
-            }
+
+            item.IsBalanceEnough = src.BalanceScaled >= amountInSourceScaled;
         }
     }
 

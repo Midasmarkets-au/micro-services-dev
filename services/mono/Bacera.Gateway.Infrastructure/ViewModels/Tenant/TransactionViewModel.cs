@@ -19,9 +19,17 @@ public class TransactionViewModel
     public long TargetAccountId { get; set; }
     public long TargetAccountNumber { get; set; }
     public long TargetAccountBalanceInCents { get; set; }
-    public double TargetAccountBalance => (double)SourceAccountBalanceInCents / 100;
+    public double TargetAccountBalance => (double)TargetAccountBalanceInCents / 100;
     public TransactionAccountTypes TargetAccountType { get; set; }
     public bool TargetAccountHasComment { get; set; }
+
+    /// <summary>
+    /// Indicates whether the source wallet/account balance is sufficient to cover
+    /// the transaction amount (compared in source-account currency; cross-currency
+    /// transfers use the same FX rate as the actual transfer).
+    /// </summary>
+    public bool IsBalanceEnough { get; set; }
+
     public DateTime CreatedOn { get; set; }
     public DateTime UpdatedOn { get; set; }
     public StateTypes StateId { get; set; }

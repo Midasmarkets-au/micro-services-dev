@@ -27,6 +27,13 @@ public class DailyEquityRecord : ICanExportToCsv
     public decimal PL { get; set; }
     public decimal EstimatesNetPL { get; set; }
 
+    // MT5-side adjustments (mt5_deals.Profit where Comment matches
+    // 'Adjust Invalid Order' / 'Adjust Invalid Rebate' / 'Adjust Gap'). Carried through
+    // the pipeline and persisted to rpt._DailyEquitySnapshot.Mt5Adjust.
+    // For USD/USC rows this value REPLACES the PG Adjust at CSV render time
+    // via ReplaceUsdUscAdjustWithMt5(). Wallet rows are unaffected.
+    public decimal Mt5Adjust { get; set; }
+
     public static string Header() =>
         "Currency,Office,New User,New Acc,Previous Equity,Current Equity,Margin In,Margin Out,Transfer,Credit,Adjust,Rebate,Net In/Out,Lots,P&L,Estimates Net PL";
 
@@ -140,5 +147,8 @@ public class DailyEquityMysqlResult
     public decimal CurrentEquity { get; set; }
     public decimal Lots { get; set; }
     public decimal PL { get; set; }
+    // Sum of mt5_deals.Profit for this office's logins where
+    // Comment matches 'Adjust Invalid Order' or 'Adjust Invalid Rebate' or 'Adjust Gap'.
+    public decimal MysqlAdjust { get; set; }
 }
 

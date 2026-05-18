@@ -1,5 +1,6 @@
 using Bacera.Gateway.Context;
 using Bacera.Gateway.Interfaces;
+using Bacera.Gateway.Services.Acct;
 using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ public sealed partial class AccountingService
 {
     private readonly AuthDbContext _authDbContext;
     private readonly TenantDbContext _tenantDbContext;
+    private readonly AcctService _acctSvc;
     private readonly ILogger<AccountingService> _logger;
     private readonly MyDbContextPool _myDbContextPool;
     private readonly long _tenantId;
@@ -20,13 +22,16 @@ public sealed partial class AccountingService
         TenantDbContext tenantDbContext
         , AuthDbContext authDbContext
         , ITenantGetter tenancyResolver
-        , MyDbContextPool myDbContextPool, ILogger<AccountingService>? logger = null
+        , MyDbContextPool myDbContextPool
+        , AcctService acctSvc
+        , ILogger<AccountingService>? logger = null
     )
     {
         _authDbContext = authDbContext;
         _myDbContextPool = myDbContextPool;
         _tenantId = tenancyResolver.GetTenantId();
         _tenantDbContext = tenantDbContext;
+        _acctSvc = acctSvc;
         _logger = logger ?? new NullLogger<AccountingService>();
     }
 
