@@ -13,6 +13,7 @@ public class QrCodeTunnel
     {
         public decimal Amount { get; set; }
         public string PaymentNumber { get; set; } = string.Empty;
+        public string? PayerName { get; set; }
 
         public QrCodeTunnelOptions Options { get; set; } = null!;
         public HttpClient Client { get; set; } = null!;
@@ -24,7 +25,7 @@ public class QrCodeTunnel
                 return DepositCreatedResponseModel.Fail("Invalid QrCodeTunnel configuration");
 
             var endpoint = $"{Options.BaseUrl.TrimEnd('/')}/api/v1/payment/request";
-            var payload = new { amount = Amount, thirdPartyRef = PaymentNumber };
+            var payload = new { amount = Amount, thirdPartyRef = PaymentNumber, payerName = PayerName };
             var json = JsonConvert.SerializeObject(payload);
 
             Logger.LogInformation("QrCodeTunnel request to {Endpoint}: {Payload}", endpoint, json);

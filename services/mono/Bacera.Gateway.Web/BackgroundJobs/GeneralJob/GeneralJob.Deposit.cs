@@ -34,18 +34,19 @@ public partial class GeneralJob
             })
             .SingleAsync(x => x.Id == deposit.TargetAccountId);
 
-        // a user can only use Credit Card once, disable for all accounts
-        if (deposit.Platform == (int)PaymentPlatformTypes.EuPay)
-        {
-            var accesses = await ctx.AccountPaymentMethodAccesses
-                .Where(x => x.Account.Status == 0)
-                .Where(x => x.Account.PartyId == deposit.PartyId)
-                .Where(x => x.Status == (int)PaymentMethodAccessStatusTypes.Active)
-                .ToListAsync();
+        // 注释掉这块代码，因为目前没有这个需求
+        //if (deposit.Platform == (int)PaymentPlatformTypes.EuPay)
+        //{
+        //    var accesses = await ctx.AccountPaymentMethodAccesses
+        //        .Where(x => x.Account.Status == 0)
+        //        .Where(x => x.Account.PartyId == deposit.PartyId)
+        //        .Where(x => x.PaymentMethodId == deposit.PaymentMethodId)
+        //        .Where(x => x.Status == (int)PaymentMethodAccessStatusTypes.Active)
+        //        .ToListAsync();
 
-            accesses.ForEach(x => x.Status = (int)PaymentMethodAccessStatusTypes.Inactive);
-            await ctx.SaveChangesAsync();
-        }
+        //    accesses.ForEach(x => x.Status = (int)PaymentMethodAccessStatusTypes.Inactive);
+        //    await ctx.SaveChangesAsync();
+        //}
 
         var parentPartyIds = new[] { account.SalesPartyId, account.AgentPartyId }.Distinct().ToList();
 
@@ -135,7 +136,7 @@ public partial class GeneralJob
             Email = selfUser.Email ?? string.Empty,
             // In Development environment, Bcc to internal team for testing
             BccEmails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
-                    ? new List<string> { "xinsong.rao@edgeark.com.au", "renjie.jiang@edgeark.com.au" }
+                    ? (Environment.GetEnvironmentVariable("DEV_BCC_EMAILS") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                     : null,
             AccountNumber = account.AccountNumber,
             Date = DateTime.UtcNow,

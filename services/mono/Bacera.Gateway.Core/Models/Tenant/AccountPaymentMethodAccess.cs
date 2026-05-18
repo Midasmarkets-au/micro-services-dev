@@ -1,6 +1,6 @@
 namespace Bacera.Gateway;
 
-public class AccountPaymentMethodAccess
+public partial class AccountPaymentMethodAccess
 {
     public long AccountId { get; set; }
     public long PaymentMethodId { get; set; }
@@ -8,6 +8,7 @@ public class AccountPaymentMethodAccess
     public DateTime CreatedOn { get; set; }
     public DateTime UpdatedOn { get; set; }
     public long OperatedPartyId { get; set; }
+    public string ExtraInfo { get; set; } = "{}";
     public virtual Account Account { get; set; } = null!;
     public virtual PaymentMethod PaymentMethod { get; set; } = null!;
     public virtual Party OperatedParty { get; set; } = null!;

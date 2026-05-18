@@ -46,6 +46,13 @@ public class DailyEquity
         public bool? AggregateByOffice { get; set; }
 
         /// <summary>
+        /// Whether to aggregate results by Top Sale (1st-level Sales under the representative).
+        /// Groups all sub-sales under their top-level sales ancestor (Role=100, ReferPath has 2 nodes).
+        /// Output shape is the same as PerOffice (one row per top sale, all currencies summed).
+        /// </summary>
+        public bool? AggregateByTopSale { get; set; }
+
+        /// <summary>
         /// 配对报告的文件名（用于 UI 显示下载链接）
         /// </summary>
         public string? PairFileName { get; set; }

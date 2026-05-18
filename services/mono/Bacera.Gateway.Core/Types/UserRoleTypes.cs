@@ -49,6 +49,7 @@ public static class UserRoleTypesString
     public const string EventAdmin = "EventAdmin";
     public const string MLM = "MLM";
     public const string ClientOrTenantAdmin = Client + "," + TenantAdmin;
+    public const string ClientOrTenantAdminOrAdmin = Client + "," + TenantAdmin + "," + Admin;
     public const string AllClient = Client + "," + Guest + "," + TenantAdmin;
 }
 

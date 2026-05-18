@@ -136,6 +136,7 @@ public class ReportJob(
                 var configSvc = outerScope.ServiceProvider.GetRequiredService<ConfigService>();
                 var hoursGap = await configSvc.GetHoursGapForMT5Async();
 
+                // date为UTC00的当天的23:59:59
                 var date = utcNow.Date
                     .AddHours(Utils.IsCurrentDSTLosAngeles(utcNow) ? 20 : 21) // 20 : 21
                     .AddHours(hoursGap) // MT5 GMT+2 (configurable)
@@ -251,16 +252,29 @@ public class ReportJob(
                         , ReportRequestTypes.DailyEquity
                         , $"Daily Equity Per Office (ReleasedTime Based) {date:yyyy-MM-dd}"
                         , JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                        , 1),
+
+                    // Daily Equity Per Top Sale 版本1：基于 ClosedTime
+                    ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Top Sale (MT5 ClosingTime Based) {date:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)),
+
+                    // Daily Equity Per Top Sale 版本2：基于发放时间（ReleasedTime）
+                    ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Top Sale (ReleasedTime Based) {date:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)
                         , 1)
                 };
 
-                // check if it is Tuesday
-                if (date.DayOfWeek == DayOfWeek.Tuesday)
+                // Generate (Sat-Mon) reports at Monday 23:59:59
+                if (date.DayOfWeek == DayOfWeek.Monday)
                 {
                     // Daily Equity Report for last 3 days (Saturday + Sunday + Monday)
-                    var fromDate3Day = DateTime.SpecifyKind(date.AddDays(-4), DateTimeKind.Utc); // Friday 22:00 GMT+0
-                    var toDate3Day = DateTime.SpecifyKind(date.AddDays(-1), DateTimeKind.Utc);   // Monday 22:00 GMT+0
-                    
+                    var fromDate3Day = DateTime.SpecifyKind(date.AddDays(-3), DateTimeKind.Utc); // Friday 23:59:59 GMT+0
+                    var toDate3Day = DateTime.SpecifyKind(date, DateTimeKind.Utc); // Monday 23:59:59 GMT+0
+
                     var mondayDate = toDate3Day; // Monday — the last business day covered
 
                     // Daily Equity 版本1：基于 ClosedTime（关仓时间）- Job入口，IsFromApi=0（默认）
@@ -287,6 +301,19 @@ public class ReportJob(
                         , ReportRequestTypes.DailyEquity
                         , $"Daily Equity Per Office (Sat-Mon) (ReleasedTime Based) {mondayDate:yyyy-MM-dd}"
                         , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                        , 1));
+
+                    // Daily Equity Per Top Sale (Sat-Mon) 版本1：基于 ClosedTime
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Top Sale (Sat-Mon) (MT5 ClosingTime Based) {mondayDate:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)));
+
+                    // Daily Equity Per Top Sale (Sat-Mon) 版本2：基于发放时间（ReleasedTime）
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquity
+                        , $"Daily Equity Per Top Sale (Sat-Mon) (ReleasedTime Based) {mondayDate:yyyy-MM-dd}"
+                        , JsonConvert.SerializeObject(new { from = fromDate3Day, to = toDate3Day, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)
                         , 1));
                 }
 
@@ -319,41 +346,58 @@ public class ReportJob(
                         , $"Rebate Monthly Record {date:yyyy-MM}"
                         , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date })));
 
-                    // Daily Equity Monthly Report 版本1：基于 ClosedTime（per sales）
+                    // Monthly Equity Report 版本1：基于 ClosedTime（per sales）
                     requests.Add(ReportRequest.Build(validPartyId
                         , ReportRequestTypes.DailyEquityMonthly
-                        , $"Daily Equity Monthly Report (MT5 ClosingTime Based) {date:yyyy-MM}"
+                        , $"Monthly Equity Report (MT5 ClosingTime Based) {date:yyyy-MM}"
                         , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date }, Utils.AppJsonSerializerSettings)));
 
-                    // Daily Equity Monthly Report 版本2：基于发放时间（ReleasedTime）（per sales）
+                    // Monthly Equity Report 版本2：基于发放时间（ReleasedTime）（per sales）
                     requests.Add(ReportRequest.Build(validPartyId
                         , ReportRequestTypes.DailyEquityMonthly
-                        , $"Daily Equity Monthly Report (ReleasedTime Based) {date:yyyy-MM}"
+                        , $"Monthly Equity Report (ReleasedTime Based) {date:yyyy-MM}"
                         , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date }, Utils.AppJsonSerializerSettings)
                         , 1));
 
-                    // Daily Equity Per Office Monthly 版本1：基于 ClosedTime
+                    // Monthly Equity Per Office 版本1：基于 ClosedTime
                     requests.Add(ReportRequest.Build(validPartyId
                         , ReportRequestTypes.DailyEquityMonthly
-                        , $"Daily Equity Per Office Monthly (MT5 ClosingTime Based) {date:yyyy-MM}"
+                        , $"Monthly Equity Per Office (MT5 ClosingTime Based) {date:yyyy-MM}"
                         , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)));
 
-                    // Daily Equity Per Office Monthly 版本2：基于发放时间（ReleasedTime）
+                    // Monthly Equity Per Office 版本2：基于发放时间（ReleasedTime）
                     requests.Add(ReportRequest.Build(validPartyId
                         , ReportRequestTypes.DailyEquityMonthly
-                        , $"Daily Equity Per Office Monthly (ReleasedTime Based) {date:yyyy-MM}"
+                        , $"Monthly Equity Per Office (ReleasedTime Based) {date:yyyy-MM}"
                         , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                        , 1));
+
+                    // Monthly Equity Per Top Sale 版本1：基于 ClosedTime
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquityMonthly
+                        , $"Monthly Equity Per Top Sale (MT5 ClosingTime Based) {date:yyyy-MM}"
+                        , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)));
+
+                    // Monthly Equity Per Top Sale 版本2：基于发放时间（ReleasedTime）
+                    requests.Add(ReportRequest.Build(validPartyId
+                        , ReportRequestTypes.DailyEquityMonthly
+                        , $"Monthly Equity Per Top Sale (ReleasedTime Based) {date:yyyy-MM}"
+                        , JsonConvert.SerializeObject(new { from = lastMonthEnd, to = date, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)
                         , 1));
                 }
 
                 tenantCtx.ReportRequests.AddRange(requests);
                 await tenantCtx.SaveChangesAsync();
 
-                await Task.WhenAll(requests.Select(async request =>
+                var monthlyEquityRequests = requests
+                    .Where(r => r.Type == (int)ReportRequestTypes.DailyEquityMonthly)
+                    .ToList();
+                var otherRequests = requests.Except(monthlyEquityRequests).ToList();
+
+                await Task.WhenAll(otherRequests.Select(async request =>
                 {
                     using var scope = serviceProvider.CreateTenantScope(tenantId);
                     var reportSvc = scope.ServiceProvider.GetRequiredService<ReportService>();
-                    //await reportSvc.ProcessRequestAsync(request);
                     try
                     {
                         await reportSvc.ProcessRequestAsync(request);
@@ -364,6 +408,43 @@ public class ReportJob(
                             $"GenerateCloseTradeReport Error:_{e.Message}_tid:{tenantId}_reportRequestId_{request.Id}_reportName_{request.Name}");
                     }
                 }));
+
+                // Refresh current month's snapshots every night (not just end-of-month).
+                // Today's snapshot is already saved by the daily report above, so refresh
+                // from month start through yesterday to keep all past days fresh.
+                var refreshFrom = new DateTime(date.Year, date.Month, 1, 0, 0, 0, DateTimeKind.Utc).Date;
+                var refreshTo = date.Date.AddDays(-1);
+
+                if (refreshTo >= refreshFrom)
+                {
+                    using (var refreshScope = serviceProvider.CreateTenantScope(tenantId))
+                    {
+                        var refreshSvc = refreshScope.ServiceProvider.GetRequiredService<ReportService>();
+                        logger.LogInformation(
+                            "[ReportJob] Nightly snapshot refresh {From} to {To} for tenant {TenantId}",
+                            refreshFrom, refreshTo, tenantId);
+                        await refreshSvc.RefreshSnapshotsAsync(refreshFrom, refreshTo, true, hoursGap);
+                        await refreshSvc.RefreshSnapshotsAsync(refreshFrom, refreshTo, false, hoursGap);
+                    }
+                }
+
+                if (monthlyEquityRequests.Any())
+                {
+                    await Task.WhenAll(monthlyEquityRequests.Select(async request =>
+                    {
+                        using var scope = serviceProvider.CreateTenantScope(tenantId);
+                        var reportSvc = scope.ServiceProvider.GetRequiredService<ReportService>();
+                        try
+                        {
+                            await reportSvc.ProcessRequestAsync(request);
+                        }
+                        catch (Exception e)
+                        {
+                            BcrLog.Slack(
+                                $"GenerateCloseTradeReport Error:_{e.Message}_tid:{tenantId}_reportRequestId_{request.Id}_reportName_{request.Name}");
+                        }
+                    }));
+                }
                 
                 logger.LogInformation("GenerateCloseTradeReport: Completed processing for tenant {TenantId}", tenantId);
             }

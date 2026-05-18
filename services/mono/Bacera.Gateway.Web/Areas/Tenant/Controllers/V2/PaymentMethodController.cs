@@ -1,4 +1,3 @@
-
 using Bacera.Gateway.Core.Types;
 using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
@@ -13,7 +12,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers.V2;
 [Area("Tenant")]
 [Tags("Tenant/Payment Method")]
 [Route("api/" + VersionTypes.V2 + "/[Area]/payment-method")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class PaymentMethodController(
     PaymentMethodService paymentMethodSvc,
     AccountManageService accManageSvc,
@@ -273,6 +272,32 @@ public class PaymentMethodController(
     }
 
     /// <summary>
+    /// Set the per-account IsDisplay flag for a payment method.
+    /// When IsDisplay = true, the method remains visible to the client
+    /// even if its access status is Inactive. Does not change Status.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="accountId"></param>
+    /// <param name="spec"></param>
+    /// <returns></returns>
+    [HttpPut("{id:long}/account-display/{accountId:long}")]
+    public async Task<IActionResult> SetAccountDisplay(long id, long accountId,
+        [FromBody] PaymentMethod.UpdateDisplaySpec spec)
+    {
+        var methodExists = await paymentMethodSvc.MethodExistByIdAsync(id);
+        if (!methodExists) return BadRequest(ToErrorResult("Payment method not found."));
+
+        var accountExists = await accManageSvc.AccountExistByIdAsync(accountId);
+        if (!accountExists) return BadRequest(ToErrorResult("Account not found."));
+
+        var partyId = GetPartyId();
+        var result = await paymentMethodSvc.SetAccountAccessIsDisplayAsync(accountId, id, spec.IsDisplay, partyId);
+        if (!result) return BadRequest(ToErrorResult("Failed to update display flag for account."));
+
+        return Ok();
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     /// <param name="accountId"></param>
@@ -348,6 +373,32 @@ public class PaymentMethodController(
 
         var result = await paymentMethodSvc.DisableWalletAccessByMethodIdAsync(walletId, id);
         if (!result) return BadRequest(ToErrorResult("Failed to disable the payment method for wallet."));
+
+        return Ok();
+    }
+
+    /// <summary>
+    /// Set the per-wallet IsDisplay flag for a payment method.
+    /// When IsDisplay = true, the method remains visible to the client
+    /// even if its access status is Inactive. Does not change Status.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="walletId"></param>
+    /// <param name="spec"></param>
+    /// <returns></returns>
+    [HttpPut("{id:long}/wallet-display/{walletId:long}")]
+    public async Task<IActionResult> SetWalletDisplay(long id, long walletId,
+        [FromBody] PaymentMethod.UpdateDisplaySpec spec)
+    {
+        var methodExists = await paymentMethodSvc.MethodExistByIdAsync(id);
+        if (!methodExists) return BadRequest(ToErrorResult("Payment method not found."));
+
+        var walletExists = await walletSvc.WalletExistByIdAsync(walletId);
+        if (!walletExists) return BadRequest(ToErrorResult("Wallet not found."));
+
+        var partyId = GetPartyId();
+        var result = await paymentMethodSvc.SetWalletAccessIsDisplayAsync(walletId, id, spec.IsDisplay, partyId);
+        if (!result) return BadRequest(ToErrorResult("Failed to update display flag for wallet."));
 
         return Ok();
     }
@@ -429,12 +480,26 @@ public class PaymentMethodController(
         var methods = await paymentMethodSvc.GetMethodsAsync();
         var items = model switch
         {
-            nameof(Account) => await paymentMethodSvc.GetAccountAccessQuery(id)
-                .Select(x => new { x.PaymentMethodId, x.Status })
-                .ToListAsync(),
-            nameof(Wallet) => await paymentMethodSvc.GetWalletAccessQuery(id)
-                .Select(x => new { x.PaymentMethodId, x.Status })
-                .ToListAsync(),
+            nameof(Account) => (await paymentMethodSvc.GetAccountAccessQuery(id)
+                    .Select(x => new { x.PaymentMethodId, x.Status, x.ExtraInfo })
+                    .ToListAsync())
+                .Select(x => new
+                {
+                    x.PaymentMethodId,
+                    x.Status,
+                    IsDisplay = Utils.JsonDeserializeObjectWithDefault<AccountPaymentMethodAccess.ExtraInfoModel>(x.ExtraInfo).IsDisplay
+                })
+                .ToList(),
+            nameof(Wallet) => (await paymentMethodSvc.GetWalletAccessQuery(id)
+                    .Select(x => new { x.PaymentMethodId, x.Status, x.ExtraInfo })
+                    .ToListAsync())
+                .Select(x => new
+                {
+                    x.PaymentMethodId,
+                    x.Status,
+                    IsDisplay = Utils.JsonDeserializeObjectWithDefault<WalletPaymentMethodAccess.ExtraInfoModel>(x.ExtraInfo).IsDisplay
+                })
+                .ToList(),
             _ => throw new NotSupportedException()
         };
 
@@ -452,7 +517,8 @@ public class PaymentMethodController(
                     CurrencyId = (CurrencyTypes)y.CurrencyId,
                     AccessStatus = access?.Status == null
                         ? PaymentMethodAccessStatusTypes.Inactive
-                        : (PaymentMethodAccessStatusTypes)access.Status
+                        : (PaymentMethodAccessStatusTypes)access.Status,
+                    IsDisplay = access?.IsDisplay ?? false
                 };
             }).ToList());
 

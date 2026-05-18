@@ -24,11 +24,6 @@ public class UserService(
 {
     private readonly long _tenantId = tenantGetter.GetTenantId();
     private static readonly string RolesCacheKey = CacheKeys.GetRolesKey();
-    private readonly string _nameKey = CacheKeys.GetBlackedUserNameHashKey();
-    private readonly string _phoneKey = CacheKeys.GetBlackedUserPhoneHashKey();
-    private readonly string _emailKey = CacheKeys.GetBlackedUserEmailHashKey();
-    private readonly string _idNumberKey = CacheKeys.GetBlackedUserIdNumberHashKey();
-    private readonly string _ipKey = CacheKeys.GetBlackedIpHashKey();
 
     public Task<M.TenantDetailModel> GetPartyAsync(long partyId, bool hideEmail = false) => tenantCtx.Parties
         .Where(x => x.Id == partyId)
@@ -172,13 +167,35 @@ public class UserService(
 
     public async Task ApplyUserBlackListInfo(List<TenantUserBasicModel> items)
     {
+        if (items.Count == 0) return;
+
+        // Blacklist check: 和TradingService.AccountQueryForTenantAsync一样的逻辑，
+        // 用户黑名单和IP黑名单检查：每次请求一次性加载整个黑名单到内存中，然后在内存中进行检查。
+        // 替换之前每个账户都要访问Redis的方式（每个账户大约8次访问），大大减少了访问次数，同时保证了数据的一致性（直接从数据库读取）。
+        // Hashset 提供O(1)的查找性能。
+        var ipBlack = (await centralCtx.IpBlackLists
+            .Where(x => x.Enabled)
+            .Select(x => x.Ip)
+            .ToListAsync()).ToHashSet(StringComparer.Ordinal);
+
+        var userBlack = await centralCtx.UserBlackLists
+            .Select(x => new { x.Name, x.Phone, x.Email, x.IdNumber })
+            .ToListAsync();
+
+        var nameSet     = userBlack.Where(x => !string.IsNullOrEmpty(x.Name))    .Select(x => x.Name)    .ToHashSet(StringComparer.Ordinal);
+        var phoneSet    = userBlack.Where(x => !string.IsNullOrEmpty(x.Phone))   .Select(x => x.Phone)   .ToHashSet(StringComparer.Ordinal);
+        var emailSet    = userBlack.Where(x => !string.IsNullOrEmpty(x.Email))   .Select(x => x.Email)   .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var idNumberSet = userBlack.Where(x => !string.IsNullOrEmpty(x.IdNumber)).Select(x => x.IdNumber).ToHashSet(StringComparer.Ordinal);
+
         foreach (var item in items)
         {
-            item.IsInIpBlackList = await cache.HGetStringAsync(_ipKey, item.LastLoginIp) == "1";
-            item.IsInUserBlackList = await cache.HGetStringAsync(_nameKey, item.NativeName) == "1"
-                                     || await cache.HGetStringAsync(_phoneKey, item.Phone) == "1"
-                                     || await cache.HGetStringAsync(_emailKey, item.Email) == "1"
-                                     || await cache.HGetStringAsync(_idNumberKey, item.IdNumber) == "1";
+            // Exact-IP only - mirrors the existing UserService check (no subnet match).
+            item.IsInIpBlackList = !string.IsNullOrEmpty(item.LastLoginIp) && ipBlack.Contains(item.LastLoginIp);
+            item.IsInUserBlackList =
+                   nameSet.Contains(item.NativeName)
+                || phoneSet.Contains(item.Phone)
+                || emailSet.Contains(item.Email)
+                || idNumberSet.Contains(item.IdNumber);
         }
     }
 

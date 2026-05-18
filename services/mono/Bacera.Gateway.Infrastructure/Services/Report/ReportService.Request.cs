@@ -32,7 +32,7 @@ partial class ReportService
             ReportRequestTypes.AccountSearchForTenant => await ProcessAccountSearchForTenantRequestAsync(request),
             ReportRequestTypes.DemoAccount => await ProcessWeeklyDemoAccountRequestAsync(request),
             ReportRequestTypes.DailyEquity => await ProcessDailyEquityRequestAsync(request),
-            ReportRequestTypes.DailyEquityMonthly => await ProcessMonthlyDailyEquityRequestAsync(request),
+            ReportRequestTypes.DailyEquityMonthly => await ProcessMonthlyEquityRequestAsync(request),
             _ => new Tuple<ReportRequest, Medium?>(request, null)
         };
 
@@ -108,8 +108,9 @@ partial class ReportService
         // Only save for single-day reports (<=25h span) to maintain daily granularity.
         // Multi-day reports like "Sat-Mon" must NOT overwrite individual daily snapshots,
         // otherwise the monthly aggregation would double-count weekend data.
+        // Per Office reports share the same raw data and same snapshot key — skip to avoid duplicate key conflict.
         var reportSpan = (criteria.To ?? DateTime.UtcNow) - (criteria.From ?? DateTime.UtcNow);
-        if (reportSpan.TotalHours <= 25)
+        if (reportSpan.TotalHours <= 25 && criteria.AggregateByOffice != true && criteria.AggregateByTopSale != true)
         {
             try
             {
@@ -131,7 +132,14 @@ partial class ReportService
                 reportSpan.TotalHours, criteria.From, criteria.To);
         }
 
+        // Replace USD/USC Adjust with MT5 Adjust Sum at render time. PG Adjust
+        // remains untouched in the snapshot DB. Wallet rows are not affected.
+        // Applied once before branching so all three CSV outputs (PerSales,
+        // PerOffice, PerTopSale) reflect the change consistently.
+        ReplaceUsdUscAdjustWithMt5(records);
+
         var aggregateByOffice = criteria.AggregateByOffice == true;
+        var aggregateByTopSale = criteria.AggregateByTopSale == true;
 
         // Generate CSV file with Excel-like formatting
         var fileName = !string.IsNullOrEmpty(request.Name) 
@@ -146,7 +154,21 @@ partial class ReportService
         // The report is FOR the period, so use the end date
         var reportDate = criteria.To?.ToString("yyyy-MM-dd") ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
 
-        if (aggregateByOffice)
+        if (aggregateByTopSale)
+        {
+            var perTopSaleRecords = await AggregateByTopSaleAsync(records);
+            await writer.WriteLineAsync($"Daily Equity Per Top Sale {reportDate},,,,,,,,,,,,,,");
+            await writer.WriteLineAsync("");
+
+            await writer.WriteLineAsync(DailyEquityRecord.Header());
+
+            string? lastCurrency = null;
+            foreach (var record in perTopSaleRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsvGrouped(ref lastCurrency));
+            }
+        }
+        else if (aggregateByOffice)
         {
             var perOfficeRecords = AggregateByOffice(records);
             await writer.WriteLineAsync($"Daily Equity Per Office {reportDate},,,,,,,,,,,,,");
@@ -170,8 +192,7 @@ partial class ReportService
 
             await writer.WriteLineAsync($"Daily Equity Report {reportDate},,,,,,,,,,,,,,");
             await writer.WriteLineAsync(""); // Blank line
-        
-            // Write CSV header
+
             await writer.WriteLineAsync(DailyEquityRecord.Header());
         
             // Write CSV rows with enhanced formatting
@@ -201,7 +222,7 @@ partial class ReportService
         return new Tuple<ReportRequest, Medium?>(request, medium);
     }
 
-    private async Task<Tuple<ReportRequest, Medium?>> ProcessMonthlyDailyEquityRequestAsync(ReportRequest request)
+    private async Task<Tuple<ReportRequest, Medium?>> ProcessMonthlyEquityRequestAsync(ReportRequest request)
     {
         var criteria = JsonConvert.DeserializeObject<DailyEquity.Criteria>(request.Query, Utils.AppJsonSerializerSettings);
         if (criteria == null) return new Tuple<ReportRequest, Medium?>(request, null);
@@ -214,28 +235,67 @@ partial class ReportService
             ? EquityReportVersion.ClosingTimeBased
             : EquityReportVersion.ReleasedTimeBased;
 
+        // criteria.From e.g. 2026-03-31 23:59:59 Shift forward by 1 second so we treat it as 2026-04-01. This affects BOTH:
+        //  (a) the snapshot query window — without +1s, fromDate.Date = Mar 31 and the
+        //      Mar 31 snapshot would be picked up as firstDate, making PreviousEquity
+        //      = end of Mar 30 (one extra day too early) and over-counting all sums by Mar 31.
+        //  (b) the displayed report header — so it reads "2026-04-01 - 2026-04-30"
+        //      instead of "2026-03-31 - 2026-04-30".
+        var monthFrom = criteria.From!.Value.AddSeconds(1);
+
         // Use stored daily snapshots instead of re-running the CTE query.
         // This guarantees monthly totals = sum of daily snapshots exactly.
         var records = await AggregateSnapshotsForMonthlyAsync(
-            criteria.From!.Value, criteria.To!.Value, reportVersion);
-        var reportDateFrom = criteria.From?.ToString("yyyy-MM-dd") ?? "";
-        var reportDateTo = criteria.To?.ToString("yyyy-MM-dd") ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
+            monthFrom, criteria.To!.Value, reportVersion);
+
+        // Replace USD/USC Adjust with MT5 Adjust Sum at render time. Snapshots
+        // still hold the original PG Adjust value. Wallet rows are not affected.
+        ReplaceUsdUscAdjustWithMt5(records);
+
+        var reportDateFrom = monthFrom.ToString("yyyy-MM-dd");
+        var reportDateTo = criteria.To!.Value.ToString("yyyy-MM-dd");
         var reportDateRange = $"{reportDateFrom} - {reportDateTo}";
-        var now = DateTime.UtcNow;
 
-        // --- Report 1: Per-Sales ---
-        var mapping = await configSvc.GetDailyEquityOfficeMergeMappingAsync();
-        var perSalesRecords = mapping != null
-            ? MergeRecordsByOfficeMapping(records, mapping)
-            : records;
+        var aggregateByOffice = criteria.AggregateByOffice == true;
+        var aggregateByTopSale = criteria.AggregateByTopSale == true;
 
-        var perSalesFileName = !string.IsNullOrEmpty(request.Name)
-            ? $"{request.Name.Replace(" ", "_")}_{now:yyyyMMdd-HHmmss}.csv"
-            : $"daily_equity_monthly_report_{now:yyyyMMdd-HHmmss}.csv";
+        var fileName = !string.IsNullOrEmpty(request.Name)
+            ? $"{request.Name.Replace(" ", "_")}_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv"
+            : $"monthly_equity_report_{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
 
-        var perSalesTempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".csv");
-        await using (var writer = new StreamWriter(perSalesTempPath, false, new UTF8Encoding(true)))
+        var tempFilePath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".csv");
+        await using var writer = new StreamWriter(tempFilePath, false, new UTF8Encoding(true));
+
+        if (aggregateByTopSale)
         {
+            var perTopSaleRecords = await AggregateByTopSaleAsync(records);
+            await writer.WriteLineAsync($"Monthly Equity Per Top Sale {reportDateRange},,,,,,,,,,,,,,");
+            await writer.WriteLineAsync("");
+            await writer.WriteLineAsync(DailyEquityRecord.Header());
+            string? lastCurrency = null;
+            foreach (var record in perTopSaleRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsvGrouped(ref lastCurrency));
+            }
+        }
+        else if (aggregateByOffice)
+        {
+            var perOfficeRecords = AggregateByOffice(records);
+            await writer.WriteLineAsync($"Monthly Equity Per Office {reportDateRange},,,,,,,,,,,,,");
+            await writer.WriteLineAsync("");
+            await writer.WriteLineAsync(DailyEquityPerOfficeRecord.Header());
+            foreach (var record in perOfficeRecords)
+            {
+                await writer.WriteLineAsync(record.ToCsv());
+            }
+        }
+        else
+        {
+            var mapping = await configSvc.GetDailyEquityOfficeMergeMappingAsync();
+            var perSalesRecords = mapping != null
+                ? MergeRecordsByOfficeMapping(records, mapping)
+                : records;
+
             await writer.WriteLineAsync($"Monthly Equity Report {reportDateRange},,,,,,,,,,,,,,");
             await writer.WriteLineAsync("");
             await writer.WriteLineAsync(DailyEquityRecord.Header());
@@ -247,65 +307,20 @@ partial class ReportService
             }
         }
 
-        await using (var fileStream = new FileStream(perSalesTempPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-        {
-            var medium = await storageService.UploadFileAndSaveMediaAsync(
-                fileStream, perSalesFileName, ".csv", "report-request", request.Id,
-                "text/csv", 0, request.PartyId);
-            request.GeneratedOn = now;
-            request.FileName = medium.Guid;
-            tenantDbContext.ReportRequests.Update(request);
-            await tenantDbContext.SaveChangesAsync();
-        }
+        writer.Close();
 
-        // --- Report 2: Per-Office ---
-        var perOfficeRecords = AggregateByOffice(records);
+        var now = DateTime.UtcNow;
+        await using var fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var medium = await storageService.UploadFileAndSaveMediaAsync(
+            fileStream, fileName, ".csv", "report-request", request.Id,
+            "text/csv", 0, request.PartyId);
 
-        var perOfficeName = request.Name?.Contains("Per Office") == true
-            ? request.Name
-            : request.Name + " (Per Office)";
-
-        var perOfficeQueryDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(request.Query)
-                                 ?? new Dictionary<string, object>();
-        perOfficeQueryDict["aggregateByOffice"] = true;
-        var perOfficeQuery = JsonConvert.SerializeObject(perOfficeQueryDict, Utils.AppJsonSerializerSettings);
-
-        var companionRequest = new ReportRequest
-        {
-            PartyId = request.PartyId,
-            Type = request.Type,
-            Name = perOfficeName,
-            Query = perOfficeQuery,
-            IsFromApi = request.IsFromApi
-        };
-        tenantDbContext.ReportRequests.Add(companionRequest);
+        request.GeneratedOn = now;
+        request.FileName = medium.Guid;
+        tenantDbContext.ReportRequests.Update(request);
         await tenantDbContext.SaveChangesAsync();
 
-        var perOfficeFileName = $"{perOfficeName.Replace(" ", "_")}_{now:yyyyMMdd-HHmmss}.csv";
-        var perOfficeTempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".csv");
-        await using (var writer = new StreamWriter(perOfficeTempPath, false, new UTF8Encoding(true)))
-        {
-            await writer.WriteLineAsync($"Monthly Equity Per Office {reportDateRange},,,,,,,,,,,,,");
-            await writer.WriteLineAsync("");
-            await writer.WriteLineAsync(DailyEquityPerOfficeRecord.Header());
-            foreach (var record in perOfficeRecords)
-            {
-                await writer.WriteLineAsync(record.ToCsv());
-            }
-        }
-
-        await using (var fileStream = new FileStream(perOfficeTempPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-        {
-            var medium = await storageService.UploadFileAndSaveMediaAsync(
-                fileStream, perOfficeFileName, ".csv", "report-request", companionRequest.Id,
-                "text/csv", 0, companionRequest.PartyId);
-            companionRequest.GeneratedOn = now;
-            companionRequest.FileName = medium.Guid;
-            tenantDbContext.ReportRequests.Update(companionRequest);
-            await tenantDbContext.SaveChangesAsync();
-        }
-
-        return new Tuple<ReportRequest, Medium?>(request, null);
+        return new Tuple<ReportRequest, Medium?>(request, medium);
     }
 
     private Task<Tuple<ReportRequest, Medium?>> ProcessAccountSearchForTenantRequestAsync(ReportRequest request)
