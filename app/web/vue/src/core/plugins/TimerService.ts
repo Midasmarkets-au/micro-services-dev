@@ -95,8 +95,8 @@ export function convertToLocalGMT(
   utcDate: string | null | undefined,
   dstTimeZone: string
 ) {
-  if (!utcDate) return "";
-  const date = new Date(utcDate);
+  //if (!utcDate) return "";
+  const date = utcDate ? new Date(utcDate) : new Date();
   const isDST = checkIsDST(date, dstTimeZone);
   const offsetHours = isDST ? 3 : 2;
   return offsetHours;

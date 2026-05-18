@@ -9,16 +9,26 @@ import { CurrencyTypes } from "@/core/types/CurrencyTypes";
 import { useStore } from "@/store";
 const language = useStore().state.AuthModule.user.language;
 const props = withDefaults(
-  defineProps<{ balance?: any; currencyId?: number }>(),
+  defineProps<{
+    balance?: any;
+    currencyId?: number;
+    fractionDigits?: number;
+  }>(),
   {
     balance: 0,
     currencyId: CurrencyTypes.USD,
+    fractionDigits: undefined,
   }
 );
 const currencyId = ref(props.currencyId);
 
 const currencyShow = computed(() =>
-  filters.toCurrency(props.balance, currencyId.value, language)
+  filters.toCurrency(
+    props.balance,
+    currencyId.value,
+    language,
+    props.fractionDigits
+  )
 );
 
 onMounted(() => {

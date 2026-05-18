@@ -107,9 +107,31 @@
           class="fw-semibold text-gray-900 tbody"
         >
           <tr>
-            <td v-if="i == 'Union Pay'" colspan="13" class="fw-semibold">
+            <td
+              v-if="String(i) === 'Union Pay'"
+              colspan="13"
+              class="fw-semibold"
+            >
               <div class="d-flex justify-content-between align-items-center">
-                <h4>{{ i }}</h4>
+                <div class="d-flex align-items-center gap-3">
+                  <el-button
+                    link
+                    type="primary"
+                    class="p-0 fs-3 lh-1"
+                    @click="toggleGroup(String(i))"
+                    :aria-expanded="isGroupExpanded(String(i))"
+                  >
+                    <i
+                      class="fa-solid"
+                      :class="
+                        isGroupExpanded(String(i))
+                          ? 'fa-chevron-down'
+                          : 'fa-chevron-right'
+                      "
+                    ></i>
+                  </el-button>
+                  <h4 class="mb-0">{{ i }}</h4>
+                </div>
                 <div class="d-flex align-items-center">
                   <div class="fs-5 fw-bold w-150px">High Dollar Threshold</div>
                   <el-input
@@ -135,162 +157,211 @@
             </td>
 
             <td v-else colspan="9" class="fw-semibold mt-4">
-              <h4>{{ i }}</h4>
-            </td>
-          </tr>
-          <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-            <th>{{ $t("fields.name") }}</th>
-            <th>{{ $t("fields.autoDeposit") }}</th>
-            <th>{{ $t("fields.activate") }}</th>
-            <!-- <th>{{ $t("fields.deposit") }}</th>
-            <th>{{ $t("fields.withdraw") }}</th> -->
-            <th v-if="i == 'Union Pay'">{{ $t("fields.highDollar") }}</th>
-            <th v-else></th>
-            <th>{{ $t("fields.currency") }}</th>
-            <th>{{ $t("fields.initMinAmount") }}</th>
-            <th>{{ $t("fields.minAmount") }}</th>
-            <th>{{ $t("fields.maxAmount") }}</th>
-            <th v-if="i == 'Union Pay'">{{ $t("fields.percentage") }}</th>
-            <th v-else></th>
-            <th>{{ $t("fields.updatedBy") }}</th>
-            <th>{{ $t("action.action") }}</th>
-            <th>{{ $t("action.detail") }}</th>
-          </tr>
-          <tr v-for="(item, index) in value" :key="index">
-            <td>
-              <div class="d-flex align-items-center gap-1">
-                <el-input type="text" style="width: 120px" v-model="item.name">
-                </el-input>
-                <span>{{ item.id }}</span>
-              </div>
-            </td>
-
-            <td>
-              <el-switch
-                v-model="item.isAutoDepositEnabled"
-                @change="singleSubmit(item)"
-                :active-value="1"
-                :inactive-value="0"
-                :disabled="isSubmitting"
-              ></el-switch>
-            </td>
-
-            <td>
-              <el-switch
-                v-model="item.status"
-                @change="singleSubmit(item)"
-                :disabled="isSubmitting"
-              ></el-switch>
-            </td>
-
-            <td v-if="i == 'Union Pay'">
-              <el-switch
-                v-model="item.isHighDollarEnabled"
-                @change="singleSubmit(item)"
-                :active-value="1"
-                :inactive-value="0"
-              ></el-switch>
-            </td>
-            <td v-else></td>
-
-            <td>{{ t(`type.currency.${item.currencyId}`) }}</td>
-            <td>
-              <el-input
-                class="w-100"
-                type="number"
-                v-model="item.initialValue"
-                :disabled="isSubmitting"
-              >
-                <template #prefix> $USD:&nbsp; </template>
-              </el-input>
-            </td>
-            <td>
-              <el-input
-                v-model="item.minValue"
-                :disabled="isSubmitting"
-                class="w-100"
-                type="number"
-                ><template #prefix> $USD:&nbsp; </template></el-input
-              >
-            </td>
-            <td>
-              <el-input
-                v-model="item.maxValue"
-                :disabled="isSubmitting"
-                class="w-100"
-                type="number"
-                ><template #prefix> $USD:&nbsp; </template></el-input
-              >
-            </td>
-
-            <td v-if="i == 'Union Pay'">
-              <div style="width: 120px">
-                <el-input v-model="item.percentage" class="w-100" type="number"
-                  ><template #append>%</template></el-input
-                >
-              </div>
-            </td>
-            <td v-else></td>
-
-            <td>
-              <el-popover v-if="updateHistory[item.id]" :width="350">
-                <template #reference>{{
-                  updateHistory[item.id]["userName"]
-                }}</template>
-                <template #default>
-                  <div>
-                    <p class="fw-bold text-warning-emphasis">
-                      {{ $t("fields.updated_at") }}
-                      {{ updateHistory[item.id]["createdOn"] }}
-                    </p>
-                  </div>
-                  <div>
-                    <p
-                      v-for="(value, index) in updateHistory[item.id][
-                        'previous'
-                      ]"
-                      :key="index"
-                    >
-                      <span v-if="value"
-                        >{{ index }}: {{ value }} ⇒
-                        {{ updateHistory[item.id]["current"][index] }}</span
-                      >
-                    </p>
-                  </div>
-                </template>
-              </el-popover>
-            </td>
-
-            <td>
-              <el-button
-                type="warning"
-                @click="singleSubmit(item)"
-                :disabled="isSubmitting"
-              >
-                {{ $t("action.save") }}
-              </el-button>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex align-items-center gap-3">
                 <el-button
+                  link
                   type="primary"
-                  @click="showPaymentDetail(item, services)"
-                  :disabled="isSubmitting"
+                  class="p-0 fs-3 lh-1"
+                  @click="toggleGroup(String(i))"
+                  :aria-expanded="isGroupExpanded(String(i))"
                 >
-                  {{ $t("action.detail") }}
+                  <i
+                    class="fa-solid"
+                    :class="
+                      isGroupExpanded(String(i))
+                        ? 'fa-chevron-down'
+                        : 'fa-chevron-right'
+                    "
+                  ></i>
                 </el-button>
-                <el-button
-                  v-if="!hideActive && !item.status"
-                  type="danger"
-                  @click="deletePaymentMethod(item)"
-                  :disabled="isSubmitting"
-                  plain
-                >
-                  {{ $t("action.delete") }}
-                </el-button>
+                <h4 class="mb-0">{{ i }}</h4>
               </div>
             </td>
           </tr>
+          <template v-if="isGroupExpanded(String(i))">
+            <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+              <th>{{ $t("fields.name") }}</th>
+              <th>{{ $t("fields.autoDeposit") }}</th>
+              <th>{{ $t("fields.activate") }}</th>
+              <!-- <th>{{ $t("fields.deposit") }}</th>
+            <th>{{ $t("fields.withdraw") }}</th> -->
+              <th v-if="String(i) === 'Union Pay'">
+                {{ $t("fields.highDollar") }}
+              </th>
+              <th v-else></th>
+              <th>{{ $t("fields.currency") }}</th>
+              <th>{{ $t("fields.initMinAmount") }}</th>
+              <th>{{ $t("fields.minAmount") }}</th>
+              <th>{{ $t("fields.maxAmount") }}</th>
+              <th v-if="String(i) === 'Union Pay'">
+                {{ $t("fields.percentage") }}
+              </th>
+              <th v-else></th>
+              <th>{{ $t("fields.updatedBy") }}</th>
+              <th>{{ $t("action.action") }}</th>
+              <th>{{ $t("action.detail") }}</th>
+            </tr>
+            <tr
+              v-for="(item, index) in getDisplayItems(String(i), value)"
+              :key="item?.id ?? index"
+            >
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <el-input
+                    type="text"
+                    style="width: 120px"
+                    v-model="item.name"
+                  >
+                  </el-input>
+                  <span>{{ item.id }}</span>
+                </div>
+              </td>
+
+              <td>
+                <el-switch
+                  v-model="item.isAutoDepositEnabled"
+                  @change="singleSubmit(item)"
+                  :active-value="1"
+                  :inactive-value="0"
+                  :disabled="isSubmitting"
+                ></el-switch>
+              </td>
+
+              <td>
+                <el-switch
+                  v-model="item.status"
+                  @change="singleSubmit(item)"
+                  :disabled="isSubmitting"
+                ></el-switch>
+              </td>
+
+              <td v-if="String(i) === 'Union Pay'">
+                <el-switch
+                  v-model="item.isHighDollarEnabled"
+                  @change="singleSubmit(item)"
+                  :active-value="1"
+                  :inactive-value="0"
+                ></el-switch>
+              </td>
+              <td v-else></td>
+
+              <td>
+                <el-select
+                  v-if="isExLinkGlobalGroup(String(i), value)"
+                  v-model="selectedExLinkItemId[String(i)]"
+                  style="width: 140px"
+                  :disabled="isSubmitting"
+                >
+                  <el-option
+                    v-for="opt in value"
+                    :key="opt.id"
+                    :value="opt.id"
+                    :label="t(`type.currency.${opt.currencyId}`)"
+                  />
+                </el-select>
+                <span v-else>{{ t(`type.currency.${item.currencyId}`) }}</span>
+              </td>
+              <td>
+                <el-input
+                  class="w-100"
+                  type="number"
+                  v-model="item.initialValue"
+                  :disabled="isSubmitting"
+                >
+                  <template #prefix> $USD:&nbsp; </template>
+                </el-input>
+              </td>
+              <td>
+                <el-input
+                  v-model="item.minValue"
+                  :disabled="isSubmitting"
+                  class="w-100"
+                  type="number"
+                  ><template #prefix> $USD:&nbsp; </template></el-input
+                >
+              </td>
+              <td>
+                <el-input
+                  v-model="item.maxValue"
+                  :disabled="isSubmitting"
+                  class="w-100"
+                  type="number"
+                  ><template #prefix> $USD:&nbsp; </template></el-input
+                >
+              </td>
+
+              <td v-if="String(i) === 'Union Pay'">
+                <div style="width: 120px">
+                  <el-input
+                    v-model="item.percentage"
+                    class="w-100"
+                    type="number"
+                    ><template #append>%</template></el-input
+                  >
+                </div>
+              </td>
+              <td v-else></td>
+
+              <td>
+                <el-popover v-if="updateHistory[item.id]" :width="350">
+                  <template #reference>{{
+                    updateHistory[item.id]["userName"]
+                  }}</template>
+                  <template #default>
+                    <div>
+                      <p class="fw-bold text-warning-emphasis">
+                        {{ $t("fields.updated_at") }}
+                        {{ updateHistory[item.id]["createdOn"] }}
+                      </p>
+                    </div>
+                    <div>
+                      <p
+                        v-for="(value, index) in updateHistory[item.id][
+                          'previous'
+                        ]"
+                        :key="index"
+                      >
+                        <span v-if="value"
+                          >{{ index }}: {{ value }} ⇒
+                          {{ updateHistory[item.id]["current"][index] }}</span
+                        >
+                      </p>
+                    </div>
+                  </template>
+                </el-popover>
+              </td>
+
+              <td>
+                <el-button
+                  type="warning"
+                  @click="singleSubmit(item)"
+                  :disabled="isSubmitting"
+                >
+                  {{ $t("action.save") }}
+                </el-button>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <el-button
+                    type="primary"
+                    @click="showPaymentDetail(item, services)"
+                    :disabled="isSubmitting"
+                  >
+                    {{ $t("action.detail") }}
+                  </el-button>
+                  <el-button
+                    v-if="!hideActive && !item.status"
+                    type="danger"
+                    @click="deletePaymentMethod(item)"
+                    :disabled="isSubmitting"
+                    plain
+                  >
+                    {{ $t("action.delete") }}
+                  </el-button>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -331,12 +402,67 @@ const platform = ref(Array<any>());
 const hideActive = ref(true);
 const highDollarInfo = ref({} as any);
 const callbackTime = ref(null);
+/** group key -> expanded; omitted keys default to expanded */
+const groupExpanded = ref<Record<string, boolean>>({});
+/** group key -> currently selected item id (only for ExLink Global groups) */
+const selectedExLinkItemId = ref<Record<string, number>>({});
 const criteria = ref({
   page: 1,
   size: 100,
   sortField: "Sequence",
   sortFlag: false,
 });
+
+const isGroupExpanded = (groupKey: string) =>
+  groupExpanded.value[groupKey] !== false;
+
+const toggleGroup = (groupKey: string) => {
+  groupExpanded.value = {
+    ...groupExpanded.value,
+    [groupKey]: !isGroupExpanded(groupKey),
+  };
+};
+
+const isExLinkGlobalGroup = (groupKey: string, items: any[]) => {
+  if (groupKey === "ExLink Global") return true;
+  return (
+    Array.isArray(items) &&
+    items.some(
+      (it) => it?.isExLinkGlobal === true || it?.type === "ExLinkGlobal"
+    )
+  );
+};
+
+const getSelectedExLinkItem = (groupKey: string, items: any[]) => {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const id = selectedExLinkItemId.value[groupKey];
+  return items.find((it) => it.id === id) || items[0];
+};
+
+const getDisplayItems = (groupKey: string, items: any[]) => {
+  if (!isExLinkGlobalGroup(groupKey, items)) return items;
+  const selected = getSelectedExLinkItem(groupKey, items);
+  return selected ? [selected] : [];
+};
+
+/**
+ * Make sure each ExLink Global group has a valid selected item id.
+ * Falls back to the first item when current selection is missing
+ * (e.g. after Hide Inactive filtered it out, or after data refresh).
+ */
+const ensureSelectedExLinkItems = () => {
+  const groups = services.value as unknown as Record<string, any[]>;
+  Object.keys(groups || {}).forEach((groupKey) => {
+    const items = groups[groupKey];
+    if (!isExLinkGlobalGroup(groupKey, items)) return;
+    const currentId = selectedExLinkItemId.value[groupKey];
+    const valid =
+      currentId != null && items.some((it: any) => it.id === currentId);
+    if (!valid) {
+      selectedExLinkItemId.value[groupKey] = items[0]?.id;
+    }
+  });
+};
 
 const updateCallbackTime = async () => {
   isSubmitting.value = true;
@@ -456,6 +582,7 @@ const getServices = async () => {
     // 深拷贝保存完整数据，避免被 hideInactive 影响
     tempServices.value = JSON.parse(JSON.stringify(services.value));
     hideInactive();
+    ensureSelectedExLinkItems();
   } catch (error) {
     console.log(error);
   } finally {
@@ -490,6 +617,7 @@ watch(hideActive, (value) => {
     services.value = tempServices.value;
   }
   console.log("watch:services.value", services.value);
+  ensureSelectedExLinkItems();
 });
 
 const hideInactive = () => {
@@ -509,6 +637,7 @@ const hideInactive = () => {
   } else {
     services.value = tempServices.value;
   }
+  ensureSelectedExLinkItems();
 };
 
 const showPaymentDetail = (item: any, category: any) => {

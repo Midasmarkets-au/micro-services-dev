@@ -23,7 +23,9 @@
       <PaymentGroupCard
         :item="item"
         :groupName="item.group"
-        :showName="item.paymentMethodName"
+        :showName="
+          item.type == 'ExLinkGlobal' ? item.group : item.paymentMethodName
+        "
         :logo="item.logo"
         :selectedGroup="paymentRequireData.group"
       />
@@ -50,6 +52,7 @@ function selectedGroup(_item: any) {
   paymentRequireData.value.group = _item.group;
   paymentRequireData.value.logo = _item.logo;
   paymentRequireData.value.paymentMethodName = _item.paymentMethodName;
+  paymentRequireData.value.type = _item.type;
 }
 
 onMounted(async () => {

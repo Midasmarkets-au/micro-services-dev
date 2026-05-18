@@ -158,6 +158,7 @@ router.beforeEach(async (to, from, next) => {
       "KycOfficer",
       "AccountAdmin",
       "Admin",
+      "MailAdmin",
     ])
   ) {
     // if route is protected and user doesn't have required permissions

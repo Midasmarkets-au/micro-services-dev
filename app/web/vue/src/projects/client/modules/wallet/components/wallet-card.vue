@@ -58,6 +58,7 @@
           <BalanceShow
             :currency-id="props.item.currencyId"
             :balance="props.item.balance"
+            :fraction-digits="2"
           />
         </span>
       </div>
@@ -96,7 +97,7 @@ const emit = defineEmits<{
 
 <style scoped type="scss">
 /* .wallet-bg {
-  background-image: url("/images/bg/wallet_bg.png");
+  background-image: url("/public/images/bg/wallet_bg.png");
   background-size: cover;
   background-repeat: no-repeat;
 } */
