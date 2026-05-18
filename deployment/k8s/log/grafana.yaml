@@ -7,12 +7,14 @@
 # Secret grafana-admin 需在集群中手动创建，不提交到 git：
 # kubectl create secret generic grafana-admin \
 #   --from-literal=admin-user=admin \
-#   --from-literal=admin-password=<your-password>
+#   --from-literal=admin-password=<your-password> \
+#   -n log
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-datasources
+  namespace: log
   labels:
     app: grafana
 data:
@@ -31,6 +33,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
+  namespace: log
   labels:
     app: grafana
 spec:
@@ -87,6 +90,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana
+  namespace: log
   labels:
     app: grafana
 spec:
@@ -103,6 +107,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: grafana-ingress
+  namespace: log
   labels:
     app: grafana
 spec:

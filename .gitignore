@@ -29,6 +29,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+!deployment/k8s/log/
 artifacts/
 project.lock.json
 project.fragment.lock.json
