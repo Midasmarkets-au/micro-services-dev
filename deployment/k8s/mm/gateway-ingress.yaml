@@ -28,7 +28,7 @@
 # ============================================================================
 #  ingress-nginx-controller Service — AWS NLB + ACM TLS 终止
 #  绑定 3 个 ACM 证书（覆盖多域名 SAN）
-#  应用：kubectl apply -f deployment/k8s/gateway-ingress.yaml
+#  应用：kubectl apply -f deployment/k8s/mm/gateway-ingress.yaml
 # ============================================================================
 apiVersion: v1
 kind: Service
@@ -74,6 +74,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: bacera-ingress
+  namespace: mm
   labels:
     app: bacera
   annotations:
@@ -288,6 +289,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: s3-mm-front-public
+  namespace: mm
   labels:
     app: bacera
 spec:
@@ -306,6 +308,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: bacera-ingress-s3-proxy
+  namespace: mm
   labels:
     app: bacera
   annotations:
@@ -349,6 +352,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: nats-monitor-ingress
+  namespace: mm
   labels:
     app: nats
   annotations:

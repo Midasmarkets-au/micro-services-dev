@@ -8,6 +8,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: scheduler
+  namespace: mm
   labels:
     app: scheduler
 spec:
@@ -22,8 +23,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/arch: arm64
-      imagePullSecrets:
-        - name: ecr-registry
       containers:
         - name: scheduler
           image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/scheduler:latest
