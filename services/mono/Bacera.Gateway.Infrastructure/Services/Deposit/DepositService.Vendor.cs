@@ -946,10 +946,12 @@ public partial class DepositService
         , Dictionary<string, string> request)
     {
         var options = QrCodeTunnelOptions.FromJson(method.Configuration);
+        var user = await userSvc.GetPartyAsync(account.PartyId);
         var client = new QrCodeTunnel.RequestClient
         {
             Amount = RoundUp(exchangedAmount / 100m),
             PaymentNumber = Payment.GenerateNumber(),
+            PayerName = user.GuessNativeName(),
             Options = options,
             Client = clientFactory.CreateClient(),
             Logger = logger,

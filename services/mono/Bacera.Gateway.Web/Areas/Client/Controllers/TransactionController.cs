@@ -1,5 +1,5 @@
-
 using Bacera.Gateway.Core.Types;
+using Bacera.Gateway.Data.Migrations.TenantDb;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Services.Acct;
@@ -18,7 +18,7 @@ using MSG = Bacera.Gateway.ResultMessage.Transaction;
 namespace Bacera.Gateway.Web.Areas.Client.Controllers;
 
 [Tags("Client/Transaction")]
-[Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme,
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme,
     Roles = UserRoleTypesString.ClientOrTenantAdmin)]
 public class TransactionController(
     IMediator mediator,
@@ -27,6 +27,7 @@ public class TransactionController(
     AccountManageService accManSvc,
     AcctService acctSvc,
     TenantDbContext tenantCtx,
+    AuthDbContext authDbContext,
     ISendMailService sendMailService,
     UserService userSvc,
     ILogger<TransactionController> logger)
@@ -284,7 +285,7 @@ public class TransactionController(
         }
 
         // Generate new verification code (6 digits, 2 minutes expiry)
-        const int expireMinutes = 2;
+        const int expireMinutes = 1; // Build方法内部有额外 + 1分钟
         var authCode = AuthCode.Build(
             partyId,
             eventType,
@@ -304,7 +305,7 @@ public class TransactionController(
                 Email = userEmail,
                 // ✅ Only BCC in development environment with valid email
                 BccEmails = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Testing"
-                    ? new List<string> { "xinsong.rao@edgeark.com.au", "renjie.jiang@edgeark.com.au" }  
+                    ? (Environment.GetEnvironmentVariable("DEV_BCC_EMAILS") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
                     : null,
                 VerificationCode = authCode.Code,
                 ExpireMinutes = expireMinutes

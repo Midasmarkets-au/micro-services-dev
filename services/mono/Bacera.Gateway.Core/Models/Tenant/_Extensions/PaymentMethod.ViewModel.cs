@@ -34,6 +34,11 @@ public partial class PaymentMethod
         /// </summary>
         public bool IsExLinkGlobal { get; set; }
 
+        /// <summary>
+        /// Payment platform type identifier. Set to "ExLinkGlobal" for all ExLink Global methods, null otherwise.
+        /// </summary>
+        public string? Type { get; set; }
+
         [JsonIgnore] public string AvailableCurrenciesRaw { get; set; } = "";
 
         public HashSet<CurrencyTypes> AvailableCurrencies
@@ -102,6 +107,11 @@ public partial class PaymentMethod
 
         // true means the payment method has been set up for the account
         public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Payment platform type identifier. Currently only set for ExLinkGlobal methods.
+        /// </summary>
+        public string? Type { get; set; }
     }
 
     public ClientGroupModel ToClientGroupModel() => new()
@@ -111,7 +121,8 @@ public partial class PaymentMethod
         Range = [MinValue, MaxValue],
         InitialValue = InitialValue,
         AvailableCurrencies = GetAvailableCurrencies(),
-        PaymentMethodName = Name
+        PaymentMethodName = Name,
+        Type = Platform == (int)PaymentPlatformTypes.ExLinkGlobal ? "ExLinkGlobal" : null
     };
 
     public sealed class ClientNameModel
@@ -127,6 +138,11 @@ public partial class PaymentMethod
 
         // true means the payment method has been set up for the account
         public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Payment platform type identifier. Set to "ExLinkGlobal" for all ExLink Global methods, null otherwise.
+        /// </summary>
+        public string? Type { get; set; }
     }
 }
 
@@ -160,7 +176,8 @@ public static class PaymentMethodViewModelExtension
             Sort = x.Sort,
             AvailableCurrenciesRaw = x.AvailableCurrencies,
             OperatorPartyId = x.OperatorPartyId,
-            IsExLinkGlobal = IsExLinkGlobalCurrencySpecific(x)
+            IsExLinkGlobal = IsExLinkGlobalCurrencySpecific(x),
+            Type = x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal ? "ExLinkGlobal" : null
         });
 
 

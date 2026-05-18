@@ -51,7 +51,9 @@ public static class DepositRecordExtension
             PaymentStatus = (PaymentStatusTypes)x.Payment.Status,
             PaymentId = x.PaymentId,
             PaymentNumber = x.Payment.Number,
-            PaymentServiceName = x.Payment.PaymentMethod.Name + " " + x.Payment.ReferenceNumber,
+            PaymentServiceName = x.Payment.CryptoTransaction != null
+                ? x.Payment.CryptoTransaction.Crypto.Name
+                : x.Payment.PaymentMethod.Name,
             Amount = x.Amount,
             CreatedOn = x.IdNavigation.PostedOn,
         });

@@ -1,6 +1,7 @@
 using Bacera.Gateway.Services.Report.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Bacera.Gateway.Services;
 
@@ -175,11 +176,18 @@ WITH
             JOIN acct."_Wallet" w ON wds."WalletId" = w."Id"
             LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
             LEFT JOIN (
-                SELECT DISTINCT ON ("PartyId")
+                -- Partition by (PartyId, CurrencyId) so multi-currency parties pick the
+                -- account that actually matches the wallet's currency. Using just
+                -- DISTINCT ON ("PartyId") makes the pick non-deterministic between
+                -- siblings of equal Role, and the outer-join CurrencyId filter then
+                -- silently rejects the picked row whenever Postgres happened to grab
+                -- the wrong-currency one — bucketing the wallet under NO_SALES even
+                -- though a perfectly valid same-currency account exists.
+                SELECT DISTINCT ON ("PartyId", "CurrencyId")
                     "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
                 FROM trd."_Account"
                 WHERE "Role" IN (300, 400)
-                ORDER BY "PartyId", "Role"
+                ORDER BY "PartyId", "CurrencyId", "Role"
             ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
             LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
@@ -207,11 +215,11 @@ WITH
             JOIN acct."_Wallet" w ON wds."WalletId" = w."Id"
             LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
             LEFT JOIN (
-                SELECT DISTINCT ON ("PartyId")
+                SELECT DISTINCT ON ("PartyId", "CurrencyId")
                     "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
                 FROM trd."_Account"
                 WHERE "Role" IN (300, 400)
-                ORDER BY "PartyId", "Role"
+                ORDER BY "PartyId", "CurrencyId", "Role"
             ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
             LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
@@ -353,11 +361,11 @@ WITH
             JOIN acct."_Wallet" w ON wd."SourceWalletId" = w."Id"
             LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
             LEFT JOIN (
-                SELECT DISTINCT ON ("PartyId")
+                SELECT DISTINCT ON ("PartyId", "CurrencyId")
                     "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
                 FROM trd."_Account"
                 WHERE "Role" IN (300, 400)
-                ORDER BY "PartyId", "Role"
+                ORDER BY "PartyId", "CurrencyId", "Role"
             ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
             LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
@@ -427,11 +435,11 @@ WITH
             JOIN acct."_Wallet" w ON t."SourceAccountId" = w."Id"
             LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
             LEFT JOIN (
-                SELECT DISTINCT ON ("PartyId")
+                SELECT DISTINCT ON ("PartyId", "CurrencyId")
                     "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
                 FROM trd."_Account"
                 WHERE "Role" IN (300, 400)
-                ORDER BY "PartyId", "Role"
+                ORDER BY "PartyId", "CurrencyId", "Role"
             ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
             LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
@@ -475,11 +483,11 @@ WITH
             JOIN acct."_Wallet" w ON t."TargetAccountId" = w."Id"
             LEFT JOIN trd."_Account" a_sales ON w."PartyId" = a_sales."PartyId" AND a_sales."Role" = 100
             LEFT JOIN (
-                SELECT DISTINCT ON ("PartyId")
+                SELECT DISTINCT ON ("PartyId", "CurrencyId")
                     "Id", "PartyId", "SalesAccountId", "Role", "CurrencyId"
                 FROM trd."_Account"
                 WHERE "Role" IN (300, 400)
-                ORDER BY "PartyId", "Role"
+                ORDER BY "PartyId", "CurrencyId", "Role"
             ) a_client ON w."PartyId" = a_client."PartyId" AND a_client."CurrencyId" = w."CurrencyId"
             LEFT JOIN trd."_Account" sa ON a_client."SalesAccountId" = sa."Id"
             CROSS JOIN params p
@@ -641,10 +649,30 @@ WITH
     -- ============================================
     -- 16. All Sales Codes & Combinations
     -- ============================================
+    -- Important: union ALL CTE outputs that produce a sales_code, otherwise a salesperson
+    -- with a non-zero wallet balance but no client/agent accounts referencing them via
+    -- SalesAccountId would be silently dropped by the LEFT JOINs in the final SELECT
+    -- (because their sales_code wouldn't appear in `all_combinations`). Same applies to
+    -- wallet rebates, wallet adjustments, wallet withdrawals, and wallet transfers when
+    -- the only counterparty for that sales_code is a Role=100 sales account itself.
     all_sales_codes AS (
         SELECT DISTINCT sales_code FROM client_accounts
         UNION
         SELECT DISTINCT sales_code FROM agent_accounts
+        UNION
+        SELECT DISTINCT sales_code FROM wallet_prev_equity
+        UNION
+        SELECT DISTINCT sales_code FROM wallet_curr_equity
+        UNION
+        SELECT DISTINCT sales_code FROM wallet_adjust
+        UNION
+        SELECT DISTINCT sales_code FROM rebate_wallet
+        UNION
+        SELECT DISTINCT sales_code FROM transfer_in_wallet
+        UNION
+        SELECT DISTINCT sales_code FROM transfer_out_wallet
+        UNION
+        SELECT DISTINCT sales_code FROM wallet_margin_out
     ),
 
     all_combinations AS (
@@ -950,7 +978,18 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                         .Where(d => new uint[] { 0, 1 }.Contains(d.Action)) // Action: 0=buy, 1=sell
                         .SumAsync(d => d.Volume / 10000.0); // Convert volume to lots
 
-                    logger.LogInformation($"[DailyEquity MySQL Result] Office={pgResult.Office}, Currency={pgResult.Currency}, PrevEq(EquityPrevDay)={previousEquity}, CurrEq(ProfitEquity)={currentEquity}, DailyProfit={dailyProfit}, Lots={lotsData}");
+                    // Query mt5_deals for MT5-side adjusts done directly on MT5 (without touching CRM).
+                    // Only Comments matching 'Adjust Invalid Order' / 'Adjust Invalid Rebate' / 'Adjust Gap' are summed —
+                    // Profit is in the account's currency scale (same as mt5_daily.DailyProfit), no conversion needed.
+                    var mt5AdjustData = await mt5DbContext.Mt5Deals2025s
+                        .Where(d => accountNumbers.Contains(d.Login))
+                        .Where(d => d.Time >= dealsStart && d.Time < dealsEnd)
+                        .Where(d => EF.Functions.Like(d.Comment, "%Adjust Invalid Order%")
+                                 || EF.Functions.Like(d.Comment, "%Adjust Invalid Rebate%")
+                                 || EF.Functions.Like(d.Comment, "%Adjust Gap%"))
+                        .SumAsync(d => (double?)d.Profit) ?? 0.0;
+
+                    logger.LogInformation($"[DailyEquity MySQL Result] Office={pgResult.Office}, Currency={pgResult.Currency}, PrevEq(EquityPrevDay)={previousEquity}, CurrEq(ProfitEquity)={currentEquity}, DailyProfit={dailyProfit}, Lots={lotsData}, Mt5Adjust={mt5AdjustData}");
 
                     mysqlResults.Add(new DailyEquityMysqlResult
                     {
@@ -959,7 +998,8 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                         PreviousEquity = (decimal)previousEquity,
                         CurrentEquity = (decimal)currentEquity,
                         Lots = (decimal)lotsData,
-                        PL = (decimal)dailyProfit  // Use DailyProfit from MT5
+                        PL = (decimal)dailyProfit,  // Use DailyProfit from MT5
+                        MysqlAdjust = (decimal)mt5AdjustData
                     });
                 }
             }
@@ -1014,8 +1054,14 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                     record.CurrentEquity = mysqlData.CurrentEquity;
                     record.Lots = mysqlData.Lots;
 
+                    // Carry MT5-side adjust on a separate field. PG Adjust is kept here
+                    // so snapshots (rpt._DailyEquitySnapshot) retain the raw values.
+                    // ReplaceUsdUscAdjustWithMt5() swaps Adjust := Mt5Adjust at render time
+                    // for USD/USC rows across all three CSV outputs.
+                    record.Mt5Adjust = mysqlData.MysqlAdjust;
+
                     // Calculate Net In/Out first (needed for P&L formula)
-                    record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer;
+                    record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer + record.Adjust;
                     record.PL = record.CurrentEquity - record.PreviousEquity - record.NetInOut;
                 }
                 else
@@ -1025,7 +1071,7 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                     record.CurrentEquity = 0;
                     record.Lots = 0;
                     record.PL = 0;
-                    record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer;
+                    record.NetInOut = record.MarginIn + record.MarginOut + record.Transfer + record.Adjust;
                     logger.LogWarning($"[DailyEquity Merge] No MySQL data found for Office={pgResult.Office}, Currency={pgResult.Currency}");
                 }
 
@@ -1077,6 +1123,36 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
 
         // Group records by Currency and add subtotal rows
         return GroupAndAddSubtotals(allRecords);
+    }
+
+    /// <summary>
+    /// Replace USD/USC Adjust with the MT5 Adjust Sum (Mt5Adjust) at render time
+    /// and recompute NetInOut, PL, and EstimatesNetPL using the same formulas as
+    /// MergeDailyEquityResults. Mutates records in place.
+    ///
+    /// Wallet rows are intentionally NOT touched — Wallet keeps the PG _WalletAdjust
+    /// value because MT5 has no Wallet concept.
+    ///
+    /// Snapshot DB and the PG CTE are unchanged: the PG Adjust value is still
+    /// queried, persisted to rpt._DailyEquitySnapshot.Adjust, and aggregated for
+    /// monthly. The substitution happens only at output rendering, so a future
+    /// requirement change can flip back trivially.
+    ///
+    /// Safe to call on subtotal/Total rows because GroupAndAddSubtotals already
+    /// sums Mt5Adjust into Total rows. Replacing Adjust with Mt5Adjust on a list
+    /// that already contains Totals is sum-equivalent (sums commute with the
+    /// replacement).
+    /// </summary>
+    public static void ReplaceUsdUscAdjustWithMt5(List<DailyEquityRecord> records)
+    {
+        foreach (var r in records)
+        {
+            if (r.Currency is not ("USD" or "USC")) continue;
+            r.Adjust = r.Mt5Adjust;
+            r.NetInOut = r.MarginIn + r.MarginOut + r.Transfer + r.Adjust;
+            r.PL = r.CurrentEquity - r.PreviousEquity - r.NetInOut;
+            r.EstimatesNetPL = r.PL + r.Rebate;
+        }
     }
 
     private List<DailyEquityRecord> GroupAndAddSubtotals(
@@ -1153,6 +1229,9 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                 Adjust = currency == "USC" 
                     ? currencyRecords.Sum(r => r.Adjust)
                     : currencyRecords.Sum(r => Math.Round(r.Adjust, 2)),
+                Mt5Adjust = currency == "USC"
+                    ? currencyRecords.Sum(r => r.Mt5Adjust)
+                    : currencyRecords.Sum(r => Math.Round(r.Mt5Adjust, 2)),
                 Rebate = currency == "USC" 
                     ? currencyRecords.Sum(r => r.Rebate)
                     : currencyRecords.Sum(r => Math.Round(r.Rebate, 2)),
@@ -1257,6 +1336,86 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
         return result;
     }
 
+    /// <summary>
+    /// Re-key records by top-level sales ancestor, preserving currency breakdown.
+    /// Same pattern as MergeRecordsByOfficeMapping but uses ReferPath hierarchy
+    /// instead of prefix mapping. No OfficeMergeMapping applied.
+    /// </summary>
+    public async Task<List<DailyEquityRecord>> AggregateByTopSaleAsync(List<DailyEquityRecord> records)
+    {
+        // Step 1: Load all Sales accounts to build the mapping
+        var salesAccounts = await tenantDbContext.Accounts
+            .Where(a => a.Role == (short)AccountRoleTypes.Sales)
+            .Select(a => new { a.Uid, a.Code, a.ReferPath })
+            .ToListAsync();
+
+        // Step 2: Parse ReferPath and identify top-level sales (exactly 2 UIDs in path)
+        var parsed = salesAccounts.Select(a =>
+        {
+            var uids = a.ReferPath.Split('.', StringSplitOptions.RemoveEmptyEntries)
+                .Select(long.Parse).ToList();
+            return new { a.Uid, a.Code, Uids = uids };
+        }).ToList();
+
+        var topSaleUidToCode = parsed
+            .Where(a => a.Uids.Count == 2)
+            .ToDictionary(a => a.Uid, a => a.Code);
+
+        // Step 3: Build salesCode -> topSaleCode mapping
+        var salesCodeToTopSaleCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var a in parsed)
+        {
+            if (a.Uids.Count < 2) continue;
+            var topSaleUid = a.Uids[1]; // 2nd node = 1st-level sales
+            salesCodeToTopSaleCode[a.Code] = topSaleUidToCode.TryGetValue(topSaleUid, out var topCode)
+                ? topCode
+                : a.Code; // orphan — keep original
+        }
+
+        string ResolveTopSale(string office) =>
+            salesCodeToTopSaleCode.TryGetValue(office, out var mapped) ? mapped : office;
+
+        // Step 4: Filter, re-key by topSaleCode, and group by (topSaleCode, Currency)
+        var dataRecords = records
+            .Where(r => !string.IsNullOrEmpty(r.Office) && r.Office != "Total"
+                        && !string.IsNullOrEmpty(r.Currency))
+            .ToList();
+
+        var merged = dataRecords
+            .GroupBy(r => new { Office = ResolveTopSale(r.Office), r.Currency })
+            .Select(g => new DailyEquityRecord
+            {
+                Office = g.Key.Office,
+                Currency = g.Key.Currency,
+                NewUser = g.Sum(r => r.NewUser),
+                NewAcc = g.Sum(r => r.NewAcc),
+                PreviousEquity = g.Sum(r => r.PreviousEquity),
+                CurrentEquity = g.Sum(r => r.CurrentEquity),
+                MarginIn = g.Sum(r => r.MarginIn),
+                MarginOut = g.Sum(r => r.MarginOut),
+                Transfer = g.Sum(r => r.Transfer),
+                Credit = g.Sum(r => r.Credit),
+                Adjust = g.Sum(r => r.Adjust),
+                Mt5Adjust = g.Sum(r => r.Mt5Adjust),
+                Rebate = g.Sum(r => r.Rebate),
+                NetInOut = g.Sum(r => r.NetInOut),
+                Lots = g.Sum(r => r.Lots),
+                PL = g.Sum(r => r.PL),
+                EstimatesNetPL = g.Sum(r => r.EstimatesNetPL)
+            })
+            .ToList();
+
+        // Zero Wallet Rebate (same convention as MergeRecordsByOfficeMapping)
+        foreach (var r in merged.Where(r => r.Currency == "Wallet"))
+        {
+            r.Rebate = 0;
+            r.NetInOut = r.MarginIn + r.MarginOut + r.Adjust;
+        }
+
+        // Step 5: Add currency-grouped subtotals
+        return GroupAndAddSubtotals(merged);
+    }
+
     private static string ResolveOffice(string salesCode, OfficeMergeMapping mapping)
     {
         if (string.IsNullOrEmpty(salesCode))
@@ -1294,6 +1453,7 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                 Transfer = g.Sum(r => r.Transfer),
                 Credit = g.Sum(r => r.Credit),
                 Adjust = g.Sum(r => r.Adjust),
+                Mt5Adjust = g.Sum(r => r.Mt5Adjust),
                 Rebate = g.Sum(r => r.Rebate),
                 NetInOut = g.Sum(r => r.NetInOut),
                 Lots = g.Sum(r => r.Lots),
@@ -1370,6 +1530,7 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                 Currency = g.Key.Currency,
                 NewUser = g.Sum(s => s.NewUser),
                 NewAcc = g.Sum(s => s.NewAcc),
+                // 这里是Last Month Equity的话用firstDate, 除非是指当天的PreviousEquity，才用lastDate。
                 PreviousEquity = g.Where(s => s.ReportDate == firstDate).Sum(s => s.PreviousEquity),
                 CurrentEquity = g.Where(s => s.ReportDate == lastDate).Sum(s => s.CurrentEquity),
                 MarginIn = g.Sum(s => s.MarginIn),
@@ -1377,6 +1538,7 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
                 Transfer = g.Sum(s => s.Transfer),
                 Credit = g.Sum(s => s.Credit),
                 Adjust = g.Sum(s => s.Adjust),
+                Mt5Adjust = g.Sum(s => s.Mt5Adjust),
                 Rebate = g.Sum(s => s.Rebate),
                 NetInOut = g.Sum(s => s.NetInOut),
                 Lots = g.Sum(s => s.Lots),
@@ -1389,8 +1551,79 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
     }
 
     /// <summary>
+    /// Refresh daily snapshots for a date range by re-running the daily equity query
+    /// for each day and saving fresh snapshots. Used by the monthly report to ensure
+    /// aggregated totals reflect current data (rebates may be modified retroactively).
+    /// </summary>
+    public async Task RefreshSnapshotsAsync(
+        DateTime from, DateTime to,
+        bool useClosingTime, double hoursGap)
+    {
+        var current = from.Date;
+        var endDate = to.Date;
+
+        logger.LogInformation(
+            "[DailyEquitySnapshot] Refreshing snapshots from {From} to {To} (useClosingTime={UseClosingTime})",
+            current, endDate, useClosingTime);
+
+        while (current <= endDate)
+        {
+            var dayFrom = current;
+            var dayTo = current.AddDays(1);
+            var fromUtc = DateTime.SpecifyKind(dayFrom.AddHours(-hoursGap), DateTimeKind.Utc);
+            var toUtc = DateTime.SpecifyKind(dayTo.AddHours(-hoursGap), DateTimeKind.Utc);
+            var version = useClosingTime
+                ? EquityReportVersion.ClosingTimeBased
+                : EquityReportVersion.ReleasedTimeBased;
+
+            try
+            {
+                var criteria = new DailyEquity.Criteria
+                {
+                    From = fromUtc,
+                    To = toUtc,
+                    UseClosingTime = useClosingTime,
+                    ClosedOnFrom = dayFrom,
+                    ClosedOnTo = dayTo,
+                    Page = 1,
+                    Size = 500000
+                };
+
+                var records = await DailyEquityReportQueryAsync(criteria, hoursGap);
+                await SaveDailyEquitySnapshotAsync(records, current, version);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "[DailyEquitySnapshot] Failed to refresh snapshot for {Date} v{Version}",
+                    current, useClosingTime ? "ClosingTime" : "ReleasedTime");
+            }
+
+            current = current.AddDays(1);
+        }
+
+        logger.LogInformation(
+            "[DailyEquitySnapshot] Finished refreshing snapshots from {From} to {To}",
+            from.Date, endDate);
+    }
+
+    /// <summary>
     /// Persist daily equity records to DailyEquitySnapshot table.
     /// Uses delete-then-insert (upsert) keyed on ReportDate + ReportVersion.
+    ///
+    /// Drift detection (only when overwriting an existing snapshot set):
+    /// - "disappeared": (Office,Currency) existed before, gone now (logged, not stored
+    ///   because the row is being deleted)
+    /// - "appeared":    (Office,Currency) is new in this save (stored as
+    ///   AdditionalInfo={"appeared":true,...} on the new row + warning log)
+    /// - "rebateDiff" / "previousEquityDiff" / "currentEquityDiff": same
+    ///   (Office,Currency) but value changed beyond `driftTolerance`. All accumulated
+    ///   into a single AdditionalInfo JSON object on the new row.
+    ///
+    /// This makes attribution drift (e.g. SalesAccountId reassignment causing
+    /// RefreshSnapshotsAsync to attribute the same _WalletDailySnapshot row under a
+    /// different sales code than yesterday) visible the next morning instead of
+    /// silently rewriting historical rows.
     /// </summary>
     public async Task SaveDailyEquitySnapshotAsync(
         List<DailyEquityRecord> records,
@@ -1415,36 +1648,128 @@ ORDER BY ac.sales_code, CASE ac.currency_name WHEN 'User' THEN 0 WHEN 'USD' THEN
             .Where(s => s.ReportDate == dateOnly && s.ReportVersion == reportVersion)
             .ToListAsync();
 
+        // Index existing snapshots by (Office, Currency) for fast lookup.
+        var oldByKey = existing.ToDictionary(s => (s.Office, s.Currency));
+        var oldKeySet = oldByKey.Keys.ToHashSet();
+        var newKeySet = dataRecords.Select(r => (r.Office, r.Currency)).ToHashSet();
+
+        // First save (no existing rows) is not a "refresh" — don't flag every new row
+        // as appeared on the very first write.
+        var isRefresh = existing.Any();
+
+        // Tolerance for treating two decimal values as "the same". CSV is rounded to 2dp
+        // for everything except USC, so 0.01 is the natural floor.
+        const decimal driftTolerance = 0.01m;
+
+        bool IsMeaningful(DailyEquitySnapshot s) =>
+            Math.Abs(s.PreviousEquity) >= driftTolerance
+            || Math.Abs(s.CurrentEquity) >= driftTolerance
+            || Math.Abs(s.MarginIn) >= driftTolerance
+            || Math.Abs(s.MarginOut) >= driftTolerance
+            || Math.Abs(s.Adjust) >= driftTolerance
+            || Math.Abs(s.Rebate) >= driftTolerance;
+
+        // Disappeared: in old set but not in new set. Only surface rows that carried
+        // financially meaningful values — zero-valued ghost rows aren't worth alerting on.
+        if (isRefresh)
+        {
+            var disappeared = oldKeySet
+                .Except(newKeySet)
+                .Select(k => oldByKey[k])
+                .Where(IsMeaningful)
+                .ToList();
+
+            foreach (var d in disappeared)
+            {
+                logger.LogWarning(
+                    "[DailyEquitySnapshot] Office/Currency DISAPPEARED on refresh for {Date} v{Version}: " +
+                    "{Office}/{Currency} oldPrev={OldPrev} oldCurr={OldCurr} oldMarginIn={OldMarginIn} " +
+                    "oldMarginOut={OldMarginOut} oldAdjust={OldAdjust} oldRebate={OldRebate}",
+                    dateOnly, reportVersion, d.Office, d.Currency,
+                    d.PreviousEquity, d.CurrentEquity, d.MarginIn, d.MarginOut, d.Adjust, d.Rebate);
+            }
+        }
+
         if (existing.Any())
         {
             tenantDbContext.DailyEquitySnapshots.RemoveRange(existing);
+            await tenantDbContext.SaveChangesAsync();
             logger.LogInformation(
                 "[DailyEquitySnapshot] Removed {Count} existing snapshots for {ReportDate} v{Version}",
                 existing.Count, dateOnly, reportVersion);
         }
 
         var now = DateTime.UtcNow;
-        var snapshots = dataRecords.Select(r => new DailyEquitySnapshot
+        var snapshots = dataRecords.Select(r =>
         {
-            ReportDate = dateOnly,
-            ReportVersion = reportVersion,
-            Office = r.Office,
-            Currency = r.Currency,
-            NewUser = r.NewUser,
-            NewAcc = r.NewAcc,
-            PreviousEquity = r.PreviousEquity,
-            CurrentEquity = r.CurrentEquity,
-            MarginIn = r.MarginIn,
-            MarginOut = r.MarginOut,
-            Transfer = r.Transfer,
-            Credit = r.Credit,
-            Adjust = r.Adjust,
-            Rebate = r.Rebate,
-            NetInOut = r.NetInOut,
-            Lots = r.Lots,
-            PL = r.PL,
-            EstimatesNetPL = r.EstimatesNetPL,
-            CreatedOn = now
+            var snapshot = new DailyEquitySnapshot
+            {
+                ReportDate = dateOnly,
+                ReportVersion = reportVersion,
+                Office = r.Office,
+                Currency = r.Currency,
+                NewUser = r.NewUser,
+                NewAcc = r.NewAcc,
+                PreviousEquity = r.PreviousEquity,
+                CurrentEquity = r.CurrentEquity,
+                MarginIn = r.MarginIn,
+                MarginOut = r.MarginOut,
+                Transfer = r.Transfer,
+                Credit = r.Credit,
+                Adjust = r.Adjust,
+                Mt5Adjust = r.Mt5Adjust,
+                Rebate = r.Rebate,
+                NetInOut = r.NetInOut,
+                Lots = r.Lots,
+                PL = r.PL,
+                EstimatesNetPL = r.EstimatesNetPL,
+                CreatedOn = now
+            };
+
+            if (!isRefresh) return snapshot;
+
+            // Build a single drift JSON describing all detected diffs for this row.
+            var drift = new Dictionary<string, object>();
+            var key = (r.Office, r.Currency);
+
+            if (!oldKeySet.Contains(key))
+            {
+                // (Office,Currency) is new in this save. Could be benign (fresh sales code)
+                // or attribution drift moving a snapshot row from one sales code to another.
+                drift["appeared"] = true;
+            }
+            else
+            {
+                var oldRow = oldByKey[key];
+
+                if (oldRow.Rebate != r.Rebate)
+                {
+                    drift["rebateDiff"] = r.Rebate - oldRow.Rebate;
+                    drift["oldRebate"] = oldRow.Rebate;
+                }
+
+                if (Math.Abs(oldRow.PreviousEquity - r.PreviousEquity) >= driftTolerance)
+                {
+                    drift["previousEquityDiff"] = r.PreviousEquity - oldRow.PreviousEquity;
+                    drift["oldPreviousEquity"] = oldRow.PreviousEquity;
+                }
+
+                if (Math.Abs(oldRow.CurrentEquity - r.CurrentEquity) >= driftTolerance)
+                {
+                    drift["currentEquityDiff"] = r.CurrentEquity - oldRow.CurrentEquity;
+                    drift["oldCurrentEquity"] = oldRow.CurrentEquity;
+                }
+            }
+
+            if (drift.Count > 0)
+            {
+                snapshot.AdditionalInfo = JsonConvert.SerializeObject(drift);
+                logger.LogWarning(
+                    "[DailyEquitySnapshot] Drift on refresh for {Date} v{Version}: {Office}/{Currency} {Drift}",
+                    dateOnly, reportVersion, r.Office, r.Currency, snapshot.AdditionalInfo);
+            }
+
+            return snapshot;
         }).ToList();
 
         tenantDbContext.DailyEquitySnapshots.AddRange(snapshots);

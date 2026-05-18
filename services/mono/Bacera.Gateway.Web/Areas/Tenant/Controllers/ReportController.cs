@@ -272,15 +272,22 @@ public class ReportController(
                 }
                 else if (reportType == (int)ReportRequestTypes.DailyEquityMonthly)
                 {
+                    // Pick the prefix matching the original report name so we
+                    // regenerate the right flavor (Per Sales / Per Office / Per Top Sale).
                     var isPerOffice = currentName.Contains("Per Office");
-                    var prefix = isPerOffice ? "Daily Equity Per Office Monthly" : "Daily Equity Monthly Report";
+                    var isPerTopSale = currentName.Contains("Per Top Sale");
+                    var prefix = isPerTopSale
+                        ? "Monthly Equity Per Top Sale"
+                        : isPerOffice
+                            ? "Monthly Equity Per Office"
+                            : "Monthly Equity Report";
                     var monthStr = reportDate.Value.ToString("yyyy-MM");
-                    
+
                     baseNamePattern = prefix;
                     closingTimeNamePattern = $"{prefix} (MT5 ClosingTime Based) {monthStr}";
                     releasedTimeNamePattern = $"{prefix} (ReleasedTime Based) {monthStr}";
                     dateStr = monthStr;
-                    
+
                     // Extract fromDate from query instead of calculating (monthly span varies)
                     try
                     {
@@ -308,19 +315,32 @@ public class ReportController(
                 }
                 
                 ReportRequest? pairedReport = null;
-                
+
                 var isPerOfficeReport = currentName.Contains("Per Office");
+                var isPerTopSaleReport = currentName.Contains("Per Top Sale");
+
+                // Build a query JSON that preserves the report flavor for daily-equity-style requests.
+                // After ProcessMonthlyEquityRequestAsync was changed to be 1:1 (one CSV per
+                // request, driven by criteria flags), the paired report MUST carry the same
+                // aggregateByOffice / aggregateByTopSale flag as the original.
+                string BuildEquityQuery(DateTime fromUtc, DateTime toUtc) =>
+                    isPerTopSaleReport
+                        ? JsonConvert.SerializeObject(new { from = fromUtc, to = toUtc, aggregateByTopSale = true }, Utils.AppJsonSerializerSettings)
+                        : isPerOfficeReport
+                            ? JsonConvert.SerializeObject(new { from = fromUtc, to = toUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
+                            : JsonConvert.SerializeObject(new { from = fromUtc, to = toUtc }, Utils.AppJsonSerializerSettings);
 
                 if (isClosingTimeBased)
                 {
                     var is3DayReport = currentName.Contains("(Sat-Mon)");
                     pairedReport = await tenantCtx.ReportRequests
-                        .FirstOrDefaultAsync(x => 
+                        .FirstOrDefaultAsync(x =>
                             x.Type == reportType
                             && x.IsFromApi == 1
                             && x.Name.Contains("ReleasedTime Based")
                             && x.Name.Contains(dateStr)
                             && (is3DayReport ? x.Name.Contains("(Sat-Mon)") : !x.Name.Contains("(Sat-Mon)"))
+                            && (isPerTopSaleReport ? x.Name.Contains("Per Top Sale") : !x.Name.Contains("Per Top Sale"))
                             && (isPerOfficeReport ? x.Name.Contains("Per Office") : !x.Name.Contains("Per Office"))
                             && x.PartyId == item.PartyId
                             && x.Id != item.Id);
@@ -353,29 +373,23 @@ public class ReportController(
                         }
                         else if (reportType == (int)ReportRequestTypes.DailyEquity)
                         {
-                            var query = isPerOfficeReport
-                                ? JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
-                                : JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc }, Utils.AppJsonSerializerSettings);
                             pairedReport = new ReportRequest
                             {
                                 PartyId = item.PartyId,
                                 Type = (int)ReportRequestTypes.DailyEquity,
                                 Name = releasedTimeNamePattern,
-                                Query = query,
+                                Query = BuildEquityQuery(fromDateUtc, toDateUtc),
                                 IsFromApi = 1
                             };
                         }
                         else if (reportType == (int)ReportRequestTypes.DailyEquityMonthly)
                         {
-                            var query = isPerOfficeReport
-                                ? JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
-                                : JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc }, Utils.AppJsonSerializerSettings);
                             pairedReport = new ReportRequest
                             {
                                 PartyId = item.PartyId,
                                 Type = (int)ReportRequestTypes.DailyEquityMonthly,
                                 Name = releasedTimeNamePattern,
-                                Query = query,
+                                Query = BuildEquityQuery(fromDateUtc, toDateUtc),
                                 IsFromApi = 1
                             };
                         }
@@ -392,15 +406,16 @@ public class ReportController(
                 {
                     // 当前是 ReleasedTime Based，查找 MT5 ClosingTime Based 配对报告
                     // For 3-day reports, also search for (Sat-Mon) pattern
-                    // For per office reports, also search for "Per Office" pattern
+                    // For per office / per top sale reports, also match those name fragments
                     var is3DayReport = currentName.Contains("(Sat-Mon)");
                     pairedReport = await tenantCtx.ReportRequests
-                        .FirstOrDefaultAsync(x => 
+                        .FirstOrDefaultAsync(x =>
                             x.Type == reportType
                             && x.IsFromApi == 0
                             && x.Name.Contains("ClosingTime Based")
                             && x.Name.Contains(dateStr)
                             && (is3DayReport ? x.Name.Contains("(Sat-Mon)") : !x.Name.Contains("(Sat-Mon)"))
+                            && (isPerTopSaleReport ? x.Name.Contains("Per Top Sale") : !x.Name.Contains("Per Top Sale"))
                             && (isPerOfficeReport ? x.Name.Contains("Per Office") : !x.Name.Contains("Per Office"))
                             && x.PartyId == item.PartyId
                             && x.Id != item.Id);
@@ -433,29 +448,23 @@ public class ReportController(
                         }
                         else if (reportType == (int)ReportRequestTypes.DailyEquity)
                         {
-                            var query = isPerOfficeReport
-                                ? JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
-                                : JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc }, Utils.AppJsonSerializerSettings);
                             pairedReport = new ReportRequest
                             {
                                 PartyId = item.PartyId,
                                 Type = (int)ReportRequestTypes.DailyEquity,
                                 Name = closingTimeNamePattern,
-                                Query = query,
+                                Query = BuildEquityQuery(fromDateUtc, toDateUtc),
                                 IsFromApi = 0
                             };
                         }
                         else if (reportType == (int)ReportRequestTypes.DailyEquityMonthly)
                         {
-                            var query = isPerOfficeReport
-                                ? JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc, aggregateByOffice = true }, Utils.AppJsonSerializerSettings)
-                                : JsonConvert.SerializeObject(new { from = fromDateUtc, to = toDateUtc }, Utils.AppJsonSerializerSettings);
                             pairedReport = new ReportRequest
                             {
                                 PartyId = item.PartyId,
                                 Type = (int)ReportRequestTypes.DailyEquityMonthly,
                                 Name = closingTimeNamePattern,
-                                Query = query,
+                                Query = BuildEquityQuery(fromDateUtc, toDateUtc),
                                 IsFromApi = 0
                             };
                         }

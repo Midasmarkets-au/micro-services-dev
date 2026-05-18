@@ -105,6 +105,17 @@ public partial class AccountManageService(
     public Task<bool> IsAccountBelongToParentAsync(long parentUid, long childUid) =>
         tenantCtx.Accounts.AnyAsync(x => x.ReferPath.Contains(childUid.ToString()));
 
+    /// <summary>
+    /// Check if the account's ReferPath contains any of the given ancestor UIDs.
+    /// </summary>
+    public async Task<bool> IsAccountInReferPathAsync(long accountId, List<long> ancestorUids)
+    {
+        if (ancestorUids.Count == 0) return false;
+        var referPath = await QueryById(accountId).Select(x => x.ReferPath).FirstOrDefaultAsync();
+        if (string.IsNullOrEmpty(referPath)) return false;
+        return ancestorUids.Any(uid => referPath.Contains(uid.ToString()));
+    }
+
     public async Task<long> GetPartyIdByAccountIdAsync(long accountId, bool fromDb = false)
     {
         if (fromDb) return await QueryById(accountId).Select(x => x.PartyId).SingleOrDefaultAsync();

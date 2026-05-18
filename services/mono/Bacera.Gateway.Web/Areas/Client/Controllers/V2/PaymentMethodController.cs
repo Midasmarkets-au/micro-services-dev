@@ -85,11 +85,7 @@ public class PaymentMethodController(
         [FromQuery] CurrencyTypes? currencyId = null)
     {
         var accountId = await accManageSvc.GetAccountIdByUidAsync(accountUid);
-        var activeMethodIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(accountId
-            , PaymentMethodTypes.Deposit
-            , PaymentMethodStatusTypes.Active
-            , PaymentMethodAccessStatusTypes.Active))
-            .ToHashSet();
+        var visibility = await paymentMethodSvc.GetAccountVisibilityAsync(accountId, PaymentMethodTypes.Deposit);
 
         var allMethods = await paymentMethodSvc.GetMethodsAsync();
         var depositMethods = allMethods
@@ -101,7 +97,11 @@ public class PaymentMethodController(
         {
             var currencies = method.GetAvailableCurrencies();
             if (currencyId != null && !currencies.Contains(currencyId.Value)) continue;
-            var isActive = activeMethodIds.Contains(method.Id);
+
+            // Visibility rule: show if IsActive, OR (Inactive AND IsDisplay). Hide when no access row.
+            if (!visibility.TryGetValue(method.Id, out var v)) continue;
+            if (!v.IsActive && !v.IsDisplay) continue;
+            var isActive = v.IsActive;
 
             if (!dict.TryGetValue(method.Group, out var value))
             {
@@ -175,6 +175,50 @@ public class PaymentMethodController(
                 ConfigKeys.EuPayDesensitizedRequestData) ?? "{}";
             result.RequestValues = Utils.JsonDeserializeDynamic(obj);
         }
+
+        // ExLink Global: full tenant catalog of named variants (hashId + range each). CurrencyRates stays only what this method's AvailableCurrencies lists.
+        if (group.StartsWith("ExLink Global", StringComparison.OrdinalIgnoreCase))
+        {
+            var allMethods = await paymentMethodSvc.GetMethodsAsync();
+
+            // Restrict to methods this account is actually allowed to use (acct."_AccountPaymentMethodAccess" Status = Active).
+            var accessibleIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(account.Id,
+                PaymentMethodTypes.Deposit,
+                PaymentMethodStatusTypes.Active,
+                PaymentMethodAccessStatusTypes.Active)).ToHashSet();
+
+            // One canonical PaymentMethod per primary fiat (lowest Id). Skip undifferentiated "ExLink Global" rows.
+            var catalogByCurrency = allMethods
+                .Where(x => x.MethodType == PaymentMethodTypes.Deposit
+                    && x.Status == (int)PaymentMethodStatusTypes.Active
+                    && x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal
+                    && x.Group.StartsWith("ExLink Global", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(x.Name?.Trim(), "ExLink Global", StringComparison.OrdinalIgnoreCase)
+                    && accessibleIds.Contains(x.Id))
+                .GroupBy(x => (CurrencyTypes)x.CurrencyId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Id).First());
+
+            var hasDeposit = await accManageSvc.AccountHasCompleteDepositByIdAsync(account.Id);
+            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
+            foreach (var m in catalogByCurrency.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                // Each ExLinkGlobal variant has its own MinValue/MaxValue — compute range per method,
+                // not per group (all share the same Group = "ExLink Global" which caused identical ranges).
+                var minVal = hasDeposit ? m.MinValue * 100 : m.InitialValue * 100;
+                var methodRange = new long[] { minVal, m.MaxValue * 100 };
+
+                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
+                {
+                    CurrencyId = (CurrencyTypes)m.CurrencyId,
+                    HashId = PaymentMethod.HashEncode(m.Id),
+                    Range = methodRange,
+                    PaymentMethodName = m.Name
+                });
+            }
+
+            result.PaymentMethods = paymentMethods;
+        }
+
         return Ok(result);
     }
 
@@ -210,6 +254,49 @@ public class PaymentMethodController(
         var exchangeRates = await paymentMethodSvc.GetBuyingExchangeRatesAsync(fromCurrency, method.GetAvailableCurrencies());
         var result = PaymentMethodDTO.GroupInfo.Build(hashId, (PlatformTypes)method.Platform, policy, instruction, range, exchangeRates,
             method.GetRequestKeys());
+
+        // ExLink Global: full tenant catalog of named withdrawal variants (hashId + range each), restricted to
+        // methods this account is allowed to use. Mirrors the deposit-group-info pattern so the client UI can
+        // present per-currency variant selection from a single ExLinkGlobal entry.
+        if (method.Platform == (int)PaymentPlatformTypes.ExLinkGlobal)
+        {
+            var allMethods = await paymentMethodSvc.GetMethodsAsync();
+
+            var accessibleIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(accountId,
+                PaymentMethodTypes.Withdrawal,
+                PaymentMethodStatusTypes.Active,
+                PaymentMethodAccessStatusTypes.Active)).ToHashSet();
+
+            // One canonical PaymentMethod per primary fiat (lowest Id). Skip undifferentiated "ExLink Global" rows.
+            var catalogByCurrency = allMethods
+                .Where(x => x.MethodType == PaymentMethodTypes.Withdrawal
+                    && x.Status == (int)PaymentMethodStatusTypes.Active
+                    && x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal
+                    && x.Group.StartsWith("ExLink Global", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(x.Name?.Trim(), "ExLink Global", StringComparison.OrdinalIgnoreCase)
+                    && accessibleIds.Contains(x.Id))
+                .GroupBy(x => (CurrencyTypes)x.CurrencyId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Id).First());
+
+            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
+            foreach (var m in catalogByCurrency.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                // Each ExLinkGlobal variant has its own MinValue/MaxValue — compute range per method.
+                // Multiplied by 100 to match the deposit-group-info convention (paymentMethods.Range in cents).
+                var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
+
+                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
+                {
+                    CurrencyId = (CurrencyTypes)m.CurrencyId,
+                    HashId = PaymentMethod.HashEncode(m.Id),
+                    Range = methodRange,
+                    PaymentMethodName = m.Name
+                });
+            }
+
+            result.PaymentMethods = paymentMethods;
+        }
+
         return Ok(result);
     }
 
@@ -223,13 +310,13 @@ public class PaymentMethodController(
     public async Task<IActionResult> GetActiveAccountWithdrawAccessGrouped(long accountUid)
     {
         var accountId = await accManageSvc.GetAccountIdByUidAsync(accountUid);
-        var activeMethodIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(accountId, PaymentMethodTypes.Withdrawal,
-            PaymentMethodStatusTypes.Active, PaymentMethodAccessStatusTypes.Active))
-            .ToHashSet();
+        var visibility = await paymentMethodSvc.GetAccountVisibilityAsync(accountId, PaymentMethodTypes.Withdrawal);
 
         var paymentMethods = await paymentMethodSvc.GetMethodsAsync();
         var result = paymentMethods
             .Where(x => x is { MethodType: PaymentMethodTypes.Withdrawal, Status: (int)PaymentMethodStatusTypes.Active })
+            // Visibility rule: show if IsActive, OR (Inactive AND IsDisplay). Hide when no access row.
+            .Where(x => visibility.TryGetValue(x.Id, out var v) && (v.IsActive || v.IsDisplay))
             .Select(x => new PaymentMethod.ClientNameModel
             {
                 Id = x.Id,
@@ -237,7 +324,8 @@ public class PaymentMethodController(
                 Logo = x.Logo,
                 Range = new[] { x.MinValue, x.MaxValue },
                 InitialValue = x.InitialValue,
-                IsActive = activeMethodIds.Contains(x.Id)
+                IsActive = visibility[x.Id].IsActive,
+                Type = x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal ? "ExLinkGlobal" : null
             })
             .OrderByDescending(x => x.IsActive)
             .ToList();
@@ -322,19 +410,20 @@ public class PaymentMethodController(
                 Name = x.Name,
                 Logo = x.Logo,
                 IsActive = activeMethodIds.Contains(x.Id),
-                Range = new[] { x.MinValue, x.MaxValue }
+                Range = new[] { x.MinValue, x.MaxValue },
+                Type = x.Platform == (int)PaymentPlatformTypes.ExLinkGlobal ? "ExLinkGlobal" : null
             })
             .OrderByDescending(x => x.IsActive)
             .ToList();
-        
+
         foreach (var item in result)
         {
             if (string.IsNullOrEmpty(item.Logo)) item.Logo = $"/images/wallet/{item.Name}.png";
         }
-        
+
         return Ok(result);
     }
-    
+
     /// <summary>
     /// Get and select a random active withdrawal method by group.
     /// </summary>

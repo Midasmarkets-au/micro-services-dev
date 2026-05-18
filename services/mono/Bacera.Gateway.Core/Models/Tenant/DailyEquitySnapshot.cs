@@ -40,6 +40,8 @@ public partial class DailyEquitySnapshot
 
     public decimal EstimatesNetPL { get; set; }
 
+    public decimal Mt5Adjust { get; set; }
+
     public string? AdditionalInfo { get; set; }
 
     public DateTime CreatedOn { get; set; }

@@ -53,7 +53,9 @@ public static class WithdrawalRecordExtension
             PaymentStatus = (PaymentStatusTypes)x.Payment.Status,
             PaymentId = x.Payment.Id,
             PaymentNumber = x.Payment.Number,
-            PaymentServiceName = x.Payment.PaymentMethod.Name + " " + x.Payment.ReferenceNumber,
+            PaymentServiceName = x.Payment.CryptoTransaction != null
+                ? x.Payment.CryptoTransaction.Crypto.Name
+                : x.Payment.PaymentMethod.Name,
             Amount = x.Amount,
             PaymentAmount = x.Payment.Amount,
             CreatedOn = x.IdNavigation.PostedOn,

@@ -42,11 +42,6 @@ public partial class TradingService(
     private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     private readonly long _tenantId = tenancyResolver.GetTenantId();
-    private readonly string _nameKey = CacheKeys.GetBlackedUserNameHashKey();
-    private readonly string _phoneKey = CacheKeys.GetBlackedUserPhoneHashKey();
-    private readonly string _emailKey = CacheKeys.GetBlackedUserEmailHashKey();
-    private readonly string _idNumberKey = CacheKeys.GetBlackedUserIdNumberHashKey();
-    private readonly string _ipKey = CacheKeys.GetBlackedIpHashKey();
 
 
     public async Task<Account> AccountGetAsync(long id) =>
@@ -147,36 +142,40 @@ public partial class TradingService(
         await FulfillAccountWizard(items);
         await FulfillAccountConfigurations(items);
 
-        var ipFields = items
-            .SelectMany(i =>
-            {
-                var s = i.User.LastLoginIp.Split('.');
-                return s.Length switch
-                {
-                    >= 4 => new[] { s[0], $"{s[0]}.{s[1]}", $"{s[0]}.{s[1]}.{s[2]}", i.User.LastLoginIp },
-                    3    => new[] { s[0], $"{s[0]}.{s[1]}", $"{s[0]}.{s[1]}.{s[2]}" },
-                    2    => new[] { s[0], $"{s[0]}.{s[1]}" },
-                    _    => new[] { s[0] }
-                };
-            });
+        // *** Blacklist check ***
+        // 用户黑名单和IP黑名单检查：每次请求一次性加载整个黑名单到内存中，然后在内存中进行检查。
+        // 替换之前每个账户都要访问Redis的方式（每个账户大约8次访问），大大减少了访问次数，同时保证了数据的一致性（直接从数据库读取）。
+        // Hashset 提供O(1)的查找性能。
+        var ipBlack = (await centralDbContext.IpBlackLists
+            .Where(x => x.Enabled)
+            .Select(x => x.Ip)
+            .ToListAsync()).ToHashSet(StringComparer.Ordinal);
 
-        var ipBlackList    = await myCache.HGetManyAsBoolAsync(_ipKey, ipFields);
-        var nameBlackList  = await myCache.HGetManyAsBoolAsync(_nameKey, items.Select(i => i.User.NativeName));
-        var phoneBlackList = await myCache.HGetManyAsBoolAsync(_phoneKey, items.Select(i => i.User.Phone));
-        var emailBlackList = await myCache.HGetManyAsBoolAsync(_emailKey, items.Select(i => i.User.Email));
-        var idBlackList    = await myCache.HGetManyAsBoolAsync(_idNumberKey, items.Select(i => i.User.IdNumber));
+        var userBlack = await centralDbContext.UserBlackLists
+            .Select(x => new { x.Name, x.Phone, x.Email, x.IdNumber })
+            .ToListAsync();
+
+        var nameSet = userBlack.Where(x => !string.IsNullOrEmpty(x.Name)).Select(x => x.Name).ToHashSet(StringComparer.Ordinal);
+        var phoneSet = userBlack.Where(x => !string.IsNullOrEmpty(x.Phone)).Select(x => x.Phone).ToHashSet(StringComparer.Ordinal);
+        var emailSet = userBlack.Where(x => !string.IsNullOrEmpty(x.Email)).Select(x => x.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var idNumberSet = userBlack.Where(x => !string.IsNullOrEmpty(x.IdNumber)).Select(x => x.IdNumber).ToHashSet(StringComparer.Ordinal);
 
         foreach (var item in items)
         {
-            var s = item.User.LastLoginIp.Split('.');
-            item.IsInIpBlackList = (s.Length >= 1 && ipBlackList.GetValueOrDefault(s[0]))
-                                   || (s.Length >= 2 && ipBlackList.GetValueOrDefault($"{s[0]}.{s[1]}"))
-                                   || (s.Length >= 3 && ipBlackList.GetValueOrDefault($"{s[0]}.{s[1]}.{s[2]}"))
-                                   || ipBlackList.GetValueOrDefault(item.User.LastLoginIp);
-            item.IsInUserBlackList = nameBlackList.GetValueOrDefault(item.User.NativeName)
-                                     || phoneBlackList.GetValueOrDefault(item.User.Phone)
-                                     || emailBlackList.GetValueOrDefault(item.User.Email)
-                                     || idBlackList.GetValueOrDefault(item.User.IdNumber);
+            var splitIp = item.User.LastLoginIp.Split('.');
+            var count = splitIp.Length;
+
+            item.IsInIpBlackList =
+                   (count >= 1 && ipBlack.Contains(splitIp[0]))
+                || (count >= 2 && ipBlack.Contains($"{splitIp[0]}.{splitIp[1]}"))
+                || (count >= 3 && ipBlack.Contains($"{splitIp[0]}.{splitIp[1]}.{splitIp[2]}"))
+                || ipBlack.Contains(item.User.LastLoginIp);
+
+            item.IsInUserBlackList =
+                   nameSet.Contains(item.User.NativeName)
+                || phoneSet.Contains(item.User.Phone)
+                || emailSet.Contains(item.User.Email)
+                || idNumberSet.Contains(item.User.IdNumber);
         }
 
         // *** Rollback above criterial change *** //
@@ -449,14 +448,14 @@ public partial class TradingService(
         }
         
         TradeAccount? result = null;
-        const int maxRetries = 3; // Retry for MT5 errors only
-        
+        const int maxRetries = 10; // Retry for MT5 errors only
+
         for (int attempt = 0; attempt < maxRetries; attempt++)
         {
             try
             {
-                _logger.LogInformation("Attempting to create demo account {AccountNumber} for service {ServiceId} (attempt {Attempt})", 
-                    accountNumber, serviceId, attempt + 1);
+                _logger.LogInformation("Attempting to create demo account {AccountNumber} for service {ServiceId} (attempt {Attempt}/{MaxRetries})", 
+                    accountNumber, serviceId, attempt + 1, maxRetries);
                 
                 result = await apiService.CreateAccountAsync(serviceId, name, password, leverage, group, accountNumber);
                 
@@ -471,9 +470,9 @@ public partial class TradingService(
                 // Check if this is an "Account already exists" error (should be extremely rare now)
                 if (ex.Message.Contains("3004") || ex.Message.Contains("Account already exists"))
                 {
-                    _logger.LogWarning("Demo account {AccountNumber} already exists (rare case). Getting new number and retrying...", 
-                        accountNumber);
-                    
+                    _logger.LogWarning("Demo account {AccountNumber} already exists on MT5 (attempt {Attempt}/{MaxRetries}). Incrementing...", 
+                        accountNumber, attempt + 1, maxRetries);
+
                     // Get a fresh account number and retry
                     accountNumber = await GetNextDemoAccountNumberAsync(serviceId, Enum.GetName(currencyId) ?? "USD");
                     
@@ -481,13 +480,13 @@ public partial class TradingService(
                     {
                         throw new Exception("Failed to generate new demo account number");
                     }
-                    
+
                     if (attempt < maxRetries - 1)
                     {
                         continue;
                     }
                 }
-                
+
                 // For other errors or last attempt, rethrow
                 throw;
             }
