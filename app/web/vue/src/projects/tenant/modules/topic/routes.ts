@@ -28,7 +28,7 @@ export default (router) => {
         meta: {
           pageTitle: "title.emailTemplate",
           breadcrumbs: ["title.emailTemplate"],
-          permissions: ["SuperAdmin"],
+          permissions: ["SuperAdmin", "MailAdmin"],
         },
       },
       {
@@ -48,7 +48,7 @@ export default (router) => {
         meta: {
           pageTitle: "title.sendEmailBatch",
           breadcrumbs: ["title.sendEmailBatch"],
-          permissions: ["SuperAdmin"],
+          permissions: ["SuperAdmin", "MailAdmin"],
         },
       },
     ],

@@ -69,6 +69,22 @@ export default {
       )
     ).data,
 
+  putAccountPaymentMethodDisplay: async (
+    methodId: number,
+    accountId: number,
+    isDisplay: boolean
+  ) =>
+    (
+      await axios.put(
+        prefixApiV2 +
+          "payment-method/" +
+          methodId +
+          "/account-display/" +
+          accountId,
+        { isDisplay }
+      )
+    ).data,
+
   putEnableAccountPaymentMethodByGroup: async (
     group: string,
     accountId: number

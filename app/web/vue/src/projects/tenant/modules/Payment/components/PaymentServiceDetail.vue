@@ -18,6 +18,9 @@
           :payment-service-id="paymentId"
           :close-function="close"
           :sorted-services="sortedServices"
+          :payment-type="paymentType"
+          :is-ex-link-global="isExLinkGlobal"
+          :payment-currency-id="paymentCurrencyId"
           @update="emits('update')"
       /></el-tab-pane>
 
@@ -64,12 +67,19 @@ const isLoading = ref(true);
 const activeTab = ref("information");
 const detailTitle = ref("");
 const sortedServices = ref(Array<any>());
+const paymentType = ref<string | undefined>(undefined);
+const isExLinkGlobal = ref<boolean>(false);
+const paymentCurrencyId = ref<number | undefined>(undefined);
 
 const show = (data, _sortedServices) => {
   detail.value = data;
   detailTitle.value = data.name;
   paymentId.value = data.id;
   sortedServices.value = _sortedServices;
+  paymentType.value = data?.type;
+  isExLinkGlobal.value =
+    data?.isExLinkGlobal === true || data?.type === "ExLinkGlobal";
+  paymentCurrencyId.value = data?.currencyId;
 
   paymentDetailRef.value?.show();
 };

@@ -70,8 +70,20 @@
                   <i class="fa-solid fa-xmark fa-xl" style="color: #d92626"></i>
                 </template>
               </td>
-              <td><TimeShow :date-iso-string="item.query.from" /></td>
-              <td><TimeShow :date-iso-string="item.query.to" /></td>
+              <td>
+                <TimeShow
+                  :date-iso-string="item.query.from"
+                  type="exactTimeGMT"
+                  :gmt-option="{ isconvert: false, islocal: true }"
+                />
+              </td>
+              <td>
+                <TimeShow
+                  :date-iso-string="item.query.to"
+                  type="exactTimeGMT"
+                  :gmt-option="{ isconvert: false, islocal: true }"
+                />
+              </td>
               <td>
                 {{
                   getTradeRebateStatusSelections.find(
@@ -139,7 +151,6 @@ const criteria = ref({
   keywords: "",
 });
 const isLoading = inject<any>("isLoading");
-
 const rebateReports = ref(Array<any>());
 const fetchData = async (_page) => {
   criteria.value.page = _page;
@@ -157,7 +168,6 @@ const fetchData = async (_page) => {
     isLoading.value = false;
   }
 };
-
 const downloadReportFile = async (_item) => {
   const downloadUrl = getImageUrl(_item.fileName);
   try {

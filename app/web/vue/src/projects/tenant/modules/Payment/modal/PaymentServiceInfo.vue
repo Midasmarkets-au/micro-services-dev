@@ -84,6 +84,7 @@
               v-for="currency in availableCurrenciesOptions"
               :key="currency.value"
               :label="currency.value"
+              :disabled="isExLinkGlobalLocked"
               >{{ currency.label }}</el-checkbox
             >
           </el-checkbox-group>
@@ -195,7 +196,7 @@
 </template>
 
 <script lang="ts" setup>
-import { inject, onMounted, ref, watch, nextTick } from "vue";
+import { computed, inject, onMounted, ref, watch, nextTick } from "vue";
 import LoadingRing from "@/components/LoadingRing.vue";
 import NoDataBox from "@/components/NoDataBox.vue";
 import PaymentService from "../services/PaymentService";
@@ -228,7 +229,26 @@ const props = defineProps<{
   paymentServiceId: number;
   sortedServices: any;
   closeFunction: () => void;
+  paymentType?: string;
+  isExLinkGlobal?: boolean;
+  paymentCurrencyId?: number;
 }>();
+
+/**
+ * Whether currency selection should be locked to a single value.
+ * Only applies to ExLink Global payment methods.
+ */
+const isExLinkGlobalLocked = computed(() => {
+  if (props.isExLinkGlobal === true) return true;
+  if (props.paymentType === "ExLinkGlobal") return true;
+  if (serviceDetail.value?.isExLinkGlobal === true) return true;
+  if (serviceDetail.value?.type === "ExLinkGlobal") return true;
+  return false;
+});
+
+const lockedCurrencyId = computed(
+  () => props.paymentCurrencyId ?? serviceDetail.value?.currencyId
+);
 const emits = defineEmits<{
   (e: "update"): void;
 }>();
@@ -293,6 +313,10 @@ watch(
     if (newVal === true) {
       await nextTick();
       uploadImageRef.value.imageUrl = serviceDetail.value.logo;
+      // ExLink Global: lock available currencies to the payment's own currencyId
+      if (isExLinkGlobalLocked.value && lockedCurrencyId.value != null) {
+        serviceDetail.value.availableCurrencies = [lockedCurrencyId.value];
+      }
     }
   },
   { immediate: true }

@@ -59,6 +59,7 @@
             <th>{{ $t("fields.name") }}</th>
             <th>{{ $t("fields.serviceActive") }}</th>
             <th>Active</th>
+            <th>Display</th>
           </tr>
         </thead>
 
@@ -76,29 +77,28 @@
           class="fw-semibold tbodyBorder"
         >
           <tr>
-            <td colspan="9" class="fw-semibold pt-7 pb-0">
-              <div class="d-flex justify-content-between">
-                <h4>{{ key }}</h4>
-                <div>
-                  <el-button
-                    type="success"
-                    @click="enableGroupAll(String(key))"
-                    :disabled="isLoading || isSubmitting"
-                    size="small"
-                  >
-                    Enable All
-                  </el-button>
-                  <el-button
-                    type="danger"
-                    @click="disableGroupAll(String(key))"
-                    :disabled="isLoading || isSubmitting"
-                    size="small"
-                  >
-                    Disable All
-                  </el-button>
-                </div>
-              </div>
+            <td colspan="2" class="fw-semibold pt-7 pb-0">
+              <h4>{{ key }}</h4>
             </td>
+            <td class="fw-semibold pt-7 pb-0">
+              <el-button
+                type="success"
+                @click="enableGroupAll(String(key))"
+                :disabled="isLoading || isSubmitting"
+                size="small"
+              >
+                Enable All
+              </el-button>
+              <el-button
+                type="danger"
+                @click="disableGroupAll(String(key))"
+                :disabled="isLoading || isSubmitting"
+                size="small"
+              >
+                Disable All
+              </el-button>
+            </td>
+            <td class="fw-semibold pt-7 pb-0"></td>
           </tr>
 
           <tr v-for="(item, index) in value" :key="index">
@@ -131,6 +131,16 @@
                 class="me-5"
                 :disabled="isLoading"
                 @change="paymentMethodChanged(item)"
+              ></el-switch>
+            </td>
+            <td class="p-0">
+              <el-switch
+                v-model="item.isDisplay"
+                :active-value="true"
+                :inactive-value="false"
+                class="me-5"
+                :disabled="isLoading || item.accessStatus == 10"
+                @change="displayChanged(item)"
               ></el-switch>
             </td>
           </tr>
@@ -238,6 +248,7 @@ const paymentMethodChanged = async (_item: any) => {
         _item.id,
         accountDetails.value.id
       );
+      _item.isDisplay = false;
     }
 
     ElNotification({
@@ -254,6 +265,29 @@ const paymentMethodChanged = async (_item: any) => {
     console.error(e);
   } finally {
     isLoading.value = false;
+  }
+};
+
+const displayChanged = async (_item: any) => {
+  try {
+    await PaymentService.putAccountPaymentMethodDisplay(
+      _item.id,
+      accountDetails.value.id,
+      _item.isDisplay
+    );
+
+    ElNotification({
+      title: _item.name,
+      message: "Display status updated successfully",
+      type: "success",
+    });
+  } catch (e) {
+    ElNotification.error({
+      title: "Error",
+      message: "Error Submit",
+      type: "error",
+    });
+    console.error(e);
   }
 };
 

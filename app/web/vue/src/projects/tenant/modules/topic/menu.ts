@@ -4,7 +4,7 @@ const menuItems: Array<MenuItem> = [
   {
     heading: "title.topic",
     route: "/topic",
-    permissions: ["TenantAdmin", "WebTopic"],
+    permissions: ["TenantAdmin", "WebTopic", "MailAdmin", "WebNotice"],
     pages: [
       {
         heading: "title.notices",
@@ -16,13 +16,13 @@ const menuItems: Array<MenuItem> = [
         heading: "title.emailTemplate",
         route: "/topic/email-template",
         svgIcon: "/images/icons/communication/com011.svg",
-        permissions: ["SuperAdmin"],
+        permissions: ["SuperAdmin", "MailAdmin"],
       },
       {
         heading: "title.sendEmailBatch",
         route: "/topic/send-email-batch",
         svgIcon: "/images/icons/communication/com012.svg",
-        permissions: ["SuperAdmin"],
+        permissions: ["SuperAdmin", "MailAdmin"],
       },
       {
         heading: "title.promotion",
