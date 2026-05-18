@@ -1,22 +1,19 @@
 # ============================================================================
-#  mono Service — ClusterIP，由 NGINX Ingress 统一暴露
+#  idgen Service — ClusterIP，供 mono 通过 http://idgen:50001 调用 gRPC
 # ============================================================================
 apiVersion: v1
 kind: Service
 metadata:
-  name: mono
+  name: idgen
+  namespace: mm
   labels:
-    app: mono
+    app: idgen
 spec:
   type: ClusterIP
   ports:
-    - name: http
-      port: 9005
-      targetPort: http
-      protocol: TCP
     - name: grpc
-      port: 50005
+      port: 50001
       targetPort: grpc
       protocol: TCP
   selector:
-    app: mono
+    app: idgen

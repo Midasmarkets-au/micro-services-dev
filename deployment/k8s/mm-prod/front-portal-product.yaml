@@ -1,28 +1,35 @@
-# ============================================================================
-#  front-portal — Next.js AU 客户门户
-#  镜像：docker build -f app/web/react/Dockerfile app/web/react
-#  端口：3000 (HTTP, Next.js standalone)
-#  入口：au-portal.trademdm.com / 由 gateway-ingress 路由到此服务
-# ============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: front-portal
+  name: front-portal-product
+  namespace: mm-prod
   labels:
-    app: front-portal
+    app: front-portal-product
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
-      app: front-portal
+      app: front-portal-product
   template:
     metadata:
       labels:
-        app: front-portal
+        app: front-portal-product
     spec:
+      tolerations:
+        - key: workload-type
+          value: production
+          effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: workload-type
+                    operator: In
+                    values: ["production"]
       containers:
-        - name: front-portal
-          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal:latest
+        - name: front-portal-product
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal-product:latest
           imagePullPolicy: Always
           ports:
             - name: http
@@ -54,21 +61,19 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
 ---
-# ============================================================================
-#  front-portal Service — ClusterIP，由 NGINX Ingress 统一暴露
-# ============================================================================
 apiVersion: v1
 kind: Service
 metadata:
-  name: front-portal
+  name: front-portal-product
+  namespace: mm-prod
   labels:
-    app: front-portal
+    app: front-portal-product
 spec:
   type: ClusterIP
   selector:
-    app: front-portal
+    app: front-portal-product
   ports:
     - name: http
       port: 80
-      targetPort: 3000
+      targetPort: http
       protocol: TCP

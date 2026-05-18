@@ -1,31 +1,29 @@
 # ============================================================================
-#  idgen — Rust gRPC 服务
-#  镜像：docker build --target idgen
-#  端口：50001 (gRPC)
+#  boardcast — Rust SSE 消息推送 + gRPC 广播服务
+#  端口：9003 (HTTP/SSE)、50003 (gRPC)
 # ============================================================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: idgen
+  name: boardcast
+  namespace: mm
   labels:
-    app: idgen
+    app: boardcast
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: idgen
+      app: boardcast
   template:
     metadata:
       labels:
-        app: idgen
+        app: boardcast
     spec:
       nodeSelector:
         kubernetes.io/arch: arm64
-      imagePullSecrets:
-        - name: ecr-registry
       containers:
-        - name: idgen
-          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/idgen:latest
+        - name: boardcast
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/boardcast:latest
           imagePullPolicy: Always
           resources:
             requests:
@@ -35,10 +33,22 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           ports:
+            - name: http
+              containerPort: 9003
             - name: grpc
-              containerPort: 50001
+              containerPort: 50003
           env:
             - name: RUST_LOG
               value: "info"
             - name: LOG_DIR
               value: "/app/logs"
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
