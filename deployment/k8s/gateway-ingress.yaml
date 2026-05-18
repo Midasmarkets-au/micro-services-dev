@@ -14,7 +14,6 @@
 #    portal.trademdm.com/api/v2/auth/               → auth:9002（Rust auth 服务）
 #    portal.trademdm.com/.well-known/jwks.json      → auth:9002（JWKS 公钥端点）
 #    portal.trademdm.com/(api|hub|live|...)         → mono:9005
-#    portal.trademdm.com/                           → front-client:80
 #    tenant.trademdm.com/connect/                   → auth:9002
 #    tenant.trademdm.com/api/v2/auth/               → auth:9002
 #    tenant.trademdm.com/(api|hub|live|...)         → mono:9005
@@ -147,13 +146,6 @@ spec:
                 name: mono
                 port:
                   number: 9005
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-client
-                port:
-                  number: 80
     - host: tenant.trademdm.com
       http:
         paths:

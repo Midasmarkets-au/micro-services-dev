@@ -11,7 +11,6 @@ Internet            │  ┌─────────────────�
    │                │  │  portal.trademdm.com/                        │ │
    ├─ /event ──────►│  │    /event  ──────────► boardcast:9003 (SSE) │ │
    └─ /api|...  ───►│  │    /api|.. ──────────► mono:9005             │ │
-                    │  │    /       ──────────► front-client:80       │ │
                     │  └─────────────────────────────────────────────┘ │
                     │                                                   │
                     │  mono (.NET 8) ──gRPC:50001──► idgen (Rust)      │
@@ -137,7 +136,6 @@ kubectl apply \
 | 路径 | 后端 | 说明 |
 |------|------|------|
 | `/(api\|connect\|hub\|live\|swagger\|.well-known)/` | `mono:9005` | REST API / SignalR / Swagger |
-| `/` | `front-client:80` | 前端静态资源 |
 
 **`boardcast-event-ingress`** — SSE 路由（`proxy-buffering: off`）
 
