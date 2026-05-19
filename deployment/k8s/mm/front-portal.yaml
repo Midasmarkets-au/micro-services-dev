@@ -2,7 +2,7 @@
 #  front-portal — Next.js AU 客户门户
 #  镜像：docker build -f app/web/react/Dockerfile app/web/react
 #  端口：3000 (HTTP, Next.js standalone)
-#  入口：au-portal.trademdm.com / 由 gateway-ingress 路由到此服务
+#  入口：portal.trademdm.com / 由 gateway-ingress 路由到此服务
 # ============================================================================
 apiVersion: apps/v1
 kind: Deployment
