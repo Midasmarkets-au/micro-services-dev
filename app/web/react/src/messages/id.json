@@ -700,7 +700,10 @@
     "CODE_ALREADY_SENT": "Kode verifikasi sudah dikirim, silakan periksa email Anda",
     "electronicIdentityVerificationRequired": "Persetujuan verifikasi identitas elektronik diperlukan untuk melanjutkan.",
     "Too_many_pending_deposits": "Terlalu banyak setoran yang tertunda, silakan hubungi layanan pelanggan",
-    "EuPayment": "Pembayaran EU belum dikonfigurasi, silakan hubungi layanan pelanggan"
+    "EuPayment": "Pembayaran EU belum dikonfigurasi, silakan hubungi layanan pelanggan",
+    "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
+    "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
   },
   "platforms": {
     "title": "Platform Trading",
@@ -1211,7 +1214,14 @@
       "amount": "Jumlah",
       "amountHint": "Jumlah",
       "depositAmount": "Jumlah Setoran",
-      "exchangeRate": "Nilai Tukar"
+      "exchangeRate": "Nilai Tukar",
+      "jpy": {
+        "kycWarning": "Payment can only be made from the bound real-name account, otherwise the deposit will fail.",
+        "kycBoundBankAccount": "KYC-bound bank account",
+        "selectKycBoundBankAccount": "Select your KYC-bound bank account",
+        "noVerifiedWireBankInfo": "No verified bank account on file. Please add a Wire bank account in your profile before depositing.",
+        "bankRequired": "Please select your KYC-bound bank account"
+      }
     },
     "verify": {
       "title": "Konfirmasi Detail Setoran",
