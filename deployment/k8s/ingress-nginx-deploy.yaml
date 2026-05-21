@@ -321,6 +321,11 @@ subjects:
 apiVersion: v1
 data:
   allow-snippet-annotations: "false"
+  client-body-buffer-size: 64k
+  log-format-upstream: '$remote_addr - $remote_user [$time_local] "$request" $status
+    $body_bytes_sent "$http_referer" "$http_user_agent" $request_length $upstream_response_time
+    [$proxy_upstream_name] [$proxy_alternative_upstream_name] $upstream_addr $upstream_response_length
+    $upstream_response_time $upstream_status $req_id req_body=$request_body'
 kind: ConfigMap
 metadata:
   labels:

@@ -25,6 +25,7 @@ import {
   getExLinkCurrencies,
   getExLinkExchangeRates,
 } from '@/actions/deposit';
+import { getPaymentInfoList, type PaymentInfo } from '@/actions/payment';
 import type {
   DepositGroup,
   DepositGroupInfo,
@@ -39,6 +40,8 @@ import { CreditCardForm, type CreditCardFormHandle } from './CreditCardForm';
 
 const CREDIT_CARD_GROUP = 'Credit Card';
 const EXLINK_GLOBAL_TYPE = 'ExLinkGlobal';
+/** Wire platform — KYC-bound bank accounts for ExLinkGlobal JPY H2H */
+const WIRE_PAYMENT_PLATFORM = 100 as const;
 
 interface DepositModalProps {
   open: boolean;
@@ -48,7 +51,16 @@ interface DepositModalProps {
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId'];
+const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId', 'paymentInfoId'];
+
+function formatWirePaymentInfoLabel(info: PaymentInfo): string {
+  if ('walletAddress' in info.info) return info.name;
+  const bank = info.info;
+  let label = info.name;
+  if (bank.bankName) label += ` — ${bank.bankName}`;
+  if (bank.accountNo) label += ` (${bank.accountNo})`;
+  return label;
+}
 
 function formatAmount(amount: number): string {
   if (amount == null) return '';
@@ -119,9 +131,10 @@ function extractQrTransactionId(response: DepositResponse): string {
 
 export function DepositModal({ open, onOpenChange, account }: DepositModalProps) {
   const t = useTranslations('deposit');
+  const tErrors = useTranslations('errorCodes');
   const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
-  const { showSuccess } = useToast();
+  const { showSuccess, showWarning } = useToast();
 
   const [step, setStep] = useState<Step>(1);
 
@@ -139,6 +152,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [amount, setAmount] = useState<string>('');
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
   const [amountError, setAmountError] = useState<'' | 'required' | 'range' | 'integer'>('');
+  const [wirePaymentInfos, setWirePaymentInfos] = useState<PaymentInfo[]>([]);
+  const [jpyPaymentInfoError, setJpyPaymentInfoError] = useState(false);
 
   // Step 4 & 5
   const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
@@ -164,6 +179,66 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
 
   // 是否是 ExLinkGlobal 渠道（按 type 字段判定）
   const isExLinkGlobal = selectedGroup?.type === EXLINK_GLOBAL_TYPE;
+
+  const isExLinkJpy = useMemo(
+    () => isExLinkGlobal && Number(paymentCurrency) === CurrencyTypes.JPY,
+    [isExLinkGlobal, paymentCurrency]
+  );
+
+  const wireBankSelectOptions = useMemo<SelectOption[]>(
+    () =>
+      wirePaymentInfos.map((info) => ({
+        value: String(info.id),
+        label: formatWirePaymentInfoLabel(info),
+      })),
+    [wirePaymentInfos]
+  );
+
+  const depositErrorMessage = useMemo(() => {
+    const err = depositResponse?.error;
+    if (!err) return t('guide.error');
+    if (err.startsWith('__')) {
+      const translated = tErrors(err);
+      if (translated && !translated.startsWith('errorCodes.')) return translated;
+    }
+    return err;
+  }, [depositResponse?.error, t, tErrors]);
+
+  // ExLinkGlobal JPY: load verified Wire payment infos for KYC-bound bank selector
+  useEffect(() => {
+    if (!open || !isExLinkJpy) {
+      setWirePaymentInfos([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const result = await execute(getPaymentInfoList);
+      if (cancelled) return;
+      if (result.success && result.data) {
+        setWirePaymentInfos(
+          result.data.filter((x) => x.paymentPlatform === WIRE_PAYMENT_PLATFORM)
+        );
+      } else {
+        setWirePaymentInfos([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isExLinkJpy, execute]);
+
+  // Clear JPY-only paymentInfoId when currency is not JPY
+  useEffect(() => {
+    if (isExLinkJpy) return;
+    setJpyPaymentInfoError(false);
+    setDynamicFields((prev) => {
+      if (!prev.paymentInfoId) return prev;
+      const { paymentInfoId: _removed, ...rest } = prev;
+      return rest;
+    });
+  }, [isExLinkJpy]);
 
   // Step 1: 加载支付渠道
   useEffect(() => {
@@ -197,6 +272,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       setIsPaidConfirmed(false);
       setCountDown(0);
       setIsExpired(false);
+      setWirePaymentInfos([]);
+      setJpyPaymentInfoError(false);
     }, 200);
   }, [onOpenChange]);
 
@@ -378,17 +455,44 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     );
   }, [groupInfo]);
 
+  const validateJpyBeforeProceed = useCallback((): boolean => {
+    if (!isExLinkJpy) return true;
+    if (wirePaymentInfos.length === 0) {
+      showWarning(t('fill.jpy.noVerifiedWireBankInfo'));
+      return false;
+    }
+    if (!dynamicFields.paymentInfoId?.trim()) {
+      setJpyPaymentInfoError(true);
+      showWarning(t('fill.jpy.bankRequired'));
+      return false;
+    }
+    setJpyPaymentInfoError(false);
+    return true;
+  }, [isExLinkJpy, wirePaymentInfos.length, dynamicFields.paymentInfoId, showWarning, t]);
+
   // Step 3 是否可前进（信用卡的字段校验在 CreditCardForm.validate 内部完成）
   const canProceedStep3 = useMemo(() => {
     if (!amount || Number(amount) <= 0) return false;
     if (amountError) return false;
+    if (isExLinkJpy) {
+      if (wirePaymentInfos.length === 0) return false;
+      if (!dynamicFields.paymentInfoId?.trim()) return false;
+    }
     if (!isCreditCard) {
       for (const key of visibleRequestKeys) {
         if (!dynamicFields[key]?.trim()) return false;
       }
     }
     return true;
-  }, [amount, amountError, isCreditCard, visibleRequestKeys, dynamicFields]);
+  }, [
+    amount,
+    amountError,
+    isCreditCard,
+    isExLinkJpy,
+    wirePaymentInfos.length,
+    visibleRequestKeys,
+    dynamicFields,
+  ]);
 
   const qrCodeImageSrc = useMemo(
     () => (depositResponse?.textForQrCode ? getBase64ImageDataUrl(depositResponse.textForQrCode) : ''),
@@ -738,6 +842,87 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   )}
                 </div>
 
+                {/* ExLinkGlobal JPY H2H: KYC-bound Wire bank account */}
+                {!isCreditCard && isExLinkJpy && (
+                  <div className="flex flex-col gap-3">
+                    <div
+                      className="flex items-start gap-2 rounded-lg px-3.5 py-2.5 text-[13px] leading-normal"
+                      style={{ backgroundColor: '#ffecec', color: '#9f005b' }}
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        className="mt-0.5 shrink-0"
+                        aria-hidden
+                      >
+                        <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2" />
+                        <text
+                          x="10"
+                          y="14"
+                          textAnchor="middle"
+                          fontSize="11"
+                          fontWeight="600"
+                          fill="currentColor"
+                        >
+                          i
+                        </text>
+                      </svg>
+                      <span>{t('fill.jpy.kycWarning')}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center text-sm font-medium text-text-secondary">
+                        <span className="mr-1 text-primary">*</span>
+                        {t('fill.jpy.kycBoundBankAccount')}
+                      </label>
+
+                      {wireBankSelectOptions.length > 0 ? (
+                        <SimpleSelect
+                          value={dynamicFields.paymentInfoId || ''}
+                          onChange={(val) => {
+                            setDynamicFields((prev) => ({ ...prev, paymentInfoId: val }));
+                            if (val) setJpyPaymentInfoError(false);
+                          }}
+                          options={wireBankSelectOptions}
+                          placeholder={t('fill.jpy.selectKycBoundBankAccount')}
+                          triggerSize="md"
+                          className="w-full bg-input-bg"
+                        />
+                      ) : (
+                        <div className="flex items-start gap-2 rounded-lg bg-surface-secondary px-3 py-3 text-sm text-text-secondary">
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            className="mt-0.5 shrink-0 text-primary"
+                            aria-hidden
+                          >
+                            <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2" />
+                            <text
+                              x="10"
+                              y="14"
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="600"
+                              fill="currentColor"
+                            >
+                              i
+                            </text>
+                          </svg>
+                          <span>{t('fill.jpy.noVerifiedWireBankInfo')}</span>
+                        </div>
+                      )}
+
+                      {jpyPaymentInfoError && (
+                        <p className="error-text mt-1 text-sm">{t('fill.jpy.bankRequired')}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* 信用卡专用表单 */}
                 {isCreditCard && (
                   <CreditCardForm
@@ -962,7 +1147,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       </div>
                     </div>
                     <p className="text-sm error-text">
-                      {depositResponse.error || t('guide.error')}
+                      {depositErrorMessage}
                     </p>
                   </div>
                 )}
@@ -1026,6 +1211,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       setStep(3);
                     } else if (step === 3) {
                       if (!validateAmount(amount) || !canProceedStep3) return;
+                      if (!validateJpyBeforeProceed()) return;
                       // 信用卡渠道额外校验信用卡表单
                       if (isCreditCard) {
                         const validated = creditCardFormRef.current?.validate();
