@@ -62,4 +62,4 @@ jobs:
 
       - name: Deploy to EKS
         run: |
-          kubectl rollout restart deployment $ECR_REPOSITORY
+          kubectl rollout restart deployment $K8S_DEPLOYMENT -n mm
