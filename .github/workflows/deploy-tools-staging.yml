@@ -61,4 +61,4 @@ jobs:
 
       - name: Deploy to EKS
         run: |
-          kubectl rollout restart deployment $K8S_DEPLOYMENT
+          kubectl rollout restart deployment $K8S_DEPLOYMENT -n mm
