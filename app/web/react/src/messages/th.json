@@ -700,7 +700,10 @@
     "CODE_ALREADY_SENT": "รหัสยืนยันถูกส่งแล้ว กรุณาตรวจสอบอีเมล",
     "electronicIdentityVerificationRequired": "การยืนยันตัวตนทางอิเล็กทรอนิกส์เป็นสิ่งจำเป็น กรุณาเลือกยินยอมแล้วดำเนินการต่อ",
     "Too_many_pending_deposits": "การฝากเงินที่รอดำเนินการมากเกินไป กรุณาติดต่อฝ่ายบริการลูกค้า",
-    "EuPayment": "การชำระเงิน EU ยังไม่ได้ตั้งค่า กรุณาติดต่อฝ่ายบริการลูกค้า"
+    "EuPayment": "การชำระเงิน EU ยังไม่ได้ตั้งค่า กรุณาติดต่อฝ่ายบริการลูกค้า",
+    "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
+    "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
   },
   "platforms": {
     "title": "แพลตฟอร์มการซื้อขาย",
@@ -1211,7 +1214,14 @@
       "amount": "จำนวน",
       "amountHint": "จำนวน",
       "depositAmount": "จำนวนที่ฝาก",
-      "exchangeRate": "อัตราแลกเปลี่ยน"
+      "exchangeRate": "อัตราแลกเปลี่ยน",
+      "jpy": {
+        "kycWarning": "Payment can only be made from the bound real-name account, otherwise the deposit will fail.",
+        "kycBoundBankAccount": "KYC-bound bank account",
+        "selectKycBoundBankAccount": "Select your KYC-bound bank account",
+        "noVerifiedWireBankInfo": "No verified bank account on file. Please add a Wire bank account in your profile before depositing.",
+        "bankRequired": "Please select your KYC-bound bank account"
+      }
     },
     "verify": {
       "title": "ยืนยันรายละเอียดการฝาก",
