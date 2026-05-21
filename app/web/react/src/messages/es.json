@@ -700,10 +700,7 @@
     "CODE_ALREADY_SENT": "El código de verificación ya fue enviado, por favor revise su correo",
     "electronicIdentityVerificationRequired": "La verificación electrónica de identidad es obligatoria, por favor acepte para continuar.",
     "Too_many_pending_deposits": "Demasiados depósitos pendientes, por favor contacte con el servicio de atención al cliente",
-    "EuPayment": "El pago EU no está configurado, por favor contacte con el servicio de atención al cliente",
-    "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
-    "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
-    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
+    "EuPayment": "El pago EU no está configurado, por favor contacte con el servicio de atención al cliente"
   },
   "platforms": {
     "title": "Plataforma de trading",
@@ -1212,14 +1209,7 @@
       "amount": "Monto",
       "amountHint": "Monto",
       "depositAmount": "Monto del depósito",
-      "exchangeRate": "Tipo de cambio",
-      "jpy": {
-        "kycWarning": "Payment can only be made from the bound real-name account, otherwise the deposit will fail.",
-        "kycBoundBankAccount": "KYC-bound bank account",
-        "selectKycBoundBankAccount": "Select your KYC-bound bank account",
-        "noVerifiedWireBankInfo": "No verified bank account on file. Please add a Wire bank account in your profile before depositing.",
-        "bankRequired": "Please select your KYC-bound bank account"
-      }
+      "exchangeRate": "Tipo de cambio"
     },
     "verify": {
       "title": "Confirmar detalles del depósito",

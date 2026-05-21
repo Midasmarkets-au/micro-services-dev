@@ -1,7 +1,5 @@
 # ============================================================================
-#  midasmkts-ingress — Production 主路由
-#  portal.midasmkts.com / vu.midasmkts.com
-#  au.midasmkts.com / bvi.midasmkts.com / sea.midasmkts.com / jp.midasmkts.com
+#  midasmkts-ingress — Production 主路由（portal.midasmkts.com / vu.midasmkts.com）
 #  IngressClass: nginx-prod（独立 production NGINX controller）
 # ============================================================================
 apiVersion: networking.k8s.io/v1
@@ -34,56 +32,6 @@ spec:
                 port:
                   number: 80
     - host: vu.midasmkts.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-portal-product
-                port:
-                  number: 80
-    - host: au.midasmkts.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-portal-product
-                port:
-                  number: 80
-    - host: bvi.midasmkts.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-portal-product
-                port:
-                  number: 80
-    - host: sea.midasmkts.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-portal-product
-                port:
-                  number: 80
-    - host: jp.midasmkts.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-portal-product
-                port:
-                  number: 80
-    - host: k8s-ingressn-ingressn-d9fbebf220-740d31339032cd06.elb.ap-southeast-2.amazonaws.com
       http:
         paths:
           - path: /
@@ -128,46 +76,6 @@ spec:
                 port:
                   number: 9003
     - host: vu.midasmkts.com
-      http:
-        paths:
-          - path: /api/v1/event(/|$)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: boardcast
-                port:
-                  number: 9003
-    - host: au.midasmkts.com
-      http:
-        paths:
-          - path: /api/v1/event(/|$)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: boardcast
-                port:
-                  number: 9003
-    - host: bvi.midasmkts.com
-      http:
-        paths:
-          - path: /api/v1/event(/|$)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: boardcast
-                port:
-                  number: 9003
-    - host: sea.midasmkts.com
-      http:
-        paths:
-          - path: /api/v1/event(/|$)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: boardcast
-                port:
-                  number: 9003
-    - host: jp.midasmkts.com
       http:
         paths:
           - path: /api/v1/event(/|$)

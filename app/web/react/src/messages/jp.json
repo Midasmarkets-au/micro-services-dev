@@ -700,10 +700,7 @@
     "CODE_ALREADY_SENT": "認証コードはすでに送信されています。メールをご確認ください",
     "electronicIdentityVerificationRequired": "電子的な本人確認は必須です。同意を選択して続行してください。",
     "Too_many_pending_deposits": "保留中の入金が多すぎます。カスタマーサービスにお問い合わせください。",
-    "EuPayment": "EU決済が設定されていません。カスタマーサービスにお問い合わせください。",
-    "__JPY_KYC_BANK_REQUIRED__": "本人確認済みの銀行口座を選択してください",
-    "__JPY_KYC_BANK_INVALID__": "選択された口座は本人確認済みの銀行口座ではありません",
-    "__JPY_KYC_EMAIL_REQUIRED__": "JPYのご入金には登録メールアドレスが必要です"
+    "EuPayment": "EU決済が設定されていません。カスタマーサービスにお問い合わせください。"
   },
   "platforms": {
     "title": "取引プラットフォーム",
@@ -1214,14 +1211,7 @@
       "amount": "金額",
       "amountHint": "金額",
       "depositAmount": "入金額",
-      "exchangeRate": "為替レート",
-      "jpy": {
-        "kycWarning": "ご入金は登録された本人名義の銀行口座のみご利用いただけます。それ以外の口座からのご入金は失敗します。",
-        "kycBoundBankAccount": "本人確認済み銀行口座",
-        "selectKycBoundBankAccount": "本人確認済みの銀行口座を選択してください",
-        "noVerifiedWireBankInfo": "登録済みの銀行口座がありません。ご入金前にプロフィールから銀行口座を追加してください。",
-        "bankRequired": "本人確認済みの銀行口座を選択してください"
-      }
+      "exchangeRate": "為替レート"
     },
     "verify": {
       "title": "入金詳細を確認",
