@@ -1208,6 +1208,9 @@
       "depositTo": "Deposit to current account",
       "currency": " Currency",
       "selectCurrency": "Select currency",
+      "paymentMethod": " Payment Method",
+      "selectPaymentMethod": "Select payment method",
+      "selectBank": "Select bank",
       "amount": "Amount",
       "amountHint": "Amount",
       "depositAmount": "Deposit Amount",
@@ -1285,7 +1288,12 @@
       "ccNumber": "Card Number",
       "ccMonth": "Expiry Month",
       "ccYear": "Expiry Year",
-      "ccCvc": "CVC"
+      "ccCvc": "CVC",
+      "bank": "Bank",
+      "payerAccountName": "Payer Account Name",
+      "payerAccountNumber": "Payer Account Number",
+      "payerAccountNameLocal": "Payer Account Name (Local Language)",
+      "payerPhoneNumber": "Payer Phone Number"
     },
     "action": {
       "close": "Close",

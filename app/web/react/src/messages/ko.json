@@ -1208,6 +1208,9 @@
       "depositTo": "현재 계정에 입금",
       "currency": "통화",
       "selectCurrency": "통화를 선택해 주세요",
+      "paymentMethod": "결제 수단",
+      "selectPaymentMethod": "결제 수단을 선택해 주세요",
+      "selectBank": "은행을 선택해 주세요",
       "amount": "금액",
       "amountHint": "금액",
       "depositAmount": "입금 금액",
@@ -1285,7 +1288,12 @@
       "ccNumber": "카드 번호",
       "ccMonth": "만료 월",
       "ccYear": "만료 연도",
-      "ccCvc": "CVC"
+      "ccCvc": "CVC",
+      "bank": "은행",
+      "payerAccountName": "송금인 계좌명",
+      "payerAccountNumber": "송금인 계좌번호",
+      "payerAccountNameLocal": "송금인 계좌명 (현지어)",
+      "payerPhoneNumber": "송금인 전화번호"
     },
     "action": {
       "close": "닫기",
