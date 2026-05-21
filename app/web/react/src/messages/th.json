@@ -1211,6 +1211,9 @@
       "depositTo": "ฝากเงินเข้าบัญชีปัจจุบัน",
       "currency": "สกุลเงิน",
       "selectCurrency": "กรุณาเลือกสกุลเงิน",
+      "paymentMethod": "วิธีการชำระเงิน",
+      "selectPaymentMethod": "กรุณาเลือกวิธีการชำระเงิน",
+      "selectBank": "กรุณาเลือกธนาคาร",
       "amount": "จำนวน",
       "amountHint": "จำนวน",
       "depositAmount": "จำนวนที่ฝาก",
@@ -1295,7 +1298,12 @@
       "ccNumber": "หมายเลขบัตร",
       "ccMonth": "เดือนหมดอายุ",
       "ccYear": "ปีหมดอายุ",
-      "ccCvc": "CVC"
+      "ccCvc": "CVC",
+      "bank": "ธนาคาร",
+      "payerAccountName": "ชื่อผู้ชำระเงิน",
+      "payerAccountNumber": "เลขที่บัญชีผู้ชำระเงิน",
+      "payerAccountNameLocal": "ชื่อผู้ชำระเงิน (ภาษาท้องถิ่น)",
+      "payerPhoneNumber": "หมายเลขโทรศัพท์ผู้ชำระเงิน"
     },
     "action": {
       "close": "ปิด",
