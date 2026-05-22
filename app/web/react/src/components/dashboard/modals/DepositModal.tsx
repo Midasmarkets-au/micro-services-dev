@@ -42,6 +42,15 @@ const CREDIT_CARD_GROUP = 'Credit Card';
 const EXLINK_GLOBAL_TYPE = 'ExLinkGlobal';
 /** Wire platform — KYC-bound bank accounts for ExLinkGlobal JPY H2H */
 const WIRE_PAYMENT_PLATFORM = 100 as const;
+const HELP2PAY_TYPE = 'Help2Pay';
+
+/**
+ * Groups that fan out into multiple PaymentMethod rows on the backend
+ * and render a step-3 dropdown driven by `groupInfo.paymentMethods`.
+ * - ExLinkGlobal: one row per primary currency.
+ * - Help2Pay:     one row per (channel x currency) — two rows may share a currency.
+ */
+const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE] as const;
 
 interface DepositModalProps {
   open: boolean;
@@ -148,7 +157,9 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
 
   // Step 3
-  const [paymentCurrency, setPaymentCurrency] = useState<string>('');
+  // 对多 method 渠道（ExLinkGlobal / Help2Pay）该字段存的是 paymentMethod 的 hashId；
+  // 对其余渠道沿用旧语义，存的是 currencyId 的字符串。
+  const [selectedMethodKey, setSelectedMethodKey] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
   const [amountError, setAmountError] = useState<'' | 'required' | 'range' | 'integer'>('');
@@ -178,12 +189,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const isCreditCard = selectedGroup?.group === CREDIT_CARD_GROUP;
 
   // 是否是 ExLinkGlobal 渠道（按 type 字段判定）
+  // 仅用于 ExLink 专有的实时汇率覆盖逻辑
   const isExLinkGlobal = selectedGroup?.type === EXLINK_GLOBAL_TYPE;
 
-  const isExLinkJpy = useMemo(
-    () => isExLinkGlobal && Number(paymentCurrency) === CurrencyTypes.JPY,
-    [isExLinkGlobal, paymentCurrency]
-  );
+  // 是否是“多 PaymentMethod 行 + 单一入口”渠道（ExLinkGlobal / Help2Pay）。
+  // 这些渠道在 Step 1 只显示一个卡片，Step 3 通过 paymentMethods 下拉框选择具体 method。
+  const isMultiMethodGroup =
+    selectedGroup?.type !== undefined &&
+    (MULTI_METHOD_TYPES as readonly string[]).includes(selectedGroup.type);
 
   const wireBankSelectOptions = useMemo<SelectOption[]>(
     () =>
@@ -203,6 +216,136 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
     return err;
   }, [depositResponse?.error, t, tErrors]);
+
+  // Step 1: 加载支付渠道
+  useEffect(() => {
+    if (open && account) {
+      setIsLoadingGroups(true);
+      execute(getDepositGroups, account.uid)
+        .then((result) => {
+          if (result.success && result.data) {
+            setGroups(result.data);
+          }
+        })
+        .finally(() => setIsLoadingGroups(false));
+    }
+  }, [open, account, execute]);
+
+  const handleClose = useCallback(() => {
+    onOpenChange(false);
+    setTimeout(() => {
+      setStep(1);
+      setGroups([]);
+      setSelectedGroup(null);
+      setGroupInfo(null);
+      setSelectedMethodKey('');
+      setAmount('');
+      setDynamicFields({});
+      setAmountError('');
+      setDepositResponse(null);
+      setTargetAmount(0);
+      setShowInstruction(false);
+      setIsPaidSubmitting(false);
+      setIsPaidConfirmed(false);
+      setCountDown(0);
+      setIsExpired(false);
+      setWirePaymentInfos([]);
+      setJpyPaymentInfoError(false);
+    }, 200);
+  }, [onOpenChange]);
+
+  // Step 2: 加载渠道详情
+  const loadGroupInfo = useCallback(async () => {
+    if (!account || !selectedGroup) return;
+    if (selectedGroup.isActive === false) return;
+    setIsLoadingInfo(true);
+    try {
+      const result = await execute(
+        getDepositGroupInfo,
+        account.uid,
+        selectedGroup.group,
+        selectedGroup.type
+      );
+      if (!result.success || !result.data) return;
+
+      let info: DepositGroupInfo = result.data;
+
+      // ExLink Global 渠道：用 ExLink 实时汇率覆盖 currencyRates（保留汇率展示）
+      const exLink = selectedGroup.type === EXLINK_GLOBAL_TYPE;
+      // 多 method 渠道（ExLinkGlobal / Help2Pay）：Step 3 下拉项来自 paymentMethods，
+      // 选中值用 hashId 而非 currencyId（Help2Pay 两条 IDR 行需要分别可选）。
+      const multiMethod =
+        selectedGroup.type !== undefined &&
+        (MULTI_METHOD_TYPES as readonly string[]).includes(selectedGroup.type);
+
+      if (exLink) {
+        try {
+          const [currenciesRes, ratesRes] = await Promise.all([
+            execute(getExLinkCurrencies),
+            execute(getExLinkExchangeRates),
+          ]);
+          const rateList = ratesRes.success ? ratesRes.data?.marketPriceList ?? [] : [];
+          if (currenciesRes.success && rateList.length > 0) {
+            const rateMap = new Map<number, number>(
+              rateList.map((r) => [r.sourceCoinId, r.marketInPrice])
+            );
+            const filtered = (info.currencyRates || [])
+              .filter((cr) => rateMap.has(cr.currencyId))
+              .map((cr) => ({ ...cr, rate: rateMap.get(cr.currencyId) ?? cr.rate }));
+            info = { ...info, currencyRates: filtered };
+          }
+        } catch (err) {
+          console.error('Failed to fetch ExLink currency rates:', err);
+        }
+      }
+
+      setGroupInfo(info);
+      if (info.requestValues) {
+        setDynamicFields(
+          Object.fromEntries(
+            Object.entries(info.requestValues).map(([k, v]) => [
+              k,
+              v === null || v === undefined ? '' : String(v),
+            ])
+          )
+        );
+      }
+      // 自动选中初值：
+      // - 多 method 渠道（ExLinkGlobal / Help2Pay）：仅当只有 1 个 paymentMethod 时自动选中其 hashId。
+      // - 其他渠道：沿用 currencyRates 的旧逻辑，存储 currencyId 字符串。
+      if (multiMethod && info.paymentMethods?.length) {
+        if (info.paymentMethods.length === 1) {
+          setSelectedMethodKey(info.paymentMethods[0].hashId);
+        }
+      } else if (info.currencyRates?.length === 1) {
+        setSelectedMethodKey(String(info.currencyRates[0].currencyId));
+      } else if (!info.currencyRates?.length && account.currencyId) {
+        setSelectedMethodKey(String(account.currencyId));
+      }
+      setStep(2);
+    } finally {
+      setIsLoadingInfo(false);
+    }
+  }, [account, selectedGroup, execute]);
+
+  // 多 method 渠道（ExLinkGlobal / Help2Pay）：按所选下拉项的 hashId 命中 paymentMethod 配置（提供 hashId / range / currencyId）
+  const currentPaymentMethod = useMemo((): PaymentMethodConfig | null => {
+    if (!isMultiMethodGroup || !groupInfo?.paymentMethods?.length || !selectedMethodKey) return null;
+    return (
+      groupInfo.paymentMethods.find((pm) => pm.hashId === selectedMethodKey) || null
+    );
+  }, [isMultiMethodGroup, groupInfo, selectedMethodKey]);
+
+  const selectedCurrencyId = useMemo(() => {
+    if (currentPaymentMethod) return currentPaymentMethod.currencyId;
+    const n = Number(selectedMethodKey);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, [currentPaymentMethod, selectedMethodKey]);
+
+  const isExLinkJpy = useMemo(
+    () => isExLinkGlobal && selectedCurrencyId === CurrencyTypes.JPY,
+    [isExLinkGlobal, selectedCurrencyId]
+  );
 
   // ExLinkGlobal JPY: load verified Wire payment infos for KYC-bound bank selector
   useEffect(() => {
@@ -240,137 +383,25 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     });
   }, [isExLinkJpy]);
 
-  // Step 1: 加载支付渠道
-  useEffect(() => {
-    if (open && account) {
-      setIsLoadingGroups(true);
-      execute(getDepositGroups, account.uid)
-        .then((result) => {
-          if (result.success && result.data) {
-            setGroups(result.data);
-          }
-        })
-        .finally(() => setIsLoadingGroups(false));
-    }
-  }, [open, account, execute]);
-
-  const handleClose = useCallback(() => {
-    onOpenChange(false);
-    setTimeout(() => {
-      setStep(1);
-      setGroups([]);
-      setSelectedGroup(null);
-      setGroupInfo(null);
-      setPaymentCurrency('');
-      setAmount('');
-      setDynamicFields({});
-      setAmountError('');
-      setDepositResponse(null);
-      setTargetAmount(0);
-      setShowInstruction(false);
-      setIsPaidSubmitting(false);
-      setIsPaidConfirmed(false);
-      setCountDown(0);
-      setIsExpired(false);
-      setWirePaymentInfos([]);
-      setJpyPaymentInfoError(false);
-    }, 200);
-  }, [onOpenChange]);
-
-  // Step 2: 加载渠道详情
-  const loadGroupInfo = useCallback(async () => {
-    if (!account || !selectedGroup) return;
-    if (selectedGroup.isActive === false) return;
-    setIsLoadingInfo(true);
-    try {
-      const result = await execute(
-        getDepositGroupInfo,
-        account.uid,
-        selectedGroup.group,
-        selectedGroup.type
-      );
-      if (!result.success || !result.data) return;
-
-      let info: DepositGroupInfo = result.data;
-
-      // ExLink Global 渠道：用 ExLink 实时汇率覆盖 currencyRates（保留汇率展示）
-      const exLink = selectedGroup.type === EXLINK_GLOBAL_TYPE;
-
-      if (exLink) {
-        try {
-          const [currenciesRes, ratesRes] = await Promise.all([
-            execute(getExLinkCurrencies),
-            execute(getExLinkExchangeRates),
-          ]);
-          const rateList = ratesRes.success ? ratesRes.data?.marketPriceList ?? [] : [];
-          if (currenciesRes.success && rateList.length > 0) {
-            const rateMap = new Map<number, number>(
-              rateList.map((r) => [r.sourceCoinId, r.marketInPrice])
-            );
-            const filtered = (info.currencyRates || [])
-              .filter((cr) => rateMap.has(cr.currencyId))
-              .map((cr) => ({ ...cr, rate: rateMap.get(cr.currencyId) ?? cr.rate }));
-            info = { ...info, currencyRates: filtered };
-          }
-        } catch (err) {
-          console.error('Failed to fetch ExLink currency rates:', err);
-        }
-      }
-
-      setGroupInfo(info);
-      if (info.requestValues) {
-        setDynamicFields(
-          Object.fromEntries(
-            Object.entries(info.requestValues).map(([k, v]) => [
-              k,
-              v === null || v === undefined ? '' : String(v),
-            ])
-          )
-        );
-      }
-      // 自动选中支付币种：
-      // - ExLinkGlobal：优先按 paymentMethods 决定（每个币种一份独立配置）
-      // - 其他渠道：沿用 currencyRates 的旧逻辑
-      if (exLink && info.paymentMethods?.length) {
-        if (info.paymentMethods.length === 1) {
-          setPaymentCurrency(String(info.paymentMethods[0].currencyId));
-        }
-      } else if (info.currencyRates?.length === 1) {
-        setPaymentCurrency(String(info.currencyRates[0].currencyId));
-      } else if (!info.currencyRates?.length && account.currencyId) {
-        setPaymentCurrency(String(account.currencyId));
-      }
-      setStep(2);
-    } finally {
-      setIsLoadingInfo(false);
-    }
-  }, [account, selectedGroup, execute]);
-
-  // 当前汇率
+  // 当前汇率：
+  // - 多 method 渠道：用 currentPaymentMethod.currencyId 反查 currencyRates。
+  // - 其他渠道：selectedMethodKey 本身就是 currencyId 字符串。
   const currentRate = useMemo((): CurrencyRate | null => {
-    if (!groupInfo?.currencyRates?.length || !paymentCurrency) return null;
-    return groupInfo.currencyRates.find(
-      (r) => String(r.currencyId) === paymentCurrency
-    ) || null;
-  }, [groupInfo, paymentCurrency]);
+    if (!groupInfo?.currencyRates?.length) return null;
+    const lookup = currentPaymentMethod
+      ? String(currentPaymentMethod.currencyId)
+      : selectedMethodKey;
+    if (!lookup) return null;
+    return groupInfo.currencyRates.find((r) => String(r.currencyId) === lookup) || null;
+  }, [groupInfo, currentPaymentMethod, selectedMethodKey]);
 
-  // ExLinkGlobal：按所选币种命中的 paymentMethod 配置（提供 hashId / range）
-  const currentPaymentMethod = useMemo((): PaymentMethodConfig | null => {
-    if (!isExLinkGlobal || !groupInfo?.paymentMethods?.length || !paymentCurrency) return null;
-    return (
-      groupInfo.paymentMethods.find(
-        (pm) => String(pm.currencyId) === paymentCurrency
-      ) || null
-    );
-  }, [isExLinkGlobal, groupInfo, paymentCurrency]);
-
-  // Step 3 支付币种下拉选项：
-  // - ExLinkGlobal：来源于 paymentMethods（label 优先用 paymentMethods.paymentMethodName）
-  // - 其他渠道：沿用 currencyRates，label 用币种名
+  // Step 3 下拉选项：
+  // - 多 method 渠道：来源于 paymentMethods，value=hashId（Help2Pay 两条 IDR 行需要分别可选），label 优先用 paymentMethodName。
+  // - 其他渠道：沿用 currencyRates，value=currencyId 字符串，label 用币种名。
   const currencyOptions = useMemo<SelectOption[]>(() => {
-    if (isExLinkGlobal && groupInfo?.paymentMethods?.length) {
+    if (isMultiMethodGroup && groupInfo?.paymentMethods?.length) {
       return groupInfo.paymentMethods.map((pm) => ({
-        value: String(pm.currencyId),
+        value: pm.hashId,
         label: pm.paymentMethodName || getCurrencyName(pm.currencyId),
       }));
     }
@@ -378,24 +409,24 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       value: String(cr.currencyId),
       label: getCurrencyName(cr.currencyId),
     }));
-  }, [isExLinkGlobal, groupInfo, getCurrencyName]);
+  }, [isMultiMethodGroup, groupInfo, getCurrencyName]);
 
-  // 用于校验/展示的金额区间：ExLinkGlobal 跟随币种切换，其他渠道沿用 groupInfo.range
+  // 用于校验/展示的金额区间：多 method 渠道跟随当前 paymentMethod 切换，其他渠道沿用 groupInfo.range
   const activeRange = useMemo<[number, number] | undefined>(() => {
-    if (isExLinkGlobal) return currentPaymentMethod?.range;
+    if (isMultiMethodGroup) return currentPaymentMethod?.range;
     return groupInfo?.range;
-  }, [isExLinkGlobal, currentPaymentMethod, groupInfo]);
+  }, [isMultiMethodGroup, currentPaymentMethod, groupInfo]);
 
   // 当前展示的渠道名：
-  // - ExLinkGlobal 且已选中 paymentMethod -> 用 paymentMethod.paymentMethodName 替换 selectedGroup.paymentMethodName
-  // - ExLinkGlobal 但尚未选中币种 -> 退回 selectedGroup.group
+  // - 多 method 渠道（ExLinkGlobal / Help2Pay）且已选中 paymentMethod -> 用 paymentMethod.paymentMethodName
+  // - 多 method 渠道但尚未选中 -> 退回 selectedGroup.group（如 "ExLink Global"、"Help2Pay"）
   // - 其他渠道 -> selectedGroup.paymentMethodName
   const displayMethodName = useMemo<string>(() => {
-    if (isExLinkGlobal) {
+    if (isMultiMethodGroup) {
       return currentPaymentMethod?.paymentMethodName || selectedGroup?.group || '';
     }
     return selectedGroup?.paymentMethodName || '';
-  }, [isExLinkGlobal, currentPaymentMethod, selectedGroup]);
+  }, [isMultiMethodGroup, currentPaymentMethod, selectedGroup]);
 
   // 汇率换算
   useEffect(() => {
@@ -441,12 +472,12 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     return true;
   }, [activeRange, account]);
 
-  // ExLinkGlobal 切换币种 -> range 改变，需要立即重新校验已有金额
+  // 多 method 渠道切换 paymentMethod -> range 改变，需要立即重新校验已有金额
   useEffect(() => {
-    if (!isExLinkGlobal) return;
+    if (!isMultiMethodGroup) return;
     if (!amount) return;
     validateAmount(amount);
-  }, [isExLinkGlobal, currentPaymentMethod, amount, validateAmount]);
+  }, [isMultiMethodGroup, currentPaymentMethod, amount, validateAmount]);
 
   // 可见的动态字段
   const visibleRequestKeys = useMemo(() => {
@@ -582,16 +613,20 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     if (!account || !groupInfo || !selectedGroup) return;
 
     const numAmount = Number(amount);
+    // 多 method 渠道：currencyId 来自当前 paymentMethod；其他渠道：selectedMethodKey 即 currencyId 字符串
+    const resolvedCurrencyId = currentPaymentMethod
+      ? currentPaymentMethod.currencyId
+      : Number(selectedMethodKey) || account.currencyId;
     const requestData: Record<string, string | number> = {
       ...dynamicFields,
       amount: numAmount,
-      currencyId: Number(paymentCurrency) || account.currencyId,
+      currencyId: resolvedCurrencyId,
       returnUrl: typeof window !== 'undefined' ? window.location.href : '',
     };
 
-    // ExLinkGlobal 的 hashId 由当前所选币种命中的 paymentMethod 决定，
+    // 多 method 渠道（ExLinkGlobal / Help2Pay）的 hashId 由当前所选 paymentMethod 决定，
     // 其他渠道沿用 groupInfo 顶层 hashId
-    const hashId = isExLinkGlobal && currentPaymentMethod
+    const hashId = isMultiMethodGroup && currentPaymentMethod
       ? currentPaymentMethod.hashId
       : groupInfo.hashId;
 
@@ -633,7 +668,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
         setStep(5);
       }
     }
-  }, [account, groupInfo, selectedGroup, amount, dynamicFields, paymentCurrency, isExLinkGlobal, currentPaymentMethod, execute]);
+  }, [account, groupInfo, selectedGroup, amount, dynamicFields, selectedMethodKey, isMultiMethodGroup, currentPaymentMethod, execute]);
 
   // Stepper 配置
   const stepperSteps = useMemo(() => [
@@ -774,18 +809,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 <h3 className="text-base font-semibold text-text-primary">
                   {t('fill.depositTo')}
                 </h3>
-                {/* 支付币种 */}
+                {/* 多 method 渠道（Help2Pay / ExLinkGlobal）选的是 paymentMethod；其他渠道选的是 currency */}
                 {currencyOptions.length > 0 && (
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center text-sm font-medium text-text-secondary">
                       <span className="mr-1 text-primary">*</span>
-                      {displayMethodName}{t('fill.currency')}
+                      {selectedGroup?.group || ''}{isMultiMethodGroup ? t('fill.paymentMethod') : t('fill.currency')}
                     </label>
                     <SimpleSelect
-                      value={paymentCurrency}
-                      onChange={setPaymentCurrency}
+                      value={selectedMethodKey}
+                      onChange={setSelectedMethodKey}
                       options={currencyOptions}
-                      placeholder={t('fill.selectCurrency')}
+                      placeholder={isMultiMethodGroup ? t('fill.selectPaymentMethod') : t('fill.selectCurrency')}
                       disabled={currencyOptions.length === 1}
                       triggerSize="md"
                       className="w-full bg-input-bg"
@@ -807,7 +842,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       }}
                       onBlur={() => amount && validateAmount(amount)}
                       placeholder="0"
-                      disabled={!paymentCurrency}
+                      disabled={!selectedMethodKey}
                       error={
                         amountError === 'required'
                           ? t('error.amountRequired')
@@ -938,18 +973,50 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 {/* 通用动态表单字段（非信用卡） */}
                 {!isCreditCard && visibleRequestKeys.length > 0 && (
                   <div className="grid grid-cols-2 gap-4">
-                    {visibleRequestKeys.map((key) => (
-                      <Input
-                        key={key}
-                        label={t(`requestKeys.${key}`, { defaultMessage: key })}
-                        required
-                        inputSize="md"
-                        value={dynamicFields[key] || ''}
-                        onChange={(e) =>
-                          setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
-                        }
-                      />
-                    ))}
+                    {visibleRequestKeys.map((key) => {
+                      const label = t(`requestKeys.${key}`, { defaultMessage: key });
+                      // Help2Pay 的 `bank` 字段：当前 (channel x currency) 行带白名单时，
+                      // 用 "CODE - Name" 下拉选择，避免用户手填触发后端
+                      // __HELP2PAY_BANK_NOT_SUPPORTED__ 等校验失败。
+                      if (key === 'bank' && currentPaymentMethod?.banks?.length) {
+                        // Legacy DB rows (pre-name migration) come back with name === code;
+                        // showing "MBB - MBB" is noisy, so collapse to the code alone in that case.
+                        const bankOptions: SelectOption[] = currentPaymentMethod.banks.map((b) => ({
+                          value: b.code,
+                          label: b.name && b.name !== b.code ? `${b.code} - ${b.name}` : b.code,
+                        }));
+                        return (
+                          <div key={key} className="flex flex-col gap-1">
+                            <label className="flex items-center text-sm font-medium text-text-secondary">
+                              <span className="mr-1 text-primary">*</span>
+                              {label}
+                            </label>
+                            <SimpleSelect
+                              value={dynamicFields[key] || ''}
+                              onChange={(val) =>
+                                setDynamicFields((prev) => ({ ...prev, [key]: val }))
+                              }
+                              options={bankOptions}
+                              placeholder={t('fill.selectBank', { defaultMessage: label })}
+                              triggerSize="md"
+                              className="w-full bg-input-bg"
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <Input
+                          key={key}
+                          label={label}
+                          required
+                          inputSize="md"
+                          value={dynamicFields[key] || ''}
+                          onChange={(e) =>
+                            setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
