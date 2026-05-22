@@ -1211,6 +1211,9 @@
       "depositTo": "存入当前账户",
       "currency": "货币",
       "selectCurrency": "请选择货币",
+      "paymentMethod": "支付方式",
+      "selectPaymentMethod": "请选择支付方式",
+      "selectBank": "请选择银行",
       "amount": "金额",
       "amountHint": "金额",
       "depositAmount": "存款金额",
@@ -1295,7 +1298,12 @@
       "ccNumber": "卡号",
       "ccMonth": "到期月份",
       "ccYear": "到期年份",
-      "ccCvc": "CVC"
+      "ccCvc": "CVC",
+      "bank": "银行",
+      "payerAccountName": "付款人账户姓名",
+      "payerAccountNumber": "付款人账号",
+      "payerAccountNameLocal": "付款人账户姓名（本地语言）",
+      "payerPhoneNumber": "付款人手机号码"
     },
     "action": {
       "close": "关闭",
