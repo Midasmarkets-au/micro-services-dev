@@ -1211,9 +1211,6 @@
       "depositTo": "Setor ke akun saat ini",
       "currency": " Mata Uang",
       "selectCurrency": "Pilih mata uang",
-      "paymentMethod": " Metode Pembayaran",
-      "selectPaymentMethod": "Pilih metode pembayaran",
-      "selectBank": "Pilih bank",
       "amount": "Jumlah",
       "amountHint": "Jumlah",
       "depositAmount": "Jumlah Setoran",
@@ -1298,12 +1295,7 @@
       "ccNumber": "Nomor Kartu",
       "ccMonth": "Bulan Kedaluwarsa",
       "ccYear": "Tahun Kedaluwarsa",
-      "ccCvc": "CVC",
-      "bank": "Bank",
-      "payerAccountName": "Nama Pembayar",
-      "payerAccountNumber": "Nomor Akun Pembayar",
-      "payerAccountNameLocal": "Nama Pembayar (Bahasa Lokal)",
-      "payerPhoneNumber": "Nomor Telepon Pembayar"
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Tutup",

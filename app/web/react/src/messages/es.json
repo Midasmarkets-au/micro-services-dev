@@ -1209,9 +1209,6 @@
       "depositTo": "Depositar en cuenta actual",
       "currency": "Moneda",
       "selectCurrency": "Por favor seleccione moneda",
-      "paymentMethod": "Método de pago",
-      "selectPaymentMethod": "Seleccione un método de pago",
-      "selectBank": "Seleccione un banco",
       "amount": "Monto",
       "amountHint": "Monto",
       "depositAmount": "Monto del depósito",
@@ -1296,12 +1293,7 @@
       "ccNumber": "Número de tarjeta",
       "ccMonth": "Mes de vencimiento",
       "ccYear": "Año de vencimiento",
-      "ccCvc": "CVC",
-      "bank": "Banco",
-      "payerAccountName": "Nombre del pagador",
-      "payerAccountNumber": "Número de cuenta del pagador",
-      "payerAccountNameLocal": "Nombre del pagador (idioma local)",
-      "payerPhoneNumber": "Teléfono del pagador"
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Cerrar",

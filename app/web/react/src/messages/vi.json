@@ -1211,9 +1211,6 @@
       "depositTo": "Nạp vào tài khoản hiện tại",
       "currency": "Tiền tệ",
       "selectCurrency": "Vui lòng chọn tiền tệ",
-      "paymentMethod": "Phương thức thanh toán",
-      "selectPaymentMethod": "Vui lòng chọn phương thức thanh toán",
-      "selectBank": "Vui lòng chọn ngân hàng",
       "amount": "Số tiền",
       "amountHint": "Số tiền",
       "depositAmount": "Số tiền nạp",
@@ -1298,12 +1295,7 @@
       "ccNumber": "Số thẻ",
       "ccMonth": "Tháng hết hạn",
       "ccYear": "Năm hết hạn",
-      "ccCvc": "CVC",
-      "bank": "Ngân hàng",
-      "payerAccountName": "Tên người thanh toán",
-      "payerAccountNumber": "Số tài khoản người thanh toán",
-      "payerAccountNameLocal": "Tên người thanh toán (ngôn ngữ địa phương)",
-      "payerPhoneNumber": "Số điện thoại người thanh toán"
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "Đóng",

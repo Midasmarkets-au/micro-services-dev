@@ -1211,9 +1211,6 @@
       "depositTo": "ដាក់ប្រាក់ទៅគណនីបច្ចុប្បន្ន",
       "currency": "រូបិយប័ណ្ណ",
       "selectCurrency": "ជ្រើសរើសរូបិយប័ណ្ណ",
-      "paymentMethod": "មធ្យោបាយទូទាត់",
-      "selectPaymentMethod": "សូមជ្រើសរើសមធ្យោបាយទូទាត់",
-      "selectBank": "សូមជ្រើសរើសធនាគារ",
       "amount": "ចំនួន",
       "amountHint": "ចំនួន",
       "depositAmount": "ចំនួនដាក់ប្រាក់",
@@ -1298,12 +1295,7 @@
       "ccNumber": "លេខកាត",
       "ccMonth": "ខែផុតកំណត់",
       "ccYear": "ឆ្នាំផុតកំណត់",
-      "ccCvc": "CVC",
-      "bank": "ធនាគារ",
-      "payerAccountName": "ឈ្មោះអ្នកបង់ប្រាក់",
-      "payerAccountNumber": "លេខគណនីអ្នកបង់ប្រាក់",
-      "payerAccountNameLocal": "ឈ្មោះអ្នកបង់ប្រាក់ (ភាសាស្រុក)",
-      "payerPhoneNumber": "លេខទូរស័ព្ទអ្នកបង់ប្រាក់"
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "បិទ",

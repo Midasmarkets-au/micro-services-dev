@@ -19,12 +19,6 @@ export interface CurrencyRate {
   rate: number;
 }
 
-/** Help2Pay 银行白名单条目（仅 Help2Pay 返回） */
-export interface BankOption {
-  code: string;
-  name: string;
-}
-
 /** 按币种维度的渠道配置（ExLinkGlobal 等以币种为单位维护 hashId / range / 名称） */
 export interface PaymentMethodConfig {
   currencyId: number;
@@ -32,8 +26,6 @@ export interface PaymentMethodConfig {
   range: [number, number];
   /** 该币种对应的子渠道展示名（ExLinkGlobal 用它替代 selectedGroup.paymentMethodName） */
   paymentMethodName?: string;
-  /** Help2Pay 该 (channel x currency) 行允许的付款银行；为空则回退为文本输入 */
-  banks?: BankOption[];
 }
 
 export interface DepositGroupInfo {

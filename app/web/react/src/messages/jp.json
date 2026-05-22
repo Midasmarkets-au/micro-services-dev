@@ -1211,9 +1211,6 @@
       "depositTo": "現在の口座に入金",
       "currency": "通貨",
       "selectCurrency": "通貨を選択してください",
-      "paymentMethod": "支払方法",
-      "selectPaymentMethod": "支払方法を選択してください",
-      "selectBank": "銀行を選択してください",
       "amount": "金額",
       "amountHint": "金額",
       "depositAmount": "入金額",
@@ -1298,12 +1295,7 @@
       "ccNumber": "カード番号",
       "ccMonth": "有効期限（月）",
       "ccYear": "有効期限（年）",
-      "ccCvc": "CVC",
-      "bank": "銀行",
-      "payerAccountName": "送金者の口座名義",
-      "payerAccountNumber": "送金者の口座番号",
-      "payerAccountNameLocal": "送金者の口座名義（現地語）",
-      "payerPhoneNumber": "送金者の電話番号"
+      "ccCvc": "CVC"
     },
     "action": {
       "close": "閉じる",
