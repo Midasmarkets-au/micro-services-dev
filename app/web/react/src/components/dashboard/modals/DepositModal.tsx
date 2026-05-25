@@ -25,6 +25,7 @@ import {
   getExLinkCurrencies,
   getExLinkExchangeRates,
 } from '@/actions/deposit';
+import { getPaymentInfoList, type PaymentInfo } from '@/actions/payment';
 import type {
   DepositGroup,
   DepositGroupInfo,
@@ -39,6 +40,17 @@ import { CreditCardForm, type CreditCardFormHandle } from './CreditCardForm';
 
 const CREDIT_CARD_GROUP = 'Credit Card';
 const EXLINK_GLOBAL_TYPE = 'ExLinkGlobal';
+/** Wire platform — KYC-bound bank accounts for ExLinkGlobal JPY H2H */
+const WIRE_PAYMENT_PLATFORM = 100 as const;
+const HELP2PAY_TYPE = 'Help2Pay';
+
+/**
+ * Groups that fan out into multiple PaymentMethod rows on the backend
+ * and render a step-3 dropdown driven by `groupInfo.paymentMethods`.
+ * - ExLinkGlobal: one row per primary currency.
+ * - Help2Pay:     one row per (channel x currency) — two rows may share a currency.
+ */
+const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE] as const;
 
 interface DepositModalProps {
   open: boolean;
@@ -48,7 +60,16 @@ interface DepositModalProps {
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId'];
+const HIDDEN_REQUEST_KEYS = ['returnUrl', 'currencyId', 'paymentInfoId'];
+
+function formatWirePaymentInfoLabel(info: PaymentInfo): string {
+  if ('walletAddress' in info.info) return info.name;
+  const bank = info.info;
+  let label = info.name;
+  if (bank.bankName) label += ` — ${bank.bankName}`;
+  if (bank.accountNo) label += ` (${bank.accountNo})`;
+  return label;
+}
 
 function formatAmount(amount: number): string {
   if (amount == null) return '';
@@ -119,9 +140,10 @@ function extractQrTransactionId(response: DepositResponse): string {
 
 export function DepositModal({ open, onOpenChange, account }: DepositModalProps) {
   const t = useTranslations('deposit');
+  const tErrors = useTranslations('errorCodes');
   const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
-  const { showSuccess } = useToast();
+  const { showSuccess, showWarning } = useToast();
 
   const [step, setStep] = useState<Step>(1);
 
@@ -135,10 +157,14 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
 
   // Step 3
-  const [paymentCurrency, setPaymentCurrency] = useState<string>('');
+  // 对多 method 渠道（ExLinkGlobal / Help2Pay）该字段存的是 paymentMethod 的 hashId；
+  // 对其余渠道沿用旧语义，存的是 currencyId 的字符串。
+  const [selectedMethodKey, setSelectedMethodKey] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
   const [amountError, setAmountError] = useState<'' | 'required' | 'range' | 'integer'>('');
+  const [wirePaymentInfos, setWirePaymentInfos] = useState<PaymentInfo[]>([]);
+  const [jpyPaymentInfoError, setJpyPaymentInfoError] = useState(false);
 
   // Step 4 & 5
   const [depositResponse, setDepositResponse] = useState<DepositResponse | null>(null);
@@ -163,7 +189,33 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const isCreditCard = selectedGroup?.group === CREDIT_CARD_GROUP;
 
   // 是否是 ExLinkGlobal 渠道（按 type 字段判定）
+  // 仅用于 ExLink 专有的实时汇率覆盖逻辑
   const isExLinkGlobal = selectedGroup?.type === EXLINK_GLOBAL_TYPE;
+
+  // 是否是“多 PaymentMethod 行 + 单一入口”渠道（ExLinkGlobal / Help2Pay）。
+  // 这些渠道在 Step 1 只显示一个卡片，Step 3 通过 paymentMethods 下拉框选择具体 method。
+  const isMultiMethodGroup =
+    selectedGroup?.type !== undefined &&
+    (MULTI_METHOD_TYPES as readonly string[]).includes(selectedGroup.type);
+
+  const wireBankSelectOptions = useMemo<SelectOption[]>(
+    () =>
+      wirePaymentInfos.map((info) => ({
+        value: String(info.id),
+        label: formatWirePaymentInfoLabel(info),
+      })),
+    [wirePaymentInfos]
+  );
+
+  const depositErrorMessage = useMemo(() => {
+    const err = depositResponse?.error;
+    if (!err) return t('guide.error');
+    if (err.startsWith('__')) {
+      const translated = tErrors(err);
+      if (translated && !translated.startsWith('errorCodes.')) return translated;
+    }
+    return err;
+  }, [depositResponse?.error, t, tErrors]);
 
   // Step 1: 加载支付渠道
   useEffect(() => {
@@ -186,7 +238,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       setGroups([]);
       setSelectedGroup(null);
       setGroupInfo(null);
-      setPaymentCurrency('');
+      setSelectedMethodKey('');
       setAmount('');
       setDynamicFields({});
       setAmountError('');
@@ -197,6 +249,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       setIsPaidConfirmed(false);
       setCountDown(0);
       setIsExpired(false);
+      setWirePaymentInfos([]);
+      setJpyPaymentInfoError(false);
     }, 200);
   }, [onOpenChange]);
 
@@ -218,6 +272,11 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
 
       // ExLink Global 渠道：用 ExLink 实时汇率覆盖 currencyRates（保留汇率展示）
       const exLink = selectedGroup.type === EXLINK_GLOBAL_TYPE;
+      // 多 method 渠道（ExLinkGlobal / Help2Pay）：Step 3 下拉项来自 paymentMethods，
+      // 选中值用 hashId 而非 currencyId（Help2Pay 两条 IDR 行需要分别可选）。
+      const multiMethod =
+        selectedGroup.type !== undefined &&
+        (MULTI_METHOD_TYPES as readonly string[]).includes(selectedGroup.type);
 
       if (exLink) {
         try {
@@ -251,17 +310,17 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
           )
         );
       }
-      // 自动选中支付币种：
-      // - ExLinkGlobal：优先按 paymentMethods 决定（每个币种一份独立配置）
-      // - 其他渠道：沿用 currencyRates 的旧逻辑
-      if (exLink && info.paymentMethods?.length) {
+      // 自动选中初值：
+      // - 多 method 渠道（ExLinkGlobal / Help2Pay）：仅当只有 1 个 paymentMethod 时自动选中其 hashId。
+      // - 其他渠道：沿用 currencyRates 的旧逻辑，存储 currencyId 字符串。
+      if (multiMethod && info.paymentMethods?.length) {
         if (info.paymentMethods.length === 1) {
-          setPaymentCurrency(String(info.paymentMethods[0].currencyId));
+          setSelectedMethodKey(info.paymentMethods[0].hashId);
         }
       } else if (info.currencyRates?.length === 1) {
-        setPaymentCurrency(String(info.currencyRates[0].currencyId));
+        setSelectedMethodKey(String(info.currencyRates[0].currencyId));
       } else if (!info.currencyRates?.length && account.currencyId) {
-        setPaymentCurrency(String(account.currencyId));
+        setSelectedMethodKey(String(account.currencyId));
       }
       setStep(2);
     } finally {
@@ -269,31 +328,80 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     }
   }, [account, selectedGroup, execute]);
 
-  // 当前汇率
-  const currentRate = useMemo((): CurrencyRate | null => {
-    if (!groupInfo?.currencyRates?.length || !paymentCurrency) return null;
-    return groupInfo.currencyRates.find(
-      (r) => String(r.currencyId) === paymentCurrency
-    ) || null;
-  }, [groupInfo, paymentCurrency]);
-
-  // ExLinkGlobal：按所选币种命中的 paymentMethod 配置（提供 hashId / range）
+  // 多 method 渠道（ExLinkGlobal / Help2Pay）：按所选下拉项的 hashId 命中 paymentMethod 配置（提供 hashId / range / currencyId）
   const currentPaymentMethod = useMemo((): PaymentMethodConfig | null => {
-    if (!isExLinkGlobal || !groupInfo?.paymentMethods?.length || !paymentCurrency) return null;
+    if (!isMultiMethodGroup || !groupInfo?.paymentMethods?.length || !selectedMethodKey) return null;
     return (
-      groupInfo.paymentMethods.find(
-        (pm) => String(pm.currencyId) === paymentCurrency
-      ) || null
+      groupInfo.paymentMethods.find((pm) => pm.hashId === selectedMethodKey) || null
     );
-  }, [isExLinkGlobal, groupInfo, paymentCurrency]);
+  }, [isMultiMethodGroup, groupInfo, selectedMethodKey]);
 
-  // Step 3 支付币种下拉选项：
-  // - ExLinkGlobal：来源于 paymentMethods（label 优先用 paymentMethods.paymentMethodName）
-  // - 其他渠道：沿用 currencyRates，label 用币种名
+  const selectedCurrencyId = useMemo(() => {
+    if (currentPaymentMethod) return currentPaymentMethod.currencyId;
+    const n = Number(selectedMethodKey);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }, [currentPaymentMethod, selectedMethodKey]);
+
+  const isExLinkJpy = useMemo(
+    () => isExLinkGlobal && selectedCurrencyId === CurrencyTypes.JPY,
+    [isExLinkGlobal, selectedCurrencyId]
+  );
+
+  // ExLinkGlobal JPY: load verified Wire payment infos for KYC-bound bank selector
+  useEffect(() => {
+    if (!open || !isExLinkJpy) {
+      setWirePaymentInfos([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const result = await execute(getPaymentInfoList);
+      if (cancelled) return;
+      if (result.success && result.data) {
+        setWirePaymentInfos(
+          result.data.filter((x) => x.paymentPlatform === WIRE_PAYMENT_PLATFORM)
+        );
+      } else {
+        setWirePaymentInfos([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isExLinkJpy, execute]);
+
+  // Clear JPY-only paymentInfoId when currency is not JPY
+  useEffect(() => {
+    if (isExLinkJpy) return;
+    setJpyPaymentInfoError(false);
+    setDynamicFields((prev) => {
+      if (!prev.paymentInfoId) return prev;
+      const { paymentInfoId: _removed, ...rest } = prev;
+      return rest;
+    });
+  }, [isExLinkJpy]);
+
+  // 当前汇率：
+  // - 多 method 渠道：用 currentPaymentMethod.currencyId 反查 currencyRates。
+  // - 其他渠道：selectedMethodKey 本身就是 currencyId 字符串。
+  const currentRate = useMemo((): CurrencyRate | null => {
+    if (!groupInfo?.currencyRates?.length) return null;
+    const lookup = currentPaymentMethod
+      ? String(currentPaymentMethod.currencyId)
+      : selectedMethodKey;
+    if (!lookup) return null;
+    return groupInfo.currencyRates.find((r) => String(r.currencyId) === lookup) || null;
+  }, [groupInfo, currentPaymentMethod, selectedMethodKey]);
+
+  // Step 3 下拉选项：
+  // - 多 method 渠道：来源于 paymentMethods，value=hashId（Help2Pay 两条 IDR 行需要分别可选），label 优先用 paymentMethodName。
+  // - 其他渠道：沿用 currencyRates，value=currencyId 字符串，label 用币种名。
   const currencyOptions = useMemo<SelectOption[]>(() => {
-    if (isExLinkGlobal && groupInfo?.paymentMethods?.length) {
+    if (isMultiMethodGroup && groupInfo?.paymentMethods?.length) {
       return groupInfo.paymentMethods.map((pm) => ({
-        value: String(pm.currencyId),
+        value: pm.hashId,
         label: pm.paymentMethodName || getCurrencyName(pm.currencyId),
       }));
     }
@@ -301,24 +409,24 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       value: String(cr.currencyId),
       label: getCurrencyName(cr.currencyId),
     }));
-  }, [isExLinkGlobal, groupInfo, getCurrencyName]);
+  }, [isMultiMethodGroup, groupInfo, getCurrencyName]);
 
-  // 用于校验/展示的金额区间：ExLinkGlobal 跟随币种切换，其他渠道沿用 groupInfo.range
+  // 用于校验/展示的金额区间：多 method 渠道跟随当前 paymentMethod 切换，其他渠道沿用 groupInfo.range
   const activeRange = useMemo<[number, number] | undefined>(() => {
-    if (isExLinkGlobal) return currentPaymentMethod?.range;
+    if (isMultiMethodGroup) return currentPaymentMethod?.range;
     return groupInfo?.range;
-  }, [isExLinkGlobal, currentPaymentMethod, groupInfo]);
+  }, [isMultiMethodGroup, currentPaymentMethod, groupInfo]);
 
   // 当前展示的渠道名：
-  // - ExLinkGlobal 且已选中 paymentMethod -> 用 paymentMethod.paymentMethodName 替换 selectedGroup.paymentMethodName
-  // - ExLinkGlobal 但尚未选中币种 -> 退回 selectedGroup.group
+  // - 多 method 渠道（ExLinkGlobal / Help2Pay）且已选中 paymentMethod -> 用 paymentMethod.paymentMethodName
+  // - 多 method 渠道但尚未选中 -> 退回 selectedGroup.group（如 "ExLink Global"、"Help2Pay"）
   // - 其他渠道 -> selectedGroup.paymentMethodName
   const displayMethodName = useMemo<string>(() => {
-    if (isExLinkGlobal) {
+    if (isMultiMethodGroup) {
       return currentPaymentMethod?.paymentMethodName || selectedGroup?.group || '';
     }
     return selectedGroup?.paymentMethodName || '';
-  }, [isExLinkGlobal, currentPaymentMethod, selectedGroup]);
+  }, [isMultiMethodGroup, currentPaymentMethod, selectedGroup]);
 
   // 汇率换算
   useEffect(() => {
@@ -364,12 +472,12 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     return true;
   }, [activeRange, account]);
 
-  // ExLinkGlobal 切换币种 -> range 改变，需要立即重新校验已有金额
+  // 多 method 渠道切换 paymentMethod -> range 改变，需要立即重新校验已有金额
   useEffect(() => {
-    if (!isExLinkGlobal) return;
+    if (!isMultiMethodGroup) return;
     if (!amount) return;
     validateAmount(amount);
-  }, [isExLinkGlobal, currentPaymentMethod, amount, validateAmount]);
+  }, [isMultiMethodGroup, currentPaymentMethod, amount, validateAmount]);
 
   // 可见的动态字段
   const visibleRequestKeys = useMemo(() => {
@@ -378,17 +486,44 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     );
   }, [groupInfo]);
 
+  const validateJpyBeforeProceed = useCallback((): boolean => {
+    if (!isExLinkJpy) return true;
+    if (wirePaymentInfos.length === 0) {
+      showWarning(t('fill.jpy.noVerifiedWireBankInfo'));
+      return false;
+    }
+    if (!dynamicFields.paymentInfoId?.trim()) {
+      setJpyPaymentInfoError(true);
+      showWarning(t('fill.jpy.bankRequired'));
+      return false;
+    }
+    setJpyPaymentInfoError(false);
+    return true;
+  }, [isExLinkJpy, wirePaymentInfos.length, dynamicFields.paymentInfoId, showWarning, t]);
+
   // Step 3 是否可前进（信用卡的字段校验在 CreditCardForm.validate 内部完成）
   const canProceedStep3 = useMemo(() => {
     if (!amount || Number(amount) <= 0) return false;
     if (amountError) return false;
+    if (isExLinkJpy) {
+      if (wirePaymentInfos.length === 0) return false;
+      if (!dynamicFields.paymentInfoId?.trim()) return false;
+    }
     if (!isCreditCard) {
       for (const key of visibleRequestKeys) {
         if (!dynamicFields[key]?.trim()) return false;
       }
     }
     return true;
-  }, [amount, amountError, isCreditCard, visibleRequestKeys, dynamicFields]);
+  }, [
+    amount,
+    amountError,
+    isCreditCard,
+    isExLinkJpy,
+    wirePaymentInfos.length,
+    visibleRequestKeys,
+    dynamicFields,
+  ]);
 
   const qrCodeImageSrc = useMemo(
     () => (depositResponse?.textForQrCode ? getBase64ImageDataUrl(depositResponse.textForQrCode) : ''),
@@ -478,16 +613,20 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     if (!account || !groupInfo || !selectedGroup) return;
 
     const numAmount = Number(amount);
+    // 多 method 渠道：currencyId 来自当前 paymentMethod；其他渠道：selectedMethodKey 即 currencyId 字符串
+    const resolvedCurrencyId = currentPaymentMethod
+      ? currentPaymentMethod.currencyId
+      : Number(selectedMethodKey) || account.currencyId;
     const requestData: Record<string, string | number> = {
       ...dynamicFields,
       amount: numAmount,
-      currencyId: Number(paymentCurrency) || account.currencyId,
+      currencyId: resolvedCurrencyId,
       returnUrl: typeof window !== 'undefined' ? window.location.href : '',
     };
 
-    // ExLinkGlobal 的 hashId 由当前所选币种命中的 paymentMethod 决定，
+    // 多 method 渠道（ExLinkGlobal / Help2Pay）的 hashId 由当前所选 paymentMethod 决定，
     // 其他渠道沿用 groupInfo 顶层 hashId
-    const hashId = isExLinkGlobal && currentPaymentMethod
+    const hashId = isMultiMethodGroup && currentPaymentMethod
       ? currentPaymentMethod.hashId
       : groupInfo.hashId;
 
@@ -529,7 +668,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
         setStep(5);
       }
     }
-  }, [account, groupInfo, selectedGroup, amount, dynamicFields, paymentCurrency, isExLinkGlobal, currentPaymentMethod, execute]);
+  }, [account, groupInfo, selectedGroup, amount, dynamicFields, selectedMethodKey, isMultiMethodGroup, currentPaymentMethod, execute]);
 
   // Stepper 配置
   const stepperSteps = useMemo(() => [
@@ -670,18 +809,18 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 <h3 className="text-base font-semibold text-text-primary">
                   {t('fill.depositTo')}
                 </h3>
-                {/* 支付币种 */}
+                {/* 多 method 渠道（Help2Pay / ExLinkGlobal）选的是 paymentMethod；其他渠道选的是 currency */}
                 {currencyOptions.length > 0 && (
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center text-sm font-medium text-text-secondary">
                       <span className="mr-1 text-primary">*</span>
-                      {displayMethodName}{t('fill.currency')}
+                      {selectedGroup?.group || ''}{isMultiMethodGroup ? t('fill.paymentMethod') : t('fill.currency')}
                     </label>
                     <SimpleSelect
-                      value={paymentCurrency}
-                      onChange={setPaymentCurrency}
+                      value={selectedMethodKey}
+                      onChange={setSelectedMethodKey}
                       options={currencyOptions}
-                      placeholder={t('fill.selectCurrency')}
+                      placeholder={isMultiMethodGroup ? t('fill.selectPaymentMethod') : t('fill.selectCurrency')}
                       disabled={currencyOptions.length === 1}
                       triggerSize="md"
                       className="w-full bg-input-bg"
@@ -703,7 +842,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       }}
                       onBlur={() => amount && validateAmount(amount)}
                       placeholder="0"
-                      disabled={!paymentCurrency}
+                      disabled={!selectedMethodKey}
                       error={
                         amountError === 'required'
                           ? t('error.amountRequired')
@@ -738,6 +877,87 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                   )}
                 </div>
 
+                {/* ExLinkGlobal JPY H2H: KYC-bound Wire bank account */}
+                {!isCreditCard && isExLinkJpy && (
+                  <div className="flex flex-col gap-3">
+                    <div
+                      className="flex items-start gap-2 rounded-lg px-3.5 py-2.5 text-[13px] leading-normal"
+                      style={{ backgroundColor: '#ffecec', color: '#9f005b' }}
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        className="mt-0.5 shrink-0"
+                        aria-hidden
+                      >
+                        <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2" />
+                        <text
+                          x="10"
+                          y="14"
+                          textAnchor="middle"
+                          fontSize="11"
+                          fontWeight="600"
+                          fill="currentColor"
+                        >
+                          i
+                        </text>
+                      </svg>
+                      <span>{t('fill.jpy.kycWarning')}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center text-sm font-medium text-text-secondary">
+                        <span className="mr-1 text-primary">*</span>
+                        {t('fill.jpy.kycBoundBankAccount')}
+                      </label>
+
+                      {wireBankSelectOptions.length > 0 ? (
+                        <SimpleSelect
+                          value={dynamicFields.paymentInfoId || ''}
+                          onChange={(val) => {
+                            setDynamicFields((prev) => ({ ...prev, paymentInfoId: val }));
+                            if (val) setJpyPaymentInfoError(false);
+                          }}
+                          options={wireBankSelectOptions}
+                          placeholder={t('fill.jpy.selectKycBoundBankAccount')}
+                          triggerSize="md"
+                          className="w-full bg-input-bg"
+                        />
+                      ) : (
+                        <div className="flex items-start gap-2 rounded-lg bg-surface-secondary px-3 py-3 text-sm text-text-secondary">
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            className="mt-0.5 shrink-0 text-primary"
+                            aria-hidden
+                          >
+                            <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="2" />
+                            <text
+                              x="10"
+                              y="14"
+                              textAnchor="middle"
+                              fontSize="11"
+                              fontWeight="600"
+                              fill="currentColor"
+                            >
+                              i
+                            </text>
+                          </svg>
+                          <span>{t('fill.jpy.noVerifiedWireBankInfo')}</span>
+                        </div>
+                      )}
+
+                      {jpyPaymentInfoError && (
+                        <p className="error-text mt-1 text-sm">{t('fill.jpy.bankRequired')}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* 信用卡专用表单 */}
                 {isCreditCard && (
                   <CreditCardForm
@@ -753,18 +973,50 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                 {/* 通用动态表单字段（非信用卡） */}
                 {!isCreditCard && visibleRequestKeys.length > 0 && (
                   <div className="grid grid-cols-2 gap-4">
-                    {visibleRequestKeys.map((key) => (
-                      <Input
-                        key={key}
-                        label={t(`requestKeys.${key}`, { defaultMessage: key })}
-                        required
-                        inputSize="md"
-                        value={dynamicFields[key] || ''}
-                        onChange={(e) =>
-                          setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
-                        }
-                      />
-                    ))}
+                    {visibleRequestKeys.map((key) => {
+                      const label = t(`requestKeys.${key}`, { defaultMessage: key });
+                      // Help2Pay 的 `bank` 字段：当前 (channel x currency) 行带白名单时，
+                      // 用 "CODE - Name" 下拉选择，避免用户手填触发后端
+                      // __HELP2PAY_BANK_NOT_SUPPORTED__ 等校验失败。
+                      if (key === 'bank' && currentPaymentMethod?.banks?.length) {
+                        // Legacy DB rows (pre-name migration) come back with name === code;
+                        // showing "MBB - MBB" is noisy, so collapse to the code alone in that case.
+                        const bankOptions: SelectOption[] = currentPaymentMethod.banks.map((b) => ({
+                          value: b.code,
+                          label: b.name && b.name !== b.code ? `${b.code} - ${b.name}` : b.code,
+                        }));
+                        return (
+                          <div key={key} className="flex flex-col gap-1">
+                            <label className="flex items-center text-sm font-medium text-text-secondary">
+                              <span className="mr-1 text-primary">*</span>
+                              {label}
+                            </label>
+                            <SimpleSelect
+                              value={dynamicFields[key] || ''}
+                              onChange={(val) =>
+                                setDynamicFields((prev) => ({ ...prev, [key]: val }))
+                              }
+                              options={bankOptions}
+                              placeholder={t('fill.selectBank', { defaultMessage: label })}
+                              triggerSize="md"
+                              className="w-full bg-input-bg"
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <Input
+                          key={key}
+                          label={label}
+                          required
+                          inputSize="md"
+                          value={dynamicFields[key] || ''}
+                          onChange={(e) =>
+                            setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -962,7 +1214,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       </div>
                     </div>
                     <p className="text-sm error-text">
-                      {depositResponse.error || t('guide.error')}
+                      {depositErrorMessage}
                     </p>
                   </div>
                 )}
@@ -1026,6 +1278,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                       setStep(3);
                     } else if (step === 3) {
                       if (!validateAmount(amount) || !canProceedStep3) return;
+                      if (!validateJpyBeforeProceed()) return;
                       // 信用卡渠道额外校验信用卡表单
                       if (isCreditCard) {
                         const validated = creditCardFormRef.current?.validate();

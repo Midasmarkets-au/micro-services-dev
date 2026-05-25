@@ -1208,6 +1208,9 @@
       "depositTo": "Deposit ke akaun semasa",
       "currency": "Mata wang",
       "selectCurrency": "Sila pilih mata wang",
+      "paymentMethod": "Kaedah Pembayaran",
+      "selectPaymentMethod": "Sila pilih kaedah pembayaran",
+      "selectBank": "Sila pilih bank",
       "amount": "Jumlah",
       "amountHint": "Jumlah",
       "depositAmount": "Jumlah deposit",
@@ -1285,7 +1288,12 @@
       "ccNumber": "Nombor Kad",
       "ccMonth": "Bulan Tamat",
       "ccYear": "Tahun Tamat",
-      "ccCvc": "CVC"
+      "ccCvc": "CVC",
+      "bank": "Bank",
+      "payerAccountName": "Nama Pembayar",
+      "payerAccountNumber": "Nombor Akaun Pembayar",
+      "payerAccountNameLocal": "Nama Pembayar (Bahasa Tempatan)",
+      "payerPhoneNumber": "Nombor Telefon Pembayar"
     },
     "action": {
       "close": "Tutup",

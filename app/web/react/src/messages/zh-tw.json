@@ -1208,6 +1208,9 @@
       "depositTo": "存入當前帳戶",
       "currency": "貨幣",
       "selectCurrency": "請選擇貨幣",
+      "paymentMethod": "支付方式",
+      "selectPaymentMethod": "請選擇支付方式",
+      "selectBank": "請選擇銀行",
       "amount": "金額",
       "amountHint": "金額",
       "depositAmount": "存款金額",
@@ -1285,7 +1288,12 @@
       "ccNumber": "卡號",
       "ccMonth": "到期月份",
       "ccYear": "到期年份",
-      "ccCvc": "CVC"
+      "ccCvc": "CVC",
+      "bank": "銀行",
+      "payerAccountName": "付款人帳戶姓名",
+      "payerAccountNumber": "付款人帳號",
+      "payerAccountNameLocal": "付款人帳戶姓名（本地語言）",
+      "payerPhoneNumber": "付款人手機號碼"
     },
     "action": {
       "close": "關閉",

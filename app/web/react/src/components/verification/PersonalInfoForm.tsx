@@ -17,7 +17,7 @@ import {
   formatDateForApi,
   SearchableSelect,
 } from '@/components/ui';
-import { getRegionCodes } from '@/core/data/phonesData';
+import { getRegionCodes, getDataByCode } from '@/core/data/phonesData';
 import { SubStepNav, type SubStep } from './SubStepNav';
 import { VerificationFormLayout } from './VerificationFormLayout';
 import { genderOptions, idTypeOptions, type InfoData } from '@/types/verification';
@@ -29,6 +29,9 @@ const infoSchema = z.object({
   gender: z.string().min(1, 'required'),
   birthday: z.date().optional(),
   citizen: z.string().min(1, 'required'),
+  ccc: z.string().min(1, 'required'),
+  phone: z.string().min(1, 'required'),
+  email: z.string().email('invalid email'),
   address: z.string().min(1, 'required'),
   // 身份证件
   idType: z.number().min(1, 'required'),
@@ -86,7 +89,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
   // 当前激活的子步骤（滚动同步）
   const [activeSubStep, setActiveSubStep] = useState<SubStep>('personal');
 
-  // 获取国家列表
+  // 获取国家列表 & 手机区号列表
   const regionsData = useMemo(() => getRegionCodes(), []);
   const countryOptions = useMemo(
     () =>
@@ -96,6 +99,23 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
       })),
     [regionsData]
   );
+  const phoneOptions = useMemo(
+    () =>
+      Object.entries(regionsData).map(([code, country]) => ({
+        value: code,
+        label: `${country.name} +${country.dialCode}`,
+        dialCode: String(country.dialCode),
+      })),
+    [regionsData]
+  );
+
+  // 根据 countryCode 解析默认区号
+  const defaultCountryCode = initialData?.citizen || storeUser?.countryCode || '';
+  const defaultCcc = useMemo(() => {
+    if (initialData?.ccc) return initialData.ccc;
+    const data = getDataByCode(defaultCountryCode.toLowerCase());
+    return data.dialCode ? String(data.dialCode) : '';
+  }, [initialData?.ccc, defaultCountryCode]);
 
   const {
     register,
@@ -110,6 +130,9 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
       gender: initialData?.gender || '',
       birthday: initialData?.birthday ? new Date(initialData.birthday) : undefined,
       citizen: initialData?.citizen || storeUser?.countryCode || '',
+      ccc: defaultCcc,
+      phone: initialData?.phone || storeUser?.phoneNumber || '',
+      email: initialData?.email || storeUser?.email || '',
       address: initialData?.address || '',
       idType: initialData?.idType || 1,
       idNumber: initialData?.idNumber || '',
@@ -304,6 +327,53 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                   />
                 </div>
                 <div className="hidden md:block" /> {/* 占位 - 仅桌面端显示 */}
+              </div>
+
+              {/* 手机区号 + 手机号 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+                <div className="flex flex-col gap-2">
+                  <FieldLabel required>{t('fields.phoneCode')}</FieldLabel>
+                  <Controller
+                    name="ccc"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableSelect
+                        options={phoneOptions}
+                        value={phoneOptions.find((opt) => opt.dialCode === field.value) || null}
+                        onChange={(option: unknown) => {
+                          const selected = option as { dialCode: string } | null;
+                          field.onChange(selected?.dialCode || '');
+                        }}
+                        error={errors.ccc?.message ? t('errors.required') : undefined}
+                        errorPosition="bottom"
+                        placeholder={t('placeholders.selectPhoneCode')}
+                      />
+                    )}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <FieldLabel required>{t('fields.phone')}</FieldLabel>
+                  <Input
+                    placeholder={t('placeholders.phone')}
+                    error={errors.phone?.message ? t('errors.required') : undefined}
+                    errorPosition="bottom"
+                    {...register('phone')}
+                  />
+                </div>
+              </div>
+
+              {/* 邮箱 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+                <div className="flex flex-col gap-2">
+                  <FieldLabel required>{t('fields.email')}</FieldLabel>
+                  <Input
+                    placeholder={t('placeholders.email')}
+                    error={errors.email?.message ? t('errors.required') : undefined}
+                    errorPosition="bottom"
+                    {...register('email')}
+                  />
+                </div>
+                <div className="hidden md:block" />
               </div>
 
               {/* 地址 */}
