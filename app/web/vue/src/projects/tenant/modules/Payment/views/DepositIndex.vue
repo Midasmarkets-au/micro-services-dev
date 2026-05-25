@@ -168,9 +168,9 @@
                     {{ item.payment.id }}
                   </td>
                   <td>
-                    {{ item.payment.number.substring(3) }}
+                    {{ formatPaymentNumber(item.payment.number) }}
                     <TinyCopyBox
-                      :val="item.payment.number.substring(3)"
+                      :val="formatPaymentNumber(item.payment.number)"
                     ></TinyCopyBox>
                   </td>
                   <td>
@@ -326,6 +326,7 @@
 </template>
 <script setup lang="ts">
 import MsgPrompt from "@/core/plugins/MsgPrompt";
+import { formatPaymentNumber } from "@/core/utils/PaymentNumberUtils";
 import CommentsView from "@/projects/tenant/components/CommentView.vue";
 import TenantGlobalInjectionKeys from "@/core/types/TenantGlobalInjectionKeys";
 import UploadDepositReceiptModal from "../modal/UploadDepositReceiptModal.vue";
