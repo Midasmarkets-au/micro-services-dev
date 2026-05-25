@@ -700,7 +700,10 @@
     "CODE_ALREADY_SENT": "Kod pengesahan telah dihantar. Sila semak e-mel anda",
     "electronicIdentityVerificationRequired": "Pengesahan identiti elektronik adalah wajib. Sila pilih bersetuju dan teruskan.",
     "Too_many_pending_deposits": "Terlalu banyak deposit yang belum selesai, sila hubungi perkhidmatan pelanggan",
-    "EuPayment": "Pembayaran EU belum dikonfigurasi, sila hubungi perkhidmatan pelanggan"
+    "EuPayment": "Pembayaran EU belum dikonfigurasi, sila hubungi perkhidmatan pelanggan",
+    "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
+    "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
   },
   "platforms": {
     "title": "Platform dagangan",
@@ -1214,7 +1217,14 @@
       "amount": "Jumlah",
       "amountHint": "Jumlah",
       "depositAmount": "Jumlah deposit",
-      "exchangeRate": "Kadar pertukaran"
+      "exchangeRate": "Kadar pertukaran",
+      "jpy": {
+        "kycWarning": "Payment can only be made from the bound real-name account, otherwise the deposit will fail.",
+        "kycBoundBankAccount": "KYC-bound bank account",
+        "selectKycBoundBankAccount": "Select your KYC-bound bank account",
+        "noVerifiedWireBankInfo": "No verified bank account on file. Please add a Wire bank account in your profile before depositing.",
+        "bankRequired": "Please select your KYC-bound bank account"
+      }
     },
     "verify": {
       "title": "Sahkan butiran deposit",

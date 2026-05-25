@@ -700,7 +700,10 @@
     "CODE_ALREADY_SENT": "인증 코드가 이미 전송되었습니다. 이메일을 확인해 주세요",
     "electronicIdentityVerificationRequired": "전자 신원 확인은 필수입니다. 동의를 선택한 후 계속 진행해 주세요.",
     "Too_many_pending_deposits": "보류 중인 입금이 너무 많습니다. 고객 서비스에 문의해 주세요.",
-    "EuPayment": "EU 결제가 구성되지 않았습니다. 고객 서비스에 문의해 주세요."
+    "EuPayment": "EU 결제가 구성되지 않았습니다. 고객 서비스에 문의해 주세요.",
+    "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
+    "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
   },
   "platforms": {
     "title": "거래 플랫폼",
@@ -1214,7 +1217,14 @@
       "amount": "금액",
       "amountHint": "금액",
       "depositAmount": "입금 금액",
-      "exchangeRate": "환율"
+      "exchangeRate": "환율",
+      "jpy": {
+        "kycWarning": "Payment can only be made from the bound real-name account, otherwise the deposit will fail.",
+        "kycBoundBankAccount": "KYC-bound bank account",
+        "selectKycBoundBankAccount": "Select your KYC-bound bank account",
+        "noVerifiedWireBankInfo": "No verified bank account on file. Please add a Wire bank account in your profile before depositing.",
+        "bankRequired": "Please select your KYC-bound bank account"
+      }
     },
     "verify": {
       "title": "입금 상세 확인",

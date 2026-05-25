@@ -700,7 +700,10 @@
     "CODE_ALREADY_SENT": "驗證碼已發送，請檢查您的電子郵件",
     "electronicIdentityVerificationRequired": "電子身份驗證為必選項，請選擇同意後繼續。",
     "Too_many_pending_deposits": "過多的待處理入金，請聯繫您的客戶經理",
-    "EuPayment": "EU支付未配置，請聯繫客服"
+    "EuPayment": "EU支付未配置，請聯繫客服",
+    "__JPY_KYC_BANK_REQUIRED__": "請選擇已實名認證的銀行賬戶",
+    "__JPY_KYC_BANK_INVALID__": "所選賬戶不是有效的實名認證銀行賬戶",
+    "__JPY_KYC_EMAIL_REQUIRED__": "JPY 入金需要已綁定的電子郵件"
   },
   "platforms": {
     "title": "交易平台",
@@ -1214,7 +1217,14 @@
       "amount": "金額",
       "amountHint": "金額",
       "depositAmount": "存款金額",
-      "exchangeRate": "匯率"
+      "exchangeRate": "匯率",
+      "jpy": {
+        "kycWarning": "僅限使用該綁定的實名賬戶付款，否則一律失敗。",
+        "kycBoundBankAccount": "實名認證銀行賬戶",
+        "selectKycBoundBankAccount": "選擇已實名認證的銀行賬戶",
+        "noVerifiedWireBankInfo": "您尚未綁定銀行賬戶，請先在「個人資料」中新增銀行賬戶後再進行入金。",
+        "bankRequired": "請選擇已實名認證的銀行賬戶"
+      }
     },
     "verify": {
       "title": "確認入金詳情",
