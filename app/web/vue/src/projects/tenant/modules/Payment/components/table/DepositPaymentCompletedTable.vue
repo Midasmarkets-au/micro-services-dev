@@ -69,11 +69,11 @@
                 viewComments(
                   CommentType.Deposit,
                   item.id,
-                  item.payment.number.substring(3)
+                  formatPaymentNumber(item.payment.number)
                 )
               "
             >
-              {{ item.payment.number.substring(3)
+              {{ formatPaymentNumber(item.payment.number)
               }}<i
                 v-if="item.hasComment"
                 class="fa-regular fa-comment-dots text-primary"
@@ -202,6 +202,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, inject } from "vue";
 import TableFooter from "@/components/TableFooter.vue";
+import { formatPaymentNumber } from "@/core/utils/PaymentNumberUtils";
 import PaymentService from "@/projects/tenant/modules/Payment/services/PaymentService";
 import { TransactionStateType } from "@/core/types/StateInfos";
 import { ActionType } from "@/core/types/Actions";
