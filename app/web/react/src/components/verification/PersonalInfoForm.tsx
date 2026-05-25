@@ -27,7 +27,7 @@ const infoSchema = z.object({
   firstName: z.string().min(1, 'required'),
   lastName: z.string().min(1, 'required'),
   gender: z.string().min(1, 'required'),
-  birthday: z.date().optional(),
+  birthday: z.date(),
   citizen: z.string().min(1, 'required'),
   ccc: z.string().min(1, 'required'),
   phone: z.string().min(1, 'required'),
@@ -127,14 +127,14 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
     defaultValues: {
       firstName: initialData?.firstName || storeUser?.firstName || '',
       lastName: initialData?.lastName || storeUser?.lastName || '',
-      gender: initialData?.gender || '',
+      gender: initialData?.gender || undefined,
       birthday: initialData?.birthday ? new Date(initialData.birthday) : undefined,
       citizen: initialData?.citizen || storeUser?.countryCode || '',
       ccc: defaultCcc,
       phone: initialData?.phone || storeUser?.phoneNumber || '',
       email: initialData?.email || storeUser?.email || '',
       address: initialData?.address || '',
-      idType: initialData?.idType || 1,
+      idType: initialData?.idType || undefined,
       idNumber: initialData?.idNumber || '',
       idIssuer: initialData?.idIssuer || '',
       idIssuedOn: initialData?.idIssuedOn ? new Date(initialData.idIssuedOn) : undefined,
@@ -263,7 +263,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     name="gender"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select value={field.value ?? ''} onValueChange={field.onChange}>
                         <SelectTrigger error={!!errors.gender}>
                           <SelectValue placeholder={t('placeholders.selectGender')} />
                         </SelectTrigger>
@@ -407,7 +407,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
                     control={control}
                     render={({ field }) => (
                       <Select
-                        value={String(field.value)}
+                        value={field.value != null ? String(field.value) : ''}
                         onValueChange={(val) => field.onChange(Number(val))}
                       >
                         <SelectTrigger error={!!errors.idType}>
