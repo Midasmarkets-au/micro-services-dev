@@ -1303,7 +1303,10 @@
       "payerAccountName": "Nama Pembayar",
       "payerAccountNumber": "Nomor Akun Pembayar",
       "payerAccountNameLocal": "Nama Pembayar (Bahasa Lokal)",
-      "payerPhoneNumber": "Nomor Telepon Pembayar"
+      "payerPhoneNumber": "Nomor Telepon Pembayar",
+      "city": "Kota",
+      "address": "Alamat",
+      "paymentInfoId": "Akun Pembayaran"
     },
     "action": {
       "close": "Tutup",
