@@ -1303,7 +1303,10 @@
       "payerAccountName": "Nama Pembayar",
       "payerAccountNumber": "Nombor Akaun Pembayar",
       "payerAccountNameLocal": "Nama Pembayar (Bahasa Tempatan)",
-      "payerPhoneNumber": "Nombor Telefon Pembayar"
+      "payerPhoneNumber": "Nombor Telefon Pembayar",
+      "city": "Bandar",
+      "address": "Alamat",
+      "paymentInfoId": "Akaun Penerima"
     },
     "action": {
       "close": "Tutup",
