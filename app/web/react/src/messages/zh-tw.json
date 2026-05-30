@@ -1303,7 +1303,10 @@
       "payerAccountName": "付款人帳戶姓名",
       "payerAccountNumber": "付款人帳號",
       "payerAccountNameLocal": "付款人帳戶姓名（本地語言）",
-      "payerPhoneNumber": "付款人手機號碼"
+      "payerPhoneNumber": "付款人手機號碼",
+      "city": "城市",
+      "address": "地址",
+      "paymentInfoId": "收款帳戶"
     },
     "action": {
       "close": "關閉",

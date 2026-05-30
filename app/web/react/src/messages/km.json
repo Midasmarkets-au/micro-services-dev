@@ -1303,7 +1303,10 @@
       "payerAccountName": "ឈ្មោះអ្នកបង់ប្រាក់",
       "payerAccountNumber": "លេខគណនីអ្នកបង់ប្រាក់",
       "payerAccountNameLocal": "ឈ្មោះអ្នកបង់ប្រាក់ (ភាសាស្រុក)",
-      "payerPhoneNumber": "លេខទូរស័ព្ទអ្នកបង់ប្រាក់"
+      "payerPhoneNumber": "លេខទូរស័ព្ទអ្នកបង់ប្រាក់",
+      "city": "ក្រុង",
+      "address": "អាសយដ្ឋាន",
+      "paymentInfoId": "គណនីទទួល"
     },
     "action": {
       "close": "បិទ",

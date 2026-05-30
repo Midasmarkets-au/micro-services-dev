@@ -1303,7 +1303,10 @@
       "payerAccountName": "送金者の口座名義",
       "payerAccountNumber": "送金者の口座番号",
       "payerAccountNameLocal": "送金者の口座名義（現地語）",
-      "payerPhoneNumber": "送金者の電話番号"
+      "payerPhoneNumber": "送金者の電話番号",
+      "city": "市区町村",
+      "address": "住所",
+      "paymentInfoId": "受取口座"
     },
     "action": {
       "close": "閉じる",
