@@ -30,7 +30,9 @@ public sealed class PaymentMethodDTO
     }
 
     /// <summary>
-    /// One ExLink Global deposit variant (tenant-configured rail). Used on deposit-group-info when group is ExLink Global.
+    /// One per-row deposit variant exposed to the client as a step-3 dropdown entry.
+    /// Used on deposit-group-info for groups that fan out into multiple rows
+    /// (ExLink Global per currency, Help2Pay per channel x currency).
     /// </summary>
     public sealed class ExLinkGlobalPaymentMethodInfo
     {
@@ -38,6 +40,19 @@ public sealed class PaymentMethodDTO
         public string HashId { get; set; } = null!;
         public long[] Range { get; set; } = null!;
         public string PaymentMethodName { get; set; } = null!;
+
+        /// <summary>
+        /// Optional per-row bank whitelist (Help2Pay only). Null/empty for ExLink Global and other
+        /// platforms that don't surface a payer-bank dropdown. The client renders this as the
+        /// `bank` request-key dropdown ("CODE - Name") when populated.
+        /// </summary>
+        public List<BankOption>? Banks { get; set; }
+    }
+
+    public sealed class BankOption
+    {
+        public string Code { get; set; } = null!;
+        public string Name { get; set; } = null!;
     }
 
     public sealed class GroupInfo
