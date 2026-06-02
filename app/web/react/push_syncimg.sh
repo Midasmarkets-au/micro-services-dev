@@ -1,4 +1,4 @@
-aws s3 sync images s3://mm-front-public/images
+aws s3 sync public/images s3://mm-front-public/images
 
 
 #docker build -f app/web/react/Dockerfile -t front-portal --build-arg PROJECT_NAME=tenant app/web/react/
