@@ -11,9 +11,12 @@ import {
   getDefaultClassNames,
   type DayButton,
   type Locale,
+  type MonthCaptionProps,
 } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from './Button';
+
+type DrillView = 'days' | 'months' | 'years';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: 'ghost' | 'outline' | 'secondary';
@@ -31,14 +34,92 @@ function Calendar({
   ...props
 }: CalendarProps) {
   const defaultClassNames = getDefaultClassNames();
+  const isDrillDown = captionLayout === 'label';
+
+  const [view, setView] = React.useState<DrillView>('days');
+  const [viewDate, setViewDate] = React.useState<Date>(
+    () => props.month ?? props.defaultMonth ?? new Date()
+  );
+
+  React.useEffect(() => {
+    if (props.month) setViewDate(props.month);
+  }, [props.month]);
+
+  const handleMonthChange = React.useCallback(
+    (month: Date) => {
+      setViewDate(month);
+      props.onMonthChange?.(month);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [props.onMonthChange]
+  );
+
+  const containerClass = cn(
+    'p-3 [--cell-size:2.25rem] [--cell-radius:var(--radius-sm)]',
+    className
+  );
+
+  const navBtnClass = cn(
+    buttonVariants({ variant: bv }),
+    'size-(--cell-size) p-0 select-none disabled:opacity-50',
+  );
+
+  // ── 月份 / 年份视图（仅 drill-down 模式）──────────────
+  if (isDrillDown && view !== 'days') {
+    return (
+      <div data-slot="calendar" className={cn('w-fit', containerClass)}>
+        {view === 'months' ? (
+          <MonthsView
+            viewDate={viewDate}
+            locale={locale}
+            startMonth={props.startMonth}
+            endMonth={props.endMonth}
+            navBtnClass={navBtnClass}
+            onSelect={(monthIdx) => {
+              const next = new Date(viewDate.getFullYear(), monthIdx, 1);
+              setViewDate(next);
+              handleMonthChange(next);
+              setView('days');
+            }}
+            onYearClick={() => setView('years')}
+            onYearChange={(delta) => {
+              setViewDate(
+                (prev) => new Date(prev.getFullYear() + delta, prev.getMonth(), 1)
+              );
+            }}
+          />
+        ) : (
+          <YearsView
+            viewDate={viewDate}
+            startMonth={props.startMonth}
+            endMonth={props.endMonth}
+            navBtnClass={navBtnClass}
+            onSelect={(year) => {
+              setViewDate(
+                (prev) => new Date(year, prev.getMonth(), 1)
+              );
+              setView('months');
+            }}
+            onGroupChange={(delta) => {
+              setViewDate(
+                (prev) => new Date(prev.getFullYear() + delta * 10, prev.getMonth(), 1)
+              );
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ── 日期视图 ──────────────────────────────────────────
+  const drillMonthProps = isDrillDown
+    ? { month: viewDate, onMonthChange: handleMonthChange }
+    : {};
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn(
-        'p-3 [--cell-size:2.25rem] [--cell-radius:var(--radius-sm)]',
-        className
-      )}
+      className={containerClass}
       captionLayout={captionLayout}
       locale={locale}
       formatters={{
@@ -123,12 +204,224 @@ function Calendar({
           return <ChevronDownIcon className={cn('size-4', chevCn)} {...chevProps} />;
         },
         DayButton: (dayBtnProps) => <CalendarDayButton locale={locale} {...dayBtnProps} />,
+        ...(isDrillDown
+          ? {
+              MonthCaption: (captionProps: MonthCaptionProps) => {
+                const { calendarMonth, displayIndex: _idx, ...divProps } = captionProps;
+                void _idx;
+                const d = calendarMonth?.date ?? viewDate;
+                const fmt = new Intl.DateTimeFormat(locale?.code, { year: 'numeric', month: 'long' });
+                const parts = fmt.formatToParts(d);
+                const yearFirst = parts.findIndex(p => p.type === 'year') < parts.findIndex(p => p.type === 'month');
+                const yearLabel = new Intl.DateTimeFormat(locale?.code, { year: 'numeric' }).format(d);
+                const monthLabel = new Intl.DateTimeFormat(locale?.code, { month: 'long' }).format(d);
+                const btnClass = 'text-sm font-medium text-text-primary hover:text-(--color-primary) cursor-pointer select-none transition-colors';
+                const yearBtn = (
+                  <button key="y" type="button" onClick={() => setView('years')} className={btnClass}>
+                    {yearLabel}
+                  </button>
+                );
+                const monthBtn = (
+                  <button key="m" type="button" onClick={() => setView('months')} className={btnClass}>
+                    {monthLabel}
+                  </button>
+                );
+                return (
+                  <div {...divProps}>
+                    <span className="relative z-10 inline-flex items-center gap-1">
+                      {yearFirst ? <>{yearBtn}{monthBtn}</> : <>{monthBtn}{yearBtn}</>}
+                    </span>
+                  </div>
+                );
+              },
+            }
+          : {}),
         ...components,
       }}
       {...props}
+      {...drillMonthProps}
     />
   );
 }
+
+// ─── 月份选择视图 ───────────────────────────────────────
+
+interface MonthsViewProps {
+  viewDate: Date;
+  locale?: Partial<Locale>;
+  startMonth?: Date;
+  endMonth?: Date;
+  navBtnClass: string;
+  onSelect: (monthIdx: number) => void;
+  onYearClick: () => void;
+  onYearChange: (delta: number) => void;
+}
+
+function MonthsView({
+  viewDate,
+  locale,
+  startMonth,
+  endMonth,
+  navBtnClass,
+  onSelect,
+  onYearClick,
+  onYearChange,
+}: MonthsViewProps) {
+  const year = viewDate.getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const canPrev = !startMonth || year > startMonth.getFullYear();
+  const canNext = !endMonth || year < endMonth.getFullYear();
+
+  const yearLabel = new Intl.DateTimeFormat(locale?.code, { year: 'numeric' }).format(
+    new Date(year, 0)
+  );
+
+  return (
+    <div className="flex flex-col gap-4" style={{ minWidth: 'calc(7 * var(--cell-size))' }}>
+      <div className="relative flex h-(--cell-size) items-center justify-between">
+        <button
+          type="button"
+          disabled={!canPrev}
+          onClick={() => onYearChange(-1)}
+          className={navBtnClass}
+        >
+          <ChevronLeftIcon className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onYearClick}
+          className="text-sm font-medium text-text-primary hover:text-(--color-primary) cursor-pointer select-none transition-colors"
+        >
+          {yearLabel}
+        </button>
+        <button
+          type="button"
+          disabled={!canNext}
+          onClick={() => onYearChange(1)}
+          className={navBtnClass}
+        >
+          <ChevronRightIcon className="size-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-y-1 gap-x-1">
+        {Array.from({ length: 12 }, (_, i) => {
+          const label = new Date(year, i, 1).toLocaleString(locale?.code, {
+            month: 'short',
+          });
+          const isDisabled =
+            (startMonth != null && new Date(year, i + 1, 0) < startMonth) ||
+            (endMonth != null && new Date(year, i, 1) > endMonth);
+          const isCurrent = year === currentYear && i === currentMonth;
+
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => onSelect(i)}
+              className={cn(
+                'rounded-md py-2.5 text-sm transition-colors cursor-pointer',
+                'hover:bg-(--color-surface-secondary)',
+                isCurrent && 'font-semibold text-(--color-primary)',
+                isDisabled && 'opacity-30 cursor-not-allowed hover:bg-transparent',
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── 年份选择视图 ───────────────────────────────────────
+
+interface YearsViewProps {
+  viewDate: Date;
+  startMonth?: Date;
+  endMonth?: Date;
+  navBtnClass: string;
+  onSelect: (year: number) => void;
+  onGroupChange: (delta: number) => void;
+}
+
+function YearsView({
+  viewDate,
+  startMonth,
+  endMonth,
+  navBtnClass,
+  onSelect,
+  onGroupChange,
+}: YearsViewProps) {
+  const year = viewDate.getFullYear();
+  const decadeStart = Math.floor(year / 10) * 10;
+  const currentYear = new Date().getFullYear();
+
+  const canPrev = !startMonth || decadeStart > startMonth.getFullYear();
+  const canNext = !endMonth || decadeStart + 9 < endMonth.getFullYear();
+
+  return (
+    <div className="flex flex-col gap-4" style={{ minWidth: 'calc(7 * var(--cell-size))' }}>
+      <div className="relative flex h-(--cell-size) items-center justify-between">
+        <button
+          type="button"
+          disabled={!canPrev}
+          onClick={() => onGroupChange(-1)}
+          className={navBtnClass}
+        >
+          <ChevronLeftIcon className="size-4" />
+        </button>
+        <span className="text-sm font-medium text-text-primary select-none">
+          {decadeStart} - {decadeStart + 9}
+        </span>
+        <button
+          type="button"
+          disabled={!canNext}
+          onClick={() => onGroupChange(1)}
+          className={navBtnClass}
+        >
+          <ChevronRightIcon className="size-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-4 gap-y-1 gap-x-1">
+        {Array.from({ length: 12 }, (_, i) => {
+          const y = decadeStart + i;
+          if (i >= 10) return <div key={i} />;
+
+          const isDisabled =
+            (startMonth != null && y < startMonth.getFullYear()) ||
+            (endMonth != null && y > endMonth.getFullYear());
+          const isCurrent = y === currentYear;
+
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => onSelect(y)}
+              className={cn(
+                'rounded-md py-2.5 text-sm transition-colors cursor-pointer',
+                'hover:bg-(--color-surface-secondary)',
+                isCurrent && 'font-semibold text-(--color-primary)',
+                isDisabled && 'opacity-30 cursor-not-allowed hover:bg-transparent',
+              )}
+            >
+              {y}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── CalendarDayButton ──────────────────────────────────
 
 function CalendarDayButton({
   className,
@@ -178,7 +471,7 @@ function CalendarDayButton({
         // range middle
         'data-[range-middle=true]:bg-(--color-primary-light) data-[range-middle=true]:text-(--color-primary) data-[range-middle=true]:rounded-none',
         // today — border highlight
-        'data-[today=true]:ring-1 data-[today=true]:ring-(--color-primary) data-[today=true]:font-semibold',
+        'data-[today=true]:relative data-[today=true]:z-[1] data-[today=true]:ring-1 data-[today=true]:ring-(--color-primary) data-[today=true]:font-semibold',
         // outside days — transparent, no bg
         'data-[outside=true]:bg-transparent data-[outside=true]:text-(--color-text-placeholder) data-[outside=true]:opacity-40 data-[outside=true]:hover:bg-transparent',
         // disabled
