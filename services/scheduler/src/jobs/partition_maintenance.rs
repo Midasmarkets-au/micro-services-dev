@@ -44,6 +44,8 @@ async fn run_for_tenant(pool: &sqlx::PgPool, tenant_id: i64, current_year: i32) 
         partition::ensure_year_partition_snake(pool, "acct", "wallet_transaction_k8s", year).await?;
         partition::ensure_year_partition_snake(pool, "trd", "trade_rebate_k8s", year).await?;
         partition::ensure_year_partition_snake(pool, "trd", "rebate_k8s", year).await?;
+        partition::ensure_year_partition_snake(pool, "trd", "sales_rebate_k8s", year).await?;
+        partition::ensure_year_partition_snake(pool, "trd", "sales_rebate_item_k8s", year).await?;
     }
 
     info!("PartitionMaintenance: tenant={} years=[{}, {}] OK", tenant_id, current_year, current_year + 1);

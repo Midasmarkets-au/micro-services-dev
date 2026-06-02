@@ -27,6 +27,8 @@ prost = { workspace = true }
 apalis = { version = "1.0.0-rc.6", features = ["limit", "timeout", "retry", "catch-panic"] }
 apalis-redis = { version = "1.0.0-rc.6" }
 apalis-board-api = { version = "1.0.0-rc.6", features = ["axum", "ui"] }
+# Cron scheduler
+tokio-cron-scheduler = { version = "0.13", features = ["signal"] }
 # CSV generation
 csv = "1"
 # S3

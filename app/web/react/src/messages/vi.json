@@ -1303,10 +1303,7 @@
       "payerAccountName": "Tên người thanh toán",
       "payerAccountNumber": "Số tài khoản người thanh toán",
       "payerAccountNameLocal": "Tên người thanh toán (ngôn ngữ địa phương)",
-      "payerPhoneNumber": "Số điện thoại người thanh toán",
-      "city": "Thành phố",
-      "address": "Địa chỉ",
-      "paymentInfoId": "Tài khoản nhận tiền"
+      "payerPhoneNumber": "Số điện thoại người thanh toán"
     },
     "action": {
       "close": "Đóng",

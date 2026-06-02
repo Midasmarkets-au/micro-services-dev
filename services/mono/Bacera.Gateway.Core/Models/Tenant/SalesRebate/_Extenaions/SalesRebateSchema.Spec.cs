@@ -17,8 +17,9 @@ public partial class SalesRebateSchema
         public string ExcludeAccount { get; set; } = string.Empty;
         public string ExcludeSymbol { get; set; } = string.Empty;
         public string? Note { get; set; }
+        public bool AutoRelease { get; set; }
     }
-    
+
     public sealed class UpdateSpec
     {
         public SalesRebateSchemaSalesTypes SalesType { get; set; }
@@ -29,5 +30,6 @@ public partial class SalesRebateSchema
         public string ExcludeAccount { get; set; } = string.Empty;
         public string ExcludeSymbol { get; set; } = string.Empty;
         public string? Note { get; set; }
+        public bool AutoRelease { get; set; }
     }
 }

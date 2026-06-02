@@ -196,7 +196,7 @@
                       viewComments(
                         CommentType.Withdrawal,
                         item.id,
-                        formatPaymentNumber(item.payment.number)
+                        item.payment.number.substring(3)
                       )
                     "
                   >
@@ -543,7 +543,7 @@
                       viewComments(
                         CommentType.Withdrawal,
                         item.id,
-                        formatPaymentNumber(item.payment.number)
+                        item.payment.number.substring(3)
                       )
                     "
                   >
@@ -717,7 +717,6 @@ import moment from "moment/moment";
 import { ref, onMounted, inject, watch, provide, InsHTMLAttributes } from "vue";
 import NewWithdrawalRequestModal from "@/projects/tenant/modules/Payment/components/modal/NewWithdrawalRequestModal.vue";
 import { isDateInDST_US } from "@/core/plugins/TimerService";
-import { formatPaymentNumber } from "@/core/utils/PaymentNumberUtils";
 import svc from "../services/PaymentService";
 import TenantGlobalService, {
   CreateReportSpec,
