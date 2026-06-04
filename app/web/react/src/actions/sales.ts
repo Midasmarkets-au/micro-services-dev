@@ -721,6 +721,28 @@ export async function getSalesRebateStatBySymbol(
   }
 }
 
+export async function getSalesIbRebateStatBySymbol(
+  salesUid: number,
+  params?: SalesListParams
+): Promise<ActionResponse<Record<string, { amounts: Record<string, number>; volume: number }>>> {
+  try {
+    const raw = await apiClient.v1.get<Record<string, { amounts: Record<string, number>; volume: number }>>(
+      `/sales/${salesUid}/account/child/stat/rebate/symbol-grouped${buildQuery(params)}`
+    );
+    const data = unwrapData<Record<string, { amounts: Record<string, number>; volume: number }>>(raw);
+    for (const key of Object.keys(data)) {
+      if (data[key]?.amounts) {
+        for (const currencyId of Object.keys(data[key].amounts)) {
+          data[key].amounts[currencyId] = normalizeAmountList(data[key].amounts[currencyId]) as number;
+        }
+      }
+    }
+    return { success: true, data };
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch IB rebate stat by symbol');
+  }
+}
+
 // ============================================
 // Sales Account Operations
 // ============================================

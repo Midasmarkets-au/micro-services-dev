@@ -2108,6 +2108,8 @@
       "pageSize": "페이지 크기",
       "client": "클라이언트",
       "all": "전체",
+      "hasDeposit": "입금 있음",
+      "noDeposit": "입금 없음",
       "status": "상태",
       "amount": "금액",
       "currency": "통화",

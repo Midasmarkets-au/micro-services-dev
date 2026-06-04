@@ -31,6 +31,7 @@ export interface CustomerFilterValues {
   multiLevel?: boolean;
   dateRange?: DateRange;
   sortOrder?: string;
+  isActive?: boolean;
 }
 
 export interface CustomerFilterParams {
@@ -39,6 +40,7 @@ export interface CustomerFilterParams {
   from?: string;
   to?: string;
   sortOrder?: string;
+  isActive?: boolean;
 }
 
 export interface CustomerFilterRef {
@@ -55,6 +57,8 @@ export interface CustomerFilterProps {
   showSortOrder?: boolean;
   /** 排序选项，showSortOrder=true 时必传 */
   sortOptions?: CustomerFilterOption[];
+  /** 显示入金状态筛选（client tab 时传 true） */
+  showActiveFilter?: boolean;
   /** 显示日期选择器（client tab 时传 true） */
   showDatePicker?: boolean;
   /** 初始值 */
@@ -77,6 +81,7 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
       showMultiLevel = false,
       showSortOrder = false,
       sortOptions = [],
+      showActiveFilter = false,
       showDatePicker = false,
       defaultValues,
       onSearch,
@@ -93,10 +98,17 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
       { value: 'true', label: t('fields.allLevels') },
     ];
 
+    const activeFilterOptions: CustomerFilterOption[] = [
+      { value: 'all', label: t('fields.all') },
+      { value: 'true', label: t('fields.hasDeposit') },
+      { value: 'false', label: t('fields.noDeposit') },
+    ];
+
     const [searchText, setSearchText] = useState(defaultValues?.searchText ?? '');
     const [multiLevel, setMultiLevel] = useState(defaultValues?.multiLevel ?? false);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultValues?.dateRange);
     const [sortOrder, setSortOrder] = useState(defaultValues?.sortOrder ?? sortOptions[0]?.value ?? '');
+    const [isActive, setIsActive] = useState<string>(defaultValues?.isActive === true ? 'true' : defaultValues?.isActive === false ? 'false' : 'all');
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const onSearchRef = useRef(onSearch);
@@ -110,11 +122,13 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
         const ml = overrides && 'multiLevel' in overrides ? overrides.multiLevel : multiLevel;
         const dr = overrides && 'dateRange' in overrides ? overrides.dateRange : dateRange;
         const so = overrides && 'sortOrder' in overrides ? overrides.sortOrder : sortOrder;
+        const ia = overrides && 'isActive' in overrides ? overrides.isActive : (isActive === 'all' ? undefined : isActive === 'true');
 
         const params: CustomerFilterParams = {
           searchText: text || undefined,
           multiLevel: ml,
           sortOrder: so || undefined,
+          isActive: showActiveFilter ? ia : undefined,
         };
 
         if (showDatePicker) {
@@ -124,7 +138,7 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
 
         return params;
       },
-      [searchText, multiLevel, dateRange, sortOrder, showDatePicker],
+      [searchText, multiLevel, dateRange, sortOrder, isActive, showDatePicker, showActiveFilter],
     );
 
     const handleSearch = useCallback(() => {
@@ -136,18 +150,20 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
       setMultiLevel(false);
       setDateRange(undefined);
       setSortOrder(sortOptions[0]?.value ?? '');
+      setIsActive('all');
       onResetRef.current?.();
     }, [sortOptions]);
 
     useImperativeHandle(ref, () => ({
       search: handleSearch,
       reset: handleReset,
-      getValues: () => ({ searchText, multiLevel, dateRange, sortOrder }),
+      getValues: () => ({ searchText, multiLevel, dateRange, sortOrder, isActive: isActive === 'all' ? undefined : isActive === 'true' }),
       setValues: (vals) => {
         if (vals.searchText !== undefined) setSearchText(vals.searchText);
         if (vals.multiLevel !== undefined) setMultiLevel(vals.multiLevel);
         if (vals.dateRange !== undefined) setDateRange(vals.dateRange);
         if (vals.sortOrder !== undefined) setSortOrder(vals.sortOrder);
+        if (vals.isActive !== undefined) setIsActive(vals.isActive === true ? 'true' : vals.isActive === false ? 'false' : 'all');
       },
     }));
 
@@ -173,6 +189,19 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
               value={String(multiLevel)}
               onChange={(val) => setMultiLevel(val === 'true')}
               options={multiLevelOptions}
+              triggerSize="sm"
+              className="w-auto! min-w-20 bg-input-bg"
+            />
+          </div>
+        )}
+
+        {/* 入金状态 */}
+        {showActiveFilter && (
+          <div className="shrink-0">
+            <SimpleSelect
+              value={isActive}
+              onChange={setIsActive}
+              options={activeFilterOptions}
               triggerSize="sm"
               className="w-auto! min-w-20 bg-input-bg"
             />

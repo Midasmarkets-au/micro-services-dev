@@ -2106,6 +2106,8 @@
       "pageSize": "Tamaño de página",
       "client": "Cliente",
       "all": "Todos",
+      "hasDeposit": "Con Depósito",
+      "noDeposit": "Sin Depósito",
       "status": "Estado",
       "amount": "Monto",
       "currency": "Moneda",

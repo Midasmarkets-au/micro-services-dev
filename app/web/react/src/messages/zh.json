@@ -2111,6 +2111,8 @@
       "pageSize": "每页条数",
       "client": "客户",
       "all": "全部",
+      "hasDeposit": "有入金",
+      "noDeposit": "无入金",
       "status": "状态",
       "amount": "金额",
       "currency": "币种",

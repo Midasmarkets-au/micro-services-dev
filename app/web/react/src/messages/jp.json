@@ -2108,6 +2108,8 @@
       "pageSize": "ページサイズ",
       "client": "クライアント",
       "all": "すべて",
+      "hasDeposit": "入金あり",
+      "noDeposit": "入金なし",
       "status": "ステータス",
       "amount": "金額",
       "currency": "通貨",

@@ -2108,6 +2108,8 @@
       "pageSize": "ขนาดหน้า",
       "client": "ลูกค้า",
       "all": "ทั้งหมด",
+      "hasDeposit": "มีเงินฝาก",
+      "noDeposit": "ไม่มีเงินฝาก",
       "status": "สถานะ",
       "amount": "จำนวน",
       "currency": "สกุลเงิน",

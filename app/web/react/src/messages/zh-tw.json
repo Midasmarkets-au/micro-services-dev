@@ -2108,6 +2108,8 @@
       "pageSize": "每頁條數",
       "client": "客戶",
       "all": "全部",
+      "hasDeposit": "有入金",
+      "noDeposit": "無入金",
       "status": "狀態",
       "amount": "金額",
       "currency": "幣種",

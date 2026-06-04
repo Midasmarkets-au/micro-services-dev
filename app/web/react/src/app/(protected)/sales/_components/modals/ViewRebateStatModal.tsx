@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import moment from 'moment';
 import {
   Dialog,
   DialogContent,
@@ -13,9 +14,11 @@ import { Button, BalanceShow, DatePicker, DataTable, Icon } from '@/components/u
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useSalesStore } from '@/stores/salesStore';
-import { getSalesChildStat, getSalesRebateStatBySymbol } from '@/actions';
+import { getSalesChildStat, getSalesRebateStatBySymbol, getSalesIbRebateStatBySymbol } from '@/actions';
 import type { SalesClientAccount, SalesChildStat } from '@/types/sales';
-import { AccountRoleTypes, getCurrencySymbol } from '@/types/accounts';
+import { AccountRoleTypes } from '@/types/accounts';
+import { CurrencyCodeMap } from '@/components/ui/BalanceShow';
+import { convertTradeTime } from '@/lib/utils';
 
 interface RebateSymbolRow {
   symbol: string;
@@ -45,8 +48,61 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<SalesChildStat | null>(null);
   const [rebateList, setRebateList] = useState<RebateSymbolRow[]>([]);
-  const [rebateTotal, setRebateTotal] = useState<RebateTotal | null>(null);
+  const [rebateTotals, setRebateTotals] = useState<RebateTotal[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  const processIbRebate = useCallback((raw: Record<string, { amounts: Record<string, number>; volume: number }>) => {
+    const entries = Object.entries(raw);
+    if (entries.length === 0) { setRebateList([]); setRebateTotals([]); return; }
+
+    const firstAmounts = entries[0][1].amounts || {};
+    const currency = Number(Object.keys(firstAmounts)[0]) || 0;
+
+    const rows: RebateSymbolRow[] = [];
+    let totalVolume = 0;
+    let totalAmount = 0;
+
+    for (const [symbol, symbolData] of entries) {
+      const amountEntries = Object.entries(symbolData.amounts || {});
+      for (const [currencyIdStr, amount] of amountEntries) {
+        const currencyId = Number(currencyIdStr);
+        const vol = (symbolData.volume || 0) / 100;
+        const amt = Number(amount) || 0;
+        rows.push({ symbol, currencyId, volume: vol, amount: amt });
+        totalVolume += vol;
+        totalAmount += amt;
+      }
+    }
+
+    setRebateList(rows);
+    setRebateTotals([{ volume: totalVolume, amount: totalAmount, currencyId: currency }]);
+  }, []);
+
+  const processSalesRebate = useCallback((raw: Record<string, { symbol?: string; currencyId?: number; volume?: number; profit?: number; amounts?: Record<string, number[]> }>) => {
+    const entries = Object.values(raw);
+    if (entries.length === 0) { setRebateList([]); setRebateTotals([]); return; }
+
+    const rows: RebateSymbolRow[] = [];
+    const totalByCurrency: Record<number, RebateTotal> = {};
+
+    for (const item of entries) {
+      const currencyId = item.currencyId ?? 0;
+      const volume = (item.volume || 0) / 100;
+      const amount = item.profit ?? 0;
+      const symbol = item.symbol || '';
+
+      rows.push({ symbol, currencyId, volume, amount });
+
+      if (!totalByCurrency[currencyId]) {
+        totalByCurrency[currencyId] = { volume: 0, amount: 0, currencyId };
+      }
+      totalByCurrency[currencyId].volume += volume;
+      totalByCurrency[currencyId].amount += amount;
+    }
+
+    setRebateList(rows);
+    setRebateTotals(Object.values(totalByCurrency));
+  }, []);
 
   const fetchData = useCallback(async (uid: number, from?: string, to?: string) => {
     if (!salesAccount) return;
@@ -56,13 +112,16 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       if (from) params.from = from;
       if (to) params.to = to;
 
-      const isIbOrSales = account?.role === AccountRoleTypes.IB || account?.role === AccountRoleTypes.Sales;
+      const isIb = account?.role === AccountRoleTypes.IB;
+      const isSales = account?.role === AccountRoleTypes.Sales;
 
       const [statResult, rebateResult] = await Promise.all([
         execute(getSalesChildStat, salesAccount.uid, params),
-        isIbOrSales
-          ? execute(getSalesRebateStatBySymbol, salesAccount.uid, params)
-          : Promise.resolve({ success: false, data: null }),
+        isIb
+          ? execute(getSalesIbRebateStatBySymbol, salesAccount.uid, params)
+          : isSales
+            ? execute(getSalesRebateStatBySymbol, salesAccount.uid, params)
+            : Promise.resolve({ success: false, data: null }),
       ]);
 
       if (statResult.success && statResult.data) {
@@ -70,44 +129,25 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       }
 
       if (rebateResult.success && rebateResult.data) {
-        const raw = rebateResult.data as Record<string, { amounts: Record<string, number[]>; volume?: number }>;
-        const entries = Object.entries(raw);
-        if (entries.length > 0) {
-          const rows: RebateSymbolRow[] = [];
-          let totalVolume = 0;
-          let totalAmount = 0;
-          let firstCurrencyId = 0;
-
-          for (const [symbol, symbolData] of entries) {
-            const amountEntries = Object.entries(symbolData.amounts || {});
-            for (const [currencyIdStr, amountArr] of amountEntries) {
-              const currencyId = Number(currencyIdStr);
-              const amount = Array.isArray(amountArr) ? amountArr[0] ?? 0 : Number(amountArr) || 0;
-              const volume = (symbolData.volume || 0) / 100;
-              rows.push({ symbol, currencyId, volume, amount });
-              totalVolume += volume;
-              totalAmount += amount;
-              if (!firstCurrencyId) firstCurrencyId = currencyId;
-            }
-          }
-
-          setRebateList(rows);
-          setRebateTotal({ volume: totalVolume, amount: totalAmount, currencyId: firstCurrencyId });
-        } else {
-          setRebateList([]);
-          setRebateTotal(null);
+        if (isIb) {
+          processIbRebate(rebateResult.data as Record<string, { amounts: Record<string, number>; volume: number }>);
+        } else if (isSales) {
+          processSalesRebate(rebateResult.data as Record<string, { symbol?: string; currencyId?: number; volume?: number; profit?: number }>);
         }
+      } else {
+        setRebateList([]);
+        setRebateTotals([]);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [salesAccount, account, execute]);
+  }, [salesAccount, account, execute, processIbRebate, processSalesRebate]);
 
   useEffect(() => {
     if (open && account) {
       setStats(null);
       setRebateList([]);
-      setRebateTotal(null);
+      setRebateTotals([]);
       setDateRange(undefined);
       fetchData(account.uid);
     }
@@ -115,8 +155,9 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
 
   const handleSearch = () => {
     if (!account) return;
-    const from = dateRange?.from ? dateRange.from.toISOString() : undefined;
-    const to = dateRange?.to ? dateRange.to.toISOString() : undefined;
+    const fromRaw = dateRange?.from ? moment(dateRange.from).format('YYYY-MM-DD') : null;
+    const toRaw = dateRange?.to ? moment(dateRange.to).format('YYYY-MM-DD') : null;
+    const [from, to] = convertTradeTime(fromRaw, toRaw);
     fetchData(account.uid, from, to);
   };
 
@@ -139,18 +180,20 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       key: 'currency',
       title: t('fields.currency'),
       skeletonWidth: 'w-16',
-      render: (row) => getCurrencySymbol(row.currencyId),
+      render: (row) => CurrencyCodeMap[row.currencyId] || 'USD',
     },
     {
       key: 'volume',
       title: t('fields.volume'),
       skeletonWidth: 'w-16',
+      align: 'right',
       render: (row) => row.volume.toFixed(2),
     },
     {
       key: 'amount',
       title: t('fields.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (row) => (
         <BalanceShow
           balance={row.amount}
@@ -161,19 +204,23 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     },
   ], [t]);
 
-  const footerRow = rebateTotal ? (
-    <tr className="border-t-2 border-border font-bold text-(--color-success)">
-      <td className="px-5 py-4 uppercase">{t('dashboard.rebateAmount')}</td>
-      <td className="px-5 py-4">{getCurrencySymbol(rebateTotal.currencyId)}</td>
-      <td className="px-5 py-4">{rebateTotal.volume.toFixed(2)}</td>
-      <td className="px-5 py-4">
-        <BalanceShow
-          balance={rebateTotal.amount}
-          currencyId={rebateTotal.currencyId}
-          className={rebateTotal.amount <= 0 ? 'error-text' : ''}
-        />
-      </td>
-    </tr>
+  const footerRow = rebateTotals.length > 0 ? (
+    <>
+      {rebateTotals.map((total) => (
+        <tr key={total.currencyId} className="border-t-2 border-border font-bold text-(--color-success)">
+          <td className="px-5 py-4 uppercase">{t('trade.total')}</td>
+          <td className="px-5 py-4">{CurrencyCodeMap[total.currencyId] || 'USD'}</td>
+          <td className="px-5 py-4 text-right">{total.volume.toFixed(2)}</td>
+          <td className="px-5 py-4 text-right">
+            <BalanceShow
+              balance={total.amount}
+              currencyId={total.currencyId}
+              className={total.amount <= 0 ? 'error-text' : ''}
+            />
+          </td>
+        </tr>
+      ))}
+    </>
   ) : null;
 
   const renderAmountTags = () => {

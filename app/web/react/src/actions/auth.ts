@@ -244,10 +244,12 @@ export async function login(data: LoginData): Promise<ActionResponse<LoginRespon
       message: '登录成功',
     };
   } catch (error) {
-    logger.error('Login error:', error);
+    const errMsg = error instanceof Error ? error.message : String(error ?? '');
+    logger.error('Login error:', { message: errMsg, cause: (error as { cause?: unknown })?.cause, raw: error });
     return {
       success: false,
-      error: '服务器错误，请稍后重试',
+      errorCode: 'serverError',
+      error: errMsg || '服务器错误，请稍后重试',
     };
   }
 }

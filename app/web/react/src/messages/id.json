@@ -2108,6 +2108,8 @@
       "pageSize": "Ukuran Halaman",
       "client": "Klien",
       "all": "Semua",
+      "hasDeposit": "Ada Deposit",
+      "noDeposit": "Tidak Ada Deposit",
       "status": "Status",
       "amount": "Jumlah",
       "currency": "Mata Uang",

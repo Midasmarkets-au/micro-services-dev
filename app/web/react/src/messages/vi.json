@@ -2108,6 +2108,8 @@
       "pageSize": "Kích thước trang",
       "client": "Khách hàng",
       "all": "Tất cả",
+      "hasDeposit": "Đã nạp tiền",
+      "noDeposit": "Chưa nạp tiền",
       "status": "Trạng thái",
       "amount": "Số tiền",
       "currency": "Tiền tệ",

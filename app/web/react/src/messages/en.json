@@ -2112,6 +2112,8 @@
       "pageSize": "Page Size",
       "client": "Client",
       "all": "All",
+      "hasDeposit": "Has Deposit",
+      "noDeposit": "No Deposit",
       "status": "Status",
       "amount": "Amount",
       "currency": "Currency",

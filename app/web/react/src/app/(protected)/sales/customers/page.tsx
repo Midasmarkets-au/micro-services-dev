@@ -21,7 +21,7 @@ import {
   Icon,
 } from '@/components/ui';
 import type { TabItem, DataTableColumn, DropdownMenuItem } from '@/components/ui';
-import type { SalesClientAccount, SalesClientCriteria } from '@/types/sales';
+import type { SalesClientAccount, SalesClientCriteria, IbLevelItem } from '@/types/sales';
 import { CustomerFilter } from '@/components/CustomerFilter';
 import type { CustomerFilterRef, CustomerFilterParams } from '@/components/CustomerFilter';
 import { useUserStore } from '@/stores';
@@ -55,7 +55,7 @@ function getRoleValue(tab: RoleTab): number {
 
 const INITIAL_CRITERIA: SalesClientCriteria = {
   page: 1,
-  size: 15,
+  size: 30,
   role: AccountRoleTypes.IB,
   sortField: 'createdOn',
   sortFlag: true,
@@ -76,7 +76,7 @@ export default function SalesCustomersPage() {
   const [criteria, setCriteria] = useState<SalesClientCriteria>(INITIAL_CRITERIA);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RoleTab>('ib');
-  const [ibChain, setIbChain] = useState<SalesClientAccount[]>([]);
+  const [ibChain, setIbChain] = useState<IbLevelItem[]>([]);
   const filterRef = useRef<CustomerFilterRef>(null);
 
   // 弹窗状态
@@ -114,7 +114,7 @@ export default function SalesCustomersPage() {
           const raw = result.data.criteria || params;
           setCriteria({
             page: raw.page ?? 1,
-            size: raw.size ?? 15,
+            size: raw.size ?? 30,
             total: raw.total,
             role: raw.role || undefined,
             sortField: raw.sortField,
@@ -125,6 +125,7 @@ export default function SalesCustomersPage() {
             multiLevel: raw.multiLevel ?? criteria.multiLevel ?? false,
           });
           setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
+          setIbChain(raw.levelAccountsInBetween ?? []);
         }
       } finally {
         setIsLoading(false);
@@ -135,74 +136,74 @@ export default function SalesCustomersPage() {
 
   useEffect(() => {
     if (salesAccount) {
+      const filterValues = filterRef.current?.getValues();
+      const isClient = activeTab === 'client';
       fetchData({
         ...INITIAL_CRITERIA,
         role: getRoleValue(activeTab) || undefined,
         sortFlag: true,
-        multiLevel: criteria.multiLevel ?? false,
+        searchText: filterValues?.searchText || undefined,
+        multiLevel: filterValues?.multiLevel ?? false,
+        from: isClient ? filterValues?.dateRange?.from?.toISOString() : undefined,
+        to: isClient ? filterValues?.dateRange?.to?.toISOString() : undefined,
+        isActive: isClient ? filterValues?.isActive : undefined,
       });
     }
   }, [salesAccount, activeTab, fetchData]);
 
   const handleTabChange = (tab: RoleTab) => {
     setActiveTab(tab);
-    setIbChain([]);
-    setCriteria((prev) => ({ ...prev, multiLevel: false }));
-    filterRef.current?.setValues({ searchText: '', dateRange: undefined, multiLevel: false });
   };
 
   const handleFilterSearch = useCallback(
     (params: CustomerFilterParams) => {
+      const isClient = activeTab === 'client';
       fetchData({
         ...criteria,
         page: 1,
         searchText: params.searchText,
         role: getRoleValue(activeTab) || undefined,
         sortFlag: true,
-        relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
         multiLevel: params.multiLevel ?? false,
-        from: params.from,
-        to: params.to,
+        from: isClient ? params.from : undefined,
+        to: isClient ? params.to : undefined,
+        isActive: isClient ? params.isActive : undefined,
       });
     },
-    [criteria, activeTab, ibChain.length, fetchData],
+    [criteria, activeTab, fetchData],
   );
 
   const handleFilterReset = useCallback(() => {
-    setIbChain([]);
     setActiveTab('ib');
     fetchData(INITIAL_CRITERIA);
   }, [fetchData]);
 
   const handleIbDrillDown = useCallback((ibAccount: SalesClientAccount) => {
-    setIbChain((prev) => [...prev, ibAccount]);
     fetchData({
       ...criteria,
       page: 1,
       parentAccountUid: ibAccount.uid,
-      relativeLevel: ibChain.length + 2,
       searchText: undefined,
-      hasMore:false,
     });
-  }, [criteria, ibChain.length, fetchData]);
+  }, [criteria, fetchData]);
 
-  const handleClearChain = () => {
-    setIbChain([]);
-    fetchData({ ...INITIAL_CRITERIA, role: getRoleValue(activeTab) || undefined, sortFlag: true, multiLevel: criteria.multiLevel ?? false });
-  };
+  const handleClearChain = useCallback(() => {
+    fetchData({
+      ...INITIAL_CRITERIA,
+      role: getRoleValue(activeTab) || undefined,
+      sortFlag: true,
+      multiLevel: criteria.multiLevel ?? false,
+    });
+  }, [activeTab, criteria.multiLevel, fetchData]);
 
-  const handleGoToLevel = (idx: number, childParentAccountUid: number) => {
-    if (idx === ibChain.length - 1) return;
-    const newChain = ibChain.slice(0, idx + 1);
-    setIbChain(newChain);
+  const handleGoToLevel = useCallback((acc: IbLevelItem) => {
     fetchData({
       ...criteria,
       page: 1,
-      childParentAccountUid,
-      relativeLevel: idx + 2,
+      parentAccountUid: acc.uid,
       searchText: undefined,
     });
-  };
+  }, [criteria, fetchData]);
 
   const showRebateStat = useCallback((item: SalesClientAccount) => {
     setSelectedAccount(item);
@@ -249,7 +250,7 @@ export default function SalesCustomersPage() {
     setUnlockEmailOpen(true);
   }, []);
 
-  const showRoleColumn = activeTab === 'ib' || activeTab === 'sales';
+  const showRoleColumn = activeTab === 'all';
 
   const columns = useMemo<DataTableColumn<SalesClientAccount>[]>(() => {
     const cols: DataTableColumn<SalesClientAccount>[] = [
@@ -367,7 +368,6 @@ export default function SalesCustomersPage() {
         skeletonWidth: 'w-10',
         render: (item) => {
           const dropdownItems: DropdownMenuItem[] = [];
-          console.log('item.role', item.role);
           if (item.role === AccountRoleTypes.IB || item.role === AccountRoleTypes.Sales) {
             dropdownItems.push({
               key: 'viewAccounts',
@@ -469,6 +469,7 @@ export default function SalesCustomersPage() {
           <CustomerFilter
             ref={filterRef}
             showMultiLevel
+            showActiveFilter={activeTab === 'client'}
             showDatePicker={activeTab === 'client'}
             onSearch={handleFilterSearch}
             onReset={handleFilterReset}
@@ -482,17 +483,17 @@ export default function SalesCustomersPage() {
       {ibChain.length > 0 && (
         <div className="flex items-center gap-2 border-b border-border pb-3">
           {ibChain.map((acc, idx) => (
-            <div key={idx} className="flex items-center gap-1">
+            <div key={acc.uid} className="flex items-center gap-1">
               <div className="relative inline-block pr-3">
                 <button
                   type="button"
-                  onClick={() => handleGoToLevel(idx, acc.uid)}
+                  onClick={() => handleGoToLevel(acc)}
                   className="text-sm text-primary hover:underline cursor-pointer"
                 >
-                  {getUserName(acc)}
+                  {acc.nativeName}
                 </button>
                 <span className="pointer-events-none absolute -top-2 -right-1 rounded-full bg-yellow-400 px-1 py-0 text-[10px] font-medium leading-tight text-gray-900">
-                  Lv{idx + 1}
+                  Lv{acc.relativeLevel}
                 </span>
               </div>
               {idx < ibChain.length - 1 && (
@@ -523,7 +524,7 @@ export default function SalesCustomersPage() {
       <Pagination
         page={criteria.page ?? 1}
         total={criteria.total || 0}
-        size={criteria.size ?? 15}
+        size={criteria.size ?? 30}
         onPageChange={(p) => fetchData({ ...criteria, page: p })}
       />
 

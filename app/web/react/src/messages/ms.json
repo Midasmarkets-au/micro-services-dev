@@ -2108,6 +2108,8 @@
       "pageSize": "Saiz halaman",
       "client": "Pelanggan",
       "all": "Semua",
+      "hasDeposit": "Ada Deposit",
+      "noDeposit": "Tiada Deposit",
       "status": "Status",
       "amount": "Jumlah",
       "currency": "Mata wang",
