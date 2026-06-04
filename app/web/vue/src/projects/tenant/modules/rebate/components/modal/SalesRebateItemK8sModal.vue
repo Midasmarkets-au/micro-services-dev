@@ -44,7 +44,7 @@
           </thead>
           <tbody class="text-gray-600 fw-semibold">
             <tr
-              v-for="item in filteredItems"
+              v-for="item in pagedItems"
               :key="item.id"
               :class="{ 'bg-light-danger': item.excluded }"
               :style="item.excluded ? 'opacity: 0.7' : ''"
@@ -67,16 +67,30 @@
             </tr>
           </tbody>
         </table>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-end mt-3">
+          <el-pagination
+            v-model:current-page="page"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="filteredItems.length"
+            layout="total, sizes, prev, pager, next"
+            small
+            background
+          />
+        </div>
       </template>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
 import TimeShow from "@/components/TimeShow.vue";
 import RebateService from "../../services/RebateService";
+import { convertToLocalTime } from "@/core/plugins/TimerService";
 
 const visible = ref(false);
 const isLoading = ref(false);
@@ -94,15 +108,30 @@ const filteredItems = computed(() => {
   return items.value;
 });
 
+// Client-side pagination over the (filtered) items.
+const page = ref(1);
+const pageSize = ref(20);
+const pagedItems = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return filteredItems.value.slice(start, start + pageSize.value);
+});
+// Reset to first page whenever the filter or page size changes.
+watch([filter, pageSize], () => {
+  page.value = 1;
+});
+
 const formatDate = (iso?: string) => {
   if (!iso) return "";
-  return iso.slice(0, 10);
+  // period_start/end are stored at MT5-server midnight (UTC+2/+3); convert to
+  // server time so the displayed day matches the settlement day.
+  return convertToLocalTime(iso, "America/Los_Angeles").slice(0, 10);
 };
 
 const show = async (s: any) => {
   summary.value = s;
   items.value = [];
   filter.value = "all";
+  page.value = 1;
   visible.value = true;
   isLoading.value = true;
   try {
