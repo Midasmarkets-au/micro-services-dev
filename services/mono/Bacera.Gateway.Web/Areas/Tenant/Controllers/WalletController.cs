@@ -92,6 +92,33 @@ public class WalletController(AccountingService accountingService, TenantDbConte
         return Ok(result);
     }
 
+    /// <summary>
+    /// Wallet Transactions (k8s partitioned table)
+    /// </summary>
+    [HttpGet("{walletId:long}/transaction-k8s")]
+    public async Task<IActionResult> TransactionsK8s(long walletId, [FromQuery] int page = 1, [FromQuery] int size = 20)
+    {
+        var skip = (page - 1) * size;
+        var total = await tenantDbContext.WalletTransactionK8s
+            .Where(x => x.WalletId == walletId)
+            .CountAsync();
+        var items = await tenantDbContext.WalletTransactionK8s
+            .Where(x => x.WalletId == walletId)
+            .OrderByDescending(x => x.CreatedOn)
+            .Skip(skip)
+            .Take(size)
+            .Select(x => new {
+                x.Id,
+                x.MatterId,
+                x.InvoiceId,
+                x.PrevBalance,
+                x.Amount,
+                x.CreatedOn,
+            })
+            .ToListAsync();
+        return Ok(new { data = items, criteria = new { page, size, total } });
+    }
+
     [HttpPut("{walletId:long}/fund-type")]
     public async Task<IActionResult> ChangeFundType(long walletId, [FromQuery] FundTypes fundType)
     {

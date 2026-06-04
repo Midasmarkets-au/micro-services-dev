@@ -1303,10 +1303,7 @@
       "payerAccountName": "ชื่อผู้ชำระเงิน",
       "payerAccountNumber": "เลขที่บัญชีผู้ชำระเงิน",
       "payerAccountNameLocal": "ชื่อผู้ชำระเงิน (ภาษาท้องถิ่น)",
-      "payerPhoneNumber": "หมายเลขโทรศัพท์ผู้ชำระเงิน",
-      "city": "เมือง",
-      "address": "ที่อยู่",
-      "paymentInfoId": "บัญชีรับเงิน"
+      "payerPhoneNumber": "หมายเลขโทรศัพท์ผู้ชำระเงิน"
     },
     "action": {
       "close": "ปิด",

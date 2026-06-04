@@ -600,16 +600,12 @@ public partial class DepositService
         {
             Amount = RoundUp(exchangedAmount / 100m),
             AccountUid = account.Uid,
-            PaymentNumber = Payment.GenerateNumber("mdm-"),
+            PaymentNumber = Payment.GenerateNumber(),
             ReturnUrl = request.GetValueOrDefault("returnUrl") ?? string.Empty,
             Currency = targetCurrencyId,
             Ip = request.GetValueOrDefault("ip") as string ?? string.Empty,
             Language = user.Language,
-            Bank = request.GetValueOrDefault("bank") ?? "",
-            PayerAccountName = request.GetValueOrDefault("payerAccountName"),
-            PayerAccountNumber = request.GetValueOrDefault("payerAccountNumber"),
-            PayerAccountNameLocal = request.GetValueOrDefault("payerAccountNameLocal"),
-            PayerPhoneNumber = request.GetValueOrDefault("payerPhoneNumber"),
+            Bank = "",
             Options = options,
             Logger = logger,
         };

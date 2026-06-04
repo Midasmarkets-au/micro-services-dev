@@ -12,34 +12,12 @@
     width="1200px"
     ref="walletDetailShowRef"
   >
-    <!-- <div class="d-flex align-items-center gap-4">
-      <el-select class="w-200px" v-model="criteria.matterType">
-        <el-option
-          v-for="(item, index) in types"
-          :key="index"
-          :label="index"
-          :value="item"
-        ></el-option>
-      </el-select>
-      <div class="w-400px">
-        <el-date-picker
-          v-model="period"
-          type="daterange"
-          range-separator="To"
-          start-placeholder="Start date"
-          end-placeholder="End date"
-        />
-      </div>
-      <el-button type="primary" @click="submit">{{
-        $t("action.search")
-      }}</el-button>
-      <el-button type="info" @click="reset">{{ $t("action.clear") }}</el-button>
-    </div> -->
     <table class="table align-middle table-row-dashed fs-6 gy-5">
       <thead>
         <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-          <th>{{ $t("fields.type") }}</th>
-          <th>{{ $t("fields.status") }}</th>
+          <th>ID</th>
+          <th>Matter ID</th>
+          <th>Prev Balance</th>
           <th>{{ $t("fields.amount") }}</th>
           <th>{{ $t("fields.time") }}</th>
         </tr>
@@ -53,16 +31,11 @@
       </tbody>
       <tbody v-else>
         <tr v-for="(item, index) in walletDetail" :key="index">
-          <td>{{ $t(`type.matter.${item.matter.type}`) }}</td>
-          <td>
-            {{ $t(`type.transactionState.${item.matter.stateId}`) }}
-          </td>
-          <td>
-            <BalanceShow :currency-id="currencyId" :balance="item.amount" />
-          </td>
-          <td>
-            <TimeShow :date-iso-string="item.matter.postedOn" type="inFields" />
-          </td>
+          <td>{{ item.id }}</td>
+          <td>{{ item.matterId }}</td>
+          <td><BalanceShow :currency-id="currencyId" :balance="item.prevBalance" /></td>
+          <td><BalanceShow :currency-id="currencyId" :balance="item.amount" /></td>
+          <td><TimeShow :date-iso-string="item.createdOn" type="inFields" /></td>
         </tr>
       </tbody>
       <TableFooter @page-change="fetchData" :criteria="criteria" />
@@ -72,37 +45,22 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import SiderDetail from "@/components/SiderDetail.vue";
 import SiderDetail2 from "@/components/SiderDetail2.vue";
-import UserService from "../../services/UserService";
 import TableFooter from "@/components/TableFooter.vue";
 import { useI18n } from "vue-i18n";
+import axios from "axios";
 
 const t = useI18n().t;
 const isLoading = ref(true);
 const submitted = ref(false);
 
-const walletDetailShowRef = ref<InstanceType<typeof SiderDetail>>();
+const walletDetailShowRef = ref<any>();
 const detailTitle = ref(t("fields.walletDetail"));
-const walletDetail = ref(Array<any>());
+const walletDetail = ref<any[]>([]);
 const currencyId = ref(0);
 const walletId = ref(0);
-const period = ref([] as any);
-const types = {
-  System: 0,
-  InternalTransfer: 200,
-  Deposit: 300,
-  Withdrawal: 400,
-  Rebate: 500,
-};
 
-const criteria = ref({
-  page: 1,
-  size: 10,
-  matterType: null,
-  from: null,
-  to: null,
-} as any);
+const criteria = ref({ page: 1, size: 20, total: 0 } as any);
 
 const show = (_walletId: number, _currencyId: number) => {
   walletDetailShowRef.value?.show();
@@ -113,41 +71,22 @@ const show = (_walletId: number, _currencyId: number) => {
 
 const fetchData = async (_page: number) => {
   isLoading.value = true;
-
   try {
     criteria.value.page = _page;
-    const res = await UserService.getWalletTransactionByWalletId(
-      walletId.value,
-      criteria.value
+    const res = await axios.get(
+      `/api/v1/tenant/wallet/${walletId.value}/transaction-k8s`,
+      { params: { page: _page, size: criteria.value.size } }
     );
-    criteria.value = res.criteria;
-    walletDetail.value = res.data;
+    walletDetail.value = res.data.data ?? [];
+    criteria.value = { ...criteria.value, ...res.data.criteria };
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
   isLoading.value = false;
 };
 
-const submit = () => {
-  criteria.value.from = period.value[0].toISOString();
-  criteria.value.to = period.value[1].toISOString();
-  fetchData(1);
-};
+const submit = () => {};
+const close = () => { walletDetailShowRef.value?.hide(); };
 
-const reset = () => {
-  criteria.value.matterType = null;
-  criteria.value.from = null;
-  criteria.value.to = null;
-  period.value = [];
-  fetchData(1);
-};
-const close = () => {
-  walletDetailShowRef.value?.hide();
-};
-const getStatus = (object, value) => {
-  return Object.keys(object).find((key) => object[key] === value);
-};
 defineExpose({ show });
 </script>
-
-<style></style>

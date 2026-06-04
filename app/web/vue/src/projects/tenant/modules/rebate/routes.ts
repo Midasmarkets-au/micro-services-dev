@@ -9,7 +9,7 @@ import ProductsListNew from "./views/ProductsListNew.vue";
 import PendingConfirmation from "./views/PendingConfirmation.vue";
 import TradeRebate from "@/projects/tenant/modules/rebate/views/TradeRebate.vue";
 import SalesRebateSchema from "@/projects/tenant/modules/rebate/views/SalesRebateSchema.vue";
-import SalesRebateRecord from "@/projects/tenant/modules/rebate/views/SalesRebateRecord.vue";
+import SalesRebateK8sRecord from "@/projects/tenant/modules/rebate/views/SalesRebateK8sRecord.vue";
 
 export default (router) => {
   router.addRoute({
@@ -121,7 +121,7 @@ export default (router) => {
       {
         path: "/rebate/sales-rebate-record",
         name: "SalesRebateRecord",
-        component: SalesRebateRecord,
+        component: SalesRebateK8sRecord,
         meta: {
           pageTitle: "title.salesRebateRecord",
           breadcrumbs: ["title.salesRebateRecord"],

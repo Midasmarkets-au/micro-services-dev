@@ -171,6 +171,11 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
     public virtual DbSet<SalesRebate> SalesRebates { get; set; }
 
     public virtual DbSet<SalesRebateSchema> SalesRebateSchemas { get; set; }
+
+    public virtual DbSet<SalesRebateK8s>       SalesRebateK8s       { get; set; }
+    public virtual DbSet<SalesRebateItemK8s>   SalesRebateItemK8s   { get; set; }
+    public virtual DbSet<WalletTransactionK8s> WalletTransactionK8s { get; set; }
+
     public virtual DbSet<Site> Sites { get; set; }
 
     public virtual DbSet<State> States { get; set; }
@@ -2887,10 +2892,7 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("_SalesRebate_TradeAccountId_fk");
 
-            entity.HasOne(d => d.TradeRebate).WithMany(p => p.SalesRebates)
-                .HasForeignKey(d => d.TradeRebateId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("_SalesRebate_TradeRebateId_fkey");
+            entity.Ignore(d => d.TradeRebate);
 
             entity.HasOne(d => d.WalletAdjust).WithMany(p => p.SalesRebates)
                 .HasForeignKey(d => d.WalletAdjustId)
@@ -3371,6 +3373,8 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
                 .HasForeignKey(d => d.TradeServiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("_TradeRebate__TradeService_Id_fk");
+
+            entity.Ignore(d => d.SalesRebates);
         });
 
         modelBuilder.Entity<TradeService>(entity =>
@@ -3824,6 +3828,24 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
             entity.HasIndex(e => e.CaseId, "IX__CaseLanguage_CaseId");
             entity.HasIndex(e => e.Language, "IX__CaseLanguage_Language");
+        });
+
+        modelBuilder.Entity<SalesRebateK8s>(entity =>
+        {
+            entity.HasKey(e => new { e.Id, e.CreatedOn });
+            entity.ToTable("sales_rebate_k8s", "trd");
+        });
+
+        modelBuilder.Entity<SalesRebateItemK8s>(entity =>
+        {
+            entity.HasKey(e => new { e.Id, e.CreatedOn });
+            entity.ToTable("sales_rebate_item_k8s", "trd");
+        });
+
+        modelBuilder.Entity<WalletTransactionK8s>(entity =>
+        {
+            entity.HasKey(e => new { e.Id, e.CreatedOn });
+            entity.ToTable("wallet_transaction_k8s", "acct");
         });
 
         OnModelCreatingPartial(modelBuilder);

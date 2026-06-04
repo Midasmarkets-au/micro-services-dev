@@ -5,6 +5,7 @@ pub mod mt5;
 pub mod partition;
 pub mod rebate;
 pub mod rebate_calc;
+pub mod sales_rebate;
 pub mod tenant;
 pub mod trade_rebate;
 

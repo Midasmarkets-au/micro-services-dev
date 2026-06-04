@@ -88,6 +88,7 @@ public class SalesRebateSchemaController(
             AlphaRebate = spec.AlphaRebate,
             ProRebate = spec.ProRebate,
             Note = spec.Note,
+            AutoRelease = spec.AutoRelease,
             Status = (short)SalesRebateSchemaStatusTypes.Pending,
             OperatorPartyId = GetPartyId(),
             UpdatedOn = DateTime.UtcNow,
@@ -137,6 +138,7 @@ public class SalesRebateSchemaController(
                 AlphaRebate = spec.AlphaRebate,
                 ProRebate = spec.ProRebate,
                 Note = spec.Note,
+                AutoRelease = spec.AutoRelease,
                 Status = (short)SalesRebateSchemaStatusTypes.Pending,
                 OperatorPartyId = GetPartyId(),
                 UpdatedOn = DateTime.UtcNow,
@@ -153,6 +155,7 @@ public class SalesRebateSchemaController(
             item.AlphaRebate = spec.AlphaRebate;
             item.ProRebate = spec.ProRebate;
             item.Note = spec.Note;
+            item.AutoRelease = spec.AutoRelease;
             item.UpdatedOn = DateTime.UtcNow;
             item.OperatorPartyId = GetPartyId();
             item.UpdatedOn = DateTime.UtcNow;

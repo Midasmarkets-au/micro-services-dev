@@ -59,7 +59,7 @@ partial class Payment
             ReferenceNumber = referenceNumber ?? string.Empty,
         };
 
-    public static string GenerateNumber(string prefix = "pm-") => prefix + DateTime.UtcNow.ToString("yy") +
+    public static string GenerateNumber() => "pm-" + DateTime.UtcNow.ToString("yy") +
                                              ISOWeek.GetWeekOfYear(DateTime.UtcNow.Date) +
                                              Guid.NewGuid().ToString()[..8].ToLower();
 

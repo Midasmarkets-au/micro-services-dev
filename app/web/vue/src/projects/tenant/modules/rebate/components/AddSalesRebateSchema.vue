@@ -208,6 +208,17 @@
             </Field>
           </div>
         </div>
+
+        <div class="row mb-9">
+          <div class="col-12 d-flex align-items-center gap-3">
+            <label class="fs-6 fw-semobold createAccountTitle">
+              Auto Release
+            </label>
+            <el-switch v-model="schemaInfo.autoRelease" />
+            <span class="text-muted fs-7">Automatically credit wallet after settlement</span>
+          </div>
+        </div>
+
         <div class="mt-13 d-flex flex-row-reverse">
           <button
             class="btn btn-light btn-danger btn-lg me-3 mb-9"
@@ -254,6 +265,7 @@ const reset = () => {
     excludeSymbol:
       "#AAPL,#AXP,#BAC,#C,#DIS,#IBM,#INTC,#KO,#MCD,#MSFT,#BA,#QAN.AX,#CSL.AX,#BHP.AX,#6501.T,#6502.T,#7201.T,#7261.T,#8306.T",
     note: "",
+    autoRelease: false,
   };
 };
 

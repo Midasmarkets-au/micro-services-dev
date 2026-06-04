@@ -12,9 +12,14 @@ use apalis_board_api::sse::TracingBroadcaster;
 use apalis_board_api::ui::ServeUI;
 use apalis_redis::{connect as redis_connect, ConnectionManager, RedisStorage};
 use async_nats::jetstream;
+use axum::extract::Extension;
+use axum::http::StatusCode;
 use axum::response::Json;
-use axum::{routing::get, Router};
+use axum::routing::post;
+use axum::{routing::get, Json as AxumJson, Router};
+use chrono::{DateTime, Timelike, Utc};
 use sqlx::{MySqlPool, PgPool};
+use tokio_cron_scheduler::{Job, JobScheduler};
 use tokio::sync::RwLock;
 use tonic::transport::Server as TonicServer;
 use tower_http::trace::TraceLayer;
@@ -144,6 +149,10 @@ impl AppContext {
                 .map_err(|e| anyhow::anyhow!("Failed to ensure trade_rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
             db::partition::ensure_year_partition_snake(&pool, "trd", "rebate_k8s", year).await
                 .map_err(|e| anyhow::anyhow!("Failed to ensure rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "trd", "sales_rebate_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure sales_rebate_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
+            db::partition::ensure_year_partition_snake(&pool, "trd", "sales_rebate_item_k8s", year).await
+                .map_err(|e| anyhow::anyhow!("Failed to ensure sales_rebate_item_k8s_{} for tenant {}: {:#}", year, tenant_id, e))?;
         }
 
         Ok(pool)
@@ -215,6 +224,134 @@ async fn health() -> Json<serde_json::Value> {
     Json(serde_json::json!({ "status": "ok", "service": "scheduler" }))
 }
 
+async fn trigger_sales_rebate_daily(
+    Extension(ctx): Extension<AppContext>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    tokio::spawn(async move {
+        if let Err(e) = jobs::sales_rebate::run_daily(ctx).await {
+            error!("trigger_sales_rebate_daily error: {:#}", e);
+        }
+    });
+    (
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({ "status": "triggered", "job": "sales_rebate_daily" })),
+    )
+}
+
+async fn trigger_sales_rebate_monthly(
+    Extension(ctx): Extension<AppContext>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    tokio::spawn(async move {
+        if let Err(e) = jobs::sales_rebate::run_monthly(ctx).await {
+            error!("trigger_sales_rebate_monthly error: {:#}", e);
+        }
+    });
+    (
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({ "status": "triggered", "job": "sales_rebate_monthly" })),
+    )
+}
+
+#[derive(serde::Deserialize)]
+struct TriggerCustomBody {
+    schedule_type: i16,
+    period_start: String,
+    period_end: String,
+}
+
+#[derive(serde::Deserialize)]
+struct TriggerForceBody {
+    schedule_type: i16,
+    period_start: String,
+    period_end: Option<String>, // defaults to Utc::now() when omitted
+}
+
+async fn trigger_sales_rebate_custom(
+    Extension(ctx): Extension<AppContext>,
+    AxumJson(body): AxumJson<TriggerCustomBody>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let period_start = match DateTime::parse_from_rfc3339(&body.period_start) {
+        Ok(dt) => dt.with_timezone(&chrono::Utc),
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": format!("invalid period_start: {}", e) })),
+            );
+        }
+    };
+    let period_end = match DateTime::parse_from_rfc3339(&body.period_end) {
+        Ok(dt) => dt.with_timezone(&chrono::Utc),
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": format!("invalid period_end: {}", e) })),
+            );
+        }
+    };
+    tokio::spawn(async move {
+        if let Err(e) =
+            jobs::sales_rebate::run_custom(ctx, body.schedule_type, period_start, period_end).await
+        {
+            error!("trigger_sales_rebate_custom error: {:#}", e);
+        }
+    });
+    (
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({
+            "status": "triggered",
+            "job": "sales_rebate_custom",
+            "schedule_type": body.schedule_type,
+            "period_start": body.period_start,
+            "period_end": body.period_end,
+        })),
+    )
+}
+
+async fn trigger_sales_rebate_force(
+    Extension(ctx): Extension<AppContext>,
+    AxumJson(body): AxumJson<TriggerForceBody>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let period_start = match DateTime::parse_from_rfc3339(&body.period_start) {
+        Ok(dt) => dt.with_timezone(&chrono::Utc),
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": format!("invalid period_start: {}", e) })),
+            );
+        }
+    };
+    let period_end = match &body.period_end {
+        Some(s) => match DateTime::parse_from_rfc3339(s) {
+            Ok(dt) => dt.with_timezone(&chrono::Utc),
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({ "error": format!("invalid period_end: {}", e) })),
+                );
+            }
+        },
+        None => chrono::Utc::now(),
+    };
+    let period_end_str = period_end.to_rfc3339();
+    tokio::spawn(async move {
+        if let Err(e) =
+            jobs::sales_rebate::run_force(ctx, body.schedule_type, period_start, period_end).await
+        {
+            error!("trigger_sales_rebate_force error: {:#}", e);
+        }
+    });
+    (
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({
+            "status": "triggered",
+            "job": "sales_rebate_force",
+            "schedule_type": body.schedule_type,
+            "period_start": body.period_start,
+            "period_end": period_end_str,
+        })),
+    )
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -246,8 +383,13 @@ async fn main() -> Result<()> {
     let broadcaster = TracingBroadcaster::create();
     let http_app = Router::new()
         .route("/health", get(health))
+        .route("/trigger/sales-rebate-daily", post(trigger_sales_rebate_daily))
+        .route("/trigger/sales-rebate-monthly", post(trigger_sales_rebate_monthly))
+        .route("/trigger/sales-rebate-custom", post(trigger_sales_rebate_custom))
+        .route("/trigger/sales-rebate-force", post(trigger_sales_rebate_force))
         .nest("/api/v1", board_api)
         .fallback_service(ServeUI::new())
+        .layer(axum::Extension(ctx.clone()))
         .layer(axum::Extension(broadcaster))
         .layer(TraceLayer::new_for_http());
 
@@ -263,7 +405,9 @@ async fn main() -> Result<()> {
     // ── Spawn cron scheduler ──────────────────────────────────────────────
     let ctx_cron = ctx.clone();
     tokio::spawn(async move {
-        run_cron_scheduler(ctx_cron).await;
+        if let Err(e) = start_cron_scheduler(ctx_cron).await {
+            error!("CronScheduler failed to start: {:#}", e);
+        }
     });
 
     // ── Spawn apalis monitor (manages worker lifecycle + heartbeat) ───────
@@ -366,74 +510,107 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn run_cron_scheduler(ctx: AppContext) {
-    use chrono::{Datelike, Timelike, Utc};
+async fn start_cron_scheduler(ctx: AppContext) -> Result<()> {
+    let sched = JobScheduler::new().await?;
 
-    loop {
-        tokio::time::sleep(Duration::from_secs(60)).await;
+    // Close Trade: 22:30 UTC daily
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 30 22 * * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::close_trade::execute(ctx).await {
+                error!("CloseTradeJob error: {:#}", e);
+            }
+        })
+    })?).await?;
 
-        let now = Utc::now();
-        let hour = now.hour();
-        let minute = now.minute();
-        let weekday = now.weekday().num_days_from_monday();
-
-        // Close Trade Job: 22:30 UTC daily
-        if hour == 22 && minute == 30 {
-            let ctx = ctx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = jobs::close_trade::execute(ctx).await {
-                    error!("Scheduled CloseTradeJob error: {:#}", e);
+    // Account Daily Confirmation: Mon-Fri, 21:29 (DST) or 22:29 (non-DST)
+    // Schedule both times; handler checks which one is correct for the current DST state.
+    for trigger_hour in [21u32, 22u32] {
+        let c = ctx.clone();
+        let expr = format!("0 29 {} * * Mon,Tue,Wed,Thu,Fri", trigger_hour);
+        sched.add(Job::new_async(expr.as_str(), move |_, _| {
+            let ctx = c.clone();
+            Box::pin(async move {
+                let now = Utc::now();
+                let expected = if utils::is_dst_los_angeles(now) { 21 } else { 22 };
+                if now.hour() == expected {
+                    if let Err(e) = jobs::account_daily::execute(ctx).await {
+                        error!("AccountDailyJob error: {:#}", e);
+                    }
                 }
-            });
-        }
-
-        // Account Daily Confirmation: 21:29 UTC Mon-Fri (DST) or 22:29 (non-DST)
-        let dst = utils::is_dst_los_angeles(now);
-        let target_hour = if dst { 21 } else { 22 };
-        if hour == target_hour && minute == 29 && weekday < 5 {
-            let ctx = ctx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = jobs::account_daily::execute(ctx).await {
-                    error!("Scheduled AccountDailyJob error: {:#}", e);
-                }
-            });
-        }
-
-        // Crypto Monitor: every minute (*/1 * * * *)
-        {
-            let ctx = ctx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = jobs::crypto::execute(ctx).await {
-                    error!("Scheduled CryptoMonitorJob error: {:#}", e);
-                }
-            });
-        }
-
-        // Partition Maintenance: day 1 of month at 02:00 UTC
-        if now.day() == 1 && hour == 2 && minute == 0 {
-            let ctx = ctx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = jobs::partition_maintenance::execute(ctx).await {
-                    error!("Scheduled PartitionMaintenanceJob error: {:#}", e);
-                }
-            });
-        }
-
-        // Calculate & Release Rebate: every 2 minutes (*/2 * * * *)
-        if minute.is_multiple_of(2) {
-            let ctx_calc = ctx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = jobs::rebate::execute_calculate(ctx_calc).await {
-                    error!("Scheduled CalculateRebateJob error: {:#}", e);
-                }
-            });
-            let ctx_release = ctx.clone();
-            tokio::spawn(async move {
-                if let Err(e) = jobs::rebate::execute_release(ctx_release).await {
-                    error!("Scheduled ReleaseRebateJob error: {:#}", e);
-                }
-            });
-        }
+            })
+        })?).await?;
     }
+
+    // Crypto Monitor: every minute
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 * * * * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::crypto::execute(ctx).await {
+                error!("CryptoMonitorJob error: {:#}", e);
+            }
+        })
+    })?).await?;
+
+    // Partition Maintenance: 1st of month at 02:00 UTC
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 0 2 1 * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::partition_maintenance::execute(ctx).await {
+                error!("PartitionMaintenanceJob error: {:#}", e);
+            }
+        })
+    })?).await?;
+
+    // Daily SalesRebate: 03:00 UTC (accounts for ~30min trade_rebate_k8s write lag)
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 0 3 * * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::sales_rebate::run_daily(ctx).await {
+                error!("SalesRebateDaily error: {:#}", e);
+            }
+        })
+    })?).await?;
+
+    // Monthly SalesRebate: 1st of month 03:00 UTC
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 0 3 1 * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::sales_rebate::run_monthly(ctx).await {
+                error!("SalesRebateMonthly error: {:#}", e);
+            }
+        })
+    })?).await?;
+
+    // Calculate Rebate: every 2 minutes
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 0/2 * * * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::rebate::execute_calculate(ctx).await {
+                error!("CalculateRebateJob error: {:#}", e);
+            }
+        })
+    })?).await?;
+
+    // Release Rebate: every 2 minutes
+    let c = ctx.clone();
+    sched.add(Job::new_async("0 0/2 * * * *", move |_, _| {
+        let ctx = c.clone();
+        Box::pin(async move {
+            if let Err(e) = jobs::rebate::execute_release(ctx).await {
+                error!("ReleaseRebateJob error: {:#}", e);
+            }
+        })
+    })?).await?;
+
+    info!("CronScheduler started (8 tasks, 9 cron entries — AccountDaily registered twice for DST)");
+    sched.start().await?;
+    Ok(())
 }
 

@@ -65,7 +65,7 @@
                   viewComments(
                     CommentType.Withdrawal,
                     item.id,
-                    formatPaymentNumber(item.payment.number)
+                    item.payment.number.substring(3)
                   )
                 "
               >
@@ -152,7 +152,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, inject } from "vue";
 import TableFooter from "@/components/TableFooter.vue";
-import { formatPaymentNumber } from "@/core/utils/PaymentNumberUtils";
 import svc from "../../services/PaymentService";
 import {
   TransactionAccountType,
