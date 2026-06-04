@@ -60,12 +60,7 @@ public partial class PaymentMethod
                 "ccCvc",
             ],
             PaymentPlatformTypes.Pay247 => ["returnUrl", "currencyId"],
-            PaymentPlatformTypes.Help2Pay =>
-            [
-                "returnUrl", "currencyId", "bank",
-                "payerAccountName", "payerAccountNumber",
-                "payerAccountNameLocal", "payerPhoneNumber",
-            ],
+            PaymentPlatformTypes.Help2Pay => ["returnUrl", "currencyId"],
             PaymentPlatformTypes.Monetix => ["returnUrl", "currencyId"],
             PaymentPlatformTypes.Bakong => ["returnUrl", "currencyId"],
             PaymentPlatformTypes.Wire => MethodType == PaymentMethodTypes.Withdrawal

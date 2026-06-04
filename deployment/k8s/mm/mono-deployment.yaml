@@ -38,6 +38,11 @@ spec:
           env:
             - name: AUTH_GRPC_ADDR
               value: "http://auth:50002"
+            # Dedicated Hangfire DB so mono's scheduler doesn't collide with the
+            # legacy MM-Back staging (which keeps using `hangfire` and registers
+            # job types this codebase can't load, e.g. ISalesRebateSummaryJob).
+            - name: HANGFIRE_DATABASE
+              value: "hangfire_k8s"
           resources:
             requests:
               memory: "2Gi"

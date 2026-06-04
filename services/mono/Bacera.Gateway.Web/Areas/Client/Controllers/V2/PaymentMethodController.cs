@@ -3,7 +3,6 @@ using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Vendor.EuPayment;
-using Bacera.Gateway.Vendor.Help2Pay.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -218,75 +217,6 @@ public class PaymentMethodController(
             }
 
             result.PaymentMethods = paymentMethods;
-        }
-
-        // Help2Pay: per channel × currency variants, each carrying its Configuration.Banks whitelist
-        // so the client renders the `bank` request-key as a "CODE - Name" dropdown.
-        if (method.Platform == (int)PaymentPlatformTypes.Help2Pay)
-        {
-            var allMethods = await paymentMethodSvc.GetMethodsAsync();
-
-            var accessibleIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(account.Id,
-                PaymentMethodTypes.Deposit,
-                PaymentMethodStatusTypes.Active,
-                PaymentMethodAccessStatusTypes.Active)).ToHashSet();
-
-            var help2PayRows = allMethods
-                .Where(x => x.MethodType == PaymentMethodTypes.Deposit
-                    && x.Status == (int)PaymentMethodStatusTypes.Active
-                    && x.Platform == (int)PaymentPlatformTypes.Help2Pay
-                    && x.Group == method.Group
-                    && accessibleIds.Contains(x.Id))
-                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
-            foreach (var m in help2PayRows)
-            {
-                // Range in cents, matches the deposit-group-info convention used by ExLink Global.
-                var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
-
-                // Per-row bank whitelist pulled straight from Configuration.Banks[<ISO currency>].
-                // Names live in the DB row so we never hardcode a bank table on the server.
-                List<PaymentMethodDTO.BankOption>? banks = null;
-                try
-                {
-                    var h2pOptions = Help2PayOptions.FromJson(m.Configuration ?? string.Empty);
-                    var currencyCode = ((CurrencyTypes)m.CurrencyId).ToString();
-                    var entries = h2pOptions.GetBanksForCurrency(currencyCode);
-                    if (entries.Length > 0)
-                    {
-                        banks = entries
-                            .Select(e => new PaymentMethodDTO.BankOption { Code = e.Code, Name = e.Name })
-                            .ToList();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Malformed Configuration shouldn't break the picker — log and leave Banks null
-                    // so the FE falls back to the legacy free-text bank input for this row.
-                    logger.LogWarning(ex, "Failed to parse Help2Pay Configuration for method {MethodId}", m.Id);
-                }
-
-                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
-                {
-                    CurrencyId = (CurrencyTypes)m.CurrencyId,
-                    HashId = PaymentMethod.HashEncode(m.Id),
-                    Range = methodRange,
-                    PaymentMethodName = m.Name,
-                    Banks = banks
-                });
-            }
-
-            result.PaymentMethods = paymentMethods;
-
-            // Re-expand currencyRates so the FE rate lookup works for any variant the user
-            // picks in step 3, not just the random pick's single AvailableCurrencies.
-            var allCurrencies = paymentMethods.Select(x => x.CurrencyId).ToHashSet();
-            if (allCurrencies.Count > 0)
-            {
-                result.CurrencyRates = await paymentMethodSvc.GetSellingExchangeRatesAsync(toCurrency, allCurrencies);
-            }
         }
 
         return Ok(result);

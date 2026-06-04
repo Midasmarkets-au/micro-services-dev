@@ -9,6 +9,8 @@ public partial class SalesRebate
 
     public long TradeRebateId { get; set; }
 
+    public long Ticket { get; set; }
+
     public long SalesAccountId { get; set; }
 
     /// <summary>

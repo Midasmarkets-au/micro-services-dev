@@ -1306,10 +1306,7 @@
       "payerAccountName": "付款人账户姓名",
       "payerAccountNumber": "付款人账号",
       "payerAccountNameLocal": "付款人账户姓名（本地语言）",
-      "payerPhoneNumber": "付款人手机号码",
-      "city": "城市",
-      "address": "地址",
-      "paymentInfoId": "收款账户"
+      "payerPhoneNumber": "付款人手机号码"
     },
     "action": {
       "close": "关闭",

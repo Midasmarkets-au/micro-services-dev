@@ -46,7 +46,7 @@ public static class SalesRebateExtensions
         {
             Id = x.Id,
             TradeRebateId = x.TradeRebateId,
-            Ticket = x.TradeRebate.Ticket,
+            Ticket = x.Ticket,
             SalesAccountUid = x.SalesAccount.Uid,
             Amount = x.Amount,
             TradeAccountType = x.TradeAccountType,

@@ -29,6 +29,8 @@ public partial class SalesRebateSchema
 
     public short Schedule { get; set; }
 
+    public bool AutoRelease { get; set; }
+
     public virtual Account RebateAccount { get; set; } = null!;
 
     public virtual Account SalesAccount { get; set; } = null!;
