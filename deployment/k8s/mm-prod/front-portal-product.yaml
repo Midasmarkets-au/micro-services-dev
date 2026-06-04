@@ -27,6 +27,15 @@ spec:
                   - key: workload-type
                     operator: In
                     values: ["production"]
+        # 软反亲和:尽量把副本分散到不同节点(不强制,避免 pod 卡 Pending)
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: front-portal-product
       containers:
         - name: front-portal-product
           image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal-product:latest
@@ -77,3 +86,18 @@ spec:
       port: 80
       targetPort: http
       protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: front-portal-product
+  namespace: mm-prod
+  labels:
+    app: front-portal-product
+spec:
+  # 主动中断(节点轮换/drain/consolidation/drift)时,任何时刻至少保留 2 个副本可用,
+  # Karpenter 会逐个驱逐、等新副本就绪后再动下一个,实现滚动迁移、服务不中断。
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: front-portal-product
