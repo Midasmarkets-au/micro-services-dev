@@ -56,9 +56,9 @@
             <tr v-for="item in data" :key="item.id">
               <td>{{ item.salesAccountUid }}</td>
               <td>
-                <TimeShow :date-iso-string="item.periodStart" />
+                {{ serverDate(item.periodStart) }}
                 &nbsp;~&nbsp;
-                <TimeShow :date-iso-string="item.periodEnd" />
+                {{ serverDate(item.periodEnd) }}
               </td>
               <td>
                 <el-tag v-if="item.scheduleType === 0" type="success" effect="light">Daily</el-tag>
@@ -101,7 +101,12 @@ import TableFooter from "@/components/TableFooter.vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
 import RebateService from "../services/RebateService";
 import SalesRebateItemK8sModal from "../components/modal/SalesRebateItemK8sModal.vue";
-import { convertToUTC } from "@/core/utils/DateUtils";
+import { handleCriteriaTradeTime } from "@/core/helpers/helpers";
+import { convertToLocalTime } from "@/core/plugins/TimerService";
+
+// period_start/end are stored at MT5-server midnight (UTC+2/+3); show the server day.
+const serverDate = (iso?: string | null) =>
+  iso ? convertToLocalTime(iso, "America/Los_Angeles").slice(0, 10) : "";
 
 const isLoading = ref(true);
 const data = ref<any[]>([]);
@@ -117,9 +122,8 @@ const criteria = ref<any>({
 const fetchData = async (_page: number) => {
   isLoading.value = true;
   criteria.value.page = _page;
-  const datesRange = convertToUTC(period.value);
-  criteria.value.from = datesRange.from;
-  criteria.value.to = datesRange.to;
+  // align date-range filter to MT5-server days (matches stored period_start)
+  handleCriteriaTradeTime(period.value, criteria);
   try {
     const res = await RebateService.querySalesRebateK8s(criteria.value);
     criteria.value = { ...criteria.value, ...res.criteria };

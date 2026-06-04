@@ -1,5 +1,7 @@
 use anyhow::Result;
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
+use chrono_tz::America::New_York;
+use chrono_tz::OffsetComponents;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
@@ -12,6 +14,43 @@ use crate::AppContext;
 
 const ALPHA_TYPES: &[i16] = &[6, 9, 10, 14, 18, 19, 20];
 const PRO_TYPES: &[i16] = &[5, 8, 21];
+
+// ── MT5-server (EET) day/month boundaries ────────────────────────────────────
+// The MT5 server runs on EET: UTC+2 in winter, UTC+3 in summer (EEST). To keep
+// SalesRebate settlement windows consistent with the existing front-end
+// (`isDateInDST_US` in helpers.ts / SalesRebateExportModal) and mono
+// (`ReportJob` / `IsCurrentDSTLosAngeles`), DST is decided by US rules: when
+// America/New_York is on daylight time the server offset is +3h, otherwise +2h.
+// The US-vs-EU DST transition gap is a known pre-existing quirk, mirrored here on
+// purpose so these day boundaries line up with the trade-rebate export/report views.
+
+/// MT5-server UTC offset in hours (+2 or +3) for the given instant.
+fn mt5_offset_hours(at: DateTime<Utc>) -> i64 {
+    let ny = New_York.offset_from_utc_datetime(&at.naive_utc());
+    if ny.dst_offset() != Duration::zero() {
+        3
+    } else {
+        2
+    }
+}
+
+/// UTC instant of 00:00 MT5-server time for the server-local date `at` falls on.
+fn server_day_start(at: DateTime<Utc>) -> DateTime<Utc> {
+    let off = mt5_offset_hours(at);
+    let server_wall = at + Duration::hours(off); // server wall-clock
+    let midnight = server_wall.date_naive().and_hms_opt(0, 0, 0).unwrap();
+    Utc.from_utc_datetime(&midnight) - Duration::hours(off)
+}
+
+/// UTC instant of 00:00 MT5-server time on the 1st of the given server month.
+fn server_month_start(year: i32, month: u32) -> DateTime<Utc> {
+    let first = NaiveDate::from_ymd_opt(year, month, 1)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap();
+    let off = mt5_offset_hours(Utc.from_utc_datetime(&first));
+    Utc.from_utc_datetime(&first) - Duration::hours(off)
+}
 
 /// Manual trigger with explicit period — for backfill / testing.
 pub async fn run_custom(
@@ -40,12 +79,13 @@ pub async fn run_force(
         schedule_type, period_start, period_end
     );
     if schedule_type == 0 {
-        let mut day = period_start;
-        while day < period_end {
-            let next_day = day + chrono::Duration::days(1);
-            let end = if next_day < period_end { next_day } else { period_end };
-            run_for_all_tenants(&ctx, schedule_type, day, end, true).await?;
-            day = next_day;
+        // Walk MT5-server days so backfill windows match the daily job exactly.
+        let mut cursor = server_day_start(period_start);
+        while cursor < period_end {
+            let next = server_day_start(cursor + Duration::hours(25)); // next server midnight
+            let end = if next < period_end { next } else { period_end };
+            run_for_all_tenants(&ctx, schedule_type, cursor, end, true).await?;
+            cursor = next;
         }
         Ok(())
     } else {
@@ -53,45 +93,38 @@ pub async fn run_force(
     }
 }
 
-/// Daily SalesRebate settlement — settles previous day [yesterday 00:00 UTC, today 00:00 UTC).
-/// Cron: 23:00 UTC daily.
+/// Daily SalesRebate settlement — settles the most recently completed MT5-server
+/// (EET) day. Cron: 03:00 UTC daily.
 pub async fn run_daily(ctx: AppContext) -> Result<()> {
     let now = Utc::now();
-    let today_start = Utc
-        .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
-        .single()
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute today_start"))?;
-    let yesterday_start = today_start - chrono::Duration::days(1);
+    let today_start = server_day_start(now); // current server day 00:00 (in UTC)
+    let yesterday_start = server_day_start(today_start - Duration::hours(1)); // prev server day 00:00
 
     info!(
-        "SalesRebateDaily: settling period [{}, {})",
+        "SalesRebateDaily: settling MT5-server day [{}, {})",
         yesterday_start, today_start
     );
 
     run_for_all_tenants(&ctx, 0, yesterday_start, today_start, false).await
 }
 
-/// Monthly SalesRebate settlement — settles previous month [first of last month, first of this month).
-/// Cron: 1st of month 00:05 UTC.
+/// Monthly SalesRebate settlement — settles the previous MT5-server (EET) month.
+/// Cron: 1st of month 03:00 UTC.
 pub async fn run_monthly(ctx: AppContext) -> Result<()> {
     let now = Utc::now();
-    let this_month_start = Utc
-        .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
-        .single()
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute this_month_start"))?;
+    let server_now = now + Duration::hours(mt5_offset_hours(now));
+    let (year, month) = (server_now.year(), server_now.month());
+    let this_month_start = server_month_start(year, month);
 
-    let (prev_year, prev_month) = if now.month() == 1 {
-        (now.year() - 1, 12u32)
+    let (prev_year, prev_month) = if month == 1 {
+        (year - 1, 12u32)
     } else {
-        (now.year(), now.month() - 1)
+        (year, month - 1)
     };
-    let last_month_start = Utc
-        .with_ymd_and_hms(prev_year, prev_month, 1, 0, 0, 0)
-        .single()
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute last_month_start"))?;
+    let last_month_start = server_month_start(prev_year, prev_month);
 
     info!(
-        "SalesRebateMonthly: settling period [{}, {})",
+        "SalesRebateMonthly: settling MT5-server month [{}, {})",
         last_month_start, this_month_start
     );
 
