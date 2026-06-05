@@ -2838,5 +2838,12 @@
         "exchangeRate": "汇率"
       }
     }
+  },
+  "tip": {
+    "editRule_1": "不允许删除账户类型",
+    "editRule_2": "只允许降低个人返佣",
+    "editRule_3": "不允许更改pip/佣金",
+    "editRule_4": "只允许降低百分比值",
+    "editRule_5": "均可编辑"
   }
 }

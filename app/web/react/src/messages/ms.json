@@ -2835,5 +2835,12 @@
         "exchangeRate": "Kadar pertukaran"
       }
     }
+  },
+  "tip": {
+    "editRule_1": "Penyingkiran jenis akaun tidak dibenarkan.",
+    "editRule_2": "Hanya pengurangan nilai kadar dibenarkan.",
+    "editRule_3": "Perubahan kepada pip/komisen tidak dibenarkan.",
+    "editRule_4": "Hanya penurunan dalam nilai peratusan dibenarkan.",
+    "editRule_5": "Semua medan boleh disunting."
   }
 }

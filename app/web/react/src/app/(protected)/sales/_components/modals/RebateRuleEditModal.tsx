@@ -61,6 +61,7 @@ export function RebateRuleEditModal({
 }: RebateRuleEditModalProps) {
   const t = useTranslations('sales');
   const tType = useTranslations('sales.type');
+  const tTip = useTranslations('tip');
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const { showToast } = useToast();
@@ -1200,15 +1201,15 @@ export function RebateRuleEditModal({
               <div>
                 <span>{t('rebateEdit.existRule')}: </span>
                 <span className="mr-3">
-                  [A] {t('rebateEdit.editRule1')}
+                  [A] {tTip('editRule_1')}
                 </span>
                 <span className="mr-3">
-                  [B] {t('rebateEdit.editRule2')}
+                  [B] {tTip('editRule_2')}
                 </span>
               </div>
               <div>
                 <span>{t('rebateEdit.newRule')}: </span>
-                <span>{t('rebateEdit.editRule5')}</span>
+                <span>{tTip('editRule_5')}</span>
               </div>
             </div>
 

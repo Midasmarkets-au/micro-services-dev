@@ -2858,5 +2858,12 @@
         "exchangeRate": "Nilai Tukar"
       }
     }
+  },
+  "tip": {
+    "editRule_1": "Penghapusan jenis akun tidak diizinkan.",
+    "editRule_2": "Hanya penurunan nilai tingkat diizinkan.",
+    "editRule_3": "Perubahan pada pip/komisi tidak diizinkan.",
+    "editRule_4": "Hanya penurunan nilai persentase diizinkan.",
+    "editRule_5": "Semua bidang dapat diedit."
   }
 }
