@@ -458,5 +458,6 @@ public static class ResultMessage
     public static class SalesRebate
     {
         public const string ExceedTotalValue = "__EXCEED_TOTAL_VALUE__";
+        public const string SalesAndTargetSameLine = "__SALES_AND_TARGET_IN_SAME_LINE__";
     }
 }

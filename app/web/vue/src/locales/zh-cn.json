@@ -265,6 +265,7 @@
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能转账给自己",
     "__NO_IB_SALES_ACCOUNT__": "当前用户没有IB/销售账户",
     "__ACCOUNT_IS_NOT_DOWNLINE__": "目标账户不在您的下线或不符合条件。您只能转账给您的子IB/销售/客户账户。",
+    "__SALES_AND_TARGET_IN_SAME_LINE__": "Sales 账户与 Target 账户不能是销售上下级关系。",
     "__TARGET_ACCOUNT_NO_PRIMARY_WALLET__": "目标账户没有有效的主钱包",
     "__FAILED_SEND_VERIFICATION_CODE__": "发送验证码失败，请重试。",
     "__TARGET_WALLET_REQUIRED__": "目标钱包是必填项",

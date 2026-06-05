@@ -2,7 +2,10 @@
   <div class="d-flex flex-column flex-column-fluid">
     <div class="card mb-5 mb-xl-8">
       <div class="card-header">
-        <div class="card-title d-flex justify-content-between" style="width: 100%">
+        <div
+          class="card-title d-flex justify-content-between"
+          style="width: 100%"
+        >
           <div class="d-flex align-items-center flex-wrap gap-3">
             <el-date-picker
               class="w-250px"
@@ -21,14 +24,19 @@
               :disabled="isLoading"
               class="w-200px"
             />
-            <el-button @click="fetchData(1)" :disabled="isLoading">Search</el-button>
+            <el-button @click="fetchData(1)" :disabled="isLoading"
+              >Search</el-button
+            >
             <el-button @click="reset" :disabled="isLoading">Reset</el-button>
           </div>
         </div>
       </div>
 
       <div class="card-body">
-        <table class="table align-middle table-row-dashed fs-6 table-hover" id="sales_rebate_k8s_table">
+        <table
+          class="table align-middle table-row-dashed fs-6 table-hover"
+          id="sales_rebate_k8s_table"
+        >
           <thead>
             <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
               <th>Sales Acct UID</th>
@@ -39,48 +47,100 @@
               <th>Status</th>
               <th>Created On</th>
               <th></th>
+              <th></th>
+              <th></th>
+              <th></th>
+              <th></th>
             </tr>
           </thead>
 
           <tbody v-if="isLoading" style="height: 300px">
             <tr>
-              <td colspan="8"><scale-loader></scale-loader></td>
+              <td colspan="12"><scale-loader></scale-loader></td>
             </tr>
           </tbody>
           <tbody v-else-if="data.length === 0">
             <tr>
-              <td colspan="8"><NoDataBox /></td>
+              <td colspan="12"><NoDataBox /></td>
             </tr>
           </tbody>
           <tbody v-else class="text-gray-600 fw-semibold">
             <tr v-for="item in data" :key="item.id">
               <td>{{ item.salesAccountUid }}</td>
               <td>
-                <TimeShow :date-iso-string="item.periodStart" />
+                {{ serverDate(item.periodStart) }}
                 &nbsp;~&nbsp;
-                <TimeShow :date-iso-string="item.periodEnd" />
+                {{ serverDate(item.periodEnd) }}
               </td>
               <td>
-                <el-tag v-if="item.scheduleType === 0" type="success" effect="light">Daily</el-tag>
-                <el-tag v-else-if="item.scheduleType === 3" type="primary" effect="light">Monthly</el-tag>
-                <el-tag v-else type="info" effect="light">Type {{ item.scheduleType }}</el-tag>
+                <el-tag
+                  v-if="item.scheduleType === 0"
+                  type="success"
+                  effect="light"
+                  >Daily</el-tag
+                >
+                <el-tag
+                  v-else-if="item.scheduleType === 3"
+                  type="primary"
+                  effect="light"
+                  >Monthly</el-tag
+                >
+                <el-tag v-else type="info" effect="light"
+                  >Type {{ item.scheduleType }}</el-tag
+                >
               </td>
               <td>{{ parseFloat(item.totalAmount).toFixed(4) }}</td>
               <td>{{ item.tradeCount }}</td>
               <td>
-                <el-tag v-if="item.status === 1" type="success" effect="light">Released</el-tag>
+                <el-tag v-if="item.status === 1" type="success" effect="light"
+                  >Released</el-tag
+                >
                 <el-tag v-else type="warning" effect="light">Pending</el-tag>
               </td>
               <td><TimeShow :date-iso-string="item.createdOn" /></td>
               <td>
-                <el-button size="small" @click="showItems(item)">Details ({{ item.tradeCount }})</el-button>
+                <el-button size="small" @click="showItems(item)"
+                  >Details ({{ item.tradeCount }})</el-button
+                >
+              </td>
+              <td>
+                <el-button
+                  v-if="item.status === 0"
+                  size="small"
+                  :loading="item._recalculating"
+                  @click="recalculate(item)"
+                  >Recalculate</el-button
+                >
+              </td>
+              <td>
                 <el-button
                   v-if="item.status === 0 && item.totalAmount > 0"
                   size="small"
                   type="primary"
                   :loading="item._releasing"
                   @click="release(item)"
-                >Release</el-button>
+                  >Release</el-button
+                >
+              </td>
+              <td class="text-center">
+                <a
+                  href="#"
+                  title="Download"
+                  @click.prevent="downloadReport(item)"
+                  ><i
+                    class="fa-solid fa-download fa-xl"
+                    style="color: #5b6b86"
+                  ></i
+                ></a>
+              </td>
+              <td>
+                <el-button
+                  size="small"
+                  type="primary"
+                  :loading="item._regenerating"
+                  @click="regenerateReport(item)"
+                  >Regenerate report</el-button
+                >
               </td>
             </tr>
           </tbody>
@@ -101,7 +161,13 @@ import TableFooter from "@/components/TableFooter.vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
 import RebateService from "../services/RebateService";
 import SalesRebateItemK8sModal from "../components/modal/SalesRebateItemK8sModal.vue";
-import { convertToUTC } from "@/core/utils/DateUtils";
+import MsgPrompt from "@/core/plugins/MsgPrompt";
+import { handleCriteriaTradeTime } from "@/core/helpers/helpers";
+import { convertToLocalTime } from "@/core/plugins/TimerService";
+
+// period_start/end are stored at MT5-server midnight (UTC+2/+3); show the server day.
+const serverDate = (iso?: string | null) =>
+  iso ? convertToLocalTime(iso, "America/Los_Angeles").slice(0, 10) : "";
 
 const isLoading = ref(true);
 const data = ref<any[]>([]);
@@ -117,9 +183,8 @@ const criteria = ref<any>({
 const fetchData = async (_page: number) => {
   isLoading.value = true;
   criteria.value.page = _page;
-  const datesRange = convertToUTC(period.value);
-  criteria.value.from = datesRange.from;
-  criteria.value.to = datesRange.to;
+  // align date-range filter to MT5-server days (matches stored period_start)
+  handleCriteriaTradeTime(period.value, criteria);
   try {
     const res = await RebateService.querySalesRebateK8s(criteria.value);
     criteria.value = { ...criteria.value, ...res.criteria };
@@ -154,6 +219,59 @@ const release = async (item: any) => {
     console.error(e);
   } finally {
     item._releasing = false;
+  }
+};
+
+const recalculate = async (item: any) => {
+  item._recalculating = true;
+  try {
+    await RebateService.recalcSalesRebateK8s(item.id);
+    MsgPrompt.success(
+      "Recalculation triggered. The record will refresh shortly."
+    );
+    // recalc runs async on the scheduler; refresh after it has regenerated.
+    setTimeout(() => fetchData(criteria.value.page), 2500);
+  } catch (e) {
+    MsgPrompt.error(e);
+  } finally {
+    item._recalculating = false;
+  }
+};
+
+const downloadReport = async (item: any) => {
+  item._downloading = true;
+  try {
+    const blob = await RebateService.downloadSalesRebateK8sReport(item.id);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sales-rebate-${item.salesAccountUid}-${serverDate(
+      item.periodStart
+    )}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      MsgPrompt.error(
+        "Report not generated yet. Click 'Regenerate report' first."
+      );
+    } else {
+      MsgPrompt.error(e);
+    }
+  } finally {
+    item._downloading = false;
+  }
+};
+
+const regenerateReport = async (item: any) => {
+  item._regenerating = true;
+  try {
+    await RebateService.regenerateSalesRebateK8sReport(item.id);
+    MsgPrompt.success("Report regeneration triggered.");
+  } catch (e) {
+    MsgPrompt.error(e);
+  } finally {
+    item._regenerating = false;
   }
 };
 

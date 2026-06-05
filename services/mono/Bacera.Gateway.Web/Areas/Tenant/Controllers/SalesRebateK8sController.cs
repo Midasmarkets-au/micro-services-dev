@@ -3,6 +3,7 @@ using Bacera.Gateway.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http.Json;
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
@@ -10,13 +11,22 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Sales Rebate K8s")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/sales-rebate-k8s")]
 [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
-public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantBaseController
+public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClientFactory httpClientFactory, IStorageService storageService) : TenantBaseController
 {
     public class Criteria : Bacera.Criteria
     {
         public DateTime? From           { get; set; }
         public DateTime? To             { get; set; }
         public long?     SalesAccountId { get; set; }
+    }
+
+    public class ItemCriteria : Bacera.Criteria
+    {
+        public string?  Filter         { get; set; } // "all" | "included" | "excluded"
+        // Stats over the full item set (filter-independent) for the summary bar:
+        public int      IncludedCount  { get; set; }
+        public int      ExcludedCount  { get; set; }
+        public decimal  IncludedAmount { get; set; }
     }
 
     public class SummaryViewModel
@@ -98,12 +108,34 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantB
     /// List detail items for a SalesRebate K8s summary record.
     /// </summary>
     [HttpGet("{id:long}/items")]
-    [ProducesResponseType(typeof(List<ItemViewModel>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Items(long id)
+    [ProducesResponseType(typeof(Result<List<ItemViewModel>, ItemCriteria>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Items(long id, [FromQuery] ItemCriteria? criteria)
     {
-        var items = await tenantDbContext.SalesRebateItemK8s
-            .Where(x => x.SalesRebateId == id)
+        criteria ??= new ItemCriteria();
+        if (criteria.Page < 1) criteria.Page = 1;
+        if (criteria.Size < 1) criteria.Size = 20;
+
+        var baseQuery = tenantDbContext.SalesRebateItemK8s.Where(x => x.SalesRebateId == id);
+
+        // Filter-independent stats for the summary bar.
+        criteria.IncludedCount  = await baseQuery.CountAsync(x => !x.Excluded);
+        criteria.ExcludedCount  = await baseQuery.CountAsync(x => x.Excluded);
+        criteria.IncludedAmount = await baseQuery.Where(x => !x.Excluded)
+                                                 .SumAsync(x => (decimal?)x.Amount) ?? 0m;
+
+        var query = criteria.Filter switch
+        {
+            "included" => baseQuery.Where(x => !x.Excluded),
+            "excluded" => baseQuery.Where(x => x.Excluded),
+            _          => baseQuery,
+        };
+
+        criteria.Total = await query.CountAsync();
+
+        var items = await query
             .OrderBy(x => x.ClosedOn)
+            .Skip((criteria.Page - 1) * criteria.Size)
+            .Take(criteria.Size)
             .Select(x => new ItemViewModel
             {
                 Id                 = x.Id,
@@ -119,7 +151,97 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantB
             })
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(Result<List<ItemViewModel>, ItemCriteria>.Of(items, criteria));
+    }
+
+    /// <summary>
+    /// Re-calculate a single un-released SalesRebate K8s summary — re-reads the
+    /// period's trades (e.g. after MT ticket data was updated) and regenerates the
+    /// record. Delegates to the Rust scheduler's force-recalc, scoped to this sales
+    /// account. Blocked once the record has been released.
+    /// </summary>
+    [HttpPost("{id:long}/recalculate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Recalculate(long id)
+    {
+        var record = await tenantDbContext.SalesRebateK8s
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (record == null)
+            return NotFound();
+        if (record.Status != 0)
+            return BadRequest(Result.Error(ResultMessage.Common.ActionNotAllow));
+
+        var schedulerHttp = (Environment.GetEnvironmentVariable("SCHEDULER_HTTP_URL")
+                             ?? "http://scheduler:9004").TrimEnd('/');
+        var payload = new
+        {
+            schedule_type    = record.ScheduleType,
+            period_start     = DateTime.SpecifyKind(record.PeriodStart, DateTimeKind.Utc).ToString("o"),
+            period_end       = DateTime.SpecifyKind(record.PeriodEnd, DateTimeKind.Utc).ToString("o"),
+            sales_account_id = record.SalesAccountId,
+        };
+
+        var http = httpClientFactory.CreateClient();
+        var resp = await http.PostAsJsonAsync($"{schedulerHttp}/trigger/sales-rebate-force", payload);
+        if (!resp.IsSuccessStatusCode)
+            return StatusCode(StatusCodes.Status502BadGateway, Result.Error(ResultMessage.Common.ActionFail));
+
+        return Ok(new { status = "triggered" });
+    }
+
+    /// <summary>
+    /// Download the detail CSV report for a summary (generated to S3 by the scheduler
+    /// when the summary is created / regenerated). 404 if it hasn't been generated yet.
+    /// </summary>
+    [HttpGet("{id:long}/report")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadReport(long id)
+    {
+        var record = await tenantDbContext.SalesRebateK8s
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync();
+        if (record == null)
+            return NotFound();
+
+        // Deterministic key (matches the scheduler upload); summary id is globally unique.
+        var key = $"sales-rebate-k8s-report/{id}.csv";
+        var stream = await storageService.GetObjectByFilenameAsync(key);
+        if (stream == null)
+            return NotFound(Result.Error(ResultMessage.Common.RecordNotFound));
+
+        return File(stream, "text/csv", $"sales-rebate-{id}.csv");
+    }
+
+    /// <summary>
+    /// (Re)generate the summary's detail CSV report and overwrite its S3 object.
+    /// Delegates to the Rust scheduler (which owns the report generation).
+    /// </summary>
+    [HttpPost("{id:long}/report/regenerate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegenerateReport(long id)
+    {
+        var record = await tenantDbContext.SalesRebateK8s
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync();
+        if (record == null)
+            return NotFound();
+
+        var schedulerHttp = (Environment.GetEnvironmentVariable("SCHEDULER_HTTP_URL")
+                             ?? "http://scheduler:9004").TrimEnd('/');
+        var http = httpClientFactory.CreateClient();
+        var resp = await http.PostAsJsonAsync(
+            $"{schedulerHttp}/trigger/sales-rebate-report",
+            new { summary_id = id });
+        if (!resp.IsSuccessStatusCode)
+            return StatusCode(StatusCodes.Status502BadGateway, Result.Error(ResultMessage.Common.ActionFail));
+
+        return Ok(new { status = "triggered" });
     }
 
     /// <summary>
