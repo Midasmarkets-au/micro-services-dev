@@ -273,7 +273,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
     if (pct <= 0) return;
     setFormTables((prev) => {
       const rows = (prev[accountType] || []).map((row) => {
-        const max = getRowMax(accountType, row);
+        const max = Number(getRowMax(accountType, row));
         let v = Number((max * (pct / 100)).toFixed(1));
         if (v > max) v = max;
         if (v < 0) v = 0;
@@ -287,9 +287,10 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
   const stepFormRowValue = (accountType: number, cidIdx: number, delta: number, max: number) => {
     setFormTables((prev) => {
       const list = [...(prev[accountType] || [])];
-      const cur = list[cidIdx]?.r ?? 0;
+      const cur = Number(list[cidIdx]?.r ?? 0);
+      const m = Number(max);
       let v = Number((cur + delta).toFixed(1));
-      if (v > max) v = max;
+      if (v > m) v = m;
       if (v < 0) v = 0;
       list[cidIdx] = { ...list[cidIdx], r: v };
       return { ...prev, [accountType]: list };
@@ -402,8 +403,8 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
                 </thead>
                 <tbody>
                   {rows.map((row, idx) => {
-                    const maxVal = hasEdit ? (editRebateRuleDetails[at]?.items?.find((i: any) => i.cid === row.cid)?.r ?? row.total) : row.total;
-                    const remain = row.total < row.r ? 0 : Number((row.total - row.r).toFixed(1));
+                    const maxVal = Number(hasEdit ? (editRebateRuleDetails[at]?.items?.find((i: any) => i.cid === row.cid)?.r ?? row.total) : row.total);
+                    const remain = Number(row.total) < Number(row.r) ? 0 : Number((Number(row.total) - Number(row.r)).toFixed(1));
                     return (
                       <tr key={row.cid} className="border-t border-border">
                         <td className="px-3 py-3">{row.name}</td>
@@ -414,7 +415,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
                               type="button"
                               disabled={row.r <= 0}
                               onClick={() => stepFormRowValue(at, idx, -0.1, maxVal)}
-                              className="px-2 py-1 text-text-secondary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                              className="cursor-pointer px-2 py-1 text-text-secondary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               −
                             </button>
@@ -437,7 +438,7 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
                               type="button"
                               disabled={row.r >= maxVal}
                               onClick={() => stepFormRowValue(at, idx, 0.1, maxVal)}
-                              className="px-2 py-1 text-text-secondary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                              className="cursor-pointer px-2 py-1 text-text-secondary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               +
                             </button>
