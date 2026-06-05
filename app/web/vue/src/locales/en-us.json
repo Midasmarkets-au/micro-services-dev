@@ -265,6 +265,7 @@
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "You cannot transfer to your own account",
     "__NO_IB_SALES_ACCOUNT__": "Current user does not have an IB/Sales account",
     "__ACCOUNT_IS_NOT_DOWNLINE__": "Target account is not in your downline or does not meet the criteria. You can only transfer to your child IB/Sales/Client accounts.",
+    "__SALES_AND_TARGET_IN_SAME_LINE__": "Sales Account and Target Account cannot be on the same sales line (upline/downline).",
     "__TARGET_ACCOUNT_NO_PRIMARY_WALLET__": "Target account does not have a valid primary wallet",
     "__FAILED_SEND_VERIFICATION_CODE__": "Failed to send verification code. Please try again.",
     "__TARGET_WALLET_REQUIRED__": "Target wallet is required",

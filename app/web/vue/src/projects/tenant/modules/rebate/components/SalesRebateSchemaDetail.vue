@@ -234,7 +234,9 @@
               Auto Release
             </label>
             <el-switch v-model="schemaInfo.autoRelease" />
-            <span class="text-muted fs-7">Automatically credit wallet after settlement</span>
+            <span class="text-muted fs-7"
+              >Automatically credit wallet after settlement</span
+            >
           </div>
         </div>
 
@@ -319,7 +321,14 @@ const show = async (_item: any) => {
   isLoading.value = false;
 };
 
+const isEmpty = (v: any) => v === "" || v === null || v === undefined;
+
 const update = async () => {
+  const { rebate, alphaRebate, proRebate } = schemaInfo.value;
+  if (isEmpty(rebate) || isEmpty(alphaRebate) || isEmpty(proRebate)) {
+    MsgPrompt.error("Please fill in all three rebate fields.");
+    return;
+  }
   try {
     await RebateService.putSalesRebateSchema(
       schemaInfo.value.id,

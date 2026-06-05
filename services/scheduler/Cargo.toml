@@ -18,6 +18,7 @@ sqlx = { workspace = true, features = ["mysql"] }
 rust_decimal = { version = "1", features = ["serde-float"] }
 # Utils
 chrono = { workspace = true }
+chrono-tz = { workspace = true }
 uuid = { workspace = true }
 # gRPC
 tonic = { workspace = true }

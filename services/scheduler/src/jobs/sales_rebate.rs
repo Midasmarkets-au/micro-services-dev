@@ -1,5 +1,7 @@
 use anyhow::Result;
-use chrono::{DateTime, Datelike, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
+use chrono_tz::America::New_York;
+use chrono_tz::OffsetComponents;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
@@ -13,6 +15,169 @@ use crate::AppContext;
 const ALPHA_TYPES: &[i16] = &[6, 9, 10, 14, 18, 19, 20];
 const PRO_TYPES: &[i16] = &[5, 8, 21];
 
+// ── MT5-server (EET) day/month boundaries ────────────────────────────────────
+// The MT5 server runs on EET: UTC+2 in winter, UTC+3 in summer (EEST). To keep
+// SalesRebate settlement windows consistent with the existing front-end
+// (`isDateInDST_US` in helpers.ts / SalesRebateExportModal) and mono
+// (`ReportJob` / `IsCurrentDSTLosAngeles`), DST is decided by US rules: when
+// America/New_York is on daylight time the server offset is +3h, otherwise +2h.
+// The US-vs-EU DST transition gap is a known pre-existing quirk, mirrored here on
+// purpose so these day boundaries line up with the trade-rebate export/report views.
+
+/// MT5-server UTC offset in hours (+2 or +3) for the given instant.
+fn mt5_offset_hours(at: DateTime<Utc>) -> i64 {
+    let ny = New_York.offset_from_utc_datetime(&at.naive_utc());
+    if ny.dst_offset() != Duration::zero() {
+        3
+    } else {
+        2
+    }
+}
+
+/// UTC instant of 00:00 MT5-server time for the server-local date `at` falls on.
+fn server_day_start(at: DateTime<Utc>) -> DateTime<Utc> {
+    let off = mt5_offset_hours(at);
+    let server_wall = at + Duration::hours(off); // server wall-clock
+    let midnight = server_wall.date_naive().and_hms_opt(0, 0, 0).unwrap();
+    Utc.from_utc_datetime(&midnight) - Duration::hours(off)
+}
+
+/// UTC instant of 00:00 MT5-server time on the 1st of the given server month.
+fn server_month_start(year: i32, month: u32) -> DateTime<Utc> {
+    let first = NaiveDate::from_ymd_opt(year, month, 1)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap();
+    let off = mt5_offset_hours(Utc.from_utc_datetime(&first));
+    Utc.from_utc_datetime(&first) - Duration::hours(off)
+}
+
+// ── Per-summary detail CSV report (uploaded to S3; Download/Regenerate from the UI) ──
+
+/// Deterministic S3 key. summary_id is a globally-unique snowflake, so no tenant
+/// prefix is needed; regenerate writes the same key (overwrite).
+fn report_s3_key(summary_id: i64) -> String {
+    format!("sales-rebate-k8s-report/{}.csv", summary_id)
+}
+
+#[derive(sqlx::FromRow)]
+struct ReportRow {
+    ticket: i64,
+    trade_account_number: i64,
+    symbol: String,
+    volume: i32,
+    rebate_type: String,
+    rebate_base: Decimal,
+    amount: Decimal,
+    closed_on: DateTime<Utc>,
+    excluded: bool,
+}
+
+impl From<&NewSalesRebateItem> for ReportRow {
+    fn from(i: &NewSalesRebateItem) -> Self {
+        ReportRow {
+            ticket: i.ticket,
+            trade_account_number: i.trade_account_number,
+            symbol: i.symbol.clone(),
+            volume: i.volume,
+            rebate_type: i.rebate_type.clone(),
+            rebate_base: i.rebate_base,
+            amount: i.amount,
+            closed_on: i.closed_on,
+            excluded: i.excluded,
+        }
+    }
+}
+
+fn csv_escape(s: &str) -> String {
+    if s.contains([',', '"', '\n']) {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
+/// header + one row per item + a final `Total` row = sum of non-excluded amount.
+/// Columns match the Sales Rebate Details modal.
+fn build_report_csv(rows: &[ReportRow]) -> Vec<u8> {
+    let mut out = String::from("\u{FEFF}"); // BOM so Excel reads UTF-8
+    out.push_str(
+        "Status,Ticket,Account No.,Symbol,Volume (lots),Rebate Type,Rebate Base,Amount,Closed On\n",
+    );
+    let mut total = Decimal::ZERO;
+    for r in rows {
+        // Closed On in MT5-server time (EET, DST-aware) — matches the modal.
+        let server_time = r.closed_on + Duration::hours(mt5_offset_hours(r.closed_on));
+        let amount = if r.excluded {
+            "0.0000".to_string()
+        } else {
+            total += r.amount;
+            format!("{:.4}", r.amount)
+        };
+        out.push_str(&format!(
+            "{},{},{},{},{:.2},{},{:.4},{},{}\n",
+            if r.excluded { "Excluded" } else { "Included" },
+            r.ticket,
+            r.trade_account_number,
+            csv_escape(&r.symbol),
+            r.volume as f64 / 100.0,
+            csv_escape(&r.rebate_type),
+            r.rebate_base,
+            amount,
+            server_time.format("%Y-%m-%d %H:%M:%S"),
+        ));
+    }
+    out.push_str(&format!("Total,,,,,,,{:.4},\n", total));
+    out.into_bytes()
+}
+
+/// Regenerate one summary's report CSV and overwrite its S3 object.
+/// Finds the tenant owning `summary_id`, re-reads its items, rebuilds, uploads.
+pub async fn regenerate_report(ctx: AppContext, summary_id: i64) -> Result<()> {
+    let tenant_ids = tenant::get_all_tenant_ids(&ctx.central_pool).await?;
+    for tenant_id in tenant_ids {
+        let pool = match ctx.tenant_pool(tenant_id).await {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let found: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM trd.sales_rebate_k8s WHERE id = $1")
+                .bind(summary_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap_or(None);
+        if found.is_none() {
+            continue;
+        }
+
+        let rows: Vec<ReportRow> = sqlx::query_as(
+            r#"SELECT ticket, trade_account_number, symbol, volume, rebate_type,
+                      rebate_base, amount, closed_on, excluded
+               FROM trd.sales_rebate_item_k8s
+               WHERE sales_rebate_id = $1
+               ORDER BY closed_on"#,
+        )
+        .bind(summary_id)
+        .fetch_all(&pool)
+        .await?;
+
+        let key = report_s3_key(summary_id);
+        ctx.s3.upload_csv(&key, build_report_csv(&rows)).await?;
+        info!(
+            "SalesRebate: regenerated report summary_id={} rows={} key={}",
+            summary_id,
+            rows.len(),
+            key
+        );
+        return Ok(());
+    }
+    warn!(
+        "SalesRebate: regenerate_report — summary_id={} not found in any tenant",
+        summary_id
+    );
+    Ok(())
+}
+
 /// Manual trigger with explicit period — for backfill / testing.
 pub async fn run_custom(
     ctx: AppContext,
@@ -24,78 +189,76 @@ pub async fn run_custom(
         "SalesRebateCustom: schedule_type={} period [{}, {})",
         schedule_type, period_start, period_end
     );
-    run_for_all_tenants(&ctx, schedule_type, period_start, period_end, false).await
+    run_for_all_tenants(&ctx, schedule_type, period_start, period_end, false, None).await
 }
 
 /// Force-recalculate: deletes existing records for the period then regenerates.
 /// For daily schedule (type=0), loops day-by-day to produce one record per day.
+/// `sales_account_id` (optional) restricts the recalc to a single sales account —
+/// used by the per-summary "Recalculate" button so only that record is regenerated.
 pub async fn run_force(
     ctx: AppContext,
     schedule_type: i16,
     period_start: DateTime<Utc>,
     period_end: DateTime<Utc>,
+    sales_account_id: Option<i64>,
 ) -> Result<()> {
     info!(
-        "SalesRebateForce: schedule_type={} period [{}, {})",
-        schedule_type, period_start, period_end
+        "SalesRebateForce: schedule_type={} period [{}, {}) sales_account={:?}",
+        schedule_type, period_start, period_end, sales_account_id
     );
     if schedule_type == 0 {
-        let mut day = period_start;
-        while day < period_end {
-            let next_day = day + chrono::Duration::days(1);
-            let end = if next_day < period_end { next_day } else { period_end };
-            run_for_all_tenants(&ctx, schedule_type, day, end, true).await?;
-            day = next_day;
+        // Walk MT5-server days so backfill windows match the daily job exactly.
+        let mut cursor = server_day_start(period_start);
+        while cursor < period_end {
+            let next = server_day_start(cursor + Duration::hours(25)); // next server midnight
+            let end = if next < period_end { next } else { period_end };
+            run_for_all_tenants(&ctx, schedule_type, cursor, end, true, sales_account_id).await?;
+            cursor = next;
         }
         Ok(())
     } else {
-        run_for_all_tenants(&ctx, schedule_type, period_start, period_end, true).await
+        run_for_all_tenants(&ctx, schedule_type, period_start, period_end, true, sales_account_id)
+            .await
     }
 }
 
-/// Daily SalesRebate settlement — settles previous day [yesterday 00:00 UTC, today 00:00 UTC).
-/// Cron: 23:00 UTC daily.
+/// Daily SalesRebate settlement — settles the most recently completed MT5-server
+/// (EET) day. Cron: 03:00 UTC daily.
 pub async fn run_daily(ctx: AppContext) -> Result<()> {
     let now = Utc::now();
-    let today_start = Utc
-        .with_ymd_and_hms(now.year(), now.month(), now.day(), 0, 0, 0)
-        .single()
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute today_start"))?;
-    let yesterday_start = today_start - chrono::Duration::days(1);
+    let today_start = server_day_start(now); // current server day 00:00 (in UTC)
+    let yesterday_start = server_day_start(today_start - Duration::hours(1)); // prev server day 00:00
 
     info!(
-        "SalesRebateDaily: settling period [{}, {})",
+        "SalesRebateDaily: settling MT5-server day [{}, {})",
         yesterday_start, today_start
     );
 
-    run_for_all_tenants(&ctx, 0, yesterday_start, today_start, false).await
+    run_for_all_tenants(&ctx, 0, yesterday_start, today_start, false, None).await
 }
 
-/// Monthly SalesRebate settlement — settles previous month [first of last month, first of this month).
-/// Cron: 1st of month 00:05 UTC.
+/// Monthly SalesRebate settlement — settles the previous MT5-server (EET) month.
+/// Cron: 1st of month 03:00 UTC.
 pub async fn run_monthly(ctx: AppContext) -> Result<()> {
     let now = Utc::now();
-    let this_month_start = Utc
-        .with_ymd_and_hms(now.year(), now.month(), 1, 0, 0, 0)
-        .single()
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute this_month_start"))?;
+    let server_now = now + Duration::hours(mt5_offset_hours(now));
+    let (year, month) = (server_now.year(), server_now.month());
+    let this_month_start = server_month_start(year, month);
 
-    let (prev_year, prev_month) = if now.month() == 1 {
-        (now.year() - 1, 12u32)
+    let (prev_year, prev_month) = if month == 1 {
+        (year - 1, 12u32)
     } else {
-        (now.year(), now.month() - 1)
+        (year, month - 1)
     };
-    let last_month_start = Utc
-        .with_ymd_and_hms(prev_year, prev_month, 1, 0, 0, 0)
-        .single()
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute last_month_start"))?;
+    let last_month_start = server_month_start(prev_year, prev_month);
 
     info!(
-        "SalesRebateMonthly: settling period [{}, {})",
+        "SalesRebateMonthly: settling MT5-server month [{}, {})",
         last_month_start, this_month_start
     );
 
-    run_for_all_tenants(&ctx, 3, last_month_start, this_month_start, false).await
+    run_for_all_tenants(&ctx, 3, last_month_start, this_month_start, false, None).await
 }
 
 async fn run_for_all_tenants(
@@ -104,6 +267,7 @@ async fn run_for_all_tenants(
     period_start: DateTime<Utc>,
     period_end: DateTime<Utc>,
     force: bool,
+    sales_account_id: Option<i64>,
 ) -> Result<()> {
     let tenant_ids = tenant::get_all_tenant_ids(&ctx.central_pool).await?;
 
@@ -139,8 +303,16 @@ async fn run_for_all_tenants(
             }
         }
 
-        if let Err(e) =
-            settle_for_schedule(ctx, &pool, schedule_type, period_start, period_end, force).await
+        if let Err(e) = settle_for_schedule(
+            ctx,
+            &pool,
+            schedule_type,
+            period_start,
+            period_end,
+            force,
+            sales_account_id,
+        )
+        .await
         {
             error!(
                 "SalesRebate: settle_for_schedule failed for tenant {}: {:#}",
@@ -159,8 +331,13 @@ async fn settle_for_schedule(
     period_start: DateTime<Utc>,
     period_end: DateTime<Utc>,
     force: bool,
+    sales_account_id: Option<i64>,
 ) -> Result<()> {
-    let schemas = db::get_active_schemas_by_schedule(pool, schedule_type).await?;
+    let mut schemas = db::get_active_schemas_by_schedule(pool, schedule_type).await?;
+    // Restrict to a single sales account when recalculating one summary record.
+    if let Some(said) = sales_account_id {
+        schemas.retain(|s| s.sales_account_id == said);
+    }
     info!(
         "SalesRebate: found {} schema(s) for schedule_type={}",
         schemas.len(),
@@ -285,6 +462,18 @@ async fn settle_for_schedule(
                     non_excluded_count,
                     items.iter().filter(|i| i.excluded).count()
                 );
+                // Generate + upload the detail CSV report to S3 (best-effort).
+                let report_rows: Vec<ReportRow> = items.iter().map(ReportRow::from).collect();
+                if let Err(e) = ctx
+                    .s3
+                    .upload_csv(&report_s3_key(rebate_id), build_report_csv(&report_rows))
+                    .await
+                {
+                    warn!(
+                        "SalesRebate: report upload failed rebate_id={}: {:#}",
+                        rebate_id, e
+                    );
+                }
                 if schema.auto_release && total_amount > Decimal::ZERO {
                     match db::release_summary(pool, rebate_id, created_on, schema.sales_account_id, total_amount, Some(matter_id)).await {
                         Ok(wt_id) => info!(

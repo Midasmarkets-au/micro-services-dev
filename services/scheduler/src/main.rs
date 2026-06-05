@@ -264,6 +264,7 @@ struct TriggerForceBody {
     schedule_type: i16,
     period_start: String,
     period_end: Option<String>, // defaults to Utc::now() when omitted
+    sales_account_id: Option<i64>, // restrict recalc to a single sales account
 }
 
 async fn trigger_sales_rebate_custom(
@@ -334,8 +335,14 @@ async fn trigger_sales_rebate_force(
     };
     let period_end_str = period_end.to_rfc3339();
     tokio::spawn(async move {
-        if let Err(e) =
-            jobs::sales_rebate::run_force(ctx, body.schedule_type, period_start, period_end).await
+        if let Err(e) = jobs::sales_rebate::run_force(
+            ctx,
+            body.schedule_type,
+            period_start,
+            period_end,
+            body.sales_account_id,
+        )
+        .await
         {
             error!("trigger_sales_rebate_force error: {:#}", e);
         }
@@ -348,6 +355,31 @@ async fn trigger_sales_rebate_force(
             "schedule_type": body.schedule_type,
             "period_start": body.period_start,
             "period_end": period_end_str,
+        })),
+    )
+}
+
+#[derive(serde::Deserialize)]
+struct TriggerReportBody {
+    summary_id: i64,
+}
+
+/// Regenerate (overwrite) one SalesRebate summary's detail CSV report on S3.
+async fn trigger_sales_rebate_report(
+    Extension(ctx): Extension<AppContext>,
+    AxumJson(body): AxumJson<TriggerReportBody>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    tokio::spawn(async move {
+        if let Err(e) = jobs::sales_rebate::regenerate_report(ctx, body.summary_id).await {
+            error!("trigger_sales_rebate_report error: {:#}", e);
+        }
+    });
+    (
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({
+            "status": "triggered",
+            "job": "sales_rebate_report",
+            "summary_id": body.summary_id,
         })),
     )
 }
@@ -387,6 +419,7 @@ async fn main() -> Result<()> {
         .route("/trigger/sales-rebate-monthly", post(trigger_sales_rebate_monthly))
         .route("/trigger/sales-rebate-custom", post(trigger_sales_rebate_custom))
         .route("/trigger/sales-rebate-force", post(trigger_sales_rebate_force))
+        .route("/trigger/sales-rebate-report", post(trigger_sales_rebate_report))
         .nest("/api/v1", board_api)
         .fallback_service(ServeUI::new())
         .layer(axum::Extension(ctx.clone()))
