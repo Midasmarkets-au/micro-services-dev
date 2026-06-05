@@ -113,14 +113,16 @@
                   @click="release(item)"
                   >Release</el-button
                 >
-                <el-button
-                  size="small"
-                  link
-                  :icon="Download"
+                <a
+                  href="#"
+                  class="me-2"
                   title="Download"
-                  :loading="item._downloading"
-                  @click="downloadReport(item)"
-                />
+                  @click.prevent="downloadReport(item)"
+                  ><i
+                    class="fa-solid fa-download fa-xl"
+                    style="color: #5b6b86"
+                  ></i
+                ></a>
                 <el-button
                   size="small"
                   type="primary"
@@ -143,7 +145,6 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
-import { Download } from "@element-plus/icons-vue";
 import TimeShow from "@/components/TimeShow.vue";
 import TableFooter from "@/components/TableFooter.vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
