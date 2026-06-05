@@ -219,6 +219,54 @@ public class PaymentMethodController(
             result.PaymentMethods = paymentMethods;
         }
 
+        // Pay247: one dropdown entry per accessible (currency x pay_method) row, mirroring Help2Pay.
+        // Each Pay247 row is single-currency, so two rows (e.g. IDR-BANK + MYR-BANK) must remain
+        // independently selectable. No per-row bank list: payTheme=link defers bank selection to
+        // Pay247's hosted cashier, and GetRequestKeys is only [returnUrl, currencyId].
+        if (method.Platform == (int)PaymentPlatformTypes.Pay247)
+        {
+            var allMethods = await paymentMethodSvc.GetMethodsAsync();
+
+            var accessibleIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(account.Id,
+                PaymentMethodTypes.Deposit,
+                PaymentMethodStatusTypes.Active,
+                PaymentMethodAccessStatusTypes.Active)).ToHashSet();
+
+            var pay247Rows = allMethods
+                .Where(x => x.MethodType == PaymentMethodTypes.Deposit
+                    && x.Status == (int)PaymentMethodStatusTypes.Active
+                    && x.Platform == (int)PaymentPlatformTypes.Pay247
+                    && x.Group == method.Group
+                    && accessibleIds.Contains(x.Id))
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
+            foreach (var m in pay247Rows)
+            {
+                // Range in cents, matches the deposit-group-info convention used by ExLink Global / Help2Pay.
+                var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
+
+                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
+                {
+                    CurrencyId = (CurrencyTypes)m.CurrencyId,
+                    HashId = PaymentMethod.HashEncode(m.Id),
+                    Range = methodRange,
+                    PaymentMethodName = m.Name
+                });
+            }
+
+            result.PaymentMethods = paymentMethods;
+
+            // Re-expand currencyRates so the FE rate lookup works for any variant the user
+            // picks in step 3, not just the random pick's single AvailableCurrencies.
+            var allCurrencies = paymentMethods.Select(x => x.CurrencyId).ToHashSet();
+            if (allCurrencies.Count > 0)
+            {
+                result.CurrencyRates = await paymentMethodSvc.GetSellingExchangeRatesAsync(toCurrency, allCurrencies);
+            }
+        }
+
         return Ok(result);
     }
 

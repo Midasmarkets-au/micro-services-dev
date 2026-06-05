@@ -3,14 +3,22 @@ using Bacera.Gateway.DTO;
 using Bacera.Gateway.Vendor.OFAPay;
 using Bacera.Gateway.Vendor.Pay247;
 using Bacera.Gateway.Vendor.ExLinkCashier;
+using Bacera.Gateway.Vendor.Rivo;
+using Bacera.Gateway.Vendor.TwelveGroup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Bacera.Gateway.Services;
 
-public class PayoutService(TenantDbContext tenantCtx, ILogger<PayoutService> logger, IHttpClientFactory clientFactory)
+public class PayoutService(
+    TenantDbContext tenantCtx,
+    ILogger<PayoutService> logger,
+    IHttpClientFactory clientFactory,
+    ITenantGetter tenantGetter)
 {
+    private readonly long _tenantId = tenantGetter.GetTenantId();
+
     public async Task<(long, long)> BatchPayoutAsync(string batchUid, long operatorPartyId = 1)
     {
         int success = 0, failed = 0;
@@ -68,17 +76,40 @@ public class PayoutService(TenantDbContext tenantCtx, ILogger<PayoutService> log
         if (method.Platform == (int)PaymentPlatformTypes.Pay247)
         {
             var options = Pay247Options.FromJson(method.Configuration);
+            options.TenantId = _tenantId;
+
+            var (isValid, errorMessage) = options.Validate();
+            if (!isValid)
+            {
+                logger.LogError("Pay247 payout aborted: invalid configuration for PaymentMethodId={Id}: {Err}",
+                    method.Id, errorMessage);
+                return new PayoutResponseModel
+                {
+                    IsSuccess = false,
+                    Message = $"Pay247 config invalid: {errorMessage}",
+                };
+            }
+
+            if (!options.IsBankSupported(record.Currency, record.BankCode))
+            {
+                logger.LogWarning(
+                    "Pay247 payout: bank code {Code} not in PaymentMethodId={MethodId} Configuration.Banks " +
+                    "for currency {Currency}, nor in Pay247BankCodes seed. Sending anyway — vendor list is incomplete.",
+                    record.BankCode, method.Id, record.Currency);
+            }
+
             var client = new Pay247.PayoutRequestClient
             {
-                Amount = record.Amount,
-                AccountName = record.AccountName,
-                BankNumber = record.BankNumber,
                 PaymentNumber = record.HashId,
-                BankCode = record.BankCode,
-                Currency = record.Currency,
-                Logger = logger,
-                Options = options,
-                Client = clientFactory.CreateClient(),
+                Amount        = record.Amount,
+                Currency      = record.Currency,
+                AccountName   = record.AccountName,
+                AccountNo     = record.BankNumber,
+                BankCode      = record.BankCode,
+                BankBranch    = record.BranchName ?? string.Empty,
+                Options       = options,
+                Client        = clientFactory.CreateClient(),
+                Logger        = logger,
             };
 
             response = await client.RequestAsync();
@@ -170,6 +201,93 @@ public class PayoutService(TenantDbContext tenantCtx, ILogger<PayoutService> log
         }
         else if (method.Platform == (int)PaymentPlatformTypes.ExLink)
         {
+        }
+        else if (method.Platform == (int)PaymentPlatformTypes.Rivo)
+        {
+            var options = RivoOptions.FromJson(method.Configuration);
+            options.TenantId = _tenantId;
+
+            var (isValid, errorMessage) = options.Validate();
+            if (!isValid)
+            {
+                logger.LogError("Rivo payout aborted: invalid configuration for PaymentMethodId={Id}: {Err}",
+                    method.Id, errorMessage);
+                return new PayoutResponseModel
+                {
+                    IsSuccess = false,
+                    Message = $"Rivo config invalid: {errorMessage}",
+                };
+            }
+
+            if (!options.IsBankSupported(record.Currency, record.BankCode))
+            {
+                logger.LogWarning(
+                    "Rivo payout: bank code {Code} not in PaymentMethodId={MethodId} Configuration.Banks " +
+                    "for currency {Currency}, nor in the code-side seed (Appendix C). " +
+                    "Sending anyway — Rivo's published list is incomplete and subject to change.",
+                    record.BankCode, method.Id, record.Currency);
+            }
+
+            var client = new Rivo.WithdrawalRequestClient
+            {
+                PaymentNumber    = record.HashId,
+                Amount           = record.Amount,
+                Currency         = record.Currency,
+                AccountName      = record.AccountName,
+                AccountNoUnified = record.BankNumber,
+                BankCode         = record.BankCode,
+                BankName         = record.BankName,
+                Options          = options,
+                Client           = clientFactory.CreateClient(),
+                Logger           = logger,
+            };
+
+            response = await client.RequestAsync();
+        }
+        else if (method.Platform == (int)PaymentPlatformTypes.TwelveGroup)
+        {
+            var options = TwelveGroupOptions.FromJson(method.Configuration);
+            options.TenantId = _tenantId;
+
+            var (isValid, errorMessage) = options.Validate();
+            if (!isValid)
+            {
+                logger.LogError("12Group payout aborted: invalid configuration for PaymentMethodId={Id}: {Err}",
+                    method.Id, errorMessage);
+                return new PayoutResponseModel
+                {
+                    IsSuccess = false,
+                    Message = $"12Group config invalid: {errorMessage}",
+                };
+            }
+
+            if (!options.IsBankSupported(record.Currency, record.BankCode))
+            {
+                logger.LogWarning(
+                    "12Group payout: bank code {Code} not in PaymentMethodId={MethodId} Configuration.Banks " +
+                    "for currency {Currency}, nor in the code-side THB seed. Sending anyway — the vendor's " +
+                    "published list is image-only and subject to change.",
+                    record.BankCode, method.Id, record.Currency);
+            }
+
+            // 12Group requires a non-empty mobileno. PayoutRecord carries no beneficiary phone
+            // (OperatorPartyId is the back-office operator, and Party.PhoneNumber is encrypted),
+            // so we use the configured DefaultMobileNo. The client also self-defaults if blank.
+            var client = new TwelveGroup.PayoutRequestClient
+            {
+                PaymentNumber = record.HashId,    // echoed back as ref1 on the pending callback
+                Amount        = record.Amount,
+                BankCode      = record.BankCode,
+                BankNumber    = record.BankNumber,
+                BankName      = record.BankName,
+                AccountName   = record.AccountName,
+                MobileNo      = options.DefaultMobileNo,
+                Options       = options,
+                Client        = clientFactory.CreateClient(),
+                Logger        = logger,
+            };
+
+            response = await client.RequestAsync();
         }
 
         if (response == null) return null;

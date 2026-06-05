@@ -19,11 +19,18 @@ public class DepositRecord : ICanExportToCsv
     public string PaymentNumber { get; set; } = string.Empty;
     public string PaymentServiceName { get; set; } = string.Empty;
     public decimal Amount { get; set; }
+
+    // Amount the client actually paid, in the payment currency (e.g. THB) — mirrors the deposit query page's payment.amount.
+    public decimal PaymentAmount { get; set; }
+
+    // FX rate applied (payment currency per account currency), same formula/format as DepositViewModel.Payment.ExchangeRate.
+    private string ExchangeRate => Amount == 0 ? "0.000" : (PaymentAmount / Amount).ToString("0.000");
+
     public DateTime CreatedOn { get; set; }
 
     public static string Header()
         =>
-            "account_number,account_uid,client_name,currency,deposit_status,payment_status,payment_id,payment_number,payment_method,amount,created_on";
+            "account_number,account_uid,client_name,currency,deposit_status,payment_status,payment_id,payment_number,payment_method,amount,actual_amount,exchange_rate,created_on";
 
     public string ToCsv()
     {
@@ -34,7 +41,7 @@ public class DepositRecord : ICanExportToCsv
 
         return
             $"\"{accountNumber}\",\"{AccountUid}\",\"{ClientName}\",\"{currencyName}\",\"{stateName}\",\"{paymentStatusName}\"," +
-            $"\"{PaymentId}\",{PaymentNumber}\",\"{PaymentServiceName}\",\"{(Amount / 100m).ToCentsFromScaled()}\",\"{CreatedOn.AddHours(2):yyyy-MM-dd HH:mm:ss}\"";
+            $"\"{PaymentId}\",{PaymentNumber}\",\"{PaymentServiceName}\",\"{(Amount / 100m).ToCentsFromScaled()}\",\"{(PaymentAmount / 100m).ToCentsFromScaled()}\",\"{ExchangeRate}\",\"{CreatedOn.AddHours(2):yyyy-MM-dd HH:mm:ss}\"";
     }
 }
 
@@ -55,6 +62,7 @@ public static class DepositRecordExtension
                 ? x.Payment.CryptoTransaction.Crypto.Name
                 : x.Payment.PaymentMethod.Name,
             Amount = x.Amount,
+            PaymentAmount = x.Payment.Amount,
             CreatedOn = x.IdNavigation.PostedOn,
         });
 }

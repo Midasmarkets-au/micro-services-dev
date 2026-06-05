@@ -27,6 +27,7 @@ using Bacera.Gateway.Vendor.Monetix;
 using Bacera.Gateway.Vendor.MonetixPay;
 using Bacera.Gateway.Vendor.OFAPay;
 using Bacera.Gateway.Vendor.PayPal;
+using Bacera.Gateway.Vendor.TwelveGroup;
 using Bacera.Gateway.Vendor.UnionePay;
 using Bacera.Gateway.Vendor.UniotcPay;
 using Bacera.Gateway.Web.BackgroundJobs;
@@ -2079,6 +2080,637 @@ If keys have '-----BEGIN' headers, remove them and keep only the base64 content.
         }
     }
     
+    // ============================================================================================
+    // Rivo callbacks
+    //
+    // Rivo's important note: callbacks MUST be verified from the raw payload (signing fields can
+    // be added/removed across versions), and the merchant MUST reply with literal "ok" (plain
+    // text). Anything else triggers a retry storm.
+    // ============================================================================================
+
+    /// <summary>POST /api/v1/payment/callback/{tenantId}/rivo/pay</summary>
+    [HttpPost("rivo/pay")]
+    public async Task<IActionResult> RivoPayCallback(long tenantId)
+    {
+        var rawBody = await GetRequestBody();
+        logger.LogInformation("Rivo_PayCallback_RawBody (tenantId={TenantId}): {Body}", tenantId, rawBody);
+
+        Newtonsoft.Json.Linq.JObject body;
+        try
+        {
+            body = Newtonsoft.Json.Linq.JObject.Parse(rawBody);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Rivo_PayCallback: invalid JSON");
+            // Plain "ok" so Rivo doesn't retry on un-parseable garbage; we've already logged it.
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        var paymentNumber = (string?)body["tradeNo"] ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(paymentNumber))
+        {
+            logger.LogWarning("Rivo_PayCallback: tradeNo missing");
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        using var scope = await CreateScopeByPaymentNumberAsync(paymentNumber);
+        if (scope == null)
+        {
+            logger.LogWarning("Rivo_PayCallback: tenant not found for PaymentNumber={PaymentNumber}", paymentNumber);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+        var payment = await PaymentGetWithServiceByNumberAsync(ctx, paymentNumber, body);
+        if (payment == null)
+        {
+            logger.LogWarning("Rivo_PayCallback: payment not found {PaymentNumber}", paymentNumber);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        if (payment.Status == (int)PaymentStatusTypes.Completed)
+        {
+            logger.LogInformation("Rivo_PayCallback: already completed {PaymentNumber}", paymentNumber);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        var options = Bacera.Gateway.Vendor.Rivo.RivoOptions.FromJson(payment.PaymentMethod.Configuration);
+        if (!Bacera.Gateway.Vendor.Rivo.Rivo.VerifySignatureFromRaw(rawBody, options.SecretKey, logger))
+        {
+            logger.LogWarning("Rivo_PayCallback: signature invalid {PaymentNumber}", paymentNumber);
+            return BadRequest("invalid signature");
+        }
+
+        // Idempotency guard so concurrent retries don't double-complete.
+        var idempotencyKey = $"rivo_pay_callback_{paymentNumber}";
+        var existing = await myCache.GetStringAsync(idempotencyKey);
+        if (existing != null)
+        {
+            logger.LogInformation("Rivo_PayCallback: duplicate {PaymentNumber}", paymentNumber);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+        await myCache.SetStringAsync(idempotencyKey, "processing", TimeSpan.FromMinutes(10));
+
+        // payStatus 1 = success, 2 = failed (per Rivo doc).
+        var payStatus = (int?)body["payStatus"] ?? 0;
+        if (payStatus == 1)
+        {
+            await TryCompleteDeposit(scope, payment, body);
+            logger.LogInformation("Rivo_PayCallback: completed {PaymentNumber}", paymentNumber);
+        }
+        else if (payStatus == 2)
+        {
+            await TryCancelDeposit(scope, paymentNumber);
+            logger.LogInformation("Rivo_PayCallback: cancelled {PaymentNumber}", paymentNumber);
+        }
+        else
+        {
+            logger.LogInformation("Rivo_PayCallback: ignored payStatus={Status} {PaymentNumber}", payStatus, paymentNumber);
+        }
+
+        return Content("ok", "text/plain", Encoding.UTF8);
+    }
+
+    /// <summary>POST /api/v1/payment/callback/{tenantId}/rivo/payout</summary>
+    [HttpPost("rivo/payout")]
+    public async Task<IActionResult> RivoPayoutCallback(long tenantId)
+    {
+        var rawBody = await GetRequestBody();
+        logger.LogInformation("Rivo_PayoutCallback_RawBody (tenantId={TenantId}): {Body}", tenantId, rawBody);
+
+        Newtonsoft.Json.Linq.JObject body;
+        try
+        {
+            body = Newtonsoft.Json.Linq.JObject.Parse(rawBody);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Rivo_PayoutCallback: invalid JSON");
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        // For payouts we sent PaymentNumber = PayoutRecord.HashId in the tradeNo field.
+        var payoutHashId = (string?)body["tradeNo"] ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(payoutHashId))
+        {
+            logger.LogWarning("Rivo_PayoutCallback: tradeNo missing");
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        var payoutId = PayoutRecord.HashDecode(payoutHashId);
+        if (payoutId == 0)
+        {
+            logger.LogWarning("Rivo_PayoutCallback: invalid tradeNo hash {Hash}", payoutHashId);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        // Payouts live per-tenant and we don't keep a cross-tenant lookup like Payments do;
+        // the URL-templated tenantId is the authoritative source (signature check below is the
+        // real authenticity gate).
+        var tenantExists = await centralDbContext.Tenants.AnyAsync(x => x.Id == tenantId);
+        if (!tenantExists)
+        {
+            logger.LogWarning("Rivo_PayoutCallback: tenant {TenantId} not found", tenantId);
+            return BadRequest("invalid tenant");
+        }
+
+        using var scope = serviceProvider.CreateTenantScope(tenantId);
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+        var record = await ctx.PayoutRecords
+            .Include(x => x.PaymentMethod)
+            .FirstOrDefaultAsync(x => x.Id == payoutId);
+        if (record == null)
+        {
+            logger.LogWarning("Rivo_PayoutCallback: payout {Hash} not found in tenant {TenantId}", payoutHashId, tenantId);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        if (record.Status == (short)PayoutRecordStatusTypes.Completed
+            || record.Status == (short)PayoutRecordStatusTypes.Failed)
+        {
+            logger.LogInformation("Rivo_PayoutCallback: terminal state already ({Status}) for {Hash}",
+                record.Status, payoutHashId);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        var options = Bacera.Gateway.Vendor.Rivo.RivoOptions.FromJson(record.PaymentMethod.Configuration);
+        if (!Bacera.Gateway.Vendor.Rivo.Rivo.VerifySignatureFromRaw(rawBody, options.SecretKey, logger))
+        {
+            logger.LogWarning("Rivo_PayoutCallback: signature invalid {Hash}", payoutHashId);
+            return BadRequest("invalid signature");
+        }
+
+        var idempotencyKey = $"rivo_payout_callback_{tenantId}_{payoutHashId}";
+        var existing = await myCache.GetStringAsync(idempotencyKey);
+        if (existing != null)
+        {
+            logger.LogInformation("Rivo_PayoutCallback: duplicate {Hash}", payoutHashId);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+        await myCache.SetStringAsync(idempotencyKey, "processing", TimeSpan.FromMinutes(10));
+
+        // status 1 = success, 2 = failed (per Rivo doc).
+        var status = (int?)body["status"] ?? 0;
+        if (status == 1)
+        {
+            record.Status = (short)PayoutRecordStatusTypes.Completed;
+        }
+        else if (status == 2)
+        {
+            record.Status = (short)PayoutRecordStatusTypes.Failed;
+        }
+        else
+        {
+            logger.LogInformation("Rivo_PayoutCallback: ignored status={Status} {Hash}", status, payoutHashId);
+            return Content("ok", "text/plain", Encoding.UTF8);
+        }
+
+        record.UpdatedOn = DateTime.UtcNow;
+        var info = record.GetInfoModel();
+        info.RequestHistory.Add(Utils.JsonDeserializeDynamic(rawBody));
+        record.Info = JsonConvert.SerializeObject(info);
+        ctx.PayoutRecords.Update(record);
+        await ctx.SaveChangesAsync();
+
+        logger.LogInformation("Rivo_PayoutCallback: {Hash} -> Status={Status}", payoutHashId, record.Status);
+        return Content("ok", "text/plain", Encoding.UTF8);
+    }
+
+    // ============================================================================================
+    // Pay247 callbacks
+    //
+    // Pay247 callback contract:
+    //   • POST JSON, signature inside the top-level body. Verify from RAW JSON (per signing
+    //     algorithm — any silently dropped field breaks the signature).
+    //   • Reply LITERAL "SUCCESS" (uppercase) as text/plain. Anything else triggers Pay247's
+    //     retry loop (5× at 3/9/27/81/243s intervals). DIFFERENT FROM RIVO (Rivo wants "ok").
+    //   • Payin statuses we act on: SUCCESS (complete), FAIL/CLOSED (cancel). UNDERPAID/OVERPAID
+    //     are logged and treated like SUCCESS at the amount actually received (Pay247 reports
+    //     it in actual_amount); REFUND is logged and ignored (manual reconciliation only).
+    //   • Payout statuses we act on: SUCCESS (Completed), FAIL (Failed). PENDING/DEALING are
+    //     logged and ignored (Pay247 will notify again on terminal).
+    //   • Order matching: payin uses Payment.Number (mch_order_no == our PaymentNumber).
+    //     Payout uses PayoutRecord.HashId encoded into mch_order_no (same as Rivo).
+    // ============================================================================================
+
+    private const string Pay247CallbackOk = "SUCCESS";
+
+    /// <summary>POST /api/v1/payment/callback/{tenantId}/pay247/pay</summary>
+    [HttpPost("pay247/pay")]
+    public async Task<IActionResult> Pay247PayCallback(long tenantId)
+    {
+        var rawBody = await GetRequestBody();
+        logger.LogInformation("Pay247_PayCallback_RawBody (tenantId={TenantId}): {Body}", tenantId, rawBody);
+
+        Newtonsoft.Json.Linq.JObject body;
+        try
+        {
+            body = Newtonsoft.Json.Linq.JObject.Parse(rawBody);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Pay247_PayCallback: invalid JSON");
+            // Reply SUCCESS so Pay247 doesn't retry un-parseable garbage; we've already logged it.
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        var paymentNumber = (string?)body["mch_order_no"] ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(paymentNumber))
+        {
+            logger.LogWarning("Pay247_PayCallback: mch_order_no missing");
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        using var scope = await CreateScopeByPaymentNumberAsync(paymentNumber);
+        if (scope == null)
+        {
+            logger.LogWarning("Pay247_PayCallback: tenant not found for PaymentNumber={PaymentNumber}", paymentNumber);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+        var payment = await PaymentGetWithServiceByNumberAsync(ctx, paymentNumber, body);
+        if (payment == null)
+        {
+            logger.LogWarning("Pay247_PayCallback: payment not found {PaymentNumber}", paymentNumber);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        if (payment.Status == (int)PaymentStatusTypes.Completed)
+        {
+            logger.LogInformation("Pay247_PayCallback: already completed {PaymentNumber}", paymentNumber);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        var options = Bacera.Gateway.Vendor.Pay247.Pay247Options.FromJson(payment.PaymentMethod.Configuration);
+        if (!Bacera.Gateway.Vendor.Pay247.Pay247.VerifySignatureFromRaw(rawBody, options.SecretKey, logger))
+        {
+            logger.LogWarning("Pay247_PayCallback: signature invalid {PaymentNumber}", paymentNumber);
+            return BadRequest("invalid signature");
+        }
+
+        // Idempotency guard so concurrent retries don't double-complete.
+        var idempotencyKey = $"pay247_pay_callback_{paymentNumber}";
+        var existing = await myCache.GetStringAsync(idempotencyKey);
+        if (existing != null)
+        {
+            logger.LogInformation("Pay247_PayCallback: duplicate {PaymentNumber}", paymentNumber);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+        await myCache.SetStringAsync(idempotencyKey, "processing", TimeSpan.FromMinutes(10));
+
+        // status: PENDING, DEALING, TIMEOUT, CLOSED, SUCCESS, FAIL, REFUND, UNDERPAID, OVERPAID
+        // (per Pay247 doc §payin_notify). We only act on terminal states.
+        var status = ((string?)body["status"] ?? string.Empty).ToUpperInvariant();
+        switch (status)
+        {
+            case "SUCCESS":
+            case "OVERPAID":      // credited; user paid too much → reconciler can flag the surplus
+            case "UNDERPAID":     // partial credit — match Pay247's behavior: complete at actual_amount
+                await TryCompleteDeposit(scope, payment, body);
+                logger.LogInformation("Pay247_PayCallback: completed (status={Status}) {PaymentNumber}", status, paymentNumber);
+                break;
+            case "FAIL":
+            case "CLOSED":
+            case "TIMEOUT":
+                await TryCancelDeposit(scope, paymentNumber);
+                logger.LogInformation("Pay247_PayCallback: cancelled (status={Status}) {PaymentNumber}", status, paymentNumber);
+                break;
+            case "REFUND":
+                logger.LogWarning("Pay247_PayCallback: REFUND received {PaymentNumber} — manual reconciliation only", paymentNumber);
+                break;
+            default:
+                // PENDING / DEALING / unknown — Pay247 doc says it only notifies on terminal,
+                // so anything here is informational.
+                logger.LogInformation("Pay247_PayCallback: ignored non-terminal status={Status} {PaymentNumber}", status, paymentNumber);
+                break;
+        }
+
+        return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+    }
+
+    /// <summary>POST /api/v1/payment/callback/{tenantId}/pay247/payout</summary>
+    [HttpPost("pay247/payout")]
+    public async Task<IActionResult> Pay247PayoutCallback(long tenantId)
+    {
+        var rawBody = await GetRequestBody();
+        logger.LogInformation("Pay247_PayoutCallback_RawBody (tenantId={TenantId}): {Body}", tenantId, rawBody);
+
+        Newtonsoft.Json.Linq.JObject body;
+        try
+        {
+            body = Newtonsoft.Json.Linq.JObject.Parse(rawBody);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Pay247_PayoutCallback: invalid JSON");
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        // PayoutRequestClient sets mch_order_no = PayoutRecord.HashId — same convention as Rivo.
+        var payoutHashId = (string?)body["mch_order_no"] ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(payoutHashId))
+        {
+            logger.LogWarning("Pay247_PayoutCallback: mch_order_no missing");
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        var payoutId = PayoutRecord.HashDecode(payoutHashId);
+        if (payoutId == 0)
+        {
+            logger.LogWarning("Pay247_PayoutCallback: invalid mch_order_no hash {Hash}", payoutHashId);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        // Payouts live per-tenant and we don't keep a cross-tenant lookup (same as Rivo);
+        // the URL-templated tenantId is the routing source, signature check below is the
+        // real authenticity gate.
+        var tenantExists = await centralDbContext.Tenants.AnyAsync(x => x.Id == tenantId);
+        if (!tenantExists)
+        {
+            logger.LogWarning("Pay247_PayoutCallback: tenant {TenantId} not found", tenantId);
+            return BadRequest("invalid tenant");
+        }
+
+        using var scope = serviceProvider.CreateTenantScope(tenantId);
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+        var record = await ctx.PayoutRecords
+            .Include(x => x.PaymentMethod)
+            .FirstOrDefaultAsync(x => x.Id == payoutId);
+        if (record == null)
+        {
+            logger.LogWarning("Pay247_PayoutCallback: payout {Hash} not found in tenant {TenantId}", payoutHashId, tenantId);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        if (record.Status == (short)PayoutRecordStatusTypes.Completed
+            || record.Status == (short)PayoutRecordStatusTypes.Failed)
+        {
+            logger.LogInformation("Pay247_PayoutCallback: terminal state already ({Status}) for {Hash}",
+                record.Status, payoutHashId);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        var options = Bacera.Gateway.Vendor.Pay247.Pay247Options.FromJson(record.PaymentMethod.Configuration);
+        if (!Bacera.Gateway.Vendor.Pay247.Pay247.VerifySignatureFromRaw(rawBody, options.SecretKey, logger))
+        {
+            logger.LogWarning("Pay247_PayoutCallback: signature invalid {Hash}", payoutHashId);
+            return BadRequest("invalid signature");
+        }
+
+        var idempotencyKey = $"pay247_payout_callback_{tenantId}_{payoutHashId}";
+        var existing = await myCache.GetStringAsync(idempotencyKey);
+        if (existing != null)
+        {
+            logger.LogInformation("Pay247_PayoutCallback: duplicate {Hash}", payoutHashId);
+            return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+        await myCache.SetStringAsync(idempotencyKey, "processing", TimeSpan.FromMinutes(10));
+
+        var status = ((string?)body["status"] ?? string.Empty).ToUpperInvariant();
+        switch (status)
+        {
+            case "SUCCESS":
+                record.Status = (short)PayoutRecordStatusTypes.Completed;
+                break;
+            case "FAIL":
+                record.Status = (short)PayoutRecordStatusTypes.Failed;
+                break;
+            default:
+                // PENDING / DEALING / CONFIRMING — wait for terminal callback.
+                logger.LogInformation("Pay247_PayoutCallback: ignored non-terminal status={Status} {Hash}", status, payoutHashId);
+                return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+        }
+
+        record.UpdatedOn = DateTime.UtcNow;
+        var info = record.GetInfoModel();
+        info.RequestHistory.Add(Utils.JsonDeserializeDynamic(rawBody));
+        record.Info = JsonConvert.SerializeObject(info);
+        ctx.PayoutRecords.Update(record);
+        await ctx.SaveChangesAsync();
+
+        logger.LogInformation("Pay247_PayoutCallback: {Hash} -> Status={Status}", payoutHashId, record.Status);
+        return Content(Pay247CallbackOk, "text/plain", Encoding.UTF8);
+    }
+
+    // ============================================================================================
+    // 12Group (thesolix.com) callbacks
+    //
+    // 12Group sends NO callback signature, so we can't trust the callback body alone. For deposits
+    // we re-confirm server-side via the inquiry-deposit API before crediting. The expected replies
+    // are JSON: deposit → {"code":200,"Message":"Success"}, payout → {"status":200,"message":"Success"}.
+    // ============================================================================================
+
+    /// <summary>POST /api/v1/payment/callback/{tenantId}/twelvegroup/pay</summary>
+    [HttpPost("twelvegroup/pay")]
+    public async Task<IActionResult> TwelveGroupPayCallback(long tenantId)
+    {
+        const string okReply = "{\"code\":200,\"Message\":\"Success\"}";
+
+        var rawBody = await GetRequestBody();
+        logger.LogInformation("TwelveGroup_PayCallback_RawBody (tenantId={TenantId}): {Body}", tenantId, rawBody);
+
+        Newtonsoft.Json.Linq.JObject body;
+        try
+        {
+            body = Newtonsoft.Json.Linq.JObject.Parse(rawBody);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "TwelveGroup_PayCallback: invalid JSON");
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        // We put our PaymentNumber in ref4 (ref1 is the numeric bank reference). It's echoed back here.
+        var paymentNumber = (string?)body["ref4"] ?? string.Empty;
+        var transId = (string?)body["trans_id"] ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(paymentNumber))
+        {
+            logger.LogWarning("TwelveGroup_PayCallback: ref4 (PaymentNumber) missing");
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        using var scope = await CreateScopeByPaymentNumberAsync(paymentNumber);
+        if (scope == null)
+        {
+            logger.LogWarning("TwelveGroup_PayCallback: tenant not found for PaymentNumber={PaymentNumber}", paymentNumber);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+        var payment = await PaymentGetWithServiceByNumberAsync(ctx, paymentNumber, body);
+        if (payment == null)
+        {
+            logger.LogWarning("TwelveGroup_PayCallback: payment not found {PaymentNumber}", paymentNumber);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        if (payment.Status == (int)PaymentStatusTypes.Completed)
+        {
+            logger.LogInformation("TwelveGroup_PayCallback: already completed {PaymentNumber}", paymentNumber);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        // Idempotency guard so concurrent retries don't double-process.
+        var idempotencyKey = $"twelvegroup_pay_callback_{paymentNumber}";
+        if (await myCache.GetStringAsync(idempotencyKey) != null)
+        {
+            logger.LogInformation("TwelveGroup_PayCallback: duplicate {PaymentNumber}", paymentNumber);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+        await myCache.SetStringAsync(idempotencyKey, "processing", TimeSpan.FromMinutes(10));
+
+        // No callback signature → re-confirm server-side. Prefer the trans_id we stored at create time
+        // (Payment.ReferenceNumber); fall back to the callback's trans_id.
+        var inquiryTransId = string.IsNullOrWhiteSpace(payment.ReferenceNumber) ? transId : payment.ReferenceNumber;
+        var options = TwelveGroupOptions.FromJson(payment.PaymentMethod.Configuration);
+        options.TenantId = tenantId;
+
+        var amlStatus = (string?)body["aml_status"];
+        string? inquiryStatus = null;
+
+        if (!string.IsNullOrWhiteSpace(inquiryTransId))
+        {
+            var data = await Bacera.Gateway.Vendor.TwelveGroup.TwelveGroup.InquiryDepositAsync(
+                options, inquiryTransId, httpclientFactory.CreateClient(), logger);
+            if (data != null)
+            {
+                inquiryStatus = (string?)data["status"];
+                amlStatus = (string?)data["aml_status"] ?? amlStatus; // inquiry is authoritative
+            }
+            else
+            {
+                logger.LogWarning("TwelveGroup_PayCallback: inquiry returned no data for trans_id={TransId}; leaving pending",
+                    inquiryTransId);
+                await myCache.KeyDeleteAsync(idempotencyKey); // allow a retry to confirm later
+                return Content(okReply, "application/json", Encoding.UTF8);
+            }
+        }
+
+        // Require a completed payment (status 200) AND AML Approved before crediting.
+        var paymentDone = inquiryStatus == "200";
+        if (paymentDone && string.Equals(amlStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            await TryCompleteDeposit(scope, payment, body);
+            logger.LogInformation("TwelveGroup_PayCallback: completed {PaymentNumber} (aml=Approved)", paymentNumber);
+        }
+        else if (string.Equals(amlStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+        {
+            await TryCancelDeposit(scope, paymentNumber);
+            logger.LogInformation("TwelveGroup_PayCallback: cancelled {PaymentNumber} (aml=Rejected)", paymentNumber);
+        }
+        else
+        {
+            // Pending AML or not-yet-completed: leave the deposit pending; a later callback/inquiry confirms.
+            logger.LogInformation("TwelveGroup_PayCallback: left pending {PaymentNumber} (status={Status}, aml={Aml})",
+                paymentNumber, inquiryStatus, amlStatus);
+            await myCache.KeyDeleteAsync(idempotencyKey);
+        }
+
+        return Content(okReply, "application/json", Encoding.UTF8);
+    }
+
+    /// <summary>POST /api/v1/payment/callback/{tenantId}/twelvegroup/payout</summary>
+    [HttpPost("twelvegroup/payout")]
+    public async Task<IActionResult> TwelveGroupPayoutCallback(long tenantId)
+    {
+        const string okReply = "{\"status\":200,\"message\":\"Success\"}";
+
+        var rawBody = await GetRequestBody();
+        logger.LogInformation("TwelveGroup_PayoutCallback_RawBody (tenantId={TenantId}): {Body}", tenantId, rawBody);
+
+        Newtonsoft.Json.Linq.JObject body;
+        try
+        {
+            body = Newtonsoft.Json.Linq.JObject.Parse(rawBody);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "TwelveGroup_PayoutCallback: invalid JSON");
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        // We sent PayoutRecord.HashId as ref1; it's echoed back here.
+        var payoutHashId = (string?)body["ref1"] ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(payoutHashId))
+        {
+            logger.LogWarning("TwelveGroup_PayoutCallback: ref1 missing");
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        var payoutId = PayoutRecord.HashDecode(payoutHashId);
+        if (payoutId == 0)
+        {
+            logger.LogWarning("TwelveGroup_PayoutCallback: invalid ref1 hash {Hash}", payoutHashId);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        var tenantExists = await centralDbContext.Tenants.AnyAsync(x => x.Id == tenantId);
+        if (!tenantExists)
+        {
+            logger.LogWarning("TwelveGroup_PayoutCallback: tenant {TenantId} not found", tenantId);
+            return BadRequest("invalid tenant");
+        }
+
+        using var scope = serviceProvider.CreateTenantScope(tenantId);
+        var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+        var record = await ctx.PayoutRecords
+            .Include(x => x.PaymentMethod)
+            .FirstOrDefaultAsync(x => x.Id == payoutId);
+        if (record == null)
+        {
+            logger.LogWarning("TwelveGroup_PayoutCallback: payout {Hash} not found in tenant {TenantId}", payoutHashId, tenantId);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        if (record.Status == (short)PayoutRecordStatusTypes.Completed
+            || record.Status == (short)PayoutRecordStatusTypes.Failed)
+        {
+            logger.LogInformation("TwelveGroup_PayoutCallback: terminal state already ({Status}) for {Hash}",
+                record.Status, payoutHashId);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        var idempotencyKey = $"twelvegroup_payout_callback_{tenantId}_{payoutHashId}";
+        if (await myCache.GetStringAsync(idempotencyKey) != null)
+        {
+            logger.LogInformation("TwelveGroup_PayoutCallback: duplicate {Hash}", payoutHashId);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+        await myCache.SetStringAsync(idempotencyKey, "processing", TimeSpan.FromMinutes(10));
+
+        // Pending callback resolves to 1000 (approved → money sent) or 9092 (cancel → no money).
+        var status = (int?)body["status"] ?? 0;
+        if (status == Bacera.Gateway.Vendor.TwelveGroup.TwelveGroup.PayoutSuccess)
+        {
+            record.Status = (short)PayoutRecordStatusTypes.Completed;
+        }
+        else if (status == Bacera.Gateway.Vendor.TwelveGroup.TwelveGroup.PayoutCancel)
+        {
+            record.Status = (short)PayoutRecordStatusTypes.Failed;
+        }
+        else
+        {
+            logger.LogInformation("TwelveGroup_PayoutCallback: ignored status={Status} {Hash}", status, payoutHashId);
+            await myCache.KeyDeleteAsync(idempotencyKey);
+            return Content(okReply, "application/json", Encoding.UTF8);
+        }
+
+        record.UpdatedOn = DateTime.UtcNow;
+        var info = record.GetInfoModel();
+        info.RequestHistory.Add(Utils.JsonDeserializeDynamic(rawBody));
+        record.Info = JsonConvert.SerializeObject(info);
+        ctx.PayoutRecords.Update(record);
+        await ctx.SaveChangesAsync();
+
+        logger.LogInformation("TwelveGroup_PayoutCallback: {Hash} -> Status={Status}", payoutHashId, record.Status);
+        return Content(okReply, "application/json", Encoding.UTF8);
+    }
+
     // Buzipay webhook event models
     public class BuzipayWebhookEvent
     {
