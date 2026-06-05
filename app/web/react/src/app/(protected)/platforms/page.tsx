@@ -26,6 +26,7 @@ const deviceIcons: Record<string, string> = {
 const platformLogos: Record<PlatformType, string> = {
   mt4: '/images/platforms/mt4-logo.svg',
   mt5: '/images/platforms/mt5-logo.svg',
+  mm: '/images/logo.png',
 };
 
 // 下载按钮组件
@@ -103,7 +104,7 @@ function PlatformCard({
   const links = getPlatformLinks(region, platform);
   const webTraderUrl = getWebTraderLink(region, platform);
 
-  const platformName = platform === 'mt4' ? 'MetaTrader 4' : 'MetaTrader 5';
+  const platformName = platform === 'mt4' ? 'MetaTrader 4' : platform === 'mm' ? 'MDM' : 'MetaTrader 5';
   const hasMobileLinks = links.ios || links.android;
 
   return (
@@ -213,6 +214,9 @@ export default function PlatformsPage() {
    siteConfig?.tradingPlatformAvailable || []
    //[30, 20]
   );
+  availablePlatforms.push('mm');
+  console.log('availablePlatforms', availablePlatforms);
+  //availablePlatforms.push(20);
   console.log('siteConfig', siteConfig);
   // 确定区域（默认 bvi）
   const region: RegionType = 'bvi';

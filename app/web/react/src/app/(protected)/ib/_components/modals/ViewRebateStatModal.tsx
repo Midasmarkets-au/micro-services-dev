@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -9,12 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/radix/Dialog';
 import { Button, BalanceShow, DatePicker, DataTable, Icon } from '@/components/ui';
+import { CurrencyCodeMap } from '@/components/ui/BalanceShow';
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useIBStore } from '@/stores/ibStore';
 import { getIBChildStat, getIBRebateStatBySymbol } from '@/actions';
 import type { IBChildStat, IBClientAccount } from '@/types/ib';
-import { getCurrencySymbol } from '@/types/accounts';
 
 interface RebateSymbolRow {
   symbol: string;
@@ -97,16 +97,16 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     }
   }, [agentAccount, execute]);
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (nextOpen && account) {
+  // 受控打开时 Radix 不会触发 onOpenChange，改用 effect 监听 open/account 加载数据
+  useEffect(() => {
+    if (open && account) {
       setStats(null);
       setRebateList([]);
       setRebateTotal(null);
       setDateRange(undefined);
       fetchData(account.uid);
     }
-    onOpenChange(nextOpen);
-  }, [account, fetchData, onOpenChange]);
+  }, [open, account, fetchData]);
 
   const handleSearch = () => {
     if (!account) return;
@@ -134,18 +134,20 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       key: 'currency',
       title: t('fields.currency'),
       skeletonWidth: 'w-16',
-      render: (row) => getCurrencySymbol(row.currencyId),
+      render: (row) => CurrencyCodeMap[row.currencyId] || 'USD',
     },
     {
       key: 'volume',
       title: t('fields.volume'),
       skeletonWidth: 'w-16',
+      align: 'right',
       render: (row) => row.volume.toFixed(2),
     },
     {
       key: 'amount',
       title: t('fields.amount'),
       skeletonWidth: 'w-24',
+      align: 'right',
       render: (row) => (
         <BalanceShow
           balance={row.amount}
@@ -158,10 +160,10 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
 
   const footerRow = rebateTotal ? (
     <tr className="border-t-2 border-border font-bold text-green-600">
-      <td className="px-5 py-4 uppercase">{t('dashboard.totalRebate')}</td>
-      <td className="px-5 py-4">{getCurrencySymbol(rebateTotal.currencyId)}</td>
-      <td className="px-5 py-4">{rebateTotal.volume.toFixed(2)}</td>
-      <td className="px-5 py-4">
+      <td className="px-5 py-4 uppercase">{t('trade.total')}</td>
+      <td className="px-5 py-4">{CurrencyCodeMap[rebateTotal.currencyId] || 'USD'}</td>
+      <td className="px-5 py-4 text-right">{rebateTotal.volume.toFixed(2)}</td>
+      <td className="px-5 py-4 text-right">
         <BalanceShow
           balance={rebateTotal.amount}
           currencyId={rebateTotal.currencyId}
@@ -212,7 +214,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[900px]">
         <DialogHeader className="flex-col items-stretch gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col items-stretch gap-3 mb-4 sm:flex-row sm:items-center sm:gap-5">

@@ -226,6 +226,7 @@ export {
   getSalesChildStat,
   getSalesIbStat,
   getSalesRebateStatBySymbol,
+  getSalesIbRebateStatBySymbol,
   salesOpenTradeAccount,
   salesFuzzySearchAccount,
   getSalesSymbolCategory,

@@ -22,6 +22,20 @@ const isProd = process.env.NODE_ENV === 'production';
 const envFormat = process.env.LOG_FORMAT?.toLowerCase();
 const useJson = isServer && (envFormat === 'json' || (!envFormat && isProd));
 
+function serializeError(err: unknown): unknown {
+  if (!(err instanceof Error)) return err;
+  const obj: Record<string, unknown> = {
+    name: err.name,
+    message: err.message,
+  };
+  if (err.stack) obj.stack = err.stack;
+  if (err.cause) obj.cause = serializeError(err.cause);
+  for (const key of Object.getOwnPropertyNames(err)) {
+    if (!(key in obj)) obj[key] = (err as unknown as Record<string, unknown>)[key];
+  }
+  return obj;
+}
+
 function log(level: LogLevel, message: string, data?: unknown): void {
   if (LEVEL_PRIORITY[level] < minPriority) return;
 
@@ -31,7 +45,7 @@ function log(level: LogLevel, message: string, data?: unknown): void {
       level,
       msg: message,
     };
-    if (data !== undefined) entry.data = data;
+    if (data !== undefined) entry.data = serializeError(data);
     const line = JSON.stringify(entry);
     if (level === 'error') {
       process.stderr.write(line + '\n');

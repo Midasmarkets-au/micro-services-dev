@@ -2063,9 +2063,10 @@
       "updateRebateRule": "Perbarui Aturan Rabat",
       "existRule": "Aturan yang Ada",
       "newRule": "Aturan Baru",
-      "editRule1": "Ubah nilai rabat yang ada untuk agen",
-      "editRule2": "Tetapkan nilai rabat untuk kategori produk baru",
-      "editRule5": "Tetapkan nilai rabat awal untuk agen",
+      "editRule1": "Tipe yang ada: [A] Tidak boleh menghapus tipe akun [B] Hanya boleh menurunkan rebat pribadi",
+      "editRule2": "Tipe baru: Semua dapat diedit",
+      "editRule5": "Tipe yang ada: [A] Tidak boleh menghapus tipe akun [B] Hanya boleh menurunkan rebat pribadi",
+      "setPercentageTooltip": "Atur persentase untuk mengisi otomatis nilai rabat",
       "updateSuccess": "Berhasil diperbarui"
     }
   },
@@ -2105,6 +2106,8 @@
       "pageSize": "Ukuran Halaman",
       "client": "Klien",
       "all": "Semua",
+      "hasDeposit": "Ada Deposit",
+      "noDeposit": "Tidak Ada Deposit",
       "status": "Status",
       "amount": "Jumlah",
       "currency": "Mata Uang",
@@ -2291,9 +2294,9 @@
       "updateRebateRule": "Perbarui Aturan Rabat",
       "existRule": "Aturan yang Ada",
       "newRule": "Aturan Baru",
-      "editRule1": "Ubah rabat yang ada untuk agen",
-      "editRule2": "Tetapkan rabat untuk kategori baru",
-      "editRule5": "Tetapkan rabat awal untuk agen"
+      "editRule1": "Tipe yang ada: [A] Tidak boleh menghapus tipe akun [B] Hanya boleh menurunkan rebat pribadi",
+      "editRule2": "Tipe baru: Semua dapat diedit",
+      "editRule5": "Tipe yang ada: [A] Tidak boleh menghapus tipe akun [B] Hanya boleh menurunkan rebat pribadi"
     },
     "openAccount": {
       "title": "Buat Akun Trading",

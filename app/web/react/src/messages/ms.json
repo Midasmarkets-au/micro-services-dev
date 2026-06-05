@@ -2063,9 +2063,10 @@
       "updateRebateRule": "Kemaskini peraturan rebat",
       "existRule": "Peraturan sedia ada",
       "newRule": "Peraturan baharu",
-      "editRule1": "Edit nilai rebat sedia ada ejen",
-      "editRule2": "Tetapkan nilai rebat untuk kategori produk baharu",
-      "editRule5": "Tetapkan nilai rebat awal ejen",
+      "editRule1": "Jenis sedia ada: [A] Tidak boleh padam jenis akaun [B] Hanya boleh kurangkan rebat peribadi",
+      "editRule2": "Jenis baharu: Semua boleh diedit",
+      "editRule5": "Jenis sedia ada: [A] Tidak boleh padam jenis akaun [B] Hanya boleh kurangkan rebat peribadi",
+      "setPercentageTooltip": "Tetapkan peratusan untuk mengisi nilai rebat secara automatik",
       "updateSuccess": "Berjaya dikemas kini"
     }
   },
@@ -2105,6 +2106,8 @@
       "pageSize": "Saiz halaman",
       "client": "Pelanggan",
       "all": "Semua",
+      "hasDeposit": "Ada Deposit",
+      "noDeposit": "Tiada Deposit",
       "status": "Status",
       "amount": "Jumlah",
       "currency": "Mata wang",
@@ -2291,9 +2294,9 @@
       "updateRebateRule": "Kemaskini peraturan rebat",
       "existRule": "Peraturan sedia ada",
       "newRule": "Peraturan baharu",
-      "editRule1": "Edit nilai rebat sedia ada ejen",
-      "editRule2": "Tetapkan nilai rebat untuk kategori produk baharu",
-      "editRule5": "Tetapkan nilai rebat awal ejen"
+      "editRule1": "Jenis sedia ada: [A] Tidak boleh padam jenis akaun [B] Hanya boleh kurangkan rebat peribadi",
+      "editRule2": "Jenis baharu: Semua boleh diedit",
+      "editRule5": "Jenis sedia ada: [A] Tidak boleh padam jenis akaun [B] Hanya boleh kurangkan rebat peribadi"
     },
     "openAccount": {
       "title": "Buat akaun dagangan",

@@ -2063,9 +2063,10 @@
       "updateRebateRule": "리베이트 규칙 업데이트",
       "existRule": "기존 규칙",
       "newRule": "새 규칙",
-      "editRule1": "에이전트의 기존 리베이트 값 편집",
-      "editRule2": "새 상품 카테고리의 리베이트 값 설정",
-      "editRule5": "에이전트의 초기 리베이트 값 설정",
+      "editRule1": "기존 유형: [A] 계정 유형 삭제 불가 [B] 개인 리베이트 인하만 가능",
+      "editRule2": "신규 유형: 모두 편집 가능",
+      "editRule5": "기존 유형: [A] 계정 유형 삭제 불가 [B] 개인 리베이트 인하만 가능",
+      "setPercentageTooltip": "백분율을 설정하여 리베이트 값 자동 입력",
       "updateSuccess": "업데이트 성공"
     }
   },
@@ -2105,6 +2106,8 @@
       "pageSize": "페이지 크기",
       "client": "클라이언트",
       "all": "전체",
+      "hasDeposit": "입금 있음",
+      "noDeposit": "입금 없음",
       "status": "상태",
       "amount": "금액",
       "currency": "통화",
@@ -2291,9 +2294,9 @@
       "updateRebateRule": "리베이트 규칙 업데이트",
       "existRule": "기존 규칙",
       "newRule": "새 규칙",
-      "editRule1": "에이전트의 기존 리베이트 값 편집",
-      "editRule2": "새 상품 카테고리의 리베이트 값 설정",
-      "editRule5": "에이전트의 초기 리베이트 값 설정"
+      "editRule1": "기존 유형: [A] 계정 유형 삭제 불가 [B] 개인 리베이트 인하만 가능",
+      "editRule2": "신규 유형: 모두 편집 가능",
+      "editRule5": "기존 유형: [A] 계정 유형 삭제 불가 [B] 개인 리베이트 인하만 가능"
     },
     "openAccount": {
       "title": "거래 계정 만들기",

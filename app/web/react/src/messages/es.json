@@ -2061,9 +2061,10 @@
       "updateRebateRule": "Actualizar regla de reembolso",
       "existRule": "Regla existente",
       "newRule": "Nueva regla",
-      "editRule1": "Editar valor de reembolso existente del agente",
-      "editRule2": "Establecer valor de reembolso para nueva categoría de producto",
-      "editRule5": "Establecer valor de reembolso inicial para el agente",
+      "editRule1": "Tipos existentes: [A] No se puede eliminar el tipo de cuenta [B] Solo se puede reducir el rebate personal",
+      "editRule2": "Tipos nuevos: Todos editables",
+      "editRule5": "Tipos existentes: [A] No se puede eliminar el tipo de cuenta [B] Solo se puede reducir el rebate personal",
+      "setPercentageTooltip": "Establecer porcentaje para rellenar automáticamente el valor de reembolso",
       "updateSuccess": "Actualizado exitosamente"
     }
   },
@@ -2103,6 +2104,8 @@
       "pageSize": "Tamaño de página",
       "client": "Cliente",
       "all": "Todos",
+      "hasDeposit": "Con Depósito",
+      "noDeposit": "Sin Depósito",
       "status": "Estado",
       "amount": "Monto",
       "currency": "Moneda",
@@ -2289,9 +2292,9 @@
       "updateRebateRule": "Actualizar regla de reembolso",
       "existRule": "Regla existente",
       "newRule": "Nueva regla",
-      "editRule1": "Editar valor de reembolso existente del agente",
-      "editRule2": "Establecer valor de reembolso para nueva categoría de producto",
-      "editRule5": "Establecer valor de reembolso inicial para el agente"
+      "editRule1": "Tipos existentes: [A] No se puede eliminar el tipo de cuenta [B] Solo se puede reducir el rebate personal",
+      "editRule2": "Tipos nuevos: Todos editables",
+      "editRule5": "Tipos existentes: [A] No se puede eliminar el tipo de cuenta [B] Solo se puede reducir el rebate personal"
     },
     "openAccount": {
       "title": "Crear cuenta de trading",

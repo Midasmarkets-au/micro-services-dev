@@ -12,7 +12,7 @@ export const PLATFORM_TYPE = {
 export type RegionType = 'bvi' | 'ba';
 
 // 平台类型
-export type PlatformType = 'mt4' | 'mt5';
+export type PlatformType = 'mt4' | 'mt5' | 'mm';
 
 // 设备类型
 export type DeviceType = 'windows' | 'mac' | 'android' | 'ios';
@@ -41,6 +41,12 @@ export const platformDownloadLinks: Record<RegionType, Record<PlatformType, Plat
       android: 'https://download.mql5.com/cdn/mobile/mt5/android?server=MMCo-Main',
       ios: 'https://download.mql5.com/cdn/mobile/mt5/ios?server=MMCo-Main',
     },
+    mm: {
+      windows:'https://windows.midasmkts.com',
+      mac: 'https://mac-a.midasmkts.com',
+      android: 'https://releases.midasmkts.com/releases/mdm-trading-1.2.1.apk',
+      ios: 'https://apps.apple.com/au/app/midas-markets/id6757778465',
+    },
   },
   ba: {
     mt4: {
@@ -55,6 +61,12 @@ export const platformDownloadLinks: Record<RegionType, Record<PlatformType, Plat
       android: '',
       ios: '',
     },
+    mm: {
+      windows: '',
+      mac: '',
+      android: '',
+      ios: '',
+    },
   },
 };
 
@@ -63,10 +75,12 @@ export const webTraderLinks: Record<RegionType, Record<PlatformType, string>> = 
   bvi: {
     mt4: '',
     mt5: 'https://webtrader.mmco.com',
+    mm: '',
   },
   ba: {
     mt4: '',
     mt5: '',
+    mm: '',
   },
 };
 

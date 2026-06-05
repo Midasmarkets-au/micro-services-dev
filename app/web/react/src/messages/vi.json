@@ -2063,9 +2063,10 @@
       "updateRebateRule": "Cập nhật quy tắc hoàn phí",
       "existRule": "Quy tắc hiện có",
       "newRule": "Quy tắc mới",
-      "editRule1": "Chỉnh sửa giá trị hoàn phí hiện có của đại lý",
-      "editRule2": "Đặt hoàn phí cho danh mục sản phẩm mới",
-      "editRule5": "Đặt hoàn phí mặc định của đại lý",
+      "editRule1": "Loại hiện có: [A] Không được xóa loại tài khoản [B] Chỉ được giảm hoàn phí cá nhân",
+      "editRule2": "Loại mới: Có thể chỉnh sửa tất cả",
+      "editRule5": "Loại hiện có: [A] Không được xóa loại tài khoản [B] Chỉ được giảm hoàn phí cá nhân",
+      "setPercentageTooltip": "Đặt phần trăm để tự động điền giá trị hoàn phí",
       "updateSuccess": "Cập nhật thành công"
     }
   },
@@ -2105,6 +2106,8 @@
       "pageSize": "Kích thước trang",
       "client": "Khách hàng",
       "all": "Tất cả",
+      "hasDeposit": "Đã nạp tiền",
+      "noDeposit": "Chưa nạp tiền",
       "status": "Trạng thái",
       "amount": "Số tiền",
       "currency": "Tiền tệ",
@@ -2291,9 +2294,9 @@
       "updateRebateRule": "Cập nhật quy tắc hoàn phí",
       "existRule": "Quy tắc hiện có",
       "newRule": "Quy tắc mới",
-      "editRule1": "Chỉnh sửa giá trị hoàn phí hiện có của đại lý",
-      "editRule2": "Đặt hoàn phí cho danh mục sản phẩm mới",
-      "editRule5": "Đặt hoàn phí mặc định của đại lý"
+      "editRule1": "Loại hiện có: [A] Không được xóa loại tài khoản [B] Chỉ được giảm hoàn phí cá nhân",
+      "editRule2": "Loại mới: Có thể chỉnh sửa tất cả",
+      "editRule5": "Loại hiện có: [A] Không được xóa loại tài khoản [B] Chỉ được giảm hoàn phí cá nhân"
     },
     "openAccount": {
       "title": "Tạo tài khoản giao dịch",

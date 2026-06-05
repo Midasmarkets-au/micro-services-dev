@@ -60,8 +60,8 @@ export function DashboardSidebar({ user: propUser }: DashboardSidebarProps) {
     { id: 'dashboard', label: t('accountManagement'), icon: '/images/icons/wallet.svg' },
     { id: 'profile', label: t('personalInfo'), icon: '/images/icons/user.svg' },
     // { id: 'user-guide', label: t('userGuide'), icon: '/images/icons/book.svg' },
-    { id: 'app-store', label: t('appStore'), icon: '/images/icons/store.svg', url: platformDownloadLinks.bvi.mt5.android },
-    { id: 'android-apk', label: t('androidApk'), icon: '/images/icons/android.svg', url: platformDownloadLinks.bvi.mt5.ios },
+    { id: 'app-store', label: t('appStore'), icon: '/images/icons/store.svg', url: platformDownloadLinks.bvi.mm.ios },
+    { id: 'android-apk', label: t('androidApk'), icon: '/images/icons/android.svg', url: platformDownloadLinks.bvi.mm.android },
   ];
   // 移动端不显示「账户管理」「个人资料」
   const menuItems = isMobile
