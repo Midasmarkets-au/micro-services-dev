@@ -122,6 +122,7 @@ export default function SalesCustomersPage() {
             searchText: raw.searchText,
             relativeLevel: raw.relativeLevel,
             childParentAccountUid: raw.childParentAccountUid,
+            parentAccountUid: raw.parentAccountUid,
             multiLevel: raw.multiLevel ?? criteria.multiLevel ?? false,
           });
           setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
@@ -134,25 +135,34 @@ export default function SalesCustomersPage() {
     [salesAccount, execute]
   );
 
+  const buildFetchParams = useCallback((tab: RoleTab, keepParentUid?: number) => {
+    const filterValues = filterRef.current?.getValues();
+    const isClient = tab === 'client';
+    return {
+      ...INITIAL_CRITERIA,
+      role: getRoleValue(tab) || undefined,
+      sortFlag: true,
+      searchText: filterValues?.searchText || undefined,
+      multiLevel: filterValues?.multiLevel ?? false,
+      from: isClient ? filterValues?.dateRange?.from?.toISOString() : undefined,
+      to: isClient ? filterValues?.dateRange?.to?.toISOString() : undefined,
+      isActive: isClient ? filterValues?.isActive : undefined,
+      parentAccountUid: keepParentUid,
+    };
+  }, []);
+
+  // salesAccount 变化时（初始化/切换账户），保留当前 tab 和面包屑
   useEffect(() => {
     if (salesAccount) {
-      const filterValues = filterRef.current?.getValues();
-      const isClient = activeTab === 'client';
-      fetchData({
-        ...INITIAL_CRITERIA,
-        role: getRoleValue(activeTab) || undefined,
-        sortFlag: true,
-        searchText: filterValues?.searchText || undefined,
-        multiLevel: filterValues?.multiLevel ?? false,
-        from: isClient ? filterValues?.dateRange?.from?.toISOString() : undefined,
-        to: isClient ? filterValues?.dateRange?.to?.toISOString() : undefined,
-        isActive: isClient ? filterValues?.isActive : undefined,
-      });
+      fetchData(buildFetchParams(activeTab, criteria.parentAccountUid));
     }
-  }, [salesAccount, activeTab, fetchData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [salesAccount, fetchData]);
 
   const handleTabChange = (tab: RoleTab) => {
     setActiveTab(tab);
+    // 切换 Tab 时保留面包屑（parentAccountUid），只改角色
+    fetchData(buildFetchParams(tab, criteria.parentAccountUid));
   };
 
   const handleFilterSearch = useCallback(
@@ -175,8 +185,11 @@ export default function SalesCustomersPage() {
 
   const handleFilterReset = useCallback(() => {
     setActiveTab('ib');
-    fetchData(INITIAL_CRITERIA);
-  }, [fetchData]);
+    fetchData({
+      ...INITIAL_CRITERIA,
+      parentAccountUid: criteria.parentAccountUid,
+    });
+  }, [fetchData, criteria.parentAccountUid]);
 
   const handleIbDrillDown = useCallback((ibAccount: SalesClientAccount) => {
     fetchData({

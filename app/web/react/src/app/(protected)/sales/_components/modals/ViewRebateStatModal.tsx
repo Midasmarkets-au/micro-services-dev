@@ -314,7 +314,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
           {renderAmountTags()}
 
           {/* 数据表格 */}
-          <div className="max-h-[50vh] overflow-auto">
+          <div className="max-h-[50vh] overflow-x-auto overflow-y-auto">
             <DataTable<RebateSymbolRow>
               columns={columns}
               data={rebateList}
@@ -322,6 +322,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
               loading={isLoading}
               skeletonRows={5}
               footer={footerRow}
+              stickyHeader
             />
           </div>
         </div>

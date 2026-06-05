@@ -260,6 +260,42 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
     });
   };
 
+  // 个人返佣可设上限：编辑模式下只能降低，上限为原来的个人返佣值；新增账户上限为总返佣
+  const getRowMax = (accountType: number, row: FormRow): number => {
+    if (editRebateRuleDetails[accountType]) {
+      return editRebateRuleDetails[accountType]?.items?.find((i: any) => i.cid === row.cid)?.r ?? row.total;
+    }
+    return row.total;
+  };
+
+  // 按百分比自动填充个人返佣：基数为当前可设上限（还剩多少），上限为 0 时保持 0
+  const applyPersonCentage = (accountType: number, pct: number) => {
+    if (pct <= 0) return;
+    setFormTables((prev) => {
+      const rows = (prev[accountType] || []).map((row) => {
+        const max = getRowMax(accountType, row);
+        let v = Number((max * (pct / 100)).toFixed(1));
+        if (v > max) v = max;
+        if (v < 0) v = 0;
+        return { ...row, r: v };
+      });
+      return { ...prev, [accountType]: rows };
+    });
+  };
+
+  // 步进按钮：只能在 [0, max] 之间调整（max=原值，可降低后再加回原值，但不能超过）
+  const stepFormRowValue = (accountType: number, cidIdx: number, delta: number, max: number) => {
+    setFormTables((prev) => {
+      const list = [...(prev[accountType] || [])];
+      const cur = list[cidIdx]?.r ?? 0;
+      let v = Number((cur + delta).toFixed(1));
+      if (v > max) v = max;
+      if (v < 0) v = 0;
+      list[cidIdx] = { ...list[cidIdx], r: v };
+      return { ...prev, [accountType]: list };
+    });
+  };
+
   const handleSubmit = async () => {
     if (!agentAccount) return;
     setIsSubmitting(true);
@@ -329,7 +365,27 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
                   <tr className="bg-surface-secondary text-text-secondary">
                     <th className="px-3 py-3 font-medium">{t('rebateEdit.category')}</th>
                     <th className="px-3 py-3 font-medium">{t('rebateEdit.totalRebate')}</th>
-                    <th className="px-3 py-3 font-medium">{t('rebateEdit.personalRebate')}</th>
+                    <th className="px-3 py-3 font-medium">
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{t('rebateEdit.personalRebate')}</span>
+                        <span className="flex items-center justify-center gap-1 whitespace-nowrap">
+                          <input
+                            type="number"
+                            step={1}
+                            min={0}
+                            max={100}
+                            className="w-12 rounded border border-border bg-input-bg px-1 py-0.5 text-center text-xs text-text-primary"
+                            placeholder="0"
+                            title={t('rebateEdit.setPercentageTooltip')}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              applyPersonCentage(at, val);
+                            }}
+                          />
+                          <span>%</span>
+                        </span>
+                      </div>
+                    </th>
                     <th className="px-3 py-3 font-medium">{t('rebateEdit.remainRebate')}</th>
                     {showPCColumn && (
                       <th className="bg-[#0053ad] px-3 py-3 font-medium text-white">
@@ -353,21 +409,39 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
                         <td className="px-3 py-3">{row.name}</td>
                         <td className="px-3 py-3">{row.total}</td>
                         <td className="px-3 py-3">
-                          <input
-                            type="number"
-                            step="0.1"
-                            min={0}
-                            max={maxVal}
-                            value={row.r}
-                            onChange={(e) => {
-                              let val = parseFloat(e.target.value);
-                              if (isNaN(val)) val = 0;
-                              if (val > maxVal) val = maxVal;
-                              if (val < 0) val = 0;
-                              updateFormRowValue(at, idx, Number(val.toFixed(1)));
-                            }}
-                            className="input-field w-24 rounded px-2 py-1 text-center"
-                          />
+                          <div className="inline-flex items-center overflow-hidden rounded border border-border bg-input-bg">
+                            <button
+                              type="button"
+                              disabled={row.r <= 0}
+                              onClick={() => stepFormRowValue(at, idx, -0.1, maxVal)}
+                              className="px-2 py-1 text-text-secondary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              step="0.1"
+                              min={0}
+                              max={maxVal}
+                              value={row.r}
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value);
+                                if (isNaN(val)) val = 0;
+                                if (val > maxVal) val = maxVal;
+                                if (val < 0) val = 0;
+                                updateFormRowValue(at, idx, Number(val.toFixed(1)));
+                              }}
+                              className="w-14 border-x border-border bg-transparent px-1 py-1 text-center text-text-primary outline-none"
+                            />
+                            <button
+                              type="button"
+                              disabled={row.r >= maxVal}
+                              onClick={() => stepFormRowValue(at, idx, 0.1, maxVal)}
+                              className="px-2 py-1 text-text-secondary hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              +
+                            </button>
+                          </div>
                         </td>
                         <td className="px-3 py-3">{remain}</td>
                         {showPCColumn && (

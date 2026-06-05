@@ -2066,9 +2066,10 @@
       "updateRebateRule": "更新返佣規則",
       "existRule": "已有規則",
       "newRule": "新規則",
-      "editRule1": "編輯代理的現有返佣值",
-      "editRule2": "為新產品類別設定返佣值",
-      "editRule5": "為代理設定初始返佣值",
+      "editRule1": "已有類型：[A] 不允許刪除帳戶類型 [B] 只允許降低個人返佣",
+      "editRule2": "新加類型：均可編輯",
+      "editRule5": "已有類型：[A] 不允許刪除帳戶類型 [B] 只允許降低個人返佣",
+      "setPercentageTooltip": "設定百分比自動填充返佣值",
       "updateSuccess": "更新成功"
     }
   },
@@ -2296,9 +2297,9 @@
       "updateRebateRule": "更新返佣規則",
       "existRule": "已有規則",
       "newRule": "新規則",
-      "editRule1": "編輯代理的現有返佣值",
-      "editRule2": "為新產品類別設定返佣值",
-      "editRule5": "為代理設定初始返佣值"
+      "editRule1": "已有類型：[A] 不允許刪除帳戶類型 [B] 只允許降低個人返佣",
+      "editRule2": "新加類型：均可編輯",
+      "editRule5": "已有類型：[A] 不允許刪除帳戶類型 [B] 只允許降低個人返佣"
     },
     "openAccount": {
       "title": "建立交易帳戶",

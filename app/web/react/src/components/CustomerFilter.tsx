@@ -174,7 +174,10 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
           <div className="shrink-0">
             <SimpleSelect
               value={sortOrder}
-              onChange={setSortOrder}
+              onChange={(val) => {
+                setSortOrder(val);
+                onSearchRef.current(buildParams({ sortOrder: val }));
+              }}
               options={sortOptions}
               triggerSize="sm"
               className="w-auto! min-w-24 bg-input-bg"
@@ -187,7 +190,11 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
           <div className="shrink-0">
             <SimpleSelect
               value={String(multiLevel)}
-              onChange={(val) => setMultiLevel(val === 'true')}
+              onChange={(val) => {
+                const ml = val === 'true';
+                setMultiLevel(ml);
+                onSearchRef.current(buildParams({ multiLevel: ml }));
+              }}
               options={multiLevelOptions}
               triggerSize="sm"
               className="w-auto! min-w-20 bg-input-bg"
@@ -200,7 +207,11 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
           <div className="shrink-0">
             <SimpleSelect
               value={isActive}
-              onChange={setIsActive}
+              onChange={(val) => {
+                setIsActive(val);
+                const ia = val === 'all' ? undefined : val === 'true';
+                onSearchRef.current(buildParams({ isActive: ia }));
+              }}
               options={activeFilterOptions}
               triggerSize="sm"
               className="w-auto! min-w-20 bg-input-bg"
@@ -215,7 +226,11 @@ export const CustomerFilter = forwardRef<CustomerFilterRef, CustomerFilterProps>
               mode="range"
               size="sm"
               value={dateRange}
-              onChange={setDateRange}
+              onChange={(val) => {
+                const dr = val as DateRange | undefined;
+                setDateRange(dr);
+                onSearchRef.current(buildParams({ dateRange: dr }));
+              }}
               className="w-auto"
             />
           </div>

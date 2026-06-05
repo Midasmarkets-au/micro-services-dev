@@ -2069,9 +2069,10 @@
       "updateRebateRule": "更新返佣规则",
       "existRule": "已有规则",
       "newRule": "新规则",
-      "editRule1": "编辑代理的现有返佣值",
-      "editRule2": "为新产品类别设置返佣值",
-      "editRule5": "为代理设置初始返佣值",
+      "editRule1": "已有类型：[A] 不允许删除账户类型 [B] 只允许降低个人返佣",
+      "editRule2": "新加类型：均可编辑",
+      "editRule5": "已有类型：[A] 不允许删除账户类型 [B] 只允许降低个人返佣",
+      "setPercentageTooltip": "设置百分比自动填充返佣值",
       "updateSuccess": "更新成功"
     }
   },
@@ -2299,9 +2300,9 @@
       "updateRebateRule": "更新返佣规则",
       "existRule": "已有规则",
       "newRule": "新规则",
-      "editRule1": "编辑代理的现有返佣值",
-      "editRule2": "为新产品类别设置返佣值",
-      "editRule5": "为代理设置初始返佣值"
+      "editRule1": "已有类型：[A] 不允许删除账户类型 [B] 只允许降低个人返佣",
+      "editRule2": "新加类型：均可编辑",
+      "editRule5": "已有类型：[A] 不允许删除账户类型 [B] 只允许降低个人返佣"
     },
     "openAccount": {
       "title": "创建交易账户",

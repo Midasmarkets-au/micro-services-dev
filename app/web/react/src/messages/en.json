@@ -2070,9 +2070,10 @@
       "updateRebateRule": "Update Rebate Rule",
       "existRule": "Existing Rule",
       "newRule": "New Rule",
-      "editRule1": "Edit existing rebate values for the agent",
-      "editRule2": "Set rebate values for new product categories",
-      "editRule5": "Set initial rebate values for the agent",
+      "editRule1": "Existing types: [A] Cannot delete account types [B] Can only reduce personal rebate",
+      "editRule2": "New types: All editable",
+      "editRule5": "Existing types: [A] Cannot delete account types [B] Can only reduce personal rebate",
+      "setPercentageTooltip": "Set percentage to auto-fill rebate values",
       "updateSuccess": "Updated successfully"
     }
   },
@@ -2300,9 +2301,9 @@
       "updateRebateRule": "Update Rebate Rule",
       "existRule": "Existing Rule",
       "newRule": "New Rule",
-      "editRule1": "Edit existing rebate for agent",
-      "editRule2": "Set rebate for new categories",
-      "editRule5": "Set initial rebate for agent"
+      "editRule1": "Existing types: [A] Cannot delete account types [B] Can only reduce personal rebate",
+      "editRule2": "New types: All editable",
+      "editRule5": "Existing types: [A] Cannot delete account types [B] Can only reduce personal rebate"
     },
     "openAccount": {
       "title": "Create Trade Account",
