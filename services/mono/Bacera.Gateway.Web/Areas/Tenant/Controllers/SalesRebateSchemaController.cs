@@ -69,8 +69,20 @@ public class SalesRebateSchemaController(
         if (rebateId == 0)
             return BadRequest(Result.Error(ResultMessage.Account.AccountNotExists));
 
+        // Sales Account and Target (Rebate) Account must not be on the same sales line —
+        // i.e. neither may be an upline/downline of the other in the referral tree.
+        var pairAccounts = await tenantDbContext.Accounts
+            .Where(a => a.Id == salesId || a.Id == rebateId)
+            .ToListAsync();
+        var salesAcc  = pairAccounts.FirstOrDefault(a => a.Id == salesId);
+        var rebateAcc = pairAccounts.FirstOrDefault(a => a.Id == rebateId);
+        if (salesAcc == null || rebateAcc == null)
+            return BadRequest(Result.Error(ResultMessage.Account.AccountNotExists));
+        if (salesAcc.IsUpper(spec.RebateAccountUid) || rebateAcc.IsUpper(spec.SalesAccountUid))
+            return BadRequest(Result.Error(ResultMessage.SalesRebate.SalesAndTargetSameLine));
+
         var schema = await tenantDbContext.SalesRebateSchemas
-            .Where(x => x.SalesAccountId == salesId 
+            .Where(x => x.SalesAccountId == salesId
                         && x.RebateAccountId == rebateId)
             .FirstOrDefaultAsync();
         if (schema != null)
