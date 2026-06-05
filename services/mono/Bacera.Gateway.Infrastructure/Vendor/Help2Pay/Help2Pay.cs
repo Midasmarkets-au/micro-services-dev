@@ -56,6 +56,12 @@ public class Help2Pay
         public ILogger Logger { get; set; } = null!;
         public HttpClient? Client { get; set; }
 
+        // Payer fields — compulsory for certain currencies per spec p11
+        public string? PayerAccountName { get; set; }
+        public string? PayerAccountNumber { get; set; }
+        public string? PayerAccountNameLocal { get; set; }
+        public string? PayerPhoneNumber { get; set; }
+
         private string SignSignature()
             => Utils.Md5Hash($"{Options.MerchantCode}" +
                              $"{PaymentNumber}" +
@@ -68,20 +74,58 @@ public class Help2Pay
 
 
         public Dictionary<string, string> BuildForm()
-            => new()
+        {
+            var form = new Dictionary<string, string>
             {
                 { "Merchant", Options.MerchantCode },
                 { "Currency", Enum.GetName(Currency)! },
                 { "Customer", AccountUid.ToString() },
                 { "Reference", PaymentNumber },
                 { "Amount", Amount.ToString("0.00") },
-                { "Datetime", CreatedOn.ToString("yyyy-MM-dd HH:mm:sstt") },
+                // Spec requires 12-hour hh:mm:sstt (e.g. 02:31:42PM); hash uses yyyyMMddHHmmss separately
+                { "Datetime", CreatedOn.ToString("yyyy-MM-dd hh:mm:sstt") },
                 { "FrontURI", ReturnUrl },
                 { "BackURI", Options.CallbackUri },
                 { "Bank", Bank ?? "" },
                 { "Language", Language },
                 { "ClientIP", Ip },
             };
+
+            if (!string.IsNullOrEmpty(PayerAccountName))
+                form["PayerAccountName"] = PayerAccountName;
+            if (!string.IsNullOrEmpty(PayerAccountNumber))
+                form["PayerAccountNumber"] = PayerAccountNumber;
+            if (!string.IsNullOrEmpty(PayerAccountNameLocal))
+                form["PayerAccountNameLocal"] = PayerAccountNameLocal;
+            if (!string.IsNullOrEmpty(PayerPhoneNumber))
+                form["PayerPhoneNumber"] = PayerPhoneNumber;
+
+            return form;
+        }
+
+        // Amount-decimal validation per spec p09.
+        // Bank selection and per-currency payer fields are intentionally NOT enforced here:
+        // the deposit is submitted with an empty Bank and no Payer* fields so Help2Pay's own
+        // hosted "Bank Listing" page displays the banks and collects payer details.
+        // Returns sentinel codes so the FE can localise the message.
+        public (bool ok, string code) Validate()
+        {
+            // Amount decimal restrictions per spec p09:
+            //  - Always whole: VND, IDR, CNY, KRW, INR
+            //  - THB only when Bank == PPTP (QR Payment / PromptPay)
+            //  - PHP only when Bank in (PAYMAYA, GCASH) — eWallet (Native) transfer types
+            //    (also accept legacy "MAYA" in case data uses the spec-doc naming)
+            var mustBeWhole =
+                Currency is CurrencyTypes.VND or CurrencyTypes.IDR or CurrencyTypes.CNY
+                    or CurrencyTypes.KRW or CurrencyTypes.INR
+                || (Currency == CurrencyTypes.THB && Bank == "PPTP")
+                || (Currency == CurrencyTypes.PHP
+                    && (Bank == "PAYMAYA" || Bank == "GCASH" || Bank == "MAYA"));
+            if (mustBeWhole && Amount % 1m != 0m)
+                return (false, "__HELP2PAY_AMOUNT_DECIMAL_NOT_ALLOWED__");
+
+            return (true, string.Empty);
+        }
 
         public async Task<ResponseModel> SendAsync()
         {
@@ -104,6 +148,18 @@ public class Help2Pay
         public async Task<DepositCreatedResponseModel> RequestAsync(bool isTest = false)
         {
             await Task.Delay(0);
+
+            if (!isTest)
+            {
+                var (ok, code) = Validate();
+                if (!ok)
+                {
+                    Logger.LogWarning("Help2Pay Request rejected: {code} (Currency={currency}, Bank={bank})",
+                        code, Currency, Bank);
+                    return DepositCreatedResponseModel.Fail(code, showMessage: true);
+                }
+            }
+
             var form = BuildForm();
             Logger.LogInformation("Help2Pay Request: {form}", form);
             var key = SignSignature();
@@ -147,9 +203,10 @@ public class Help2Pay
         var missedKeys = requiredKeys.Where(x => !spec.ContainsKey(x)).ToList();
         if (missedKeys.Count != 0) return (false, $"Missing required keys: {string.Join(", ", missedKeys)}");
 
+        // Callback key formula per spec p15: Merchant+Reference+Customer+Amount+Currency+Status+SecurityCode
         var baseString = spec["Merchant"] + spec["Reference"] + spec["Customer"] + spec["Amount"] + spec["Currency"] + spec["Status"] + securityCode;
         var calculatedKey = Utils.Md5Hash(baseString).ToUpper();
-        var result = calculatedKey == spec["Key"];
+        var result = string.Equals(calculatedKey, spec["Key"], StringComparison.OrdinalIgnoreCase);
         if (!result)
         {
             BcrLog.Slack($"Help2Pay Callback Validate Signature Failed: {JsonConvert.SerializeObject(spec)}");

@@ -128,6 +128,45 @@ public partial class CmdTestService
                 case "test-pay247-out":
                     await TestPay247Out();
                     break;
+                case "test-pay247-sig":
+                    await TestPay247Signature();
+                    break;
+                case "test-pay247-create":
+                    await TestPay247CreateOrder();
+                    break;
+                case "test-pay247-query":
+                    await TestPay247QueryOrder();
+                    break;
+                case "test-pay247-balance":
+                    await TestPay247Balance();
+                    break;
+                case "test-pay247-payout":
+                    await TestPay247CreatePayout();
+                    break;
+                case "test-rivo-sig":
+                    await TestRivoSignature();
+                    break;
+                case "test-rivo-create":
+                    await TestRivoCreateOrder();
+                    break;
+                case "test-rivo-query":
+                    await TestRivoQueryOrder();
+                    break;
+                case "test-rivo-balance":
+                    await TestRivoBalance();
+                    break;
+                case "test-rivo-payout":
+                    await TestRivoCreatePayout();
+                    break;
+                case "test-12group-create":
+                    await TestTwelveGroupCreateOrder();
+                    break;
+                case "test-12group-query":
+                    await TestTwelveGroupInquiryDeposit();
+                    break;
+                case "test-12group-payout":
+                    await TestTwelveGroupCreatePayout();
+                    break;
                 case "test-china-pay":
                     await TestChinaPay();
                     break;
@@ -201,6 +240,19 @@ public partial class CmdTestService
                     Console.WriteLine("  test-exlink-vnd - Test ExlinkVND");
                     Console.WriteLine("  test-pay247 - Test Pay247");
                     Console.WriteLine("  test-pay247-out - Test Pay247Out");
+                    Console.WriteLine("  test-pay247-sig - Test Pay247 MD5 signer");
+                    Console.WriteLine("  test-pay247-create - Test Pay247 payin order");
+                    Console.WriteLine("  test-pay247-query - Test Pay247 payin status");
+                    Console.WriteLine("  test-pay247-balance - Test Pay247 balance");
+                    Console.WriteLine("  test-pay247-payout - Test Pay247 payout");
+                    Console.WriteLine("  test-rivo-sig - Test Rivo signer");
+                    Console.WriteLine("  test-rivo-create - Test Rivo create");
+                    Console.WriteLine("  test-rivo-query - Test Rivo query");
+                    Console.WriteLine("  test-rivo-balance - Test Rivo balance");
+                    Console.WriteLine("  test-rivo-payout - Test Rivo payout");
+                    Console.WriteLine("  test-12group-create - Test 12Group create");
+                    Console.WriteLine("  test-12group-query - Test 12Group inquiry");
+                    Console.WriteLine("  test-12group-payout - Test 12Group payout");
                     Console.WriteLine("  test-china-pay - Test ChinaPay");
                     Console.WriteLine("  test-bipi-pay - Test BipiPay");
                     Console.WriteLine("  test-exlink - Test Exlink");

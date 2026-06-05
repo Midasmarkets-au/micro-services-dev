@@ -122,7 +122,13 @@ public partial class PaymentMethod
         InitialValue = InitialValue,
         AvailableCurrencies = GetAvailableCurrencies(),
         PaymentMethodName = Name,
-        Type = Platform == (int)PaymentPlatformTypes.ExLinkGlobal ? "ExLinkGlobal" : null
+        Type = (PaymentPlatformTypes)Platform switch
+        {
+            PaymentPlatformTypes.ExLinkGlobal => "ExLinkGlobal",
+            PaymentPlatformTypes.Help2Pay     => "Help2Pay",
+            PaymentPlatformTypes.Pay247       => "Pay247",
+            _ => null
+        }
     };
 
     public sealed class ClientNameModel

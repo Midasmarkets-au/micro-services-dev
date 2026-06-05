@@ -27,6 +27,8 @@ using Bacera.Gateway.Vendor.PayPal;
 using Bacera.Gateway.Vendor.Poli;
 using Bacera.Gateway.Vendor.Poli.Models;
 using Bacera.Gateway.Vendor.QrCodeTunnel;
+using Bacera.Gateway.Vendor.TwelveGroup;
+using Bacera.Gateway.Vendor.Rivo;
 using Bacera.Gateway.Vendor.UnionePay;
 using Bacera.Gateway.Vendor.UsePay;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
@@ -645,20 +647,32 @@ public partial class DepositService
         , long exchangedAmount
         , Dictionary<string, string> request)
     {
-        var targetCurrency = request.TryGetValue("currencyId", out var valRaw) && int.TryParse(valRaw, out var val)
-            ? (CurrencyTypes)val
-            : (CurrencyTypes)method.CurrencyId;
-        var option = Pay247Options.FromJson(method.Configuration);
+        var options = Pay247Options.FromJson(method.Configuration);
+        options.TenantId = _tenantId;
+
+        var (isValid, errorMessage) = options.Validate();
+        if (!isValid)
+            return DepositCreatedResponseModel.Fail($"Pay247 config invalid: {errorMessage}");
+
+        var user = await userSvc.GetPartyAsync(account.PartyId);
+
         var client = new Pay247.RequestClient
         {
-            Amount = RoundUp(exchangedAmount / 100m),
-            AccountUid = account.Uid,
             PaymentNumber = Payment.GenerateNumber(),
-            CurrencyId = targetCurrency,
-            Logger = logger,
-            Options = option,
-            Client = clientFactory.CreateClient(),
-            ReturnUrl = request.GetValueOrDefault("returnUrl") ?? string.Empty,
+            AccountUid    = account.Uid,
+            Amount        = RoundUp(exchangedAmount / 100m),
+            Currency      = options.Currency,   // per-row (IDR/MYR/VND/PHP)
+            PayMethod     = options.PayMethod,  // per-row (BANK/QRIS/DANA/GCASH/MAYA/EWALLET/VIETQR)
+            // Pay247 requires client_ip; fall back to a placeholder so the API doesn't 4000 on us.
+            ClientIp      = string.IsNullOrWhiteSpace(request.GetValueOrDefault("ip")) ? "0.0.0.0" : request["ip"],
+            PayerName     = user.GuessNativeName(),
+            PayerPhone    = user.PhoneNumberRaw ?? string.Empty,
+            PayerEmail    = user.EmailRaw ?? string.Empty,
+            ReturnUrl     = request.GetValueOrDefault("returnUrl") ?? string.Empty,
+            Subject       = $"Deposit {account.AccountNumber}",
+            Options       = options,
+            Client        = clientFactory.CreateClient(),
+            Logger        = logger,
         };
 
         return await client.RequestAsync();
@@ -956,6 +970,82 @@ public partial class DepositService
             Client = clientFactory.CreateClient(),
             Logger = logger,
         };
+        return await client.RequestAsync();
+    }
+
+
+    private async Task<DepositCreatedResponseModel> ProcessRivoAsync(
+        PaymentMethod method
+        , Account account
+        , long exchangedAmount
+        , Dictionary<string, string> request)
+    {
+        var options = RivoOptions.FromJson(method.Configuration);
+        options.TenantId = _tenantId;
+
+        var (isValid, errorMessage) = options.Validate();
+        if (!isValid)
+            return DepositCreatedResponseModel.Fail($"Rivo config invalid: {errorMessage}");
+
+        var user = await userSvc.GetPartyAsync(account.PartyId);
+
+        var client = new Rivo.RequestClient
+        {
+            PaymentNumber = Payment.GenerateNumber(),
+            Amount        = RoundUp(exchangedAmount / 100m),
+            Currency      = options.Currency,        // per-row (VND today, THB/IDR/... later)
+            PaymentMethod = options.PaymentMethod,   // per-row ("01" for VND VietQR)
+            PayerName     = user.GuessNativeName(),
+            PayerPhone    = user.PhoneNumberRaw ?? string.Empty,
+            PayerEmail    = user.EmailRaw ?? string.Empty,
+            ClientIp      = request.GetValueOrDefault("ip") ?? string.Empty,
+            // Rivo flags blanks; a single space is enough until we have a real address source per market.
+            City          = string.IsNullOrWhiteSpace(request.GetValueOrDefault("city")) ? " " : request["city"],
+            Address       = string.IsNullOrWhiteSpace(request.GetValueOrDefault("address")) ? " " : request["address"],
+            ReturnUrl     = request.GetValueOrDefault("returnUrl") ?? string.Empty,
+            Subject       = $"Deposit {account.AccountNumber}",
+            Options       = options,
+            Client        = clientFactory.CreateClient(),
+            Logger        = logger,
+        };
+
+        return await client.RequestAsync();
+    }
+
+    private async Task<DepositCreatedResponseModel> ProcessTwelveGroupAsync(
+        PaymentMethod method
+        , Account account
+        , long exchangedAmount
+        , Dictionary<string, string> request)
+    {
+        var options = TwelveGroupOptions.FromJson(method.Configuration);
+        options.TenantId = _tenantId;
+
+        var (isValid, errorMessage) = options.Validate();
+        if (!isValid)
+            return DepositCreatedResponseModel.Fail($"12Group config invalid: {errorMessage}");
+
+        var user = await userSvc.GetPartyAsync(account.PartyId);
+
+        // ref1 must be a ≤18-digit numeric bank reference, so it can't carry our pm-... PaymentNumber.
+        // Generate a numeric ref1 for the bank; reconciliation rides on ref4 = PaymentNumber (echoed back
+        // on the callback) and the vendor trans_id stored into Payment.ReferenceNumber (via Reference).
+        var paymentNumber = Payment.GenerateNumber();
+        var ref1 = $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{Random.Shared.Next(1000, 9999)}";
+
+        var client = new TwelveGroup.RequestClient
+        {
+            PaymentNumber = paymentNumber,
+            Amount        = RoundUp(exchangedAmount / 100m), // THB integer amount (vendor rounds to int)
+            Ref1          = ref1,
+            Ref3          = user.GuessNativeName(),           // first + last name, required for AML
+            Ref4          = paymentNumber,                    // our reconciliation key, echoed on callback
+            MobileNo      = user.PhoneNumberRaw ?? string.Empty,
+            Options       = options,
+            Client        = clientFactory.CreateClient(),
+            Logger        = logger,
+        };
+
         return await client.RequestAsync();
     }
 }

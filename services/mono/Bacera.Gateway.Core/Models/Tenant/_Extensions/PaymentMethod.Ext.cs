@@ -60,6 +60,8 @@ public partial class PaymentMethod
                 "ccCvc",
             ],
             PaymentPlatformTypes.Pay247 => ["returnUrl", "currencyId"],
+            // 12Group derives ref3 (client name) server-side from the party — no extra client fields.
+            PaymentPlatformTypes.TwelveGroup => ["returnUrl"],
             PaymentPlatformTypes.Help2Pay => ["returnUrl", "currencyId"],
             PaymentPlatformTypes.Monetix => ["returnUrl", "currencyId"],
             PaymentPlatformTypes.Bakong => ["returnUrl", "currencyId"],
@@ -71,6 +73,9 @@ public partial class PaymentMethod
             // public string NativeName { get; set; } = "";
             // public string UserAreaCode { get; set; } = "";
             // public string UserMobile { get; set; } = "";
+            // ExLinkGlobal JPY uses H2H mode and must bind to a KYC-verified Wire PaymentInfo;
+            // other ExLinkGlobal currencies still use the cashier flow and ignore paymentInfoId server-side.
+            PaymentPlatformTypes.ExLinkGlobal => ["returnUrl", "paymentInfoId"],
             _ => ["returnUrl",]
         };
     }

@@ -82,6 +82,8 @@ public partial class DepositService(
                 PaymentPlatformTypes.PaymentAsiaRMB => ProcessPaymentAsiaRMBAsync,
                 PaymentPlatformTypes.Buzipay => ProcessBuzipayAsync,
                 PaymentPlatformTypes.QrCodeTunnel => ProcessQrCodeTunnelAsync,
+                PaymentPlatformTypes.Rivo => ProcessRivoAsync,
+                PaymentPlatformTypes.TwelveGroup => ProcessTwelveGroupAsync,
 
                 PaymentPlatformTypes.Undefined =>
                     throw new Exception($"Invalid payment method {PaymentPlatformTypes.Undefined}"),
