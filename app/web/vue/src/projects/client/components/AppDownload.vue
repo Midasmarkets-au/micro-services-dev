@@ -38,7 +38,7 @@
               class="d-flex justify-content-between align-items-center gap-2"
             > -->
             <a
-              href="https://download.mql5.com/cdn/mobile/mt5/ios?server=MMCo-Main"
+              href="https://apps.apple.com/au/app/midas-markets/id6757778465"
               target="_blank"
               class="d-flex justify-content-between align-items-center gap-2"
             >
@@ -58,7 +58,7 @@
               class="d-flex justify-content-between align-items-center gap-2"
             > -->
             <a
-              href="https://download.midasmkts.com/download/metatrader5.apk"
+              href="https://releases.midasmkts.com/releases/mdm-trading-1.2.1.apk"
               target="_blank"
               class="d-flex justify-content-between align-items-center gap-2"
             >

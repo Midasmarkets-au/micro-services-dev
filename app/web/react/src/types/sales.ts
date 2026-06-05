@@ -60,12 +60,20 @@ export interface SalesClientListResponse {
   criteria: SalesClientCriteria;
 }
 
+export interface IbLevelItem {
+  uid: number;
+  nativeName: string;
+  relativeLevel: number;
+}
+
 export interface SalesClientCriteria extends SalesListParams {
   total?: number;
   role?: number;
   relativeLevel?: number;
   childParentAccountUid?: number;
+  parentAccountUid?: number;
   isActive?: boolean;
+  levelAccountsInBetween?: IbLevelItem[] | null;
 }
 
 // ============================================

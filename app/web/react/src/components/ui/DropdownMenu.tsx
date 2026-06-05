@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
  * 纯自定义实现，不依赖第三方组件库。
  * 点击触发器打开/关闭菜单，点击外部自动关闭。
  * 使用 Portal 渲染到 body，避免被 overflow 容器裁剪。
+ * 自动检测底部剩余空间，不足时向上弹出。
  *
  * @example
  * <DropdownMenu
@@ -40,26 +41,78 @@ export interface DropdownMenuProps {
   className?: string;
 }
 
+interface MenuStyle {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+  maxHeight?: number;
+  visibility: 'hidden' | 'visible';
+}
+
+const GAP = 4;
+
 export function DropdownMenu({ trigger, items, align = 'right', className }: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [menuStyle, setMenuStyle] = useState<MenuStyle>({ visibility: 'hidden' });
 
-  const updatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPos({
-      top: rect.bottom + window.scrollY + 4,
-      left: align === 'right'
-        ? rect.right + window.scrollX
-        : rect.left + window.scrollX,
-    });
+  // 第一步：打开时先以 visibility:hidden 渲染菜单，让 DOM 存在但不可见
+  const computePosition = useCallback(() => {
+    if (!triggerRef.current || !menuRef.current) return;
+
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const menuHeight = menuRef.current.offsetHeight;
+    const viewportHeight = window.innerHeight;
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+    const clientWidth = document.documentElement.clientWidth;
+
+    // 计算下方可用空间和上方可用空间
+    const spaceBelow = viewportHeight - triggerRect.bottom - GAP;
+    const spaceAbove = triggerRect.top - GAP;
+
+    // 水平定位
+    const horizontalStyle: Partial<MenuStyle> = align === 'right'
+      ? { right: clientWidth - (triggerRect.right + scrollX), left: undefined }
+      : { left: triggerRect.left + scrollX, right: undefined };
+
+    if (spaceBelow >= menuHeight) {
+      // 下方空间足够，向下弹出
+      setMenuStyle({
+        top: triggerRect.bottom + scrollY + GAP,
+        ...horizontalStyle,
+        visibility: 'visible',
+      });
+    } else if (spaceAbove >= menuHeight) {
+      // 上方空间足够，向上弹出
+      setMenuStyle({
+        top: triggerRect.top + scrollY - menuHeight - GAP,
+        ...horizontalStyle,
+        visibility: 'visible',
+      });
+    } else {
+      // 上下都不够，取空间较大的一侧并限制 maxHeight
+      const useBelow = spaceBelow >= spaceAbove;
+      setMenuStyle({
+        top: useBelow ? triggerRect.bottom + scrollY + GAP : undefined,
+        bottom: !useBelow ? viewportHeight - triggerRect.top + scrollY + GAP : undefined,
+        maxHeight: useBelow ? spaceBelow : spaceAbove,
+        ...horizontalStyle,
+        visibility: 'visible',
+      });
+    }
   }, [align]);
+
+  // 菜单打开后 DOM 渲染完成，立即测量并定位
+  useLayoutEffect(() => {
+    if (!open) return;
+    computePosition();
+  }, [open, computePosition]);
 
   useEffect(() => {
     if (!open) return;
-    updatePosition();
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -72,14 +125,17 @@ export function DropdownMenu({ trigger, items, align = 'right', className }: Dro
     };
 
     const handleScroll = () => setOpen(false);
+    const handleResize = () => computePosition();
 
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
     };
-  }, [open, updatePosition]);
+  }, [open, computePosition]);
 
   const visibleItems = items.filter((item) => !item.hidden);
 
@@ -99,11 +155,14 @@ export function DropdownMenu({ trigger, items, align = 'right', className }: Dro
           ref={menuRef}
           style={{
             position: 'absolute',
-            top: pos.top,
-            ...(align === 'right'
-              ? { right: `${document.documentElement.clientWidth - pos.left}px`, left: 'auto' }
-              : { left: pos.left }),
+            top: menuStyle.top,
+            bottom: menuStyle.bottom,
+            left: menuStyle.left,
+            right: menuStyle.right !== undefined ? `${menuStyle.right}px` : undefined,
+            maxHeight: menuStyle.maxHeight,
             zIndex: 9999,
+            visibility: menuStyle.visibility,
+            overflowY: menuStyle.maxHeight ? 'auto' : undefined,
           }}
           className="min-w-[160px] rounded-sm border border-border bg-surface py-1 shadow-dropdown"
         >

@@ -97,6 +97,8 @@ export interface DataTableProps<T> {
   rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
   /** 是否拉伸表格高度填满父容器，默认 true */
   stretchHeight?: boolean;
+  /** 固定表头（需要外层容器有固定高度或 max-height + overflow-auto） */
+  stickyHeader?: boolean;
 }
 
 const ALIGN_CLASS = {
@@ -138,6 +140,7 @@ export function DataTable<T>({
   className,
   rounded = 'sm',
   stretchHeight = true,
+  stickyHeader = false,
 }: DataTableProps<T>) {
   const colCount = columns.length;
   const r = ROUNDED_MAP[rounded];
@@ -163,7 +166,8 @@ export function DataTable<T>({
     <div className={cn('flex flex-col', className)}>
       <div
         className={cn(
-          'flex flex-col overflow-x-auto',
+          'flex flex-col',
+          !stickyHeader && 'overflow-x-auto',
           shouldStretch && 'flex-1'
         )}
       >
@@ -175,7 +179,7 @@ export function DataTable<T>({
           )}
         >
           {/* Table Header — no border */}
-          <thead>
+          <thead className={stickyHeader ? 'sticky top-0 z-10 bg-surface' : ''}>
             <tr className="text-sm text-text-secondary">
               {columns.map((col) => (
                 <th

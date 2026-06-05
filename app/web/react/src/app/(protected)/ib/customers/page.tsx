@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import moment from 'moment';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
@@ -106,6 +107,10 @@ export default function IBCustomersPage() {
             searchText: raw.searchText,
             relativeLevel: raw.relativeLevel,
             childParentAccountUid: raw.childParentAccountUid,
+            // 后端可能不回传以下筛选字段，回落到本次请求参数，保证翻页/下钻不丢条件
+            isActive: raw.isActive ?? params.isActive,
+            from: raw.from ?? params.from,
+            to: raw.to ?? params.to,
           });
           setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
         }
@@ -116,8 +121,10 @@ export default function IBCustomersPage() {
     [agentAccount]
   );
 
+  // 仅在账户初始化/切换账户时触发；切换账户重置下钻链
   useEffect(() => {
     if (agentAccount) {
+      setIbChain([]);
       fetchData({
         ...INITIAL_CRITERIA,
         role: getRoleValue(activeTab),
@@ -126,28 +133,48 @@ export default function IBCustomersPage() {
     } else {
       setIsLoading(false);
     }
-  }, [agentAccount, activeTab, fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentAccount, fetchData]);
 
   const handleTabChange = (tab: RoleTab) => {
     setActiveTab(tab);
-    setIbChain([]);
-    filterRef.current?.setValues({ searchText: '', dateRange: undefined, sortOrder: 'newest' });
+    // 对齐 Vue：切换角色保留下钻链（ibChain）与搜索条件，在当前下钻层级下按新角色查询
+    const f = filterRef.current?.getValues();
+    const isClient = tab === 'client';
+    const lastIb = ibChain[ibChain.length - 1];
+    const hasDateOrActive = isClient && (!!f?.dateRange?.from || !!f?.dateRange?.to || f?.isActive !== undefined);
+    const isSearching = !!f?.searchText || hasDateOrActive;
+    fetchData({
+      ...INITIAL_CRITERIA,
+      role: getRoleValue(tab),
+      sortFlag: (f?.sortOrder ?? 'newest') !== 'oldest',
+      searchText: f?.searchText || undefined,
+      childParentAccountUid: lastIb?.uid,
+      // 搜索态跨全层级（对齐 handleFilterSearch），否则按下钻层级/直属
+      relativeLevel: isSearching ? undefined : (lastIb ? ibChain.length + 1 : 1),
+      from: isClient && f?.dateRange?.from ? moment(f.dateRange.from).startOf('day').toISOString() : undefined,
+      to: isClient && f?.dateRange?.to ? moment(f.dateRange.to).endOf('day').toISOString() : undefined,
+      isActive: isClient ? f?.isActive : undefined,
+    });
   };
 
   const handleFilterSearch = useCallback(
     (params: CustomerFilterParams) => {
+      const isClient = activeTab === 'client';
       fetchData({
         ...criteria,
         page: 1,
         searchText: params.searchText,
         role: getRoleValue(activeTab),
         sortFlag: params.sortOrder !== 'oldest',
-        relativeLevel: ibChain.length > 0 ? ibChain.length + 1 : 1,
-        from: params.from,
-        to: params.to,
+        // 对齐 Vue：搜索时跨所有层级（relativeLevel 置空），下钻态仍受 childParentAccountUid 约束
+        relativeLevel: undefined,
+        from: isClient ? params.from : undefined,
+        to: isClient ? params.to : undefined,
+        isActive: isClient ? params.isActive : undefined,
       });
     },
-    [criteria, activeTab, ibChain.length, fetchData],
+    [criteria, activeTab, fetchData],
   );
 
   const handleFilterReset = useCallback(() => {
@@ -379,6 +406,7 @@ export default function IBCustomersPage() {
             ref={filterRef}
             showSortOrder
             sortOptions={sortOptions}
+            showActiveFilter={activeTab === 'client'}
             showDatePicker={activeTab === 'client'}
             defaultValues={{ sortOrder: 'newest' }}
             onSearch={handleFilterSearch}
