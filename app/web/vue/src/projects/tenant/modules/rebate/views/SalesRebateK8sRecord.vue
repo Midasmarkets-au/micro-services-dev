@@ -47,17 +47,21 @@
               <th>Status</th>
               <th>Created On</th>
               <th></th>
+              <th></th>
+              <th></th>
+              <th></th>
+              <th></th>
             </tr>
           </thead>
 
           <tbody v-if="isLoading" style="height: 300px">
             <tr>
-              <td colspan="8"><scale-loader></scale-loader></td>
+              <td colspan="12"><scale-loader></scale-loader></td>
             </tr>
           </tbody>
           <tbody v-else-if="data.length === 0">
             <tr>
-              <td colspan="8"><NoDataBox /></td>
+              <td colspan="12"><NoDataBox /></td>
             </tr>
           </tbody>
           <tbody v-else class="text-gray-600 fw-semibold">
@@ -98,6 +102,8 @@
                 <el-button size="small" @click="showItems(item)"
                   >Details ({{ item.tradeCount }})</el-button
                 >
+              </td>
+              <td>
                 <el-button
                   v-if="item.status === 0"
                   size="small"
@@ -105,6 +111,8 @@
                   @click="recalculate(item)"
                   >Recalculate</el-button
                 >
+              </td>
+              <td>
                 <el-button
                   v-if="item.status === 0 && item.totalAmount > 0"
                   size="small"
@@ -113,14 +121,19 @@
                   @click="release(item)"
                   >Release</el-button
                 >
-                <el-button
-                  size="small"
-                  link
-                  :icon="Download"
+              </td>
+              <td class="text-center">
+                <a
+                  href="#"
                   title="Download"
-                  :loading="item._downloading"
-                  @click="downloadReport(item)"
-                />
+                  @click.prevent="downloadReport(item)"
+                  ><i
+                    class="fa-solid fa-download fa-xl"
+                    style="color: #5b6b86"
+                  ></i
+                ></a>
+              </td>
+              <td>
                 <el-button
                   size="small"
                   type="primary"
@@ -143,7 +156,6 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
-import { Download } from "@element-plus/icons-vue";
 import TimeShow from "@/components/TimeShow.vue";
 import TableFooter from "@/components/TableFooter.vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
