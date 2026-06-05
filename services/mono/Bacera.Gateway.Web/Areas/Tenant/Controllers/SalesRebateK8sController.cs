@@ -3,6 +3,7 @@ using Bacera.Gateway.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http.Json;
 
 namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 
@@ -10,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Sales Rebate K8s")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/sales-rebate-k8s")]
 [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
-public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantBaseController
+public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClientFactory httpClientFactory) : TenantBaseController
 {
     public class Criteria : Bacera.Criteria
     {
@@ -151,6 +152,45 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantB
             .ToListAsync();
 
         return Ok(Result<List<ItemViewModel>, ItemCriteria>.Of(items, criteria));
+    }
+
+    /// <summary>
+    /// Re-calculate a single un-released SalesRebate K8s summary — re-reads the
+    /// period's trades (e.g. after MT ticket data was updated) and regenerates the
+    /// record. Delegates to the Rust scheduler's force-recalc, scoped to this sales
+    /// account. Blocked once the record has been released.
+    /// </summary>
+    [HttpPost("{id:long}/recalculate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Recalculate(long id)
+    {
+        var record = await tenantDbContext.SalesRebateK8s
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (record == null)
+            return NotFound();
+        if (record.Status != 0)
+            return BadRequest(Result.Error(ResultMessage.Common.ActionNotAllow));
+
+        var schedulerHttp = (Environment.GetEnvironmentVariable("SCHEDULER_HTTP_URL")
+                             ?? "http://scheduler:9004").TrimEnd('/');
+        var payload = new
+        {
+            schedule_type    = record.ScheduleType,
+            period_start     = DateTime.SpecifyKind(record.PeriodStart, DateTimeKind.Utc).ToString("o"),
+            period_end       = DateTime.SpecifyKind(record.PeriodEnd, DateTimeKind.Utc).ToString("o"),
+            sales_account_id = record.SalesAccountId,
+        };
+
+        var http = httpClientFactory.CreateClient();
+        var resp = await http.PostAsJsonAsync($"{schedulerHttp}/trigger/sales-rebate-force", payload);
+        if (!resp.IsSuccessStatusCode)
+            return StatusCode(StatusCodes.Status502BadGateway, Result.Error(ResultMessage.Common.ActionFail));
+
+        return Ok(new { status = "triggered" });
     }
 
     /// <summary>

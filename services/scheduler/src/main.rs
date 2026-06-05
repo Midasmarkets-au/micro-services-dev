@@ -264,6 +264,7 @@ struct TriggerForceBody {
     schedule_type: i16,
     period_start: String,
     period_end: Option<String>, // defaults to Utc::now() when omitted
+    sales_account_id: Option<i64>, // restrict recalc to a single sales account
 }
 
 async fn trigger_sales_rebate_custom(
@@ -334,8 +335,14 @@ async fn trigger_sales_rebate_force(
     };
     let period_end_str = period_end.to_rfc3339();
     tokio::spawn(async move {
-        if let Err(e) =
-            jobs::sales_rebate::run_force(ctx, body.schedule_type, period_start, period_end).await
+        if let Err(e) = jobs::sales_rebate::run_force(
+            ctx,
+            body.schedule_type,
+            period_start,
+            period_end,
+            body.sales_account_id,
+        )
+        .await
         {
             error!("trigger_sales_rebate_force error: {:#}", e);
         }

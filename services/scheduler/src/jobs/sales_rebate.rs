@@ -63,20 +63,23 @@ pub async fn run_custom(
         "SalesRebateCustom: schedule_type={} period [{}, {})",
         schedule_type, period_start, period_end
     );
-    run_for_all_tenants(&ctx, schedule_type, period_start, period_end, false).await
+    run_for_all_tenants(&ctx, schedule_type, period_start, period_end, false, None).await
 }
 
 /// Force-recalculate: deletes existing records for the period then regenerates.
 /// For daily schedule (type=0), loops day-by-day to produce one record per day.
+/// `sales_account_id` (optional) restricts the recalc to a single sales account —
+/// used by the per-summary "Recalculate" button so only that record is regenerated.
 pub async fn run_force(
     ctx: AppContext,
     schedule_type: i16,
     period_start: DateTime<Utc>,
     period_end: DateTime<Utc>,
+    sales_account_id: Option<i64>,
 ) -> Result<()> {
     info!(
-        "SalesRebateForce: schedule_type={} period [{}, {})",
-        schedule_type, period_start, period_end
+        "SalesRebateForce: schedule_type={} period [{}, {}) sales_account={:?}",
+        schedule_type, period_start, period_end, sales_account_id
     );
     if schedule_type == 0 {
         // Walk MT5-server days so backfill windows match the daily job exactly.
@@ -84,12 +87,13 @@ pub async fn run_force(
         while cursor < period_end {
             let next = server_day_start(cursor + Duration::hours(25)); // next server midnight
             let end = if next < period_end { next } else { period_end };
-            run_for_all_tenants(&ctx, schedule_type, cursor, end, true).await?;
+            run_for_all_tenants(&ctx, schedule_type, cursor, end, true, sales_account_id).await?;
             cursor = next;
         }
         Ok(())
     } else {
-        run_for_all_tenants(&ctx, schedule_type, period_start, period_end, true).await
+        run_for_all_tenants(&ctx, schedule_type, period_start, period_end, true, sales_account_id)
+            .await
     }
 }
 
@@ -105,7 +109,7 @@ pub async fn run_daily(ctx: AppContext) -> Result<()> {
         yesterday_start, today_start
     );
 
-    run_for_all_tenants(&ctx, 0, yesterday_start, today_start, false).await
+    run_for_all_tenants(&ctx, 0, yesterday_start, today_start, false, None).await
 }
 
 /// Monthly SalesRebate settlement — settles the previous MT5-server (EET) month.
@@ -128,7 +132,7 @@ pub async fn run_monthly(ctx: AppContext) -> Result<()> {
         last_month_start, this_month_start
     );
 
-    run_for_all_tenants(&ctx, 3, last_month_start, this_month_start, false).await
+    run_for_all_tenants(&ctx, 3, last_month_start, this_month_start, false, None).await
 }
 
 async fn run_for_all_tenants(
@@ -137,6 +141,7 @@ async fn run_for_all_tenants(
     period_start: DateTime<Utc>,
     period_end: DateTime<Utc>,
     force: bool,
+    sales_account_id: Option<i64>,
 ) -> Result<()> {
     let tenant_ids = tenant::get_all_tenant_ids(&ctx.central_pool).await?;
 
@@ -172,8 +177,16 @@ async fn run_for_all_tenants(
             }
         }
 
-        if let Err(e) =
-            settle_for_schedule(ctx, &pool, schedule_type, period_start, period_end, force).await
+        if let Err(e) = settle_for_schedule(
+            ctx,
+            &pool,
+            schedule_type,
+            period_start,
+            period_end,
+            force,
+            sales_account_id,
+        )
+        .await
         {
             error!(
                 "SalesRebate: settle_for_schedule failed for tenant {}: {:#}",
@@ -192,8 +205,13 @@ async fn settle_for_schedule(
     period_start: DateTime<Utc>,
     period_end: DateTime<Utc>,
     force: bool,
+    sales_account_id: Option<i64>,
 ) -> Result<()> {
-    let schemas = db::get_active_schemas_by_schedule(pool, schedule_type).await?;
+    let mut schemas = db::get_active_schemas_by_schedule(pool, schedule_type).await?;
+    // Restrict to a single sales account when recalculating one summary record.
+    if let Some(said) = sales_account_id {
+        schemas.retain(|s| s.sales_account_id == said);
+    }
     info!(
         "SalesRebate: found {} schema(s) for schedule_type={}",
         schemas.len(),

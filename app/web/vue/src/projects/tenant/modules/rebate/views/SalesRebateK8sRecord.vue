@@ -2,7 +2,10 @@
   <div class="d-flex flex-column flex-column-fluid">
     <div class="card mb-5 mb-xl-8">
       <div class="card-header">
-        <div class="card-title d-flex justify-content-between" style="width: 100%">
+        <div
+          class="card-title d-flex justify-content-between"
+          style="width: 100%"
+        >
           <div class="d-flex align-items-center flex-wrap gap-3">
             <el-date-picker
               class="w-250px"
@@ -21,14 +24,19 @@
               :disabled="isLoading"
               class="w-200px"
             />
-            <el-button @click="fetchData(1)" :disabled="isLoading">Search</el-button>
+            <el-button @click="fetchData(1)" :disabled="isLoading"
+              >Search</el-button
+            >
             <el-button @click="reset" :disabled="isLoading">Reset</el-button>
           </div>
         </div>
       </div>
 
       <div class="card-body">
-        <table class="table align-middle table-row-dashed fs-6 table-hover" id="sales_rebate_k8s_table">
+        <table
+          class="table align-middle table-row-dashed fs-6 table-hover"
+          id="sales_rebate_k8s_table"
+        >
           <thead>
             <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
               <th>Sales Acct UID</th>
@@ -61,26 +69,50 @@
                 {{ serverDate(item.periodEnd) }}
               </td>
               <td>
-                <el-tag v-if="item.scheduleType === 0" type="success" effect="light">Daily</el-tag>
-                <el-tag v-else-if="item.scheduleType === 3" type="primary" effect="light">Monthly</el-tag>
-                <el-tag v-else type="info" effect="light">Type {{ item.scheduleType }}</el-tag>
+                <el-tag
+                  v-if="item.scheduleType === 0"
+                  type="success"
+                  effect="light"
+                  >Daily</el-tag
+                >
+                <el-tag
+                  v-else-if="item.scheduleType === 3"
+                  type="primary"
+                  effect="light"
+                  >Monthly</el-tag
+                >
+                <el-tag v-else type="info" effect="light"
+                  >Type {{ item.scheduleType }}</el-tag
+                >
               </td>
               <td>{{ parseFloat(item.totalAmount).toFixed(4) }}</td>
               <td>{{ item.tradeCount }}</td>
               <td>
-                <el-tag v-if="item.status === 1" type="success" effect="light">Released</el-tag>
+                <el-tag v-if="item.status === 1" type="success" effect="light"
+                  >Released</el-tag
+                >
                 <el-tag v-else type="warning" effect="light">Pending</el-tag>
               </td>
               <td><TimeShow :date-iso-string="item.createdOn" /></td>
               <td>
-                <el-button size="small" @click="showItems(item)">Details ({{ item.tradeCount }})</el-button>
+                <el-button size="small" @click="showItems(item)"
+                  >Details ({{ item.tradeCount }})</el-button
+                >
+                <el-button
+                  v-if="item.status === 0"
+                  size="small"
+                  :loading="item._recalculating"
+                  @click="recalculate(item)"
+                  >Recalculate</el-button
+                >
                 <el-button
                   v-if="item.status === 0 && item.totalAmount > 0"
                   size="small"
                   type="primary"
                   :loading="item._releasing"
                   @click="release(item)"
-                >Release</el-button>
+                  >Release</el-button
+                >
               </td>
             </tr>
           </tbody>
@@ -101,6 +133,7 @@ import TableFooter from "@/components/TableFooter.vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
 import RebateService from "../services/RebateService";
 import SalesRebateItemK8sModal from "../components/modal/SalesRebateItemK8sModal.vue";
+import MsgPrompt from "@/core/plugins/MsgPrompt";
 import { handleCriteriaTradeTime } from "@/core/helpers/helpers";
 import { convertToLocalTime } from "@/core/plugins/TimerService";
 
@@ -158,6 +191,22 @@ const release = async (item: any) => {
     console.error(e);
   } finally {
     item._releasing = false;
+  }
+};
+
+const recalculate = async (item: any) => {
+  item._recalculating = true;
+  try {
+    await RebateService.recalcSalesRebateK8s(item.id);
+    MsgPrompt.success(
+      "Recalculation triggered. The record will refresh shortly."
+    );
+    // recalc runs async on the scheduler; refresh after it has regenerated.
+    setTimeout(() => fetchData(criteria.value.page), 2500);
+  } catch (e) {
+    MsgPrompt.error(e);
+  } finally {
+    item._recalculating = false;
   }
 };
 
