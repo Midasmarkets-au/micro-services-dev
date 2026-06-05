@@ -113,6 +113,21 @@
                   @click="release(item)"
                   >Release</el-button
                 >
+                <el-button
+                  size="small"
+                  link
+                  :icon="Download"
+                  title="Download"
+                  :loading="item._downloading"
+                  @click="downloadReport(item)"
+                />
+                <el-button
+                  size="small"
+                  type="primary"
+                  :loading="item._regenerating"
+                  @click="regenerateReport(item)"
+                  >Regenerate report</el-button
+                >
               </td>
             </tr>
           </tbody>
@@ -128,6 +143,7 @@
 
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
+import { Download } from "@element-plus/icons-vue";
 import TimeShow from "@/components/TimeShow.vue";
 import TableFooter from "@/components/TableFooter.vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
@@ -207,6 +223,43 @@ const recalculate = async (item: any) => {
     MsgPrompt.error(e);
   } finally {
     item._recalculating = false;
+  }
+};
+
+const downloadReport = async (item: any) => {
+  item._downloading = true;
+  try {
+    const blob = await RebateService.downloadSalesRebateK8sReport(item.id);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sales-rebate-${item.salesAccountUid}-${serverDate(
+      item.periodStart
+    )}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      MsgPrompt.error(
+        "Report not generated yet. Click 'Regenerate report' first."
+      );
+    } else {
+      MsgPrompt.error(e);
+    }
+  } finally {
+    item._downloading = false;
+  }
+};
+
+const regenerateReport = async (item: any) => {
+  item._regenerating = true;
+  try {
+    await RebateService.regenerateSalesRebateK8sReport(item.id);
+    MsgPrompt.success("Report regeneration triggered.");
+  } catch (e) {
+    MsgPrompt.error(e);
+  } finally {
+    item._regenerating = false;
   }
 };
 

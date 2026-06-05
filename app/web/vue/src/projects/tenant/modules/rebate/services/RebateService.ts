@@ -35,6 +35,17 @@ export default {
   recalcSalesRebateK8s: async (id: number) =>
     (await axios.post(prefix + `sales-rebate-k8s/${id}/recalculate`)).data,
 
+  downloadSalesRebateK8sReport: async (id: number) =>
+    (
+      await axios.get(prefix + `sales-rebate-k8s/${id}/report`, {
+        responseType: "blob",
+      })
+    ).data,
+
+  regenerateSalesRebateK8sReport: async (id: number) =>
+    (await axios.post(prefix + `sales-rebate-k8s/${id}/report/regenerate`))
+      .data,
+
   updateSalesRebateActiveStatus: async (id: number, data: any) =>
     (await axios.put(prefix + "sales-rebate/" + id, data)).data,
 

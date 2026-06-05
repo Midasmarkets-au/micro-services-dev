@@ -52,6 +52,132 @@ fn server_month_start(year: i32, month: u32) -> DateTime<Utc> {
     Utc.from_utc_datetime(&first) - Duration::hours(off)
 }
 
+// ── Per-summary detail CSV report (uploaded to S3; Download/Regenerate from the UI) ──
+
+/// Deterministic S3 key. summary_id is a globally-unique snowflake, so no tenant
+/// prefix is needed; regenerate writes the same key (overwrite).
+fn report_s3_key(summary_id: i64) -> String {
+    format!("sales-rebate-k8s-report/{}.csv", summary_id)
+}
+
+#[derive(sqlx::FromRow)]
+struct ReportRow {
+    ticket: i64,
+    trade_account_number: i64,
+    symbol: String,
+    volume: i32,
+    rebate_type: String,
+    rebate_base: Decimal,
+    amount: Decimal,
+    closed_on: DateTime<Utc>,
+    excluded: bool,
+}
+
+impl From<&NewSalesRebateItem> for ReportRow {
+    fn from(i: &NewSalesRebateItem) -> Self {
+        ReportRow {
+            ticket: i.ticket,
+            trade_account_number: i.trade_account_number,
+            symbol: i.symbol.clone(),
+            volume: i.volume,
+            rebate_type: i.rebate_type.clone(),
+            rebate_base: i.rebate_base,
+            amount: i.amount,
+            closed_on: i.closed_on,
+            excluded: i.excluded,
+        }
+    }
+}
+
+fn csv_escape(s: &str) -> String {
+    if s.contains([',', '"', '\n']) {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
+/// header + one row per item + a final `Total` row = sum of non-excluded amount.
+/// Columns match the Sales Rebate Details modal.
+fn build_report_csv(rows: &[ReportRow]) -> Vec<u8> {
+    let mut out = String::from("\u{FEFF}"); // BOM so Excel reads UTF-8
+    out.push_str(
+        "Status,Ticket,Account No.,Symbol,Volume (lots),Rebate Type,Rebate Base,Amount,Closed On\n",
+    );
+    let mut total = Decimal::ZERO;
+    for r in rows {
+        // Closed On in MT5-server time (EET, DST-aware) — matches the modal.
+        let server_time = r.closed_on + Duration::hours(mt5_offset_hours(r.closed_on));
+        let amount = if r.excluded {
+            "0.0000".to_string()
+        } else {
+            total += r.amount;
+            format!("{:.4}", r.amount)
+        };
+        out.push_str(&format!(
+            "{},{},{},{},{:.2},{},{:.4},{},{}\n",
+            if r.excluded { "Excluded" } else { "Included" },
+            r.ticket,
+            r.trade_account_number,
+            csv_escape(&r.symbol),
+            r.volume as f64 / 100.0,
+            csv_escape(&r.rebate_type),
+            r.rebate_base,
+            amount,
+            server_time.format("%Y-%m-%d %H:%M:%S"),
+        ));
+    }
+    out.push_str(&format!("Total,,,,,,,{:.4},\n", total));
+    out.into_bytes()
+}
+
+/// Regenerate one summary's report CSV and overwrite its S3 object.
+/// Finds the tenant owning `summary_id`, re-reads its items, rebuilds, uploads.
+pub async fn regenerate_report(ctx: AppContext, summary_id: i64) -> Result<()> {
+    let tenant_ids = tenant::get_all_tenant_ids(&ctx.central_pool).await?;
+    for tenant_id in tenant_ids {
+        let pool = match ctx.tenant_pool(tenant_id).await {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let found: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM trd.sales_rebate_k8s WHERE id = $1")
+                .bind(summary_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap_or(None);
+        if found.is_none() {
+            continue;
+        }
+
+        let rows: Vec<ReportRow> = sqlx::query_as(
+            r#"SELECT ticket, trade_account_number, symbol, volume, rebate_type,
+                      rebate_base, amount, closed_on, excluded
+               FROM trd.sales_rebate_item_k8s
+               WHERE sales_rebate_id = $1
+               ORDER BY closed_on"#,
+        )
+        .bind(summary_id)
+        .fetch_all(&pool)
+        .await?;
+
+        let key = report_s3_key(summary_id);
+        ctx.s3.upload_csv(&key, build_report_csv(&rows)).await?;
+        info!(
+            "SalesRebate: regenerated report summary_id={} rows={} key={}",
+            summary_id,
+            rows.len(),
+            key
+        );
+        return Ok(());
+    }
+    warn!(
+        "SalesRebate: regenerate_report — summary_id={} not found in any tenant",
+        summary_id
+    );
+    Ok(())
+}
+
 /// Manual trigger with explicit period — for backfill / testing.
 pub async fn run_custom(
     ctx: AppContext,
@@ -336,6 +462,18 @@ async fn settle_for_schedule(
                     non_excluded_count,
                     items.iter().filter(|i| i.excluded).count()
                 );
+                // Generate + upload the detail CSV report to S3 (best-effort).
+                let report_rows: Vec<ReportRow> = items.iter().map(ReportRow::from).collect();
+                if let Err(e) = ctx
+                    .s3
+                    .upload_csv(&report_s3_key(rebate_id), build_report_csv(&report_rows))
+                    .await
+                {
+                    warn!(
+                        "SalesRebate: report upload failed rebate_id={}: {:#}",
+                        rebate_id, e
+                    );
+                }
                 if schema.auto_release && total_amount > Decimal::ZERO {
                     match db::release_summary(pool, rebate_id, created_on, schema.sales_account_id, total_amount, Some(matter_id)).await {
                         Ok(wt_id) => info!(

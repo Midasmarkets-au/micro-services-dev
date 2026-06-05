@@ -11,7 +11,7 @@ namespace Bacera.Gateway.Web.Areas.Tenant.Controllers;
 [Tags("Tenant/Sales Rebate K8s")]
 [Route("api/" + VersionTypes.V1 + "/[Area]/sales-rebate-k8s")]
 [Authorize(AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)]
-public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClientFactory httpClientFactory) : TenantBaseController
+public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClientFactory httpClientFactory, IStorageService storageService) : TenantBaseController
 {
     public class Criteria : Bacera.Criteria
     {
@@ -187,6 +187,57 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
 
         var http = httpClientFactory.CreateClient();
         var resp = await http.PostAsJsonAsync($"{schedulerHttp}/trigger/sales-rebate-force", payload);
+        if (!resp.IsSuccessStatusCode)
+            return StatusCode(StatusCodes.Status502BadGateway, Result.Error(ResultMessage.Common.ActionFail));
+
+        return Ok(new { status = "triggered" });
+    }
+
+    /// <summary>
+    /// Download the detail CSV report for a summary (generated to S3 by the scheduler
+    /// when the summary is created / regenerated). 404 if it hasn't been generated yet.
+    /// </summary>
+    [HttpGet("{id:long}/report")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadReport(long id)
+    {
+        var record = await tenantDbContext.SalesRebateK8s
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync();
+        if (record == null)
+            return NotFound();
+
+        // Deterministic key (matches the scheduler upload); summary id is globally unique.
+        var key = $"sales-rebate-k8s-report/{id}.csv";
+        var stream = await storageService.GetObjectByFilenameAsync(key);
+        if (stream == null)
+            return NotFound(Result.Error(ResultMessage.Common.RecordNotFound));
+
+        return File(stream, "text/csv", $"sales-rebate-{id}.csv");
+    }
+
+    /// <summary>
+    /// (Re)generate the summary's detail CSV report and overwrite its S3 object.
+    /// Delegates to the Rust scheduler (which owns the report generation).
+    /// </summary>
+    [HttpPost("{id:long}/report/regenerate")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegenerateReport(long id)
+    {
+        var record = await tenantDbContext.SalesRebateK8s
+            .Where(x => x.Id == id)
+            .FirstOrDefaultAsync();
+        if (record == null)
+            return NotFound();
+
+        var schedulerHttp = (Environment.GetEnvironmentVariable("SCHEDULER_HTTP_URL")
+                             ?? "http://scheduler:9004").TrimEnd('/');
+        var http = httpClientFactory.CreateClient();
+        var resp = await http.PostAsJsonAsync(
+            $"{schedulerHttp}/trigger/sales-rebate-report",
+            new { summary_id = id });
         if (!resp.IsSuccessStatusCode)
             return StatusCode(StatusCodes.Status502BadGateway, Result.Error(ResultMessage.Common.ActionFail));
 

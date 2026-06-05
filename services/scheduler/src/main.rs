@@ -359,6 +359,31 @@ async fn trigger_sales_rebate_force(
     )
 }
 
+#[derive(serde::Deserialize)]
+struct TriggerReportBody {
+    summary_id: i64,
+}
+
+/// Regenerate (overwrite) one SalesRebate summary's detail CSV report on S3.
+async fn trigger_sales_rebate_report(
+    Extension(ctx): Extension<AppContext>,
+    AxumJson(body): AxumJson<TriggerReportBody>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    tokio::spawn(async move {
+        if let Err(e) = jobs::sales_rebate::regenerate_report(ctx, body.summary_id).await {
+            error!("trigger_sales_rebate_report error: {:#}", e);
+        }
+    });
+    (
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({
+            "status": "triggered",
+            "job": "sales_rebate_report",
+            "summary_id": body.summary_id,
+        })),
+    )
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -394,6 +419,7 @@ async fn main() -> Result<()> {
         .route("/trigger/sales-rebate-monthly", post(trigger_sales_rebate_monthly))
         .route("/trigger/sales-rebate-custom", post(trigger_sales_rebate_custom))
         .route("/trigger/sales-rebate-force", post(trigger_sales_rebate_force))
+        .route("/trigger/sales-rebate-report", post(trigger_sales_rebate_report))
         .nest("/api/v1", board_api)
         .fallback_service(ServeUI::new())
         .layer(axum::Extension(ctx.clone()))
