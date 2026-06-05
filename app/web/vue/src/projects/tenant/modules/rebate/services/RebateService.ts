@@ -22,8 +22,9 @@ export default {
   querySalesRebateK8s: async (criteria?: any) =>
     (await axios.get(prefix + "sales-rebate-k8s", { params: criteria })).data,
 
-  getSalesRebateK8sItems: async (id: number) =>
-    (await axios.get(prefix + `sales-rebate-k8s/${id}/items`)).data,
+  getSalesRebateK8sItems: async (id: number, criteria?: any) =>
+    (await axios.get(prefix + `sales-rebate-k8s/${id}/items`, { params: criteria }))
+      .data,
 
   releaseSalesRebateK8s: async (id: number) =>
     (await axios.put(prefix + `sales-rebate-k8s/${id}/release`)).data,

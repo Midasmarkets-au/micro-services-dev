@@ -19,6 +19,15 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantB
         public long?     SalesAccountId { get; set; }
     }
 
+    public class ItemCriteria : Bacera.Criteria
+    {
+        public string?  Filter         { get; set; } // "all" | "included" | "excluded"
+        // Stats over the full item set (filter-independent) for the summary bar:
+        public int      IncludedCount  { get; set; }
+        public int      ExcludedCount  { get; set; }
+        public decimal  IncludedAmount { get; set; }
+    }
+
     public class SummaryViewModel
     {
         public long     Id                  { get; set; }
@@ -98,12 +107,34 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantB
     /// List detail items for a SalesRebate K8s summary record.
     /// </summary>
     [HttpGet("{id:long}/items")]
-    [ProducesResponseType(typeof(List<ItemViewModel>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Items(long id)
+    [ProducesResponseType(typeof(Result<List<ItemViewModel>, ItemCriteria>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Items(long id, [FromQuery] ItemCriteria? criteria)
     {
-        var items = await tenantDbContext.SalesRebateItemK8s
-            .Where(x => x.SalesRebateId == id)
+        criteria ??= new ItemCriteria();
+        if (criteria.Page < 1) criteria.Page = 1;
+        if (criteria.Size < 1) criteria.Size = 20;
+
+        var baseQuery = tenantDbContext.SalesRebateItemK8s.Where(x => x.SalesRebateId == id);
+
+        // Filter-independent stats for the summary bar.
+        criteria.IncludedCount  = await baseQuery.CountAsync(x => !x.Excluded);
+        criteria.ExcludedCount  = await baseQuery.CountAsync(x => x.Excluded);
+        criteria.IncludedAmount = await baseQuery.Where(x => !x.Excluded)
+                                                 .SumAsync(x => (decimal?)x.Amount) ?? 0m;
+
+        var query = criteria.Filter switch
+        {
+            "included" => baseQuery.Where(x => !x.Excluded),
+            "excluded" => baseQuery.Where(x => x.Excluded),
+            _          => baseQuery,
+        };
+
+        criteria.Total = await query.CountAsync();
+
+        var items = await query
             .OrderBy(x => x.ClosedOn)
+            .Skip((criteria.Page - 1) * criteria.Size)
+            .Take(criteria.Size)
             .Select(x => new ItemViewModel
             {
                 Id                 = x.Id,
@@ -119,7 +150,7 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext) : TenantB
             })
             .ToListAsync();
 
-        return Ok(items);
+        return Ok(Result<List<ItemViewModel>, ItemCriteria>.Of(items, criteria));
     }
 
     /// <summary>
