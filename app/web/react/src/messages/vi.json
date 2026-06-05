@@ -2838,5 +2838,12 @@
         "exchangeRate": "Tỷ giá"
       }
     }
+  },
+  "tip": {
+    "editRule_1": "Không được phép xóa loại tài khoản.",
+    "editRule_2": "Chỉ được phép giảm giá trị tỷ lệ.",
+    "editRule_3": "Không được phép thay đổi pip/hoa hồng.",
+    "editRule_4": "Chỉ cho phép giảm giá trị phần trăm.",
+    "editRule_5": "Tất cả các trường đều có thể chỉnh sửa được."
   }
 }

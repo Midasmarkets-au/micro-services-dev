@@ -2865,5 +2865,12 @@
         "exchangeRate": "Exchange Rate"
       }
     }
+  },
+  "tip": {
+    "editRule_1": "Account type removal is not permitted.",
+    "editRule_2": "Only a decrease in rate value is allowed.",
+    "editRule_3": "Changes to pip/commission are not permitted.",
+    "editRule_4": "Only a decrease in percentage value is allowed.",
+    "editRule_5": "All fields are editable."
   }
 }

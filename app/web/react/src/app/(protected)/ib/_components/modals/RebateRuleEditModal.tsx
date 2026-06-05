@@ -74,6 +74,7 @@ function camelCaseKeys(obj: any): any {
 export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: RebateRuleEditModalProps) {
   const t = useTranslations('ib');
   const tAccount = useTranslations('accounts');
+  const tTip = useTranslations('tip');
   const { execute } = useServerAction({ showErrorToast: true });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const { showToast } = useToast();
@@ -504,12 +505,12 @@ export function RebateRuleEditModal({ open, onOpenChange, account, onSuccess }: 
             <div className="mb-5 rounded-lg bg-[#ffecec] px-4 py-3 text-sm text-[#9f005b]">
               <div>
                 <span>{t('rebateEdit.existRule')}: </span>
-                <span className="mr-3">[A] {t('rebateEdit.editRule1')}</span>
-                <span className="mr-3">[B] {t('rebateEdit.editRule2')}</span>
+                <span className="mr-3">[A] {tTip('editRule_1')}</span>
+                <span className="mr-3">[B] {tTip('editRule_2')}</span>
               </div>
               <div>
                 <span>{t('rebateEdit.newRule')}: </span>
-                <span>{t('rebateEdit.editRule5')}</span>
+                <span>{tTip('editRule_5')}</span>
               </div>
             </div>
 

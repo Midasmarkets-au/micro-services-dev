@@ -2836,5 +2836,12 @@
         "exchangeRate": "Tipo de cambio"
       }
     }
+  },
+  "tip": {
+    "editRule_1": "No está permitido eliminar el tipo de cuenta.",
+    "editRule_2": "Solo se permite una disminución en el valor de la tarifa.",
+    "editRule_3": "No se permiten cambios en pip/comisión.",
+    "editRule_4": "Solo se permite una disminución en el valor porcentual.",
+    "editRule_5": "Todos los campos son editables."
   }
 }
