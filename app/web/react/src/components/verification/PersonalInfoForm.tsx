@@ -138,7 +138,7 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
       idNumber: initialData?.idNumber || '',
       idIssuer: initialData?.idIssuer || '',
       idIssuedOn: initialData?.idIssuedOn ? new Date(initialData.idIssuedOn) : undefined,
-      idExpireOn: initialData?.idExpireOn ? new Date(initialData.idExpireOn) : undefined,
+      idExpireOn: initialData?.expire_date ? new Date(initialData.expire_date) : undefined,
       whatsApp: initialData?.socialMedium?.find(s => s.name === 'whatsApp')?.account || '',
       weChat: initialData?.socialMedium?.find(s => s.name === 'weChat')?.account || '',
       instagram: initialData?.socialMedium?.find(s => s.name === 'instagram')?.account || '',
@@ -202,11 +202,12 @@ export function PersonalInfoForm({ initialData, onSubmit, onBack, isLoading }: P
 
   // 处理表单提交，格式化日期为 YYYY-MM-DD
   const handleFormSubmit = (data: InfoFormData) => {
+    const { idExpireOn, ...rest } = data;
     const formattedData = {
-      ...data,
+      ...rest,
       birthday: formatDateForApi(data.birthday),
       idIssuedOn: formatDateForApi(data.idIssuedOn),
-      idExpireOn: formatDateForApi(data.idExpireOn),
+      expire_date: formatDateForApi(idExpireOn),
     };
     onSubmit(formattedData);
   };
