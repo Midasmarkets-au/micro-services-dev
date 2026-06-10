@@ -285,10 +285,6 @@ export function DocumentUpload({
     onSubmit(files);
   };
 
-  // 检查是否所有必需文件已选择
-  const allSelected = selectedFiles.id_front && 
-                      selectedFiles.id_back && 
-                      selectedFiles.address;
 
   // 左侧导航
   const stepNav = (
@@ -302,7 +298,7 @@ export function DocumentUpload({
       isLoading={isLoading}
       isForm={false}
       onSubmit={handleSubmit}
-      submitDisabled={!allSelected}
+      submitDisabled={false}
       scrollContainerRef={scrollContainerRef}
     >
       <div className="flex flex-col gap-10 md:gap-10">
