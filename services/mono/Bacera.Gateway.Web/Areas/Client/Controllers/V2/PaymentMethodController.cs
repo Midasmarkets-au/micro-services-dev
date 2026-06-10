@@ -3,7 +3,6 @@ using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Vendor.EuPayment;
-using Bacera.Gateway.Vendor.Help2Pay.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -220,9 +219,11 @@ public class PaymentMethodController(
             result.PaymentMethods = paymentMethods;
         }
 
-        // Help2Pay: per channel × currency variants, each carrying its Configuration.Banks whitelist
-        // so the client renders the `bank` request-key as a "CODE - Name" dropdown.
-        if (method.Platform == (int)PaymentPlatformTypes.Help2Pay)
+        // Pay247: one dropdown entry per accessible (currency x pay_method) row, mirroring Help2Pay.
+        // Each Pay247 row is single-currency, so two rows (e.g. IDR-BANK + MYR-BANK) must remain
+        // independently selectable. No per-row bank list: payTheme=link defers bank selection to
+        // Pay247's hosted cashier, and GetRequestKeys is only [returnUrl, currencyId].
+        if (method.Platform == (int)PaymentPlatformTypes.Pay247)
         {
             var allMethods = await paymentMethodSvc.GetMethodsAsync();
 
@@ -231,50 +232,27 @@ public class PaymentMethodController(
                 PaymentMethodStatusTypes.Active,
                 PaymentMethodAccessStatusTypes.Active)).ToHashSet();
 
-            var help2PayRows = allMethods
+            var pay247Rows = allMethods
                 .Where(x => x.MethodType == PaymentMethodTypes.Deposit
                     && x.Status == (int)PaymentMethodStatusTypes.Active
-                    && x.Platform == (int)PaymentPlatformTypes.Help2Pay
+                    && x.Platform == (int)PaymentPlatformTypes.Pay247
                     && x.Group == method.Group
                     && accessibleIds.Contains(x.Id))
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
-            foreach (var m in help2PayRows)
+            foreach (var m in pay247Rows)
             {
-                // Range in cents, matches the deposit-group-info convention used by ExLink Global.
+                // Range in cents, matches the deposit-group-info convention used by ExLink Global / Help2Pay.
                 var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
-
-                // Per-row bank whitelist pulled straight from Configuration.Banks[<ISO currency>].
-                // Names live in the DB row so we never hardcode a bank table on the server.
-                List<PaymentMethodDTO.BankOption>? banks = null;
-                try
-                {
-                    var h2pOptions = Help2PayOptions.FromJson(m.Configuration ?? string.Empty);
-                    var currencyCode = ((CurrencyTypes)m.CurrencyId).ToString();
-                    var entries = h2pOptions.GetBanksForCurrency(currencyCode);
-                    if (entries.Length > 0)
-                    {
-                        banks = entries
-                            .Select(e => new PaymentMethodDTO.BankOption { Code = e.Code, Name = e.Name })
-                            .ToList();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Malformed Configuration shouldn't break the picker — log and leave Banks null
-                    // so the FE falls back to the legacy free-text bank input for this row.
-                    logger.LogWarning(ex, "Failed to parse Help2Pay Configuration for method {MethodId}", m.Id);
-                }
 
                 paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
                 {
                     CurrencyId = (CurrencyTypes)m.CurrencyId,
                     HashId = PaymentMethod.HashEncode(m.Id),
                     Range = methodRange,
-                    PaymentMethodName = m.Name,
-                    Banks = banks
+                    PaymentMethodName = m.Name
                 });
             }
 

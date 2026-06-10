@@ -43,6 +43,16 @@ public enum PaymentPlatformTypes
     Crypto = 500,
     Buzipay = 650, // Credit card payment via Buzipay
     QrCodeTunnel = 660,
+    /// <summary>
+    /// Rivo (rivoglobal.io) — multi-currency gateway. Ships VND today; THB / IDR / etc. are config-only additions.
+    /// </summary>
+    Rivo = 700,
+
+    /// <summary>
+    /// 12Group (thesolix.com) — Thailand THB gateway. Thai QR / PromptPay deposit (redirect)
+    /// + bank payout. Static-JWT header auth; no request/callback signing.
+    /// </summary>
+    TwelveGroup = 800,
     // ExLink = 330,
     // BankWire = 30,
     // UnionPay = 40,

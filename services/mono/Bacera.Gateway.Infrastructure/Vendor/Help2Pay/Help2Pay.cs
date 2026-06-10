@@ -26,7 +26,7 @@ public class Help2Pay
         {
             Amount = 120000,
             AccountUid = 123456789,
-            PaymentNumber = Payment.GenerateNumber("mdm-"),
+            PaymentNumber = Payment.GenerateNumber(),
             ReturnUrl = request.frontUri,
             Currency = request.currency,
             Ip = "47.241.6.29",
@@ -103,49 +103,13 @@ public class Help2Pay
             return form;
         }
 
-        // Per-currency compulsory-field + amount-decimal validation per spec p09/p10/p11.
+        // Amount-decimal validation per spec p09.
+        // Bank selection and per-currency payer fields are intentionally NOT enforced here:
+        // the deposit is submitted with an empty Bank and no Payer* fields so Help2Pay's own
+        // hosted "Bank Listing" page displays the banks and collects payer details.
         // Returns sentinel codes so the FE can localise the message.
         public (bool ok, string code) Validate()
         {
-            var currencyCode = Enum.GetName(Currency) ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(Bank))
-                return (false, "__HELP2PAY_BANK_REQUIRED__");
-
-            // Bank whitelist — must be in this PaymentMethod row's configured Banks for this currency.
-            // Skipped only if Options.Banks is unpopulated (legacy rows pre-multi-row split).
-            if (Options.Banks.Count > 0 && !Options.IsBankSupported(currencyCode, Bank!))
-                return (false, "__HELP2PAY_BANK_NOT_SUPPORTED__");
-
-            // PayerAccountName — compulsory for MYR, IDR, KRW, CNY, THB
-            if ((Currency is CurrencyTypes.MYR or CurrencyTypes.IDR or CurrencyTypes.KRW
-                    or CurrencyTypes.CNY or CurrencyTypes.THB)
-                && string.IsNullOrWhiteSpace(PayerAccountName))
-                return (false, "__HELP2PAY_PAYER_NAME_REQUIRED__");
-
-            // CNY PayerAccountName must be Chinese (CJK Unified Ideographs)
-            if (Currency == CurrencyTypes.CNY
-                && !System.Text.RegularExpressions.Regex.IsMatch(
-                    PayerAccountName ?? string.Empty,
-                    @"^[\p{IsCJKUnifiedIdeographs}\p{IsCJKUnifiedIdeographsExtensionA}]+$"))
-                return (false, "__HELP2PAY_PAYER_NAME_MUST_BE_CHINESE__");
-
-            // PayerAccountNumber — compulsory for KRW, BRL, PHP, THB
-            if ((Currency is CurrencyTypes.KRW or CurrencyTypes.BRL
-                    or CurrencyTypes.PHP or CurrencyTypes.THB)
-                && string.IsNullOrWhiteSpace(PayerAccountNumber))
-                return (false, "__HELP2PAY_PAYER_NUMBER_REQUIRED__");
-
-            // PayerAccountNameLocal — compulsory for THB
-            if (Currency == CurrencyTypes.THB
-                && string.IsNullOrWhiteSpace(PayerAccountNameLocal))
-                return (false, "__HELP2PAY_PAYER_NAME_LOCAL_REQUIRED__");
-
-            // PayerPhoneNumber — compulsory for INR
-            if (Currency == CurrencyTypes.INR
-                && string.IsNullOrWhiteSpace(PayerPhoneNumber))
-                return (false, "__HELP2PAY_PAYER_PHONE_REQUIRED__");
-
             // Amount decimal restrictions per spec p09:
             //  - Always whole: VND, IDR, CNY, KRW, INR
             //  - THB only when Bank == PPTP (QR Payment / PromptPay)

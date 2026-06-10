@@ -19,6 +19,8 @@ using Bacera.Gateway.Vendor.Long77Pay;
 using Bacera.Gateway.Vendor.Monetix;
 using Bacera.Gateway.Vendor.OFAPay;
 using Bacera.Gateway.Vendor.Pay247;
+using Bacera.Gateway.Vendor.TwelveGroup;
+using Bacera.Gateway.Vendor.Rivo;
 using Bacera.Gateway.Vendor.PaymentAsia;
 using Bacera.Gateway.Vendor.PayPal;
 using Bacera.Gateway.Vendor.SeaBipiPay;
@@ -829,39 +831,12 @@ public partial class CmdTestService
     
     private async Task TestPay247()
     {
-        const string config = """
-                              {
-                                "MerchantId": "EZC1LTGNQY10177",
-                                "SecretKey": "ac6faf8c05ca457bb4edf2a206a1fa40",
-                                "CallbackUrl": "https://api.au.thebcr.com/api/v1/payment/callback/10000/pay247",
-                                "Version": "v1.0",
-                                "Currency": "CNY",
-                                "PayMethod": "GCASH",
-                                "EndPointBase": "https://gateway.pay247.io",
-                                "PayinEndPoint": "/gateway/payin/create",
-                              }
-                              """;
-        var client = _httpClientFactory.CreateClient();
-        await Pay247.TestAsync(client, config, _logger);
+        await TestPay247CreateOrder();
     }
 
     private async Task TestPay247Out()
     {
-        // VND,THB,PHP
-        const string config = """
-                              {
-                                "MerchantId": "EZC1LTGNQY10177",
-                                "SecretKey": "ac6faf8c05ca457bb4edf2a206a1fa40",
-                                "CallbackUrl": "https://api.au.thebcr.com/api/v1/payment/callback/10000/pay247",
-                                "Version": "v1.0",
-                                "Currency": "PHP",
-                                "PayMethod": "bank",
-                                "EndPointBase": "https://gateway.pay247.io",
-                                "PayinEndPoint": "/gateway/payout/create",
-                              }
-                              """;
-        var client = _httpClientFactory.CreateClient();
-        await Pay247.TestPayoutAsync(client, config, _logger);
+        await TestPay247CreatePayout();
     }
     
     private async Task TestNPay()
@@ -2247,5 +2222,991 @@ public partial class CmdTestService
         Console.WriteLine();
         Console.WriteLine("=====================================");
         Console.WriteLine("✅ Twilio SMS Test Complete!");
+    }
+
+    // ============================================================================================
+    // Pay247
+    //
+    // Five test entry points (wired via CmdTestService switch):
+    //   test-pay247-sig      → TestPay247Signature      (pure unit test; no creds required)
+    //   test-pay247-create   → TestPay247CreateOrder    (iterates EVERY active Pay247 Deposit row)
+    //   test-pay247-query    → TestPay247QueryOrder     (interactive; prompts for mch_order_no)
+    //   test-pay247-balance  → TestPay247Balance        (lists ALL wallets returned by the API)
+    //   test-pay247-payout   → TestPay247CreatePayout   (iterates active Withdrawal rows; picks sample bank)
+    //
+    // Doc: https://docs.pay247.io/api-reference/en/common.md
+    // ============================================================================================
+
+    private const long Pay247TestTenantId = 10000;
+
+    /// <summary>
+    /// Unit test of the MD5 signer using a synthetic payload. Asserts deterministic output and
+    /// that empty/null/sign fields are stripped before sorting.
+    /// </summary>
+    private Task TestPay247Signature()
+    {
+        Console.WriteLine("🧪 Testing Pay247 MD5 signer...");
+        Console.WriteLine();
+
+        const string secret = "ac6faf8c05ca457bb4edf2a206a1fa40";
+
+        var spec = new Dictionary<string, object?>
+        {
+            ["mch_id"]       = "EZC1LTGNQY10177",
+            ["mch_order_no"] = "pm-2620abc12345",
+            ["mch_user_id"]  = "325150104",
+            ["currency"]     = "VND",
+            ["amount"]       = 50000m,
+            ["pay_method"]   = "BANK",
+            ["pay_theme"]    = "link",
+            ["client_ip"]    = "127.0.0.1",
+            ["notify_url"]   = "https://example.com/cb",
+            ["return_url"]   = "https://example.com/return",
+            ["payer_name"]   = "TEST PAYER",
+            ["payer_phone"]  = "0900000000",
+            ["payer_email"]  = "test@example.com",
+            ["timestamp"]    = 1700000000000L,    // deterministic for repeatability
+            ["version"]      = "v3.0",
+            ["uuid"]         = "550e8400-e29b-41d4-a716-446655440000",
+            ["emptyShouldBeStripped"] = "",
+            ["nullShouldBeStripped"]  = null,
+        };
+
+        var sig1 = Pay247.GenerateSignature(spec, secret, _logger);
+        var sig2 = Pay247.GenerateSignature(spec, secret, _logger);
+
+        Console.WriteLine($"   Computed: {sig1}");
+        Console.WriteLine($"   Repeated: {sig2}");
+        Console.WriteLine($"   Length:   {sig1.Length} (expected 32 for MD5 hex)");
+        Console.WriteLine($"   Deterministic: {(sig1 == sig2 ? "✅ YES" : "❌ NO")}");
+
+        // Sanity: an unrelated tweak must change the signature.
+        spec["amount"] = 50001m;
+        var sig3 = Pay247.GenerateSignature(spec, secret, _logger);
+        Console.WriteLine($"   Tweaked:  {sig3}");
+        Console.WriteLine($"   Differs:  {(sig3 != sig1 ? "✅ YES" : "❌ NO")}");
+
+        Console.WriteLine();
+        Console.WriteLine("=====================================");
+        Console.WriteLine("✅ Pay247 Signature Test Complete!");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Iterates every active Pay247 Deposit row for the test tenant and fires one
+    /// create-collection-order per row. Currency and PayMethod are read from each row's
+    /// <c>Configuration</c> — never hardcoded — so this naturally exercises every
+    /// (currency × pay_method) combination ops has enabled.
+    /// </summary>
+    private async Task TestPay247CreateOrder()
+    {
+        Console.WriteLine("🧪 Testing Pay247 Create Payin Order...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(Pay247TestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var methods = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Pay247)
+                .Where(x => x.MethodType == PaymentMethodTypes.Deposit)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .ToListAsync();
+
+            if (methods.Count == 0)
+            {
+                Console.WriteLine("❌ No active Pay247 Deposit payment method rows for tenant {0}.", Pay247TestTenantId);
+                Console.WriteLine("   Seed via the DB script in the Pay247 skill doc before running this test.");
+                return;
+            }
+
+            Console.WriteLine($"Found {methods.Count} active Pay247 Deposit row(s); creating one test order per row.");
+            Console.WriteLine("=====================================");
+
+            foreach (var method in methods)
+            {
+                var options = Pay247Options.FromJson(method.Configuration);
+                options.TenantId = Pay247TestTenantId;
+
+                var (isValid, err) = options.Validate();
+                if (!isValid)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: invalid config — {err}");
+                    continue;
+                }
+
+                Console.WriteLine($"📤 MethodId={method.Id}  Currency={options.Currency}  PayMethod={options.PayMethod}");
+
+                var client = new Pay247.RequestClient
+                {
+                    PaymentNumber = Payment.GenerateNumber(),
+                    AccountUid    = 325150104, // test client uid; ignored by Pay247 except for echo
+                    Amount        = SuggestedTestAmount(options.Currency),
+                    Currency      = options.Currency,
+                    PayMethod     = options.PayMethod,
+                    ClientIp      = "127.0.0.1",
+                    PayerName     = "TEST PAYER",
+                    PayerPhone    = "0900000000",
+                    PayerEmail    = "test@example.com",
+                    ReturnUrl     = "https://example.com/return",
+                    Subject       = $"Pay247 test {options.Currency}/{options.PayMethod}",
+                    Options       = options,
+                    Client        = _httpClientFactory.CreateClient(),
+                    Logger        = _logger,
+                };
+
+                var response = await client.RequestAsync();
+                Console.WriteLine($"   IsSuccess     = {response.IsSuccess}");
+                Console.WriteLine($"   Action        = {response.Action}");
+                Console.WriteLine($"   PaymentNumber = {response.PaymentNumber}");
+                Console.WriteLine($"   Reference     = {response.Reference}");
+                Console.WriteLine($"   RedirectUrl   = {response.RedirectUrl}");
+                if (!response.IsSuccess)
+                    Console.WriteLine($"   ⚠ Message    = {response.Message}");
+                Console.WriteLine("-------------------------------------");
+            }
+
+            Console.WriteLine("✅ Pay247 Create Order Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            _logger.LogError(ex, "TestPay247CreateOrder failed");
+        }
+    }
+
+    /// <summary>Prompts for a <c>mch_order_no</c> and queries the Pay247 payin-status endpoint.</summary>
+    private async Task TestPay247QueryOrder()
+    {
+        Console.WriteLine("🧪 Testing Pay247 Query Payin Order...");
+        Console.Write("Enter mch_order_no (the PaymentNumber we sent to Pay247): ");
+        var orderNo = (Console.ReadLine() ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(orderNo))
+        {
+            Console.WriteLine("❌ No mch_order_no provided.");
+            return;
+        }
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(Pay247TestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var method = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Pay247)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .FirstOrDefaultAsync();
+            if (method == null)
+            {
+                Console.WriteLine("❌ No active Pay247 payment method row found.");
+                return;
+            }
+
+            var options = Pay247Options.FromJson(method.Configuration);
+            options.TenantId = Pay247TestTenantId;
+
+            var envelope = await Pay247.QueryPayinAsync(
+                options, orderNo, _httpClientFactory.CreateClient(), _logger);
+
+            if (envelope == null)
+            {
+                Console.WriteLine("❌ No / unparseable response.");
+                return;
+            }
+
+            Console.WriteLine($"   code    = {envelope.Code}");
+            Console.WriteLine($"   message = {envelope.Message}");
+            Console.WriteLine($"   status  = {(string?)envelope.Data?["status"]}");
+            Console.WriteLine($"   amount  = {(string?)envelope.Data?["amount"]}");
+            Console.WriteLine($"   actual  = {(string?)envelope.Data?["actual_amount"]}");
+            Console.WriteLine($"   data    = {envelope.Data?.ToString(Formatting.None)}");
+
+            Console.WriteLine("✅ Pay247 Query Order Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestPay247QueryOrder failed");
+        }
+    }
+
+    /// <summary>Lists every wallet in the Pay247 balance response (multi-currency by design).</summary>
+    private async Task TestPay247Balance()
+    {
+        Console.WriteLine("🧪 Testing Pay247 Balance...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(Pay247TestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var method = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Pay247)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .FirstOrDefaultAsync();
+            if (method == null)
+            {
+                Console.WriteLine("❌ No active Pay247 payment method row found.");
+                return;
+            }
+
+            var options = Pay247Options.FromJson(method.Configuration);
+            options.TenantId = Pay247TestTenantId;
+
+            var envelope = await Pay247.QueryBalanceAsync(
+                options, _httpClientFactory.CreateClient(), _logger);
+
+            if (envelope == null)
+            {
+                Console.WriteLine("❌ No / unparseable response.");
+                return;
+            }
+
+            Console.WriteLine($"   code    = {envelope.Code}");
+            Console.WriteLine($"   message = {envelope.Message}");
+
+            var wallets = envelope.Data?["wallets"] as Newtonsoft.Json.Linq.JArray;
+            if (wallets == null || wallets.Count == 0)
+            {
+                Console.WriteLine($"   data = {envelope.Data?.ToString(Formatting.None)}");
+            }
+            else
+            {
+                Console.WriteLine($"   Wallets ({wallets.Count} currencies):");
+                foreach (var item in wallets)
+                {
+                    Console.WriteLine($"     - {item["currency"]}: balance={item["balance"]}, freeze={item["freeze"]}");
+                }
+            }
+
+            Console.WriteLine("✅ Pay247 Balance Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestPay247Balance failed");
+        }
+    }
+
+    /// <summary>
+    /// Iterates active Pay247 Withdrawal rows and fires one sandbox disbursement per row.
+    /// The bank code is taken from the row's <see cref="Pay247Options.Banks"/>; if empty,
+    /// falls back to <see cref="Pay247BankCodes"/>. For non-BANK rows (PHP MAYA) the
+    /// "bank_code" equals the method name.
+    /// </summary>
+    private async Task TestPay247CreatePayout()
+    {
+        Console.WriteLine("🧪 Testing Pay247 Create Payout Order...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(Pay247TestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var methods = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Pay247)
+                .Where(x => x.MethodType == PaymentMethodTypes.Withdrawal)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .ToListAsync();
+            if (methods.Count == 0)
+            {
+                Console.WriteLine("❌ No active Pay247 Withdrawal payment method rows found.");
+                return;
+            }
+
+            foreach (var method in methods)
+            {
+                var options = Pay247Options.FromJson(method.Configuration);
+                options.TenantId = Pay247TestTenantId;
+
+                var (isValid, err) = options.Validate();
+                if (!isValid)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: invalid config — {err}");
+                    continue;
+                }
+
+                string bankCode, bankName;
+                if (!string.Equals(options.PayMethod, "BANK", StringComparison.OrdinalIgnoreCase))
+                {
+                    // For non-BANK methods (PHP MAYA payout etc.) Pay247 expects bank_code == pay_method.
+                    bankCode = options.PayMethod;
+                    bankName = options.PayMethod;
+                }
+                else
+                {
+                    var banks = options.GetBanksForCurrencyOrSeed(options.Currency);
+                    var fromConfig = options.GetBanksForCurrency(options.Currency).Length > 0;
+                    if (banks.Count > 0)
+                    {
+                        var first = banks[0];
+                        bankCode = first.Code;
+                        bankName = first.Name;
+                        Console.WriteLine($"   Bank source: {(fromConfig ? "Configuration.Banks" : "Pay247BankCodes seed")}");
+                    }
+                    else
+                    {
+                        Console.Write($"   No banks configured for {options.Currency}. Enter bank_code: ");
+                        bankCode = (Console.ReadLine() ?? string.Empty).Trim();
+                        Console.Write("   Enter bank name: ");
+                        bankName = (Console.ReadLine() ?? string.Empty).Trim();
+                        if (string.IsNullOrWhiteSpace(bankCode))
+                        {
+                            Console.WriteLine("⚠ Skipped — no bank_code supplied.");
+                            continue;
+                        }
+                    }
+                }
+
+                Console.WriteLine($"📤 MethodId={method.Id}  Currency={options.Currency}  PayMethod={options.PayMethod}  Bank={bankCode} ({bankName})");
+
+                var client = new Pay247.PayoutRequestClient
+                {
+                    PaymentNumber = Payment.GenerateNumber(),
+                    Amount        = SuggestedTestAmount(options.Currency),
+                    Currency      = options.Currency,
+                    AccountName   = "TEST BENEFICIARY",
+                    AccountNo     = "0001234567",
+                    BankCode      = bankCode,
+                    BankBranch    = string.Empty,
+                    Options       = options,
+                    Client        = _httpClientFactory.CreateClient(),
+                    Logger        = _logger,
+                };
+
+                var response = await client.RequestAsync();
+                Console.WriteLine($"   IsSuccess = {response.IsSuccess}");
+                Console.WriteLine($"   Message   = {response.Message}");
+                Console.WriteLine($"   Response  = {response.ResponseJson}");
+                Console.WriteLine("-------------------------------------");
+            }
+
+            Console.WriteLine("✅ Pay247 Create Payout Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestPay247CreatePayout failed");
+        }
+    }
+
+    /// <summary>Returns a sane default test amount per currency (above Pay247 minimums, below daily caps).</summary>
+    private static decimal SuggestedTestAmount(string currency) => currency.ToUpperInvariant() switch
+    {
+        "VND" => 50_000m,    // ~2 USD
+        "IDR" => 30_000m,    // ~2 USD
+        "MYR" => 10m,        // ~2 USD
+        "PHP" => 100m,       // ~2 USD
+        "THB" => 100m,
+        "JPY" => 500m,
+        _     => 10m,
+    };
+    // ============================================================================================
+    // Rivo
+    //
+    // Five test entry points (wired via CmdTestService switch):
+    //   test-rivo-sig      → TestRivoSignature      (pure unit test; no creds required)
+    //   test-rivo-create   → TestRivoCreateOrder    (iterates EVERY active Rivo row per currency)
+    //   test-rivo-query    → TestRivoQueryOrder     (interactive; prompts for tradeNo)
+    //   test-rivo-balance  → TestRivoBalance        (lists ALL currencies returned by the API)
+    //   test-rivo-payout   → TestRivoCreatePayout   (iterates active rows; picks sample bank by currency)
+    //
+    // Rivo IP-whitelist gotcha: a 40304 response means our outbound IP isn't whitelisted yet.
+    // ============================================================================================
+
+    private const long RivoTestTenantId = 10000;
+
+    /// <summary>
+    /// Unit test of the SHA-512 signer using a synthetic payload. Asserts deterministic output and
+    /// that empty/null/sign fields are stripped before sorting.
+    /// </summary>
+    private Task TestRivoSignature()
+    {
+        Console.WriteLine("🧪 Testing Rivo SHA-512 signer...");
+        Console.WriteLine();
+
+        const string secret = "TEST_SECRET_KEY";
+
+        var spec = new Dictionary<string, object?>
+        {
+            ["mchId"]         = "MCH123456",
+            ["tradeNo"]       = "mdm-ABCDEF1234",
+            ["amount"]        = 12345.67m,
+            ["currency"]      = "VND",
+            ["paymentMethod"] = "01",
+            ["clientIp"]      = "127.0.0.1",
+            ["name"]          = "NGUYEN VAN A",
+            ["phone"]         = "0900000000",
+            ["email"]         = "test@example.com",
+            ["city"]          = " ",
+            ["address"]       = " ",
+            ["notifyUrl"]     = "https://example.com/cb",
+            ["returnUrl"]     = "",
+            ["subject"]       = "",
+            ["emptyShouldBeStripped"] = "",
+            ["nullShouldBeStripped"]  = null,
+        };
+        // Deterministic stamping for repeatable tests.
+        spec["signType"]  = "SHA512";
+        spec["version"]   = "1.1";
+        spec["timestamp"] = 1700000000000L;
+        spec["nonce"]     = "abcd1234abcd1234";
+
+        var sig1 = Rivo.GenerateSignature(spec, secret, _logger);
+        var sig2 = Rivo.GenerateSignature(spec, secret, _logger);
+
+        Console.WriteLine($"   Computed: {sig1}");
+        Console.WriteLine($"   Repeated: {sig2}");
+        Console.WriteLine($"   Length:   {sig1.Length} (expected 128 for SHA-512 hex)");
+        Console.WriteLine($"   Deterministic: {(sig1 == sig2 ? "✅ YES" : "❌ NO")}");
+
+        // Sanity: an unrelated tweak must change the signature.
+        spec["amount"] = 12345.68m;
+        var sig3 = Rivo.GenerateSignature(spec, secret, _logger);
+        Console.WriteLine($"   Tweaked:  {sig3}");
+        Console.WriteLine($"   Differs:  {(sig3 != sig1 ? "✅ YES" : "❌ NO")}");
+
+        Console.WriteLine();
+        Console.WriteLine("=====================================");
+        Console.WriteLine("✅ Rivo Signature Test Complete!");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Iterates every active Rivo <c>PaymentMethod</c> row for the test tenant and fires one
+    /// create-collection-order per row. Currency and PaymentMethod are read from each row's
+    /// <c>Configuration</c> — never hardcoded — so this naturally exercises VND today and
+    /// THB/IDR/etc. once they're added.
+    /// </summary>
+    private async Task TestRivoCreateOrder()
+    {
+        Console.WriteLine("🧪 Testing Rivo Create Collection Order...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(RivoTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var methods = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Rivo)
+                .Where(x => x.MethodType == PaymentMethodTypes.Deposit)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .ToListAsync();
+
+            if (methods.Count == 0)
+            {
+                Console.WriteLine("❌ No active Rivo Deposit payment method rows for tenant {0}.", RivoTestTenantId);
+                Console.WriteLine("   Seed one via the back-office before running this test.");
+                return;
+            }
+
+            Console.WriteLine($"Found {methods.Count} active Rivo Deposit row(s); creating one test order per row.");
+            Console.WriteLine("=====================================");
+
+            foreach (var method in methods)
+            {
+                var options = RivoOptions.FromJson(method.Configuration);
+                options.TenantId = RivoTestTenantId;
+
+                var (isValid, err) = options.Validate();
+                if (!isValid)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: invalid config — {err}");
+                    continue;
+                }
+
+                Console.WriteLine($"📤 MethodId={method.Id}  Currency={options.Currency}  PaymentMethod={options.PaymentMethod}");
+
+                var client = new Rivo.RequestClient
+                {
+                    PaymentNumber = Payment.GenerateNumber(),
+                    Amount        = options.Currency.Equals("VND", StringComparison.OrdinalIgnoreCase) ? 50_000m : 100m,
+                    Currency      = options.Currency,
+                    PaymentMethod = options.PaymentMethod,
+                    PayerName     = "TEST PAYER",
+                    PayerPhone    = "0900000000",
+                    PayerEmail    = "test@example.com",
+                    ClientIp      = "127.0.0.1",
+                    City          = "Ho Chi Minh",
+                    Address       = "District 1",
+                    ReturnUrl     = "https://example.com/return",
+                    Subject       = $"Rivo test {options.Currency}",
+                    Options       = options,
+                    Client        = _httpClientFactory.CreateClient(),
+                    Logger        = _logger,
+                };
+
+                var response = await client.RequestAsync();
+                Console.WriteLine($"   IsSuccess     = {response.IsSuccess}");
+                Console.WriteLine($"   Action        = {response.Action}");
+                Console.WriteLine($"   PaymentNumber = {response.PaymentNumber}");
+                Console.WriteLine($"   Reference     = {response.Reference}");
+                Console.WriteLine($"   RedirectUrl   = {response.RedirectUrl}");
+                Console.WriteLine($"   QrCode        = {(string.IsNullOrEmpty(response.TextForQrCode) ? "(none)" : response.TextForQrCode[..Math.Min(60, response.TextForQrCode.Length)] + "...")}");
+                if (!response.IsSuccess)
+                {
+                    Console.WriteLine($"   ⚠ Message    = {response.Message}");
+                    Console.WriteLine("   Hint: 40304 == outbound IP not whitelisted by Rivo merchant ops.");
+                }
+                Console.WriteLine("-------------------------------------");
+            }
+
+            Console.WriteLine("✅ Rivo Create Order Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            _logger.LogError(ex, "TestRivoCreateOrder failed");
+        }
+    }
+
+    /// <summary>Prompts for a <c>tradeNo</c> and queries the Rivo collection-order status endpoint.</summary>
+    private async Task TestRivoQueryOrder()
+    {
+        Console.WriteLine("🧪 Testing Rivo Query Collection Order...");
+        //Console.Write("Enter tradeNo (the PaymentNumber we sent to Rivo): ");
+        var tradeNo = "pm-26220ba79222"; // (Console.ReadLine() ?? string.Empty).Trim();
+        //Console.Write("Enter outTradeNo (the platform order number): ");
+        var outTradeNo = "PAY2605282059870285133434880";  //(Console.ReadLine() ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(tradeNo))
+        {
+            Console.WriteLine("❌ No tradeNo provided.");
+            return;
+        }
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(RivoTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var method = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Rivo)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .FirstOrDefaultAsync();
+            if (method == null)
+            {
+                Console.WriteLine("❌ No active Rivo payment method row found.");
+                return;
+            }
+
+            var options = RivoOptions.FromJson(method.Configuration);
+            options.TenantId = RivoTestTenantId;
+
+            var envelope = await Rivo.QueryCollectionOrderAsync(
+                options, tradeNo, outTradeNo, _httpClientFactory.CreateClient(), _logger);
+
+            if (envelope == null)
+            {
+                Console.WriteLine("❌ No / unparseable response.");
+                return;
+            }
+
+            Console.WriteLine($"   code = {envelope.Code}");
+            Console.WriteLine($"   msg  = {envelope.Msg}");
+            Console.WriteLine($"   payStatus = {(int?)envelope.Data?["payStatus"]}");
+            Console.WriteLine($"   payTime   = {(string?)envelope.Data?["payTime"]}");
+            Console.WriteLine($"   data      = {envelope.Data?.ToString(Formatting.None)}");
+
+            Console.WriteLine("✅ Rivo Query Order Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestRivoQueryOrder failed");
+        }
+    }
+
+    /// <summary>Lists every currency in the Rivo balance response (multi-currency by design).</summary>
+    private async Task TestRivoBalance()
+    {
+        Console.WriteLine("🧪 Testing Rivo Balance...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(RivoTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var method = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Rivo)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .FirstOrDefaultAsync();
+            if (method == null)
+            {
+                Console.WriteLine("❌ No active Rivo payment method row found.");
+                return;
+            }
+
+            var options = RivoOptions.FromJson(method.Configuration);
+            options.TenantId = RivoTestTenantId;
+
+            var envelope = await Rivo.QueryBalanceAsync(
+                options, currencyFilter: null, _httpClientFactory.CreateClient(), _logger);
+
+            if (envelope == null)
+            {
+                Console.WriteLine("❌ No / unparseable response.");
+                return;
+            }
+
+            Console.WriteLine($"   code = {envelope.Code}");
+            Console.WriteLine($"   msg  = {envelope.Msg}");
+
+            var balances = envelope.Data?["balances"] as Newtonsoft.Json.Linq.JArray;
+            if (balances == null || balances.Count == 0)
+            {
+                // Some accounts return a single currency at the data root.
+                Console.WriteLine($"   data = {envelope.Data?.ToString(Formatting.None)}");
+            }
+            else
+            {
+                Console.WriteLine($"   Balances ({balances.Count} currencies):");
+                foreach (var item in balances)
+                {
+                    Console.WriteLine($"     - {item["currency"]}: balance={item["balance"]}, toSettle={item["toSettle"]}, frozen={item["frozen"]}");
+                }
+            }
+
+            Console.WriteLine("✅ Rivo Balance Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestRivoBalance failed");
+        }
+    }
+
+    /// <summary>
+    /// Iterates active Rivo rows and fires one sandbox disbursement per row. The bank code is taken
+    /// from <see cref="RivoBankCodes"/> for that currency; if the currency has no published table
+    /// yet, the test falls back to a CLI prompt.
+    /// </summary>
+    private async Task TestRivoCreatePayout()
+    {
+        Console.WriteLine("🧪 Testing Rivo Create Disbursement Order...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(RivoTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var methods = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.Rivo)
+                .Where(x => x.MethodType == PaymentMethodTypes.Withdrawal)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .ToListAsync();
+            if (methods.Count == 0)
+            {
+                Console.WriteLine("❌ No active Rivo Withdrawal payment method rows found.");
+                return;
+            }
+
+            foreach (var method in methods)
+            {
+                var options = RivoOptions.FromJson(method.Configuration);
+                options.TenantId = RivoTestTenantId;
+
+                var (isValid, err) = options.Validate();
+                if (!isValid)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: invalid config — {err}");
+                    continue;
+                }
+
+                // Prefer the per-row override (Configuration.Banks) — that's how the back-office
+                // bank dropdown gets its list at runtime. Fall back to the code-side Appendix C
+                // seed only when the row hasn't been populated yet.
+                var banks = options.GetBanksForCurrencyOrSeed(options.Currency);
+                var fromConfig = options.GetBanksForCurrency(options.Currency).Length > 0;
+
+                string bankCode, bankName;
+                if (banks.Count > 0)
+                {
+                    var first = banks[0];
+                    bankCode = first.Code;
+                    bankName = first.Name;
+                }
+                else
+                {
+                    Console.Write($"   No banks configured for {options.Currency} (Configuration.Banks empty, no seed). Enter bankCode: ");
+                    bankCode = (Console.ReadLine() ?? string.Empty).Trim();
+                    Console.Write("   Enter bankName: ");
+                    bankName = (Console.ReadLine() ?? string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(bankCode))
+                    {
+                        Console.WriteLine("⚠ Skipped — no bankCode supplied.");
+                        continue;
+                    }
+                }
+
+                Console.WriteLine($"📤 MethodId={method.Id}  Currency={options.Currency}  Bank={bankCode} ({bankName})  Source={(fromConfig ? "Configuration.Banks" : "RivoBankCodes seed")}");
+
+                var client = new Rivo.WithdrawalRequestClient
+                {
+                    PaymentNumber    = Payment.GenerateNumber(),
+                    Amount           = options.Currency.Equals("VND", StringComparison.OrdinalIgnoreCase) ? 50_000m : 100m,
+                    Currency         = options.Currency,
+                    AccountName      = "TEST BENEFICIARY",
+                    AccountNoUnified = "0001234567",
+                    BankCode         = bankCode,
+                    BankName         = bankName,
+                    Purpose          = "Rivo sandbox test",
+                    Options          = options,
+                    Client           = _httpClientFactory.CreateClient(),
+                    Logger           = _logger,
+                };
+
+                var response = await client.RequestAsync();
+                Console.WriteLine($"   IsSuccess = {response.IsSuccess}");
+                Console.WriteLine($"   Message   = {response.Message}");
+                Console.WriteLine($"   Response  = {response.ResponseJson}");
+                Console.WriteLine("-------------------------------------");
+            }
+
+            Console.WriteLine("✅ Rivo Create Payout Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestRivoCreatePayout failed");
+        }
+    }
+
+    // ============================================================================================
+    // 12Group (thesolix.com) — Thailand THB gateway
+    //
+    // Three test entry points (wired via CmdTestService switch):
+    //   test-12group-create → TestTwelveGroupCreateOrder    (iterates active 12Group Deposit rows)
+    //   test-12group-query  → TestTwelveGroupInquiryDeposit  (inquiry-deposit by trans_id)
+    //   test-12group-payout → TestTwelveGroupCreatePayout    (iterates active 12Group Withdrawal rows)
+    //
+    // No -sig test: 12Group has no request/callback signature (static-JWT header auth only).
+    // Remember: real money is required even in the test environment.
+    // ============================================================================================
+
+    private const long TwelveGroupTestTenantId = 10000;
+
+    /// <summary>Iterates every active 12Group Deposit row for the test tenant and fires one create-qr-code per row.</summary>
+    private async Task TestTwelveGroupCreateOrder()
+    {
+        Console.WriteLine("🧪 Testing 12Group Create QR Code...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(TwelveGroupTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var methods = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.TwelveGroup)
+                .Where(x => x.MethodType == PaymentMethodTypes.Deposit)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .ToListAsync();
+
+            if (methods.Count == 0)
+            {
+                Console.WriteLine("❌ No active 12Group Deposit payment method rows for tenant {0}.", TwelveGroupTestTenantId);
+                Console.WriteLine("   Seed one via twelvegroup_paymentmethod_seed.sql before running this test.");
+                return;
+            }
+
+            Console.WriteLine($"Found {methods.Count} active 12Group Deposit row(s); creating one test QR per row.");
+            Console.WriteLine("=====================================");
+
+            foreach (var method in methods)
+            {
+                var options = TwelveGroupOptions.FromJson(method.Configuration);
+                options.TenantId = TwelveGroupTestTenantId;
+
+                var (isValid, err) = options.Validate();
+                if (!isValid)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: invalid config — {err}");
+                    continue;
+                }
+
+                var paymentNumber = Payment.GenerateNumber();
+                var ref1 = $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{Random.Shared.Next(1000, 9999)}";
+
+                Console.WriteLine($"📤 MethodId={method.Id}  Env={options.Env}  Currency={options.Currency}  ref1={ref1}");
+
+                var client = new TwelveGroup.RequestClient
+                {
+                    PaymentNumber = paymentNumber,
+                    Amount        = 300m, // vendor min 300 THB/transaction
+                    Ref1          = ref1,
+                    Ref3          = "Somchai Rakdee",
+                    Ref4          = paymentNumber,
+                    MobileNo      = "0000000000",
+                    Options       = options,
+                    Client        = _httpClientFactory.CreateClient(),
+                    Logger        = _logger,
+                };
+
+                var response = await client.RequestAsync();
+                Console.WriteLine($"   IsSuccess     = {response.IsSuccess}");
+                Console.WriteLine($"   Action        = {response.Action}");
+                Console.WriteLine($"   PaymentNumber = {response.PaymentNumber}");
+                Console.WriteLine($"   trans_id      = {response.Reference}");
+                Console.WriteLine($"   RedirectUrl   = {response.RedirectUrl}");
+                if (!response.IsSuccess)
+                    Console.WriteLine($"   ⚠ Message    = {response.Message}");
+                Console.WriteLine("-------------------------------------");
+            }
+
+            Console.WriteLine("✅ 12Group Create QR Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            _logger.LogError(ex, "TestTwelveGroupCreateOrder failed");
+        }
+    }
+
+    /// <summary>Calls inquiry-deposit for a given trans_id and prints status / aml_status / aml_check.</summary>
+    private async Task TestTwelveGroupInquiryDeposit()
+    {
+        Console.WriteLine("🧪 Testing 12Group inquiry-deposit...");
+        // Replace with a real trans_id returned by test-12group-create.
+        var transId = "a6743daf9af8d4703558cee1c9316b4d";
+        if (string.IsNullOrWhiteSpace(transId) || transId == "REPLACE_WITH_TRANS_ID")
+        {
+            Console.WriteLine("❌ Set transId in TestTwelveGroupInquiryDeposit to a real trans_id first.");
+            return;
+        }
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(TwelveGroupTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var method = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.TwelveGroup)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .FirstOrDefaultAsync();
+            if (method == null)
+            {
+                Console.WriteLine("❌ No active 12Group payment method row found.");
+                return;
+            }
+
+            var options = TwelveGroupOptions.FromJson(method.Configuration);
+            options.TenantId = TwelveGroupTestTenantId;
+
+            var data = await TwelveGroup.InquiryDepositAsync(
+                options, transId, _httpClientFactory.CreateClient(), _logger);
+
+            if (data == null)
+            {
+                Console.WriteLine("❌ No / unparseable response (or data not found).");
+                return;
+            }
+
+            Console.WriteLine($"   status      = {(string?)data["status"]}");
+            Console.WriteLine($"   aml_status  = {(string?)data["aml_status"]}");
+            Console.WriteLine($"   aml_check   = {(string?)data["aml_check"]}");
+            Console.WriteLine($"   amount      = {(string?)data["amount"]}");
+            Console.WriteLine($"   ref4        = {(string?)data["ref4"]}");
+            Console.WriteLine("✅ 12Group Inquiry Deposit Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestTwelveGroupInquiryDeposit failed");
+        }
+    }
+
+    /// <summary>Iterates active 12Group Withdrawal rows and fires one transfer-out per row (sample bank from the seed/config).</summary>
+    private async Task TestTwelveGroupCreatePayout()
+    {
+        Console.WriteLine("🧪 Testing 12Group Transfer Out...");
+        Console.WriteLine();
+
+        try
+        {
+            using var scope = _serviceProvider.CreateTenantScope(TwelveGroupTestTenantId);
+            var ctx = scope.ServiceProvider.GetRequiredService<TenantDbContext>();
+
+            var methods = await ctx.PaymentMethods
+                .Where(x => x.Platform == (int)PaymentPlatformTypes.TwelveGroup)
+                .Where(x => x.MethodType == PaymentMethodTypes.Withdrawal)
+                .Where(x => x.Status == (short)PaymentMethodStatusTypes.Active)
+                .Where(x => x.DeletedOn == null)
+                .ToListAsync();
+            if (methods.Count == 0)
+            {
+                Console.WriteLine("❌ No active 12Group Withdrawal payment method rows found.");
+                return;
+            }
+
+            foreach (var method in methods)
+            {
+                var options = TwelveGroupOptions.FromJson(method.Configuration);
+                options.TenantId = TwelveGroupTestTenantId;
+
+                var (isValid, err) = options.Validate();
+                if (!isValid)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: invalid config — {err}");
+                    continue;
+                }
+
+                var banks = options.GetBanksForCurrencyOrSeed(options.Currency);
+                if (banks.Count == 0)
+                {
+                    Console.WriteLine($"⚠ MethodId={method.Id}: no banks configured/seeded for {options.Currency}; skipping.");
+                    continue;
+                }
+
+                var bank = banks[0];
+                Console.WriteLine($"📤 MethodId={method.Id}  Env={options.Env}  Bank={bank.Code} ({bank.Name})");
+
+                var client = new TwelveGroup.PayoutRequestClient
+                {
+                    PaymentNumber = Payment.GenerateNumber(),
+                    Amount        = 100m,
+                    BankCode      = bank.Code,
+                    BankNumber    = "9090542086",
+                    BankName      = bank.Name,
+                    AccountName   = "Tanach Lueangsongchai",
+                    MobileNo      = options.DefaultMobileNo,
+                    TransactionBy = $"Test_{options.PartnerCode}",
+                    Options       = options,
+                    Client        = _httpClientFactory.CreateClient(),
+                    Logger        = _logger,
+                };
+
+                var response = await client.RequestAsync();
+                Console.WriteLine($"   IsSuccess = {response.IsSuccess}");
+                Console.WriteLine($"   Message   = {response.Message}");
+                Console.WriteLine($"   Response  = {response.ResponseJson}");
+                Console.WriteLine("-------------------------------------");
+            }
+
+            Console.WriteLine("✅ 12Group Transfer Out Test Complete!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+            _logger.LogError(ex, "TestTwelveGroupCreatePayout failed");
+        }
     }
 }

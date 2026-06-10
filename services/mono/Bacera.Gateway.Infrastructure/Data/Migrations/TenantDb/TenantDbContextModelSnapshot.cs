@@ -17,7 +17,7 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("ProductVersion", "8.0.21")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -5806,6 +5806,9 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                     b.Property<short>("Status")
                         .HasColumnType("smallint");
 
+                    b.Property<long>("Ticket")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("TradeAccountCurrencyId")
                         .HasColumnType("integer");
 
@@ -5846,6 +5849,130 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                     b.ToTable("_SalesRebate", "trd");
                 });
 
+            modelBuilder.Entity("Bacera.Gateway.SalesRebateItemK8s", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("ClosedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_on");
+
+                    b.Property<long>("RebateBase")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rebate_base");
+
+                    b.Property<string>("RebateType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("rebate_type");
+
+                    b.Property<long>("SalesAccountId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sales_account_id");
+
+                    b.Property<long>("SalesRebateId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sales_rebate_id");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("symbol");
+
+                    b.Property<long>("Ticket")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ticket");
+
+                    b.Property<int>("TradeAccountCurrencyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("trade_account_currency_id");
+
+                    b.Property<int>("TradeAccountFundType")
+                        .HasColumnType("integer")
+                        .HasColumnName("trade_account_fund_type");
+
+                    b.Property<long>("TradeAccountId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("trade_account_id");
+
+                    b.Property<long>("TradeAccountNumber")
+                        .HasColumnType("bigint")
+                        .HasColumnName("trade_account_number");
+
+                    b.Property<short>("TradeAccountType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("trade_account_type");
+
+                    b.Property<long>("TradeRebateId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("trade_rebate_id");
+
+                    b.Property<int>("Volume")
+                        .HasColumnType("integer")
+                        .HasColumnName("volume");
+
+                    b.HasKey("Id", "CreatedOn");
+
+                    b.ToTable("sales_rebate_item_k8s", "trd");
+                });
+
+            modelBuilder.Entity("Bacera.Gateway.SalesRebateK8s", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_start");
+
+                    b.Property<long>("SalesAccountId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sales_account_id");
+
+                    b.Property<short>("ScheduleType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("schedule_type");
+
+                    b.Property<short>("Status")
+                        .HasColumnType("smallint")
+                        .HasColumnName("status");
+
+                    b.Property<long>("TotalAmount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("total_amount");
+
+                    b.Property<int>("TradeCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("trade_count");
+
+                    b.Property<long?>("WalletTransactionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("wallet_transaction_id");
+
+                    b.HasKey("Id", "CreatedOn");
+
+                    b.ToTable("sales_rebate_k8s", "trd");
+                });
+
             modelBuilder.Entity("Bacera.Gateway.SalesRebateSchema", b =>
                 {
                     b.Property<long>("Id")
@@ -5858,6 +5985,9 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValueSql("0");
+
+                    b.Property<bool>("AutoRelease")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("CreatedOn")
                         .ValueGeneratedOnAdd()
@@ -8938,12 +9068,6 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                         .IsRequired()
                         .HasConstraintName("_SalesRebate_TradeAccountId_fk");
 
-                    b.HasOne("Bacera.Gateway.TradeRebate", "TradeRebate")
-                        .WithMany("SalesRebates")
-                        .HasForeignKey("TradeRebateId")
-                        .IsRequired()
-                        .HasConstraintName("_SalesRebate_TradeRebateId_fkey");
-
                     b.HasOne("Bacera.Gateway.WalletAdjust", "WalletAdjust")
                         .WithMany("SalesRebates")
                         .HasForeignKey("WalletAdjustId")
@@ -8952,8 +9076,6 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
                     b.Navigation("SalesAccount");
 
                     b.Navigation("TradeAccount");
-
-                    b.Navigation("TradeRebate");
 
                     b.Navigation("WalletAdjust");
                 });
@@ -9981,8 +10103,6 @@ namespace Bacera.Gateway.Data.Migrations.TenantDb
             modelBuilder.Entity("Bacera.Gateway.TradeRebate", b =>
                 {
                     b.Navigation("Rebates");
-
-                    b.Navigation("SalesRebates");
                 });
 
             modelBuilder.Entity("Bacera.Gateway.TradeService", b =>

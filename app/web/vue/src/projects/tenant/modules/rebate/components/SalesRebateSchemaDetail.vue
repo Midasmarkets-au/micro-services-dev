@@ -227,6 +227,19 @@
             </Field>
           </div>
         </div>
+
+        <div class="row mb-9">
+          <div class="col-12 d-flex align-items-center gap-3">
+            <label class="fs-6 fw-semobold createAccountTitle">
+              Auto Release
+            </label>
+            <el-switch v-model="schemaInfo.autoRelease" />
+            <span class="text-muted fs-7"
+              >Automatically credit wallet after settlement</span
+            >
+          </div>
+        </div>
+
         <div
           v-if="schemaInfo.status != -1"
           style="border: 2px solid #e6a23c; border-radius: 10px; padding: 10px"
@@ -308,7 +321,14 @@ const show = async (_item: any) => {
   isLoading.value = false;
 };
 
+const isEmpty = (v: any) => v === "" || v === null || v === undefined;
+
 const update = async () => {
+  const { rebate, alphaRebate, proRebate } = schemaInfo.value;
+  if (isEmpty(rebate) || isEmpty(alphaRebate) || isEmpty(proRebate)) {
+    MsgPrompt.error("Please fill in all three rebate fields.");
+    return;
+  }
   try {
     await RebateService.putSalesRebateSchema(
       schemaInfo.value.id,

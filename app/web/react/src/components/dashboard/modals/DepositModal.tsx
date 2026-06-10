@@ -43,14 +43,16 @@ const EXLINK_GLOBAL_TYPE = 'ExLinkGlobal';
 /** Wire platform — KYC-bound bank accounts for ExLinkGlobal JPY H2H */
 const WIRE_PAYMENT_PLATFORM = 100 as const;
 const HELP2PAY_TYPE = 'Help2Pay';
+const PAY247_TYPE = 'Pay247';
 
 /**
  * Groups that fan out into multiple PaymentMethod rows on the backend
  * and render a step-3 dropdown driven by `groupInfo.paymentMethods`.
  * - ExLinkGlobal: one row per primary currency.
  * - Help2Pay:     one row per (channel x currency) — two rows may share a currency.
+ * - Pay247:       one row per (currency x pay_method) — bank selection deferred to the hosted page.
  */
-const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE] as const;
+const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE, PAY247_TYPE] as const;
 
 interface DepositModalProps {
   open: boolean;

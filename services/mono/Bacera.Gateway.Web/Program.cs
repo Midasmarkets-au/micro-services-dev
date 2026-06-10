@@ -74,6 +74,7 @@ builder.Services.AddControllers()
         options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
         //options.SerializerSettings.Converters.Add(new StringEnumConverter());
         options.SerializerSettings.Converters.Add(new Bacera.Gateway.Web.Converters.LongToStringConverter());
+        options.SerializerSettings.Converters.Add(new Bacera.Gateway.Web.Converters.DecimalToStringConverter());
     });
 
 builder.Services.Configure<RouteOptions>(options => options.LowercaseUrls = true);

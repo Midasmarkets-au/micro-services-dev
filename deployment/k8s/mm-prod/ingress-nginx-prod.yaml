@@ -7,7 +7,9 @@
 #    - election-id:  ingress-nginx-leader-prod
 #    - NLB Service:  ingress-nginx-controller-prod
 #
-#  应用：kubectl apply -f deployment/k8s-prod/ingress-nginx-prod.yaml
+#  应用：kubectl apply -f deployment/k8s/mm-prod/ingress-nginx-prod.yaml
+#
+#  HA: 2 replicas, zero-downtime rolling update, PDB, pod anti-affinity
 # ============================================================================
 ---
 apiVersion: v1
@@ -205,6 +207,24 @@ spec:
   controller: k8s.io/ingress-nginx-prod
 ---
 # ============================================================================
+#  Production Controller PodDisruptionBudget
+# ============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  labels:
+    app.kubernetes.io/instance: ingress-nginx-prod
+    app.kubernetes.io/name: ingress-nginx
+  name: ingress-nginx-controller-prod-pdb
+  namespace: ingress-nginx
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: ingress-nginx-prod
+      app.kubernetes.io/name: ingress-nginx
+# ============================================================================
 #  Production Controller Deployment
 # ============================================================================
 apiVersion: apps/v1
@@ -219,6 +239,7 @@ metadata:
   name: ingress-nginx-controller-prod
   namespace: ingress-nginx
 spec:
+  replicas: 2
   minReadySeconds: 0
   revisionHistoryLimit: 10
   selector:
@@ -228,7 +249,8 @@ spec:
       app.kubernetes.io/name: ingress-nginx
   strategy:
     rollingUpdate:
-      maxUnavailable: 1
+      maxUnavailable: 0
+      maxSurge: 1
     type: RollingUpdate
   template:
     metadata:
@@ -239,6 +261,19 @@ spec:
         app.kubernetes.io/part-of: ingress-nginx-prod
         app.kubernetes.io/version: 1.10.0
     spec:
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: controller
+                  app.kubernetes.io/instance: ingress-nginx-prod
+                  app.kubernetes.io/name: ingress-nginx
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: controller
           image: registry.k8s.io/ingress-nginx/controller:v1.10.0@sha256:42b3f0e5d0846876b1791cd3afeb5f1cbbe4259d6f35651dcc1b5c980925379c

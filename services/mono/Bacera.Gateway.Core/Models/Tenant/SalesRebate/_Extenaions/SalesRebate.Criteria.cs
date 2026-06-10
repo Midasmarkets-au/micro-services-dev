@@ -30,7 +30,7 @@ public partial class SalesRebate : IEntity
             pool.Add(x => x.TradeRebateId == TradeRebateId, TradeRebateId.IsTangible());
             pool.Add(x => x.SalesAccount.Uid == SalesAccountUid, SalesAccountUid.IsTangible());
             pool.Add(x => x.TradeAccount.Uid == TradeAccountUid, TradeAccountUid.IsTangible());
-            pool.Add(x => x.TradeRebate.Ticket == Ticket, Ticket.IsTangible());
+            pool.Add(x => x.Ticket == Ticket, Ticket.IsTangible());
             pool.Add(x => x.TradeAccountNumber == TradeAccountNumber, TradeAccountNumber.IsTangible());
             pool.Add(x => x.TradeAccount.SalesAccountId != null && x.TradeAccount.SalesAccountId == x.SalesAccountId, IsFromDirectClient == true);
             pool.Add(x => x.Status == (short)Status!, Status.HasValue);

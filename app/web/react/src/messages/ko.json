@@ -1303,10 +1303,7 @@
       "payerAccountName": "송금인 계좌명",
       "payerAccountNumber": "송금인 계좌번호",
       "payerAccountNameLocal": "송금인 계좌명 (현지어)",
-      "payerPhoneNumber": "송금인 전화번호",
-      "city": "도시",
-      "address": "주소",
-      "paymentInfoId": "수취 계정"
+      "payerPhoneNumber": "송금인 전화번호"
     },
     "action": {
       "close": "닫기",

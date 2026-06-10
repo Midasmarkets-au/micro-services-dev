@@ -1307,10 +1307,7 @@
       "payerAccountName": "Payer Account Name",
       "payerAccountNumber": "Payer Account Number",
       "payerAccountNameLocal": "Payer Account Name (Local Language)",
-      "payerPhoneNumber": "Payer Phone Number",
-      "city": "City",
-      "address": "Address",
-      "paymentInfoId": "Payment Account"
+      "payerPhoneNumber": "Payer Phone Number"
     },
     "action": {
       "close": "Close",

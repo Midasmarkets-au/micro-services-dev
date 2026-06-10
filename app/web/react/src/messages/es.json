@@ -1301,10 +1301,7 @@
       "payerAccountName": "Nombre del pagador",
       "payerAccountNumber": "Número de cuenta del pagador",
       "payerAccountNameLocal": "Nombre del pagador (idioma local)",
-      "payerPhoneNumber": "Teléfono del pagador",
-      "city": "Ciudad",
-      "address": "Dirección",
-      "paymentInfoId": "Cuenta receptora"
+      "payerPhoneNumber": "Teléfono del pagador"
     },
     "action": {
       "close": "Cerrar",

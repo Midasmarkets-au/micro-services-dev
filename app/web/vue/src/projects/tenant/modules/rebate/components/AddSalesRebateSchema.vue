@@ -65,7 +65,7 @@
         <div class="row mb-5">
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Sales Account Uid
+              Sales Account Uid <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.salesAccountUid"
@@ -80,7 +80,7 @@
           </div>
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Target Account Uid
+              Target Account Uid <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.rebateAccountUId"
@@ -98,7 +98,7 @@
         <div class="row mb-9">
           <div class="col-4">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Rebate
+              Rebate <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.rebate"
@@ -114,7 +114,7 @@
           </div>
           <div class="col-4">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Raw Rebate
+              Raw Rebate <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.alphaRebate"
@@ -130,7 +130,7 @@
           </div>
           <div class="col-4">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Pro Rebate
+              Pro Rebate <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.proRebate"
@@ -208,6 +208,19 @@
             </Field>
           </div>
         </div>
+
+        <div class="row mb-9">
+          <div class="col-12 d-flex align-items-center gap-3">
+            <label class="fs-6 fw-semobold createAccountTitle">
+              Auto Release
+            </label>
+            <el-switch v-model="schemaInfo.autoRelease" />
+            <span class="text-muted fs-7"
+              >Automatically credit wallet after settlement</span
+            >
+          </div>
+        </div>
+
         <div class="mt-13 d-flex flex-row-reverse">
           <button
             class="btn btn-light btn-danger btn-lg me-3 mb-9"
@@ -245,6 +258,7 @@ const schemaInfo = ref({} as any);
 const reset = () => {
   schemaInfo.value = {
     salesType: 0,
+    schedule: "0", // default: Daily
     salesAccountUid: "",
     rebateAccountUId: "",
     rebate: "",
@@ -254,6 +268,7 @@ const reset = () => {
     excludeSymbol:
       "#AAPL,#AXP,#BAC,#C,#DIS,#IBM,#INTC,#KO,#MCD,#MSFT,#BA,#QAN.AX,#CSL.AX,#BHP.AX,#6501.T,#6502.T,#7201.T,#7261.T,#8306.T",
     note: "",
+    autoRelease: false,
   };
 };
 
@@ -262,7 +277,23 @@ const show = async () => {
   addSalesRebateSchemaShowRef.value?.show();
 };
 
+const isEmpty = (v: any) => v === "" || v === null || v === undefined;
+
 const update = async () => {
+  const { salesAccountUid, rebateAccountUId, rebate, alphaRebate, proRebate } =
+    schemaInfo.value;
+  if (
+    isEmpty(salesAccountUid) ||
+    isEmpty(rebateAccountUId) ||
+    isEmpty(rebate) ||
+    isEmpty(alphaRebate) ||
+    isEmpty(proRebate)
+  ) {
+    MsgPrompt.error(
+      "Please fill in Sales Account Uid, Target Account Uid and all three rebate fields."
+    );
+    return;
+  }
   try {
     await RebateService.postSalesRebateSchema(schemaInfo.value);
     emits("refresh");

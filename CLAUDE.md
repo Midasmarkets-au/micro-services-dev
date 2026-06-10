@@ -89,10 +89,32 @@ dotnet ef database update --context TenantDbContext \
 
 ### Docker builds
 
+ECR registry: `961341529237.dkr.ecr.ap-southeast-2.amazonaws.com`. Local and k8s nodes are both **arm64** — do NOT use `--platform linux/amd64`.
+
 ```bash
-docker build --target idgen -t idgen .
-docker build --target mono -t gateway-web .
-docker compose -f deployment/docker-compose.local.yml up -d   # Full stack
+# ECR login
+aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com
+
+# scheduler (Rust) — build context is repo root
+docker build -t 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/scheduler:latest -f services/scheduler/Dockerfile .
+docker push 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/scheduler:latest
+kubectl rollout restart deployment/scheduler -n mm
+
+# mono (.NET) — build context is repo root
+docker build -t 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/mono:latest -f services/mono/Dockerfile .
+docker push 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/mono:latest
+kubectl rollout restart deployment/mono -n mm
+
+# Vue tenant frontend — build context is app/web/vue
+docker build -t 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest --build-arg PROJECT_NAME=tenant -f app/web/vue/Dockerfile app/web/vue
+docker push 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest
+kubectl rollout restart deployment/front-tenant -n mm
+
+# Other Vue portals
+docker build -t 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-client:latest  --build-arg PROJECT_NAME=client  -f app/web/vue/Dockerfile app/web/vue
+docker build -t 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-backend:latest --build-arg PROJECT_NAME=backend -f app/web/vue/Dockerfile app/web/vue
+
+docker compose -f deployment/docker-compose.local.yml up -d   # Full local stack
 ```
 
 ## Architecture
