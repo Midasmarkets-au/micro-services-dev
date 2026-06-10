@@ -204,11 +204,11 @@ export async function checkClientProfessionalAnswer(data: QuizAnswerData): Promi
  */
 export async function getMyReferralCode(): Promise<ActionResponse<MyReferralCodeResponse>> {
   try {
-    const result = await apiClient.v1.get<MyReferralCodeResponse>('/user/me/refercode');
+    const result = await apiClient.v1.get<{ data: MyReferralCodeResponse }>('/user/me/refercode');
 
     return {
       success: true,
-      data: result,
+      data: result.data,
     };
   } catch (error) {
     logger.error('[getMyReferralCode] Error:', error);

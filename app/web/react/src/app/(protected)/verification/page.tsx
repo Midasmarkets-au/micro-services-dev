@@ -40,8 +40,7 @@ import {
   createChunkFormData,
   createMergeFormData,
 } from '@/lib/utils/fileUpload';
-import { accountTypeOptions, currencyOptions, leverageOptions, platformOptions } from '@/types/verification';
-import { AccountRoleTypes, getPlatformName } from '@/types/accounts';
+import { AccountRoleTypes, getPlatformName, type AccountConfig } from '@/types/accounts';
 import { getTenancy, Tenancies } from '@/core/types/TenantTypes';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 
@@ -65,65 +64,50 @@ export default function VerificationPage() {
   const [quizEnabled, setQuizEnabled] = useState(false);
   const [accountTypeSelections, setAccountTypeSelections] = useState<SelectOption[]>([]);
   const [isAccountTypeRestricted, setIsAccountTypeRestricted] = useState(false);
+  const [accountConfig, setAccountConfig] = useState<AccountConfig | null>(null);
 
   const isInitialized = useRef(false);
   const tenancy = getTenancy();
 
   const defaultAccountTypeOptions = useMemo<SelectOption[]>(() => {
-    const available = siteConfig?.accountTypeAvailable ?? [];
-    if (available.length > 0) {
-      return available.map((id) => ({
+    if (accountConfig?.accountTypeAvailable && accountConfig.accountTypeAvailable.length > 0) {
+      return accountConfig.accountTypeAvailable.map((id) => ({
         value: String(id),
         label: tAccounts(`accountTypes.${id}`),
       }));
     }
-    return accountTypeOptions.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    }));
-  }, [siteConfig?.accountTypeAvailable, tAccounts]);
+    return [];
+  }, [accountConfig?.accountTypeAvailable, tAccounts]);
 
   const defaultCurrencyOptions = useMemo<SelectOption[]>(() => {
-    const available = siteConfig?.currencyAvailable ?? [];
-    if (available.length > 0) {
-      return available.map((id) => ({
+    if (accountConfig?.currencyAvailable && accountConfig.currencyAvailable.length > 0) {
+      return accountConfig.currencyAvailable.map((id) => ({
         value: String(id),
         label: getCurrencyName(id),
       }));
     }
-    return currencyOptions.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    }));
-  }, [getCurrencyName, siteConfig?.currencyAvailable]);
+    return [];
+  }, [accountConfig?.currencyAvailable, getCurrencyName]);
 
   const defaultLeverageOptions = useMemo<SelectOption[]>(() => {
-    const available = siteConfig?.leverageAvailable ?? [];
-    if (available.length > 0) {
-      return available.map((lev) => ({
+    if (accountConfig?.leverageAvailable && accountConfig.leverageAvailable.length > 0) {
+      return accountConfig.leverageAvailable.map((lev) => ({
         value: String(lev),
         label: `${lev}:1`,
       }));
     }
-    return leverageOptions.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    }));
-  }, [siteConfig?.leverageAvailable]);
+    return [];
+  }, [accountConfig?.leverageAvailable]);
 
   const defaultPlatformOptions = useMemo<SelectOption[]>(() => {
-    const available = siteConfig?.tradingPlatformAvailable ?? [];
-    if (available.length > 0) {
-      return available.map((id) => ({
-        value: String(id),
-        label: getPlatformName(id),
+    if (accountConfig?.tradingPlatformAvailable && accountConfig.tradingPlatformAvailable.length > 0) {
+      return accountConfig.tradingPlatformAvailable.map((item) => ({
+        value: String(item.serviceId),
+        label: getPlatformName(item.platform),
       }));
     }
-    return platformOptions.map((item) => ({
-      value: String(item.value),
-      label: item.label,
-    }));
-  }, [siteConfig?.tradingPlatformAvailable]);
+    return [];
+  }, [accountConfig?.tradingPlatformAvailable]);
 
   useEffect(() => {
     if (!isAccountTypeRestricted) {
@@ -171,11 +155,11 @@ export default function VerificationPage() {
     return stepOrder.filter((step) => isStepDone(data, step));
   };
 
-  const fetchReferralData = async () => {
+  const fetchReferralData = async (baseAccountTypeOptions: SelectOption[]) => {
     const referralCodeResult = await execute(async () => fetchAction<{ referCode: string }>('getMyReferralCode'));
     if (!referralCodeResult.success || !referralCodeResult.data?.referCode) {
       setIsAccountTypeRestricted(false);
-      setAccountTypeSelections(defaultAccountTypeOptions);
+      setAccountTypeSelections(baseAccountTypeOptions);
       return;
     }
 
@@ -185,7 +169,7 @@ export default function VerificationPage() {
     const referralInfoResult = await execute(async () => fetchAction<{ data?: { serviceType?: number; summary?: { allowAccountTypes?: { accountType: number }[]; schema?: { accountType: number }[] } }; serviceType?: number; summary?: { allowAccountTypes?: { accountType: number }[]; schema?: { accountType: number }[] } }>('getReferralInfoByReferralCode', code));
     if (!referralInfoResult.success || !referralInfoResult.data) {
       setIsAccountTypeRestricted(false);
-      setAccountTypeSelections(defaultAccountTypeOptions);
+      setAccountTypeSelections(baseAccountTypeOptions);
       return;
     }
 
@@ -211,7 +195,7 @@ export default function VerificationPage() {
     }
 
     setIsAccountTypeRestricted(false);
-    setAccountTypeSelections(defaultAccountTypeOptions);
+    setAccountTypeSelections(baseAccountTypeOptions);
   };
 
   useEffect(() => {
@@ -224,7 +208,17 @@ export default function VerificationPage() {
         setQuizEnabled(Boolean(configResult.data?.verificationQuizEnabled));
       }
 
-      await fetchReferralData();
+      const liveConfigResult = await execute(async () => fetchAction<AccountConfig>('getLiveAccountConfig'));
+      if (liveConfigResult.success && liveConfigResult.data) {
+        setAccountConfig(liveConfigResult.data);
+      }
+
+      const baseAccountTypeOptions: SelectOption[] = (siteConfig?.accountTypeAvailable ?? []).map((id) => ({
+        value: String(id),
+        label: tAccounts(`accountTypes.${id}`),
+      }));
+
+      await fetchReferralData(baseAccountTypeOptions);
 
       const verificationResult = await execute(async () => fetchAction<VerificationData>('getVerificationStatus'));
       if (verificationResult.success && verificationResult.data) {
@@ -264,10 +258,13 @@ export default function VerificationPage() {
       return;
     }
 
+    const platformConfig = accountConfig?.tradingPlatformAvailable?.find(
+      (p) => p.serviceId === data.serviceId
+    );
     const payload = {
       ...data,
-      platform: data.serviceId === 30 ? 30 : 20,
-      referral: referralCode || undefined,
+      platform: platformConfig?.platform ?? (data.serviceId === 30 ? 30 : 20),
+      ...(referralCode ? { referral: referralCode } : {}),
     };
 
     const result = await execute(saveStartedInfo, payload);

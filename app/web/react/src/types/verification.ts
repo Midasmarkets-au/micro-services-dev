@@ -49,7 +49,7 @@ export interface InfoData {
   idNumber: string;
   idIssuer?: string;
   idIssuedOn?: string;
-  idExpireOn?: string;
+  expire_date?: string;
   socialMedium?: SocialMedium[];
 }
 
