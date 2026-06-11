@@ -35,6 +35,8 @@ public partial class SalesRebateSchema
         public string SalesName { get; set; } = null!;
         public string SalesCode { get; set; } = null!;
         public string RebateName { get; set; } = null!;
+        public string SalesEmail { get; set; } = null!;
+        public string RebateEmail { get; set; } = null!;
     }
 }
 
@@ -49,6 +51,8 @@ public static class SalesRebateSchemaExtensions
             SalesName = x.SalesAccount.Party.NativeName,
             SalesCode = x.SalesAccount.Code,
             RebateName = x.RebateAccount.Party.NativeName,
+            SalesEmail = x.SalesAccount.Party.Email,
+            RebateEmail = x.RebateAccount.Party.Email,
             RebateAccountId = x.RebateAccountId,
             RebateAccountUid = x.RebateAccount.Uid,
             Rebate = x.Rebate,
