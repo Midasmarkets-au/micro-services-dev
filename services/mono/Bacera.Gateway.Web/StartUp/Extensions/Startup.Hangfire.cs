@@ -119,17 +119,21 @@ public partial class Startup
             w => w.MonitorAsync(),
             "*/1 * * * *");
 
+        // Fire at BOTH the DST (21:xx) and non-DST (22:xx) UTC times; the *DstGuarded
+        // wrappers run the real job only at the hour correct for the current DST state,
+        // decided at fire time. This self-corrects across DST transitions — the old
+        // form baked the cron string once at startup and drifted 1h until restart.
         RecurringJob.AddOrUpdate<IReportJob>(
             "Close Trade Job",
             HangFireQueues.AccountReport,
-            w => w.ExecuteCloseTradeJobAsync(),
-            Utils.IsCurrentDSTLosAngeles(DateTime.UtcNow) ? "30 21 * * *" : "30 22 * * *");
+            w => w.ExecuteCloseTradeJobDstGuardedAsync(),
+            "30 21,22 * * *");
 
         RecurringJob.AddOrUpdate<IReportJob>(
             "Report Account Daily Confirmation",
             HangFireQueues.AccountConfirmationReport,
-            w => w.GenerateAccountDailyConfirmationReport(CancellationToken.None),
-            Utils.IsCurrentDSTLosAngeles(DateTime.UtcNow) ? "29 21 * * 1-5" : "29 22 * * 1-5");
+            w => w.GenerateAccountDailyConfirmationReportDstGuardedAsync(),
+            "29 21,22 * * 1-5");
     }
 }
 
