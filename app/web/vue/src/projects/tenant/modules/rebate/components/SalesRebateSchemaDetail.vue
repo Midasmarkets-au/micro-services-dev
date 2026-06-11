@@ -1,7 +1,7 @@
 <template>
   <SimpleForm
     ref="salesRebateSchemaDetailShowRef"
-    :title="'Schema Detail'"
+    :title="$t('rebate.salesRebateSchema.schemaDetail')"
     :is-loading="isLoading"
     :width="800"
     disable-footer
@@ -18,7 +18,7 @@
         <div class="row mb-7">
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Sales Type
+              {{ $t("rebate.salesRebateSchema.salesType") }}
             </label>
             <el-select
               v-model="schemaInfo.salesType"
@@ -35,17 +35,18 @@
 
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Schedule
+              {{ $t("rebate.salesRebateSchema.schedule") }}
               <span
                 v-if="schemaInfo.status == -1"
                 class="ms-3"
                 style="color: #900000"
-                >( All records will be updated after approve !! )</span
+                >{{ $t("rebate.salesRebateSchema.updateAfterApprove") }}</span
               >
-              <span v-else class="ms-3" style="color: #900000"
-                >( All "{{ schemaInfo.rebateAccountUid }}" records will be
-                updated !! )</span
-              >
+              <span v-else class="ms-3" style="color: #900000">{{
+                $t("rebate.salesRebateSchema.updateUidRecords", {
+                  uid: schemaInfo.rebateAccountUid,
+                })
+              }}</span>
             </label>
             <div class="d-flex align-items-center mt-2">
               <input
@@ -54,21 +55,27 @@
                 value="0"
                 v-model="schemaInfo.schedule"
               />
-              <label class="ms-1 me-7" for="daily">Daily</label>
+              <label class="ms-1 me-7" for="daily">{{
+                $t("rebate.salesRebateSchema.daily")
+              }}</label>
               <input
                 id="month"
                 type="radio"
                 value="3"
                 v-model="schemaInfo.schedule"
               />
-              <label class="ms-1 me-7" for="month">Monthly</label>
+              <label class="ms-1 me-7" for="month">{{
+                $t("rebate.salesRebateSchema.monthly")
+              }}</label>
               <input
                 id="pause"
                 type="radio"
                 value="1"
                 v-model="schemaInfo.schedule"
               />
-              <label class="ms-1 me-7" for="pause">Pause</label>
+              <label class="ms-1 me-7" for="pause">{{
+                $t("rebate.salesRebateSchema.pause")
+              }}</label>
             </div>
           </div>
         </div>
@@ -76,7 +83,7 @@
         <div class="row mb-5">
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Sales Account Uid
+              {{ $t("rebate.salesRebateSchema.salesAccountUid") }}
             </label>
             <Field
               v-model="schemaInfo.salesAccountUid"
@@ -95,7 +102,7 @@
           </div>
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Target Account Uid
+              {{ $t("rebate.salesRebateSchema.targetAccountUid") }}
             </label>
             <Field
               v-model="schemaInfo.rebateAccountUid"
@@ -117,7 +124,7 @@
         <div class="row mb-9">
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Standard
+              {{ $t("rebate.salesRebateSchema.standard") }}
             </label>
             <Field
               v-model="schemaInfo.rebate"
@@ -133,7 +140,7 @@
           </div>
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Raw Rebate
+              {{ $t("rebate.salesRebateSchema.rawRebate") }}
             </label>
             <Field
               v-model="schemaInfo.alphaRebate"
@@ -152,7 +159,7 @@
         <div class="row mb-9">
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Exclude Account
+              {{ $t("rebate.salesRebateSchema.excludeAccount") }}
             </label>
             <Field
               v-model="schemaInfo.excludeAccount"
@@ -171,7 +178,7 @@
           </div>
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Exclude Symbol
+              {{ $t("rebate.salesRebateSchema.excludeSymbol") }}
             </label>
             <Field
               v-model="schemaInfo.excludeSymbol"
@@ -193,7 +200,7 @@
         <div class="row mb-5">
           <div class="col-12">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Note
+              {{ $t("rebate.salesRebateSchema.note") }}
             </label>
             <Field
               v-model="schemaInfo.note"
@@ -233,27 +240,7 @@
               class="fa-solid fa-triangle-exclamation fa-xl me-3"
               style="color: #900000"
             ></i>
-            <div>
-              Please note that the updated schema will require re-approval to
-              work.
-            </div>
-          </div>
-          <div class="d-flex align-items-center mb-2" style="font-size: 18px">
-            <i
-              class="fa-solid fa-triangle-exclamation fa-xl me-3"
-              style="color: #900000"
-            ></i>
-            <div>请注意，更新后的反佣規則需要重新批准才能生效。</div>
-          </div>
-          <div class="d-flex align-items-center" style="font-size: 18px">
-            <i
-              class="fa-solid fa-triangle-exclamation fa-xl me-3"
-              style="color: #900000"
-            ></i>
-            <div>
-              Xin lưu ý rằng các quy tắc phân phối hoa hồng được cập nhật cần
-              phải được phê duyệt lại trước khi chúng có hiệu lực.
-            </div>
+            <div>{{ $t("rebate.salesRebateSchema.reapprovalNote") }}</div>
           </div>
         </div>
         <div class="mt-13 d-flex flex-row-reverse">
@@ -286,6 +273,9 @@ import SimpleForm from "@/components/SimpleForm.vue";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 import { Field } from "vee-validate";
 import { salesTypeOptions } from "@/core/types/SalesTypes";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const emits = defineEmits<{
   (e: "refresh"): void;
@@ -310,7 +300,7 @@ const isEmpty = (v: any) => v === "" || v === null || v === undefined;
 const update = async () => {
   const { rebate, alphaRebate } = schemaInfo.value;
   if (isEmpty(rebate) || isEmpty(alphaRebate)) {
-    MsgPrompt.error("Please fill in Rebate and Raw Rebate.");
+    MsgPrompt.error(t("rebate.salesRebateSchema.fillRebate"));
     return;
   }
   if (isEmpty(schemaInfo.value.proRebate)) schemaInfo.value.proRebate = "0";

@@ -19,10 +19,10 @@
   >
     <thead>
       <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
-        <th>Sales UID</th>
-        <th>Target UID</th>
-        <th>Standard</th>
-        <th>Raw</th>
+        <th>{{ $t("rebate.salesRebateSchema.salesUid") }}</th>
+        <th>{{ $t("rebate.salesRebateSchema.targetUid") }}</th>
+        <th>{{ $t("rebate.salesRebateSchema.standard") }}</th>
+        <th>{{ $t("rebate.salesRebateSchema.raw") }}</th>
         <th>{{ $t("fields.note") }}</th>
         <th>{{ $t("fields.operator") }}</th>
         <th>{{ $t("action.action") }}</th>
@@ -63,11 +63,12 @@
             >{{ item.salesAccountUid }}
             <i
               class="fa-regular fa-copy ms-2 text-muted cursor-pointer"
-              title="Copy UID"
+              :title="$t('rebate.salesRebateSchema.copyUid')"
               @click="copyUid(item.salesAccountUid)"
             ></i>
           </div>
           <div class="text-muted fs-8">{{ item.salesName }}</div>
+          <div class="text-muted fs-8">{{ item.salesEmail }}</div>
         </td>
         <td>
           <div>
@@ -77,11 +78,12 @@
             >{{ item.rebateAccountUid }}
             <i
               class="fa-regular fa-copy ms-2 text-muted cursor-pointer"
-              title="Copy UID"
+              :title="$t('rebate.salesRebateSchema.copyUid')"
               @click="copyUid(item.rebateAccountUid)"
             ></i>
           </div>
           <div class="text-muted fs-8">{{ item.rebateName }}</div>
+          <div class="text-muted fs-8">{{ item.rebateEmail }}</div>
         </td>
 
         <td>
@@ -157,7 +159,7 @@
             class="fa-solid fa-triangle-exclamation me-2"
             style="color: red"
           ></i
-          >Total
+          >{{ $t("rebate.salesRebateSchema.total") }}
         </td>
         <td></td>
         <td>
@@ -184,13 +186,16 @@ import SchemaNote from "./SalesRebateSchemaNote.vue";
 import RebateService from "../services/RebateService";
 import { salesTypeOptions } from "@/core/types/SalesTypes";
 import { ElMessage } from "element-plus";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const copyUid = async (uid: string | number) => {
   try {
     await navigator.clipboard.writeText(String(uid));
-    ElMessage.success("UID copied");
+    ElMessage.success(t("rebate.salesRebateSchema.uidCopied"));
   } catch {
-    ElMessage.error("Copy failed");
+    ElMessage.error(t("rebate.salesRebateSchema.copyFailed"));
   }
 };
 
