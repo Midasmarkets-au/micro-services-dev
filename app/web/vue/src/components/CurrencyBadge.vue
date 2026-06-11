@@ -15,6 +15,7 @@ const classes = computed(() => {
     "badge-danger": props.currency === 826,
     "badge-warning": props.currency === 392,
     "badge-info": props.currency === 36,
+    "badge-secondary": props.currency === 841,
   };
 });
 
@@ -30,6 +31,8 @@ const currencyCode = computed((): string => {
       return "JPY";
     case 36:
       return "AUD";
+    case 841:
+      return "USC";
     default:
       return "USD";
   }
