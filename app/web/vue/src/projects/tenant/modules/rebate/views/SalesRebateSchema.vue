@@ -1,61 +1,15 @@
 <template>
   <div class="d-flex flex-column flex-column-fluid">
-    <ul
-      class="nav nav-custom nav-tabs nav-line-tabs nav-line-tabs-2x border-0 fs-4 fw-semobold mb-8"
-    >
-      <li class="nav-item">
-        <a
-          class="nav-link text-active-primary pb-4"
-          :class="[
-            { active: currentTab === tab.active },
-            { 'disabled opacity-50 pe-none': isLoading },
-          ]"
-          data-bs-toggle="tab"
-          href="#"
-          @click="
-            (currentTab = tab.active), (currentSalesType = -1), fetchData(1)
-          "
-          >ALL</a
-        >
-      </li>
-      <li
-        v-for="(types, index) in salesTypeOptions"
-        :key="index"
-        class="nav-item"
-      >
-        <a
-          class="nav-link text-active-primary pb-4"
-          :class="[
-            { active: currentSalesType === types.value },
-            { 'disabled opacity-50 pe-none': isLoading },
-          ]"
-          data-bs-toggle="tab"
-          href="#"
-          @click="changeSalesType(types.value)"
-          >{{ types.tab }}</a
-        >
-      </li>
-
-      <li class="nav-item">
-        <a
-          class="nav-link text-active-primary pb-4"
-          data-bs-toggle="tab"
-          href="#"
-          @click="waitingApprove"
-          >Waiting Approve</a
-        >
-      </li>
-    </ul>
     <div class="card mb-5 mb-xl-8">
       <div class="card-header">
         <div
           class="card-title d-flex justify-content-between"
           style="width: 100%"
         >
-          <div class="d-flex">
+          <div class="d-flex align-items-center">
             <el-input
               v-model="criteria.salesAccountUid"
-              placeholder="Search Sales UID"
+              :placeholder="$t('rebate.salesRebateSchema.searchSalesUid')"
               @keyup.enter="fetchData(1)"
               :disabled="tab.pending === currentTab"
             >
@@ -64,30 +18,57 @@
             <el-input
               class="ms-5"
               v-model="criteria.rebateAccountUid"
-              placeholder="Search Target UID"
+              :placeholder="$t('rebate.salesRebateSchema.searchTargetUid')"
               @keyup.enter="fetchData(1)"
               :disabled="tab.pending === currentTab"
             >
             </el-input>
 
+            <el-select
+              v-model="currentSalesType"
+              :placeholder="$t('rebate.salesRebateSchema.salesType')"
+              @change="onSalesTypeChange"
+              :disabled="tab.pending === currentTab"
+              class="ms-5"
+              style="width: 220px; flex-shrink: 0"
+            >
+              <el-option
+                :label="$t('rebate.salesRebateSchema.all')"
+                :value="-1"
+              />
+              <el-option
+                v-for="t in salesTypeOptions"
+                :key="t.value"
+                :label="$t('rebate.salesRebateSchema.type' + t.value)"
+                :value="t.value"
+              />
+            </el-select>
+
             <el-button
               class="ms-5"
               @click="fetchData(1)"
               :disabled="tab.pending === currentTab"
-              >Search</el-button
+              >{{ $t("rebate.salesRebateSchema.search") }}</el-button
             >
             <el-button
               class="ms-5"
               @click="reset"
               :disabled="tab.pending === currentTab"
-              >Reset</el-button
+              >{{ $t("rebate.salesRebateSchema.reset") }}</el-button
             >
+
+            <div class="d-flex align-items-center ms-8">
+              <el-switch v-model="showPending" @change="onPendingToggle" />
+              <span class="ms-2 fs-6 text-nowrap">{{
+                $t("rebate.salesRebateSchema.waitingApprove")
+              }}</span>
+            </div>
           </div>
 
           <div class="d-flex">
-            <el-button class="ms-5" @click="showAddNewModal"
-              >Add Rule</el-button
-            >
+            <el-button class="ms-5" @click="showAddNewModal">{{
+              $t("rebate.salesRebateSchema.addRule")
+            }}</el-button>
           </div>
         </div>
       </div>
@@ -147,6 +128,7 @@ const tab = ref({
 
 const currentTab = ref(tab.value.active);
 const currentSalesType = ref(-1);
+const showPending = ref(false);
 
 const criteria = ref({
   page: 1,
@@ -158,15 +140,33 @@ const criteria = ref({
 });
 
 const reset = () => {
-  if (currentSalesType.value != -1) {
-    currentTab.value = tab.value.active;
-  }
+  currentSalesType.value = -1;
+  showPending.value = false;
+  currentTab.value = tab.value.active;
   criteria.value.page = 1;
   criteria.value.size = 999;
   criteria.value.salesAccountUid = "";
   criteria.value.rebateAccountUid = "";
   criteria.value.sortField = "SalesAccountId";
 
+  fetchData(1);
+};
+
+// Sales type dropdown filter (client-side on the active set).
+const onSalesTypeChange = () => {
+  if (currentSalesType.value === -1) {
+    data.value = originalActiveData.value;
+  } else {
+    changeSalesType(currentSalesType.value);
+  }
+};
+
+// Waiting-approve toggle: switches the status filter (active <-> pending).
+const onPendingToggle = () => {
+  currentSalesType.value = -1;
+  currentTab.value = showPending.value ? tab.value.pending : tab.value.active;
+  criteria.value.salesAccountUid = "";
+  criteria.value.rebateAccountUid = "";
   fetchData(1);
 };
 
@@ -243,12 +243,6 @@ const changeSalesType = async (type: any) => {
     innerArray.some((item) => item.salesType === type)
   );
   isLoading.value = false;
-};
-
-const waitingApprove = () => {
-  currentSalesType.value = -1;
-  currentTab.value = tab.value.pending;
-  reset();
 };
 
 const showAddNewModal = () => {
