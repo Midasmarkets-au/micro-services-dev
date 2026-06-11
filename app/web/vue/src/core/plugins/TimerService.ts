@@ -105,17 +105,11 @@ export function convertToLocalGMT(
 export function checkIsDST(date: Date, timeZone: string) {
   return momentTimezone.tz(date, timeZone).isDST();
 }
-export function isDateInDST_US() {
-  //store.state.AuthModule.config.utcEnabled
-  // if (store.state.AuthModule.config?.HoursGapForMT5 == 3) {
-  //   return true;
-  // } else {
-  //   return false;
-  // }
-  const now = momentTimezone.tz("America/New_York");
-  const withoutDST = momentTimezone
-    .tz(now, "America/New_York")
-    .clone()
-    .tz("Etc/GMT+5");
-  return now.utcOffset() !== withoutDST.utcOffset();
+// Whether US DST is in effect for `date` (defaults to now). Unified to
+// America/Los_Angeles across the app; US zones share DST start/end dates, so this
+// matches the NY-anchored 5pm-ET offsets except inside the ~3h transition window.
+// Pass the date being converted (not `now`) so a filter for a different season uses
+// the correct offset.
+export function isDateInDST_US(date?: Date | string | number | null) {
+  return momentTimezone.tz(date ?? new Date(), "America/Los_Angeles").isDST();
 }

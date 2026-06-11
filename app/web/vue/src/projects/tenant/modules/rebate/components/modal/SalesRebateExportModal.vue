@@ -186,16 +186,17 @@ watch(
   () => period.value,
   (periodVal) => {
     const [from, to] = periodVal;
-    const isDST = isDateInDST_US();
+    const isDSTFrom = isDateInDST_US(from);
+    const isDSTTo = isDateInDST_US(to);
     criteria.value.from = from
       ? moment(from)
           .subtract(1, "days")
-          .format(`YYYY-MM-DD[T]${isDST ? 21 : 22}:00:00.000[Z]`)
+          .format(`YYYY-MM-DD[T]${isDSTFrom ? 21 : 22}:00:00.000[Z]`)
       : null;
     criteria.value.to = to
       ? moment(to)
           .subtract(1, "days")
-          .format(`YYYY-MM-DD[T]${isDST ? 20 : 21}:59:59.000[Z]`)
+          .format(`YYYY-MM-DD[T]${isDSTTo ? 20 : 21}:59:59.000[Z]`)
       : null;
   }
 );
