@@ -62,7 +62,18 @@ public static partial class Utils
     /// All timezone rely on it
     /// </summary>
     public static bool IsCurrentDSTLosAngeles(DateTime date)
-        => TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles").IsDaylightSavingTime(date);
+    {
+        // Callers pass a UTC instant. A DateTime with Kind=Unspecified (e.g. read from
+        // the DB) would be treated by IsDaylightSavingTime as LA-local wall-clock time
+        // and can misjudge DST near a transition. Normalise to a UTC instant first.
+        var utc = date.Kind switch
+        {
+            DateTimeKind.Utc         => date,
+            DateTimeKind.Local       => date.ToUniversalTime(),
+            _                        => DateTime.SpecifyKind(date, DateTimeKind.Utc), // Unspecified ⇒ assume UTC (codebase convention)
+        };
+        return TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles").IsDaylightSavingTime(utc);
+    }
     // => false;
 
     public static bool IsWithinCloseMarketTime()
