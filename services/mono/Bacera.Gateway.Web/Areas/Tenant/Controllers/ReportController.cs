@@ -206,6 +206,26 @@ public class ReportController(
                     isReleasedTimeBased = useClosingTime != true; // API入口：如果 UseClosingTime 未设置或为 false，则使用 ReleasedTime
                 }
             }
+
+            // Determine the report flavor from the Query flags FIRST, falling back to the name.
+            // Older regen bugs created mis-named rows (Name "Daily Equity Report" but Query carries
+            // aggregateByTopSale=true). Trusting the flags keeps the prefix, name patterns and paired
+            // lookup correct even for those rows, instead of silently demoting them to the base flavor.
+            bool aggregateByTopSaleFlag = false;
+            bool aggregateByOfficeFlag = false;
+            try
+            {
+                var flavorDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(item.Query);
+                if (flavorDict != null)
+                {
+                    if (flavorDict.TryGetValue("aggregateByTopSale", out var tsFlag)) aggregateByTopSaleFlag = Convert.ToBoolean(tsFlag);
+                    if (flavorDict.TryGetValue("aggregateByOffice", out var ofFlag)) aggregateByOfficeFlag = Convert.ToBoolean(ofFlag);
+                }
+            }
+            catch { /* fall back to name-based detection below */ }
+
+            var isPerTopSaleReport = aggregateByTopSaleFlag || currentName.Contains("Per Top Sale");
+            var isPerOfficeReport = aggregateByOfficeFlag || currentName.Contains("Per Office");
             
             // 从 query 中提取日期
             DateTime? reportDate = null;
@@ -253,16 +273,36 @@ public class ReportController(
                 else if (reportType == (int)ReportRequestTypes.DailyEquity)
                 {
                     var is3DayReport = currentName.Contains("(Sat-Mon)");
-                    var isPerOffice = currentName.Contains("Per Office");
-                    var prefix = isPerOffice ? "Daily Equity Per Office" : "Daily Equity Report";
-                    
+                    // Flavor comes from the Query flags (see above), so a mis-named "Per Top Sale" row
+                    // still rebuilds the correct "Daily Equity Per Top Sale" prefix instead of "Daily
+                    // Equity Report" — which is what previously spawned mis-named duplicate rows on regen.
+                    var prefix = isPerTopSaleReport
+                        ? "Daily Equity Per Top Sale"
+                        : isPerOfficeReport
+                            ? "Daily Equity Per Office"
+                            : "Daily Equity Report";
+
                     baseNamePattern = prefix;
                     if (is3DayReport)
                     {
-                        // For 3-day reports, adjust date parameters to cover Fri->Mon
-                        fromDate = reportDate.Value.AddDays(-4); // Friday (4 days before Tuesday)
+                        // For 3-day (Sat-Mon) reports, the date embedded in the name is the Monday
+                        // (mondayDate), so the window start is Monday - 3 = Friday 23:59:59 (= start of
+                        // Saturday). This MUST match ReportJob's `date.AddDays(-3)`; using -4 would land on
+                        // Thursday and make Previous Equity show the prior trading day's close (off by one).
+                        fromDate = reportDate.Value.AddDays(-3); // Friday (3 days before the Monday in the name)
                         closingTimeNamePattern = $"{prefix} (Sat-Mon) (MT5 ClosingTime Based) {dateStr}";
                         releasedTimeNamePattern = $"{prefix} (Sat-Mon) (ReleasedTime Based) {dateStr}";
+
+                        // Self-heal the item's OWN Query (and Name). RegenRequest otherwise only rebuilds
+                        // the PAIRED row, so a Sat-Mon row whose stored `from` was corrupted by the old
+                        // AddDays(-4) regen (Thursday instead of Friday) would keep producing Previous
+                        // Equity = Thursday's close on every re-regen. The Sat-Mon window is fully
+                        // determined by the Monday in the name, so recompute it deterministically here.
+                        var healedFromUtc = DateTime.SpecifyKind(fromDate, DateTimeKind.Utc);
+                        var healedToUtc = DateTime.SpecifyKind(reportDate.Value, DateTimeKind.Utc);
+                        item.Query = BuildEquityQuery(healedFromUtc, healedToUtc);
+                        item.Name = isReleasedTimeBased ? releasedTimeNamePattern : closingTimeNamePattern;
+                        currentName = item.Name;
                     }
                     else
                     {
@@ -272,13 +312,11 @@ public class ReportController(
                 }
                 else if (reportType == (int)ReportRequestTypes.DailyEquityMonthly)
                 {
-                    // Pick the prefix matching the original report name so we
-                    // regenerate the right flavor (Per Sales / Per Office / Per Top Sale).
-                    var isPerOffice = currentName.Contains("Per Office");
-                    var isPerTopSale = currentName.Contains("Per Top Sale");
-                    var prefix = isPerTopSale
+                    // Pick the prefix matching the original report flavor (from Query flags first, then
+                    // name) so we regenerate the right flavor (Per Sales / Per Office / Per Top Sale).
+                    var prefix = isPerTopSaleReport
                         ? "Monthly Equity Per Top Sale"
-                        : isPerOffice
+                        : isPerOfficeReport
                             ? "Monthly Equity Per Office"
                             : "Monthly Equity Report";
                     var monthStr = reportDate.Value.ToString("yyyy-MM");
@@ -315,9 +353,6 @@ public class ReportController(
                 }
                 
                 ReportRequest? pairedReport = null;
-
-                var isPerOfficeReport = currentName.Contains("Per Office");
-                var isPerTopSaleReport = currentName.Contains("Per Top Sale");
 
                 // Build a query JSON that preserves the report flavor for daily-equity-style requests.
                 // After ProcessMonthlyEquityRequestAsync was changed to be 1:1 (one CSV per
