@@ -1,7 +1,5 @@
 use anyhow::Result;
 use chrono::{DateTime, Datelike, Duration, NaiveDate, TimeZone, Utc};
-use chrono_tz::America::New_York;
-use chrono_tz::OffsetComponents;
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
@@ -21,17 +19,17 @@ const USC_CENT_FACTOR: i64 = 100;
 
 // ── MT5-server (EET) day/month boundaries ────────────────────────────────────
 // The MT5 server runs on EET: UTC+2 in winter, UTC+3 in summer (EEST). To keep
-// SalesRebate settlement windows consistent with the existing front-end
-// (`isDateInDST_US` in helpers.ts / SalesRebateExportModal) and mono
-// (`ReportJob` / `IsCurrentDSTLosAngeles`), DST is decided by US rules: when
-// America/New_York is on daylight time the server offset is +3h, otherwise +2h.
-// The US-vs-EU DST transition gap is a known pre-existing quirk, mirrored here on
-// purpose so these day boundaries line up with the trade-rebate export/report views.
+// SalesRebate settlement windows consistent with the rest of the platform — mono
+// (`ReportJob` / `IsCurrentDSTLosAngeles`), the trade-rebate export/report views,
+// and the front-end — DST is decided by US rules via `is_dst_los_angeles`: on US
+// daylight time the server offset is +3h, otherwise +2h. The US-vs-EU DST gap is a
+// known pre-existing quirk, mirrored here on purpose so these day boundaries line
+// up with those views. (Same `is_dst_los_angeles` source as close_trade /
+// account_daily — keep them unified.)
 
 /// MT5-server UTC offset in hours (+2 or +3) for the given instant.
 fn mt5_offset_hours(at: DateTime<Utc>) -> i64 {
-    let ny = New_York.offset_from_utc_datetime(&at.naive_utc());
-    if ny.dst_offset() != Duration::zero() {
+    if crate::utils::is_dst_los_angeles(at) {
         3
     } else {
         2
@@ -40,10 +38,18 @@ fn mt5_offset_hours(at: DateTime<Utc>) -> i64 {
 
 /// UTC instant of 00:00 MT5-server time for the server-local date `at` falls on.
 fn server_day_start(at: DateTime<Utc>) -> DateTime<Utc> {
-    let off = mt5_offset_hours(at);
-    let server_wall = at + Duration::hours(off); // server wall-clock
+    // Locate the server calendar day `at` belongs to. Using the offset at `at` is
+    // fine for *locating* the day because all callers pass instants (03:00 UTC,
+    // ~21:00 UTC server midnight) well away from the DST-transition window.
+    let off_at = mt5_offset_hours(at);
+    let server_wall = at + Duration::hours(off_at);
     let midnight = server_wall.date_naive().and_hms_opt(0, 0, 0).unwrap();
-    Utc.from_utc_datetime(&midnight) - Duration::hours(off)
+    let midnight_utc = Utc.from_utc_datetime(&midnight);
+    // Subtract the offset in effect *at that server midnight* (not at `at`). On DST
+    // transition days the two differ; anchoring on the midnight makes consecutive
+    // days tile seamlessly (no 1h overlap in spring / 1h gap in autumn).
+    let off_mid = mt5_offset_hours(midnight_utc);
+    midnight_utc - Duration::hours(off_mid)
 }
 
 /// UTC instant of 00:00 MT5-server time on the 1st of the given server month.
@@ -506,4 +512,58 @@ async fn settle_for_schedule(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn utc(y: i32, m: u32, d: u32, h: u32) -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(y, m, d, h, 0, 0).unwrap()
+    }
+
+    // Daily run at 03:00 UTC settles [yesterday_start, today_start) (see run_daily).
+    fn today_start(run_at: DateTime<Utc>) -> DateTime<Utc> {
+        server_day_start(run_at)
+    }
+    fn yesterday_start(run_at: DateTime<Utc>) -> DateTime<Utc> {
+        server_day_start(server_day_start(run_at) - Duration::hours(1))
+    }
+
+    #[test]
+    fn normal_day_matches_old_behavior() {
+        // Summer (US DST, +3): server midnight of Jun 9 = Jun 8 21:00 UTC.
+        assert_eq!(server_day_start(utc(2026, 6, 9, 3)), utc(2026, 6, 8, 21));
+        // Winter (no DST, +2): server midnight of Jan 15 = Jan 14 22:00 UTC.
+        assert_eq!(server_day_start(utc(2026, 1, 15, 3)), utc(2026, 1, 14, 22));
+    }
+
+    #[test]
+    fn spring_forward_tiles_no_overlap() {
+        // US spring-forward 2026-03-08 (LA DST starts 10:00 UTC).
+        // today_start of day N's run must equal yesterday_start of day N+1's run.
+        assert_eq!(
+            today_start(utc(2026, 3, 8, 3)),
+            yesterday_start(utc(2026, 3, 9, 3)),
+            "adjacent daily runs must share the boundary (no 1h overlap)"
+        );
+        // The server day settled by the Mar 9 run is the 23h short day.
+        let prev = yesterday_start(utc(2026, 3, 9, 3));
+        let today = today_start(utc(2026, 3, 9, 3));
+        assert_eq!(today - prev, Duration::hours(23));
+    }
+
+    #[test]
+    fn fall_back_tiles_no_gap() {
+        // US fall-back 2026-11-01 (LA DST ends 09:00 UTC).
+        assert_eq!(
+            today_start(utc(2026, 11, 1, 3)),
+            yesterday_start(utc(2026, 11, 2, 3)),
+            "adjacent daily runs must share the boundary (no 1h gap)"
+        );
+        // The server day settled by the Nov 2 run is the 25h long day.
+        let prev = yesterday_start(utc(2026, 11, 2, 3));
+        let today = today_start(utc(2026, 11, 2, 3));
+        assert_eq!(today - prev, Duration::hours(25));
+    }
 }
