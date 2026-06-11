@@ -49,6 +49,7 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
         public long     Id                 { get; set; }
         public long     Ticket             { get; set; }
         public long     TradeAccountNumber { get; set; }
+        public int      TradeAccountCurrencyId { get; set; }
         public string   Symbol             { get; set; } = "";
         public int      Volume             { get; set; }
         public string   RebateType         { get; set; } = "";
@@ -141,6 +142,7 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
                 Id                 = x.Id,
                 Ticket             = x.Ticket,
                 TradeAccountNumber = x.TradeAccountNumber,
+                TradeAccountCurrencyId = x.TradeAccountCurrencyId,
                 Symbol             = x.Symbol,
                 Volume             = x.Volume,
                 RebateType         = x.RebateType,
@@ -269,16 +271,18 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
         await using var tx = await conn.BeginTransactionAsync();
         try
         {
-            // 1. Load sales account
+            // 1. Load payee (target) account — RebateAccountId, which differs from
+            //    SalesAccountId for override schemas (upline collects on downline volume).
+            var payeeAccountId = record.RebateAccountId ?? record.SalesAccountId;
             long partyId; int currencyId; int fundType; long? walletId;
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
                 cmd.CommandText = @"SELECT ""PartyId"", ""CurrencyId"", ""FundType"", ""WalletId""
                                     FROM trd.""_Account"" WHERE ""Id"" = @id";
-                cmd.Parameters.AddWithValue("@id", record.SalesAccountId);
+                cmd.Parameters.AddWithValue("@id", payeeAccountId);
                 await using var reader = await cmd.ExecuteReaderAsync();
-                if (!await reader.ReadAsync()) return BadRequest(new { error = "Sales account not found" });
+                if (!await reader.ReadAsync()) return BadRequest(new { error = "Rebate target account not found" });
                 partyId    = reader.GetInt64(0);
                 currencyId = reader.GetInt32(1);
                 fundType   = reader.GetInt32(2);
@@ -307,7 +311,7 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
                     upd.Transaction = tx;
                     upd.CommandText = @"UPDATE trd.""_Account"" SET ""WalletId"" = @wid WHERE ""Id"" = @aid";
                     upd.Parameters.AddWithValue("@wid", walletId);
-                    upd.Parameters.AddWithValue("@aid", record.SalesAccountId);
+                    upd.Parameters.AddWithValue("@aid", payeeAccountId);
                     await upd.ExecuteNonQueryAsync();
                 }
             }

@@ -14,6 +14,10 @@ use crate::AppContext;
 
 const ALPHA_TYPES: &[i16] = &[6, 9, 10, 14, 18, 19, 20];
 const PRO_TYPES: &[i16] = &[5, 8, 21];
+/// USC (US-cent) account currency. Cent accounts trade cent-lots worth 1/100 of a
+/// USD lot, so their rebate is scaled down by this factor.
+const USC_CURRENCY_ID: i32 = 841;
+const USC_CENT_FACTOR: i64 = 100;
 
 // ── MT5-server (EET) day/month boundaries ────────────────────────────────────
 // The MT5 server runs on EET: UTC+2 in winter, UTC+3 in summer (EEST). To keep
@@ -349,15 +353,15 @@ async fn settle_for_schedule(
 
     for schema in &schemas {
         if force {
-            db::delete_period_summary(pool, schema.sales_account_id, period_start).await?;
+            db::delete_period_summary(pool, schema.sales_account_id, schema.rebate_account_id, period_start).await?;
             info!(
-                "SalesRebate: force-cleared sales_account={} period_start={}",
-                schema.sales_account_id, period_start
+                "SalesRebate: force-cleared sales_account={} rebate_account={} period_start={}",
+                schema.sales_account_id, schema.rebate_account_id, period_start
             );
-        } else if db::summary_exists(pool, schema.sales_account_id, period_start).await? {
+        } else if db::summary_exists(pool, schema.sales_account_id, schema.rebate_account_id, period_start).await? {
             info!(
-                "SalesRebate: skipping sales_account={} period_start={} — already settled",
-                schema.sales_account_id, period_start
+                "SalesRebate: skipping sales_account={} rebate_account={} period_start={} — already settled",
+                schema.sales_account_id, schema.rebate_account_id, period_start
             );
             continue;
         }
@@ -395,7 +399,11 @@ async fn settle_for_schedule(
 
             // _SalesRebateSchema.Rebate is old-table int×10000; divide to get real decimal rate.
             // amount = (rebate_value / 10000) * volume  (volume is raw units)
-            let rebate_decimal = Decimal::from(rebate_value) / Decimal::from(10000);
+            let mut rebate_decimal = Decimal::from(rebate_value) / Decimal::from(10000);
+            // USC (cent) accounts: value/volume is 1/100 of USD, so scale the rebate down.
+            if trade.currency_id == USC_CURRENCY_ID {
+                rebate_decimal /= Decimal::from(USC_CENT_FACTOR);
+            }
             let amount = rebate_decimal * Decimal::from(trade.volume);
 
             if !excluded {
@@ -446,6 +454,7 @@ async fn settle_for_schedule(
         };
         let summary = NewSalesRebateSummary {
             sales_account_id: schema.sales_account_id,
+            rebate_account_id: schema.rebate_account_id,
             period_start,
             period_end,
             schedule_type,
@@ -475,10 +484,10 @@ async fn settle_for_schedule(
                     );
                 }
                 if schema.auto_release && total_amount > Decimal::ZERO {
-                    match db::release_summary(pool, rebate_id, created_on, schema.sales_account_id, total_amount, Some(matter_id)).await {
+                    match db::release_summary(pool, rebate_id, created_on, schema.rebate_account_id, total_amount, Some(matter_id)).await {
                         Ok(wt_id) => info!(
-                            "SalesRebate: auto-released sales_account={} rebate_id={} wt_id={}",
-                            schema.sales_account_id, rebate_id, wt_id
+                            "SalesRebate: auto-released rebate_account={} rebate_id={} wt_id={}",
+                            schema.rebate_account_id, rebate_id, wt_id
                         ),
                         Err(e) => error!(
                             "SalesRebate: auto-release failed rebate_id={}: {:#}",
