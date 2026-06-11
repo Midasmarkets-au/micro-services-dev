@@ -349,15 +349,15 @@ async fn settle_for_schedule(
 
     for schema in &schemas {
         if force {
-            db::delete_period_summary(pool, schema.sales_account_id, period_start).await?;
+            db::delete_period_summary(pool, schema.sales_account_id, schema.rebate_account_id, period_start).await?;
             info!(
-                "SalesRebate: force-cleared sales_account={} period_start={}",
-                schema.sales_account_id, period_start
+                "SalesRebate: force-cleared sales_account={} rebate_account={} period_start={}",
+                schema.sales_account_id, schema.rebate_account_id, period_start
             );
-        } else if db::summary_exists(pool, schema.sales_account_id, period_start).await? {
+        } else if db::summary_exists(pool, schema.sales_account_id, schema.rebate_account_id, period_start).await? {
             info!(
-                "SalesRebate: skipping sales_account={} period_start={} — already settled",
-                schema.sales_account_id, period_start
+                "SalesRebate: skipping sales_account={} rebate_account={} period_start={} — already settled",
+                schema.sales_account_id, schema.rebate_account_id, period_start
             );
             continue;
         }
@@ -446,6 +446,7 @@ async fn settle_for_schedule(
         };
         let summary = NewSalesRebateSummary {
             sales_account_id: schema.sales_account_id,
+            rebate_account_id: schema.rebate_account_id,
             period_start,
             period_end,
             schedule_type,
@@ -475,10 +476,10 @@ async fn settle_for_schedule(
                     );
                 }
                 if schema.auto_release && total_amount > Decimal::ZERO {
-                    match db::release_summary(pool, rebate_id, created_on, schema.sales_account_id, total_amount, Some(matter_id)).await {
+                    match db::release_summary(pool, rebate_id, created_on, schema.rebate_account_id, total_amount, Some(matter_id)).await {
                         Ok(wt_id) => info!(
-                            "SalesRebate: auto-released sales_account={} rebate_id={} wt_id={}",
-                            schema.sales_account_id, rebate_id, wt_id
+                            "SalesRebate: auto-released rebate_account={} rebate_id={} wt_id={}",
+                            schema.rebate_account_id, rebate_id, wt_id
                         ),
                         Err(e) => error!(
                             "SalesRebate: auto-release failed rebate_id={}: {:#}",

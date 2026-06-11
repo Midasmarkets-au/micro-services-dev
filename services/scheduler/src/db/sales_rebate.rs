@@ -14,6 +14,10 @@ const OPERATOR_PARTY_ID: i64 = 1;
 pub struct SalesRebateSchemaRow {
     #[sqlx(rename = "SalesAccountId")]
     pub sales_account_id: i64,
+    /// Payee account. Equals sales_account_id for normal (front-line) schemas;
+    /// differs for override schemas where an upline account collects on a downline's volume.
+    #[sqlx(rename = "RebateAccountId")]
+    pub rebate_account_id: i64,
     #[sqlx(rename = "Rebate")]
     pub rebate: i32,
     #[sqlx(rename = "AlphaRebate")]
@@ -47,6 +51,7 @@ pub struct PeriodTrade {
 /// Data for a new sales_rebate_k8s summary record.
 pub struct NewSalesRebateSummary {
     pub sales_account_id: i64,
+    pub rebate_account_id: i64,
     pub period_start: DateTime<Utc>,
     pub period_end: DateTime<Utc>,
     pub schedule_type: i16,
@@ -74,19 +79,22 @@ pub struct NewSalesRebateItem {
     pub excluded: bool,
 }
 
-/// Idempotency check: returns true if a summary record already exists for (sales_account_id, period_start).
+/// Idempotency check: returns true if a summary record already exists for
+/// (sales_account_id, rebate_account_id, period_start).
 pub async fn summary_exists(
     pool: &PgPool,
     sales_account_id: i64,
+    rebate_account_id: i64,
     period_start: DateTime<Utc>,
 ) -> Result<bool> {
     let row: (bool,) = sqlx::query_as(
         r#"SELECT EXISTS (
                SELECT 1 FROM trd.sales_rebate_k8s
-               WHERE sales_account_id = $1 AND period_start = $2
+               WHERE sales_account_id = $1 AND rebate_account_id = $2 AND period_start = $3
            )"#,
     )
     .bind(sales_account_id)
+    .bind(rebate_account_id)
     .bind(period_start)
     .fetch_one(pool)
     .await?;
@@ -99,7 +107,7 @@ pub async fn get_active_schemas_by_schedule(
     schedule_type: i16,
 ) -> Result<Vec<SalesRebateSchemaRow>> {
     let rows = sqlx::query_as::<_, SalesRebateSchemaRow>(
-        r#"SELECT "SalesAccountId", "Rebate", "AlphaRebate", "ProRebate",
+        r#"SELECT "SalesAccountId", "RebateAccountId", "Rebate", "AlphaRebate", "ProRebate",
                   "ExcludeSymbol"::text, "ExcludeAccount"::text,
                   COALESCE("AutoRelease", false) AS "AutoRelease"
            FROM trd."_SalesRebateSchema"
@@ -169,11 +177,12 @@ pub async fn insert_batch(
 
     let row: (i64, DateTime<Utc>) = sqlx::query_as(
         r#"INSERT INTO trd.sales_rebate_k8s
-               (sales_account_id, period_start, period_end, schedule_type, total_amount, trade_count, matter_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+               (sales_account_id, rebate_account_id, period_start, period_end, schedule_type, total_amount, trade_count, matter_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING id, created_on"#,
     )
     .bind(summary.sales_account_id)
+    .bind(summary.rebate_account_id)
     .bind(summary.period_start)
     .bind(summary.period_end)
     .bind(summary.schedule_type)
@@ -218,30 +227,34 @@ pub async fn insert_batch(
     Ok((rebate_id, created_on))
 }
 
-/// Deletes an existing summary and all its items for a given (sales_account_id, period_start).
+/// Deletes an existing summary and all its items for a given
+/// (sales_account_id, rebate_account_id, period_start).
 /// Used by the force-recalculate path to clear stale data before regenerating.
 pub async fn delete_period_summary(
     pool: &PgPool,
     sales_account_id: i64,
+    rebate_account_id: i64,
     period_start: DateTime<Utc>,
 ) -> Result<()> {
     sqlx::query(
         r#"DELETE FROM trd.sales_rebate_item_k8s
            WHERE sales_rebate_id IN (
                SELECT id FROM trd.sales_rebate_k8s
-               WHERE sales_account_id = $1 AND period_start = $2
+               WHERE sales_account_id = $1 AND rebate_account_id = $2 AND period_start = $3
            )"#,
     )
     .bind(sales_account_id)
+    .bind(rebate_account_id)
     .bind(period_start)
     .execute(pool)
     .await?;
 
     sqlx::query(
         r#"DELETE FROM trd.sales_rebate_k8s
-           WHERE sales_account_id = $1 AND period_start = $2"#,
+           WHERE sales_account_id = $1 AND rebate_account_id = $2 AND period_start = $3"#,
     )
     .bind(sales_account_id)
+    .bind(rebate_account_id)
     .bind(period_start)
     .execute(pool)
     .await?;
@@ -249,7 +262,9 @@ pub async fn delete_period_summary(
     Ok(())
 }
 
-/// Releases a sales_rebate_k8s summary to the sales account's wallet.
+/// Releases a sales_rebate_k8s summary to the payee (target) account's wallet.
+/// `target_account_id` is the schema's RebateAccountId — the upline collector for
+/// override schemas, or the sales account itself for normal front-line schemas.
 /// Idempotent: if wallet_transaction_k8s already has matter_id=rebate_id, skips wallet ops.
 /// Returns the wallet_transaction_id.
 ///
@@ -259,22 +274,22 @@ pub async fn release_summary(
     pool: &PgPool,
     rebate_id: i64,
     created_on: DateTime<Utc>,
-    sales_account_id: i64,
+    target_account_id: i64,
     total_amount: Decimal,
     matter_id: Option<i64>,
 ) -> Result<i64> {
     let mut tx = pool.begin().await?;
 
-    // 1. Load sales account → party_id, currency_id, fund_type, wallet_id
+    // 1. Load payee (target) account → party_id, currency_id, fund_type, wallet_id
     let acct: (i64, i32, i32, Option<i64>) = sqlx::query_as(
         r#"SELECT "PartyId", "CurrencyId", "FundType", "WalletId"
            FROM trd."_Account"
            WHERE "Id" = $1"#,
     )
-    .bind(sales_account_id)
+    .bind(target_account_id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| anyhow!("sales account {} not found: {:#}", sales_account_id, e))?;
+    .map_err(|e| anyhow!("rebate target account {} not found: {:#}", target_account_id, e))?;
 
     let (party_id, currency_id, fund_type, maybe_wallet_id) = acct;
 
@@ -295,14 +310,14 @@ pub async fn release_summary(
 
         let wid = row.map(|r| r.0).ok_or_else(|| {
             anyhow!(
-                "no wallet for sales account {} (party={} currency={} fund={})",
-                sales_account_id, party_id, currency_id, fund_type
+                "no wallet for rebate target account {} (party={} currency={} fund={})",
+                target_account_id, party_id, currency_id, fund_type
             )
         })?;
 
         sqlx::query(r#"UPDATE trd."_Account" SET "WalletId" = $1 WHERE "Id" = $2"#)
             .bind(wid)
-            .bind(sales_account_id)
+            .bind(target_account_id)
             .execute(&mut *tx)
             .await?;
 
