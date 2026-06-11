@@ -32,8 +32,9 @@ public partial class SalesRebateSchema
     public class TenantPageModel : BaseModel
     {
         public long Id { get; set; }
-        public string SalesName { get; set; } = null!; 
+        public string SalesName { get; set; } = null!;
         public string SalesCode { get; set; } = null!;
+        public string RebateName { get; set; } = null!;
     }
 }
 
@@ -47,6 +48,7 @@ public static class SalesRebateSchemaExtensions
             SalesAccountUid = x.SalesAccount.Uid,
             SalesName = x.SalesAccount.Party.NativeName,
             SalesCode = x.SalesAccount.Code,
+            RebateName = x.RebateAccount.Party.NativeName,
             RebateAccountId = x.RebateAccountId,
             RebateAccountUid = x.RebateAccount.Uid,
             Rebate = x.Rebate,

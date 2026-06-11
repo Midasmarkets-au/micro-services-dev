@@ -14,6 +14,10 @@ use crate::AppContext;
 
 const ALPHA_TYPES: &[i16] = &[6, 9, 10, 14, 18, 19, 20];
 const PRO_TYPES: &[i16] = &[5, 8, 21];
+/// USC (US-cent) account currency. Cent accounts trade cent-lots worth 1/100 of a
+/// USD lot, so their rebate is scaled down by this factor.
+const USC_CURRENCY_ID: i32 = 841;
+const USC_CENT_FACTOR: i64 = 100;
 
 // ── MT5-server (EET) day/month boundaries ────────────────────────────────────
 // The MT5 server runs on EET: UTC+2 in winter, UTC+3 in summer (EEST). To keep
@@ -395,7 +399,11 @@ async fn settle_for_schedule(
 
             // _SalesRebateSchema.Rebate is old-table int×10000; divide to get real decimal rate.
             // amount = (rebate_value / 10000) * volume  (volume is raw units)
-            let rebate_decimal = Decimal::from(rebate_value) / Decimal::from(10000);
+            let mut rebate_decimal = Decimal::from(rebate_value) / Decimal::from(10000);
+            // USC (cent) accounts: value/volume is 1/100 of USD, so scale the rebate down.
+            if trade.currency_id == USC_CURRENCY_ID {
+                rebate_decimal /= Decimal::from(USC_CENT_FACTOR);
+            }
             let amount = rebate_decimal * Decimal::from(trade.volume);
 
             if !excluded {

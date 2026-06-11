@@ -117,7 +117,7 @@
         <div class="row mb-9">
           <div class="col-6">
             <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Rebate
+              Standard
             </label>
             <Field
               v-model="schemaInfo.rebate"
@@ -143,22 +143,6 @@
               autocomplete="off"
             >
               <el-input v-model="schemaInfo.alphaRebate" size="large">
-                <template #append>/100</template>
-              </el-input>
-            </Field>
-          </div>
-          <div class="col-6">
-            <label class="required fs-6 fw-semobold mb-2 createAccountTitle">
-              Pro Rebate
-            </label>
-            <Field
-              v-model="schemaInfo.proRebate"
-              class="form-control form-control-lg form-control-solid"
-              type="number"
-              name="symbolRule"
-              autocomplete="off"
-            >
-              <el-input v-model="schemaInfo.proRebate" size="large">
                 <template #append>/100</template>
               </el-input>
             </Field>
@@ -324,11 +308,12 @@ const show = async (_item: any) => {
 const isEmpty = (v: any) => v === "" || v === null || v === undefined;
 
 const update = async () => {
-  const { rebate, alphaRebate, proRebate } = schemaInfo.value;
-  if (isEmpty(rebate) || isEmpty(alphaRebate) || isEmpty(proRebate)) {
-    MsgPrompt.error("Please fill in all three rebate fields.");
+  const { rebate, alphaRebate } = schemaInfo.value;
+  if (isEmpty(rebate) || isEmpty(alphaRebate)) {
+    MsgPrompt.error("Please fill in Rebate and Raw Rebate.");
     return;
   }
+  if (isEmpty(schemaInfo.value.proRebate)) schemaInfo.value.proRebate = "0";
   try {
     await RebateService.putSalesRebateSchema(
       schemaInfo.value.id,

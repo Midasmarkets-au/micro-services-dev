@@ -21,9 +21,8 @@
       <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
         <th>Sales UID</th>
         <th>Target UID</th>
-        <th>Rebate</th>
+        <th>Standard</th>
         <th>Raw</th>
-        <th>Pro</th>
         <th>{{ $t("fields.note") }}</th>
         <th>{{ $t("fields.operator") }}</th>
         <th>{{ $t("action.action") }}</th>
@@ -56,17 +55,33 @@
         @click="selectedAccount(item.id)"
       >
         <td>
-          <i
-            class="fa-solid fa-circle-notch me-2"
-            :class="dotClass[item.salesType % 6]"
-          ></i
-          >{{ item.salesAccountUid }}
+          <div>
+            <i
+              class="fa-solid fa-circle-notch me-2"
+              :class="dotClass[item.salesType % 6]"
+            ></i
+            >{{ item.salesAccountUid }}
+            <i
+              class="fa-regular fa-copy ms-2 text-muted cursor-pointer"
+              title="Copy UID"
+              @click="copyUid(item.salesAccountUid)"
+            ></i>
+          </div>
+          <div class="text-muted fs-8">{{ item.salesName }}</div>
         </td>
         <td>
-          <i class="me-2" :class="dotClass[item.schedule % 6]">{{
-            scheduleType[item.schedule]
-          }}</i
-          >{{ item.rebateAccountUid }}
+          <div>
+            <i class="me-2" :class="dotClass[item.schedule % 6]">{{
+              scheduleType[item.schedule]
+            }}</i
+            >{{ item.rebateAccountUid }}
+            <i
+              class="fa-regular fa-copy ms-2 text-muted cursor-pointer"
+              title="Copy UID"
+              @click="copyUid(item.rebateAccountUid)"
+            ></i>
+          </div>
+          <div class="text-muted fs-8">{{ item.rebateName }}</div>
         </td>
 
         <td>
@@ -74,9 +89,6 @@
         </td>
         <td>
           <BalanceShow :balance="item.alphaRebate" />
-        </td>
-        <td>
-          <BalanceShow :balance="item.proRebate" />
         </td>
         <td @click="showSchemaNote(item)">
           <i
@@ -152,7 +164,6 @@
           <BalanceShow :balance="totalRebate" />
         </td>
         <td><BalanceShow :balance="totalAlpha" /></td>
-        <td><BalanceShow :balance="totalPro" /></td>
         <td></td>
         <td></td>
       </tr>
@@ -172,6 +183,16 @@ import SchemaDetail from "./SalesRebateSchemaDetail.vue";
 import SchemaNote from "./SalesRebateSchemaNote.vue";
 import RebateService from "../services/RebateService";
 import { salesTypeOptions } from "@/core/types/SalesTypes";
+import { ElMessage } from "element-plus";
+
+const copyUid = async (uid: string | number) => {
+  try {
+    await navigator.clipboard.writeText(String(uid));
+    ElMessage.success("UID copied");
+  } catch {
+    ElMessage.error("Copy failed");
+  }
+};
 
 const accountSelected = ref(0);
 const SchemaNoteRef = ref<any>(null);

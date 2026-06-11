@@ -8,6 +8,7 @@ public class SalesRebateK8s
 {
     [Column("id")]               public long     Id             { get; set; }
     [Column("sales_account_id")] public long     SalesAccountId { get; set; }
+    [Column("rebate_account_id")] public long?   RebateAccountId { get; set; }
     [Column("period_start")]     public DateTime PeriodStart    { get; set; }
     [Column("period_end")]       public DateTime PeriodEnd      { get; set; }
     [Column("schedule_type")]    public short    ScheduleType   { get; set; }

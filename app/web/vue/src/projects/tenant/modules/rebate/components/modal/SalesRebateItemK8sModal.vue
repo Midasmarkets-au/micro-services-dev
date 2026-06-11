@@ -34,6 +34,7 @@
               <th>Status</th>
               <th>Ticket</th>
               <th>Account No.</th>
+              <th>Currency</th>
               <th>Symbol</th>
               <th>Volume (lots)</th>
               <th>Rebate Type</th>
@@ -55,6 +56,7 @@
               </td>
               <td :style="item.excluded ? 'text-decoration: line-through; color: #999' : ''">{{ item.ticket }}</td>
               <td>{{ item.tradeAccountNumber }}</td>
+              <td><CurrencyBadge :currency="item.tradeAccountCurrencyId" /></td>
               <td>{{ item.symbol }}</td>
               <td>{{ (item.volume / 100).toFixed(2) }}</td>
               <td>{{ item.rebateType }}</td>
@@ -91,6 +93,7 @@
 import { ref, computed } from "vue";
 import ScaleLoader from "vue-spinner/src/ScaleLoader.vue";
 import TimeShow from "@/components/TimeShow.vue";
+import CurrencyBadge from "@/components/CurrencyBadge.vue";
 import RebateService from "../../services/RebateService";
 import { convertToLocalTime } from "@/core/plugins/TimerService";
 

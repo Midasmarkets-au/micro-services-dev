@@ -96,9 +96,9 @@
         </div>
 
         <div class="row mb-9">
-          <div class="col-4">
+          <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Rebate <span class="text-danger">*</span>
+              Standard <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.rebate"
@@ -112,7 +112,7 @@
               </el-input>
             </Field>
           </div>
-          <div class="col-4">
+          <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
               Raw Rebate <span class="text-danger">*</span>
             </label>
@@ -124,22 +124,6 @@
               autocomplete="off"
             >
               <el-input v-model="schemaInfo.alphaRebate" size="large">
-                <template #append>/100</template>
-              </el-input>
-            </Field>
-          </div>
-          <div class="col-4">
-            <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Pro Rebate <span class="text-danger">*</span>
-            </label>
-            <Field
-              v-model="schemaInfo.proRebate"
-              class="form-control form-control-lg form-control-solid"
-              type="number"
-              name="symbolRule"
-              autocomplete="off"
-            >
-              <el-input v-model="schemaInfo.proRebate" size="large">
                 <template #append>/100</template>
               </el-input>
             </Field>
@@ -263,7 +247,7 @@ const reset = () => {
     rebateAccountUId: "",
     rebate: "",
     alphaRebate: "",
-    proRebate: "",
+    proRebate: "0", // Pro tier unused for this broker; hidden in the form, defaults to 0
     excludeAccount: "",
     excludeSymbol:
       "#AAPL,#AXP,#BAC,#C,#DIS,#IBM,#INTC,#KO,#MCD,#MSFT,#BA,#QAN.AX,#CSL.AX,#BHP.AX,#6501.T,#6502.T,#7201.T,#7261.T,#8306.T",
@@ -280,20 +264,20 @@ const show = async () => {
 const isEmpty = (v: any) => v === "" || v === null || v === undefined;
 
 const update = async () => {
-  const { salesAccountUid, rebateAccountUId, rebate, alphaRebate, proRebate } =
+  const { salesAccountUid, rebateAccountUId, rebate, alphaRebate } =
     schemaInfo.value;
   if (
     isEmpty(salesAccountUid) ||
     isEmpty(rebateAccountUId) ||
     isEmpty(rebate) ||
-    isEmpty(alphaRebate) ||
-    isEmpty(proRebate)
+    isEmpty(alphaRebate)
   ) {
     MsgPrompt.error(
-      "Please fill in Sales Account Uid, Target Account Uid and all three rebate fields."
+      "Please fill in Sales Account Uid, Target Account Uid, Rebate and Raw Rebate."
     );
     return;
   }
+  if (isEmpty(schemaInfo.value.proRebate)) schemaInfo.value.proRebate = "0";
   try {
     await RebateService.postSalesRebateSchema(schemaInfo.value);
     emits("refresh");
