@@ -285,9 +285,7 @@ const update = async () => {
     isEmpty(rebate) ||
     isEmpty(alphaRebate)
   ) {
-    MsgPrompt.error(
-      t("rebate.salesRebateSchema.fillRequired")
-    );
+    MsgPrompt.error(t("rebate.salesRebateSchema.fillRequired"));
     return;
   }
   if (isEmpty(schemaInfo.value.proRebate)) schemaInfo.value.proRebate = "0";

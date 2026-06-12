@@ -66,9 +66,9 @@
           </div>
 
           <div class="d-flex">
-            <el-button class="ms-5" @click="showAddNewModal"
-              >{{ $t("rebate.salesRebateSchema.addRule") }}</el-button
-            >
+            <el-button class="ms-5" @click="showAddNewModal">{{
+              $t("rebate.salesRebateSchema.addRule")
+            }}</el-button>
           </div>
         </div>
       </div>

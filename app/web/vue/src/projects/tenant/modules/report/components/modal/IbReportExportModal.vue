@@ -131,7 +131,6 @@ import moment from "moment";
 import { nextTick, ref, watch } from "vue";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 import SimpleForm from "@/components/SimpleForm.vue";
-import { isDateInDST_US } from "@/core/plugins/TimerService";
 import { ReportRequestTypes } from "@/core/types/ReportRequestTypes";
 import ReportService from "@/projects/tenant/modules/report/services/ReportService";
 
@@ -239,7 +238,6 @@ watch(
   () => period.value,
   (periodVal) => {
     const [from, to] = periodVal;
-    const isDST = isDateInDST_US();
     formData.value.from = from ? moment(from).format(`YYYY-MM-DD`) : null;
     formData.value.to = to ? moment(to).format(`YYYY-MM-DD`) : null;
   }
