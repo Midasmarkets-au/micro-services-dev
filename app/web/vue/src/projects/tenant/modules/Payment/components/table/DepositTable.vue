@@ -370,12 +370,13 @@ const formData = ref<CreateReportSpec>({
 const submitReportRequest = async () => {
   exporting.value = true;
   const [from, to] = period.value;
-  const isDST = isDateInDST_US();
+  const isDSTFrom = isDateInDST_US(from);
+  const isDSTTo = isDateInDST_US(to);
   criteria.value.createdFrom = from
-    ? moment(from).format(`YYYY-MM-DD[T]${isDST ? 21 : 22}:00:00.000[Z]`)
+    ? moment(from).format(`YYYY-MM-DD[T]${isDSTFrom ? 21 : 22}:00:00.000[Z]`)
     : null;
   criteria.value.createdTo = to
-    ? moment(to).format(`YYYY-MM-DD[T]${isDST ? 20 : 21}:59:59.000[Z]`)
+    ? moment(to).format(`YYYY-MM-DD[T]${isDSTTo ? 20 : 21}:59:59.000[Z]`)
     : null;
 
   try {

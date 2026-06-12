@@ -94,6 +94,26 @@ public class ReportJob(
     }
 
 
+    // Fired by the "30 21,22 * * *" twin trigger; runs the real close-trade job only
+    // at the DST-correct hour for the current DST state (decided here at fire time, so
+    // it stays correct across DST transitions without restarting the app).
+    public async Task ExecuteCloseTradeJobDstGuardedAsync()
+    {
+        var now = DateTime.UtcNow;
+        var expectedHour = Utils.IsCurrentDSTLosAngeles(now) ? 21 : 22;
+        if (now.Hour != expectedHour) return; // the other twin trigger — skip
+        await ExecuteCloseTradeJobAsync();
+    }
+
+    // Same fire-time DST guard for the "29 21,22 * * 1-5" account-daily twin trigger.
+    public async Task GenerateAccountDailyConfirmationReportDstGuardedAsync()
+    {
+        var now = DateTime.UtcNow;
+        var expectedHour = Utils.IsCurrentDSTLosAngeles(now) ? 21 : 22;
+        if (now.Hour != expectedHour) return;
+        await GenerateAccountDailyConfirmationReport(CancellationToken.None);
+    }
+
     public async Task ExecuteCloseTradeJobAsync()
     {
         // *** MT4-specific position snapshot not needed for MT5 architecture ***

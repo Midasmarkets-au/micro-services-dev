@@ -31,10 +31,16 @@ partial class ReportService
             closedOnTo);
 
         // Step 2: For USD and USC rows with AccountList, query MySQL for MT5 data
-        // For monthly reports (span > 25h), pass the original start date for MT5 range
+        // For multi-day reports (span > 25h: e.g. "Sat-Mon"), pass the start date for the MT5 range.
+        // closedOnFrom is the boundary instant marking the START of the window (e.g. Friday 23:59:59
+        // = "Saturday begins" for a Sat-Mon report). Truncating it with .Date alone lands on Friday and
+        // makes the multi-day branch treat Friday's mt5_daily row as the first trading day, so
+        // PreviousEquity = Friday's EquityPrevDay = THURSDAY's close (off by one day). Shift +1s first so
+        // the window starts on Saturday and PreviousEquity correctly resolves to Friday's close (the
+        // equity at the start of the window). Same boundary convention as ProcessMonthlyEquityRequestAsync.
         DateTime? monthlyMt5Start = null;
         if (closedOnFrom.HasValue && closedOnTo.HasValue && (closedOnTo.Value - closedOnFrom.Value).TotalHours > 25)
-            monthlyMt5Start = closedOnFrom.Value.Date;
+            monthlyMt5Start = closedOnFrom.Value.AddSeconds(1).Date;
 
         var mysqlResults = await QueryMySQLForDailyEquityAsync(postgresResults, fromDT.Value, toDT.Value, timeZoneOffset, monthlyMt5Start);
 

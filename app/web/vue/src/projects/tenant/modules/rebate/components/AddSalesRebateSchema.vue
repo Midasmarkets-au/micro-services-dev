@@ -1,7 +1,7 @@
 <template>
   <SimpleForm
     ref="addSalesRebateSchemaShowRef"
-    :title="'New Schema'"
+    :title="$t('rebate.salesRebateSchema.newSchema')"
     :is-loading="false"
     :width="800"
     disable-footer
@@ -15,7 +15,7 @@
         <div class="row mb-7">
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Sales Type
+              {{ $t("rebate.salesRebateSchema.salesType") }}
             </label>
             <el-select
               v-model="schemaInfo.salesType"
@@ -31,10 +31,10 @@
           </div>
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Schedule
-              <span class="ms-3" style="color: #900000"
-                >( All records will be updated after approve !! )</span
-              >
+              {{ $t("rebate.salesRebateSchema.schedule") }}
+              <span class="ms-3" style="color: #900000">{{
+                $t("rebate.salesRebateSchema.updateAfterApprove")
+              }}</span>
             </label>
             <div class="d-flex align-items-center mt-2">
               <input
@@ -43,21 +43,27 @@
                 value="0"
                 v-model="schemaInfo.schedule"
               />
-              <label class="ms-1 me-7" for="daily">Daily</label>
+              <label class="ms-1 me-7" for="daily">{{
+                $t("rebate.salesRebateSchema.daily")
+              }}</label>
               <input
                 id="month"
                 type="radio"
                 value="3"
                 v-model="schemaInfo.schedule"
               />
-              <label class="ms-1 me-7" for="month">Monthly</label>
+              <label class="ms-1 me-7" for="month">{{
+                $t("rebate.salesRebateSchema.monthly")
+              }}</label>
               <input
                 id="pause"
                 type="radio"
                 value="1"
                 v-model="schemaInfo.schedule"
               />
-              <label class="ms-1 me-7" for="pause">Pause</label>
+              <label class="ms-1 me-7" for="pause">{{
+                $t("rebate.salesRebateSchema.pause")
+              }}</label>
             </div>
           </div>
         </div>
@@ -65,7 +71,8 @@
         <div class="row mb-5">
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Sales Account Uid <span class="text-danger">*</span>
+              {{ $t("rebate.salesRebateSchema.salesAccountUid") }}
+              <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.salesAccountUid"
@@ -80,7 +87,8 @@
           </div>
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Target Account Uid <span class="text-danger">*</span>
+              {{ $t("rebate.salesRebateSchema.targetAccountUid") }}
+              <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.rebateAccountUId"
@@ -98,7 +106,8 @@
         <div class="row mb-9">
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Standard <span class="text-danger">*</span>
+              {{ $t("rebate.salesRebateSchema.standard") }}
+              <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.rebate"
@@ -114,7 +123,8 @@
           </div>
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Raw Rebate <span class="text-danger">*</span>
+              {{ $t("rebate.salesRebateSchema.rawRebate") }}
+              <span class="text-danger">*</span>
             </label>
             <Field
               v-model="schemaInfo.alphaRebate"
@@ -133,7 +143,7 @@
         <div class="row mb-9">
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Exclude Account
+              {{ $t("rebate.salesRebateSchema.excludeAccount") }}
             </label>
             <Field
               v-model="schemaInfo.excludeAccount"
@@ -152,7 +162,7 @@
           </div>
           <div class="col-6">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Exclude Symbol
+              {{ $t("rebate.salesRebateSchema.excludeSymbol") }}
             </label>
             <Field
               v-model="schemaInfo.excludeSymbol"
@@ -174,7 +184,7 @@
         <div class="row mb-5">
           <div class="col-12">
             <label class="fs-6 fw-semobold mb-2 createAccountTitle">
-              Note
+              {{ $t("rebate.salesRebateSchema.note") }}
             </label>
             <Field
               v-model="schemaInfo.note"
@@ -196,12 +206,12 @@
         <div class="row mb-9">
           <div class="col-12 d-flex align-items-center gap-3">
             <label class="fs-6 fw-semobold createAccountTitle">
-              Auto Release
+              {{ $t("rebate.salesRebateSchema.autoRelease") }}
             </label>
             <el-switch v-model="schemaInfo.autoRelease" />
-            <span class="text-muted fs-7"
-              >Automatically credit wallet after settlement</span
-            >
+            <span class="text-muted fs-7">{{
+              $t("rebate.salesRebateSchema.autoReleaseHint")
+            }}</span>
           </div>
         </div>
 
@@ -231,6 +241,9 @@ import SimpleForm from "@/components/SimpleForm.vue";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
 import { Field } from "vee-validate";
 import { salesTypeOptions } from "@/core/types/SalesTypes";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const emits = defineEmits<{
   (e: "refresh"): void;
@@ -272,9 +285,7 @@ const update = async () => {
     isEmpty(rebate) ||
     isEmpty(alphaRebate)
   ) {
-    MsgPrompt.error(
-      "Please fill in Sales Account Uid, Target Account Uid, Rebate and Raw Rebate."
-    );
+    MsgPrompt.error(t("rebate.salesRebateSchema.fillRequired"));
     return;
   }
   if (isEmpty(schemaInfo.value.proRebate)) schemaInfo.value.proRebate = "0";

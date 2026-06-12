@@ -2,7 +2,8 @@ import moment from "moment";
 import { isDateInDST_US } from "@/core/plugins/TimerService";
 
 export const convertGMT = (time, isStartTime, defaultTime = false) => {
-  const isDST = isDateInDST_US();
+  // DST of the date being converted (not "now"), so out-of-season filters are correct.
+  const isDST = isDateInDST_US(time);
   const timeOffset = isStartTime == "start" ? ":00:00.000[Z]" : ":59:59.000[Z]";
   return time
     ? moment(time).format(`YYYY-MM-DD[T]${isDST ? 21 : 22}${timeOffset}`)
@@ -12,19 +13,21 @@ export const convertGMT = (time, isStartTime, defaultTime = false) => {
 };
 
 export const convertTradeTime = (from, to) => {
-  const isDST = isDateInDST_US();
+  // Evaluate DST per boundary date (not "now") so each endpoint uses the right offset.
+  const isDSTFrom = isDateInDST_US(from);
+  const isDSTTo = isDateInDST_US(to);
   const createdFrom = from
     ? moment(from)
         .subtract(1, "day")
-        .format(`YYYY-MM-DD[T]${isDST ? 21 : 22}:00:00.000[Z]`)
+        .format(`YYYY-MM-DD[T]${isDSTFrom ? 21 : 22}:00:00.000[Z]`)
     : moment
         .utc()
         .subtract(1, "day")
-        .format(`YYYY-MM-DD[T]${isDST ? 21 : 22}:00:00.000[Z]`);
+        .format(`YYYY-MM-DD[T]${isDSTFrom ? 21 : 22}:00:00.000[Z]`);
 
   const createdTo = to
-    ? moment(to).format(`YYYY-MM-DD[T]${isDST ? 20 : 21}:59:59.000[Z]`)
-    : moment.utc().format(`YYYY-MM-DD[T]${isDST ? 20 : 21}:59:59.000[Z]`);
+    ? moment(to).format(`YYYY-MM-DD[T]${isDSTTo ? 20 : 21}:59:59.000[Z]`)
+    : moment.utc().format(`YYYY-MM-DD[T]${isDSTTo ? 20 : 21}:59:59.000[Z]`);
 
   return [createdFrom, createdTo];
 };
