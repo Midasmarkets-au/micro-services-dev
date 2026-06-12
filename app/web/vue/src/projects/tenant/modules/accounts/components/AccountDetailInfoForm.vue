@@ -282,17 +282,50 @@
             <div v-if="accountDetails?.referPathUids" class="mt-4">
               <div class="refer-path-border">
                 <div class="head">{{ $t("fields.referralPath") }}</div>
-                <div class="content d-flex mt-1">
+                <div class="content d-flex align-items-center flex-wrap mt-1">
                   <div
                     v-for="(item, index) in accountDetails?.referPathUids"
                     :key="index"
-                    class="d-flex align-items-center gap-1 flex-wrap"
+                    class="d-flex align-items-center"
                   >
-                    <el-tag type="info" size="small" effect="plain">
-                      {{ item }}
-                    </el-tag>
+                    <div
+                      class="refer-node"
+                      :class="roleViz(referPathInfo[item]?.role).cls"
+                    >
+                      <div class="refer-av">
+                        {{ roleViz(referPathInfo[item]?.role).letter }}
+                      </div>
+                      <div class="refer-col">
+                        <span class="refer-name">
+                          {{
+                            referPathInfo[item]
+                              ? referPathInfo[item].user.displayName
+                              : "—"
+                          }}
+                          <span
+                            v-if="referPathInfo[item]"
+                            class="refer-badge"
+                            >{{
+                              $t("type.roleType." + referPathInfo[item].role)
+                            }}</span
+                          >
+                        </span>
+                        <span class="refer-meta">
+                          <span v-if="referPathInfo[item]"
+                            >{{ referPathInfo[item].user.email }} ·
+                          </span>
+                          {{ item }}
+                          <i
+                            class="fa-regular fa-copy refer-copy"
+                            :title="$t('rebate.salesRebateSchema.copyUid')"
+                            @click="copyText(item)"
+                          ></i>
+                        </span>
+                      </div>
+                    </div>
                     <el-icon
                       v-if="index != accountDetails.referPathUids.length - 1"
+                      class="refer-arrow"
                       ><ArrowRight
                     /></el-icon>
                   </div>
@@ -478,7 +511,7 @@ import ChangeSalesOrAgentForm from "@/projects/tenant/modules/accounts/component
 import EditSalesAndAgentModal from "@/projects/tenant/modules/accounts/components/modal/EditSalesAndAgentModal.vue";
 import InjectKeys from "@/core/types/TenantGlobalInjectionKeys";
 import AccountTags from "./form/AccountTags.vue";
-import { ElNotification } from "element-plus";
+import { ElNotification, ElMessage } from "element-plus";
 import { Refresh, ArrowRight, User } from "@element-plus/icons-vue";
 import EditAccountInfo from "./modal/EditAccountInfo.vue";
 import MsgPrompt from "@/core/plugins/MsgPrompt";
@@ -613,6 +646,42 @@ const referPathConstruct = () => {
   referPath.value = accountDetails.value.referPath.split(".");
 };
 
+// Identity / name / email for each uid in the referral path.
+const referPathInfo = ref({} as any);
+
+const buildReferPathInfo = async () => {
+  const uids = accountDetails.value?.referPathUids;
+  if (!uids || !uids.length) return;
+  try {
+    const res = await AccountService.queryAccounts({ uids, size: 100 });
+    referPathInfo.value = res.data.reduce((acc: any, cur: any) => {
+      acc[cur.uid] = cur;
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+// Role -> avatar letter + color class (Rep purple / Sales blue / IB green / Client gray).
+const ROLE_VIZ: Record<number, { cls: string; letter: string }> = {
+  110: { cls: "r-rep", letter: "R" },
+  100: { cls: "r-sales", letter: "S" },
+  300: { cls: "r-ib", letter: "I" },
+  400: { cls: "r-client", letter: "C" },
+};
+const roleViz = (role?: number) =>
+  (role != null && ROLE_VIZ[role]) || { cls: "r-other", letter: "?" };
+
+const copyText = async (text: string | number) => {
+  try {
+    await navigator.clipboard.writeText(String(text));
+    ElMessage.success(t("rebate.salesRebateSchema.uidCopied"));
+  } catch {
+    ElMessage.error(t("rebate.salesRebateSchema.copyFailed"));
+  }
+};
+
 const HasLevelRule = async () => {
   accountDetails.value.hasLevelRule =
     accountDetails.value.hasLevelRule == 1 ? 0 : 1;
@@ -681,6 +750,7 @@ onMounted(async () => {
     return acc;
   }, {});
   referPathConstruct();
+  buildReferPathInfo();
   // 获取初始密码信息
   if (tradeAccount.value && accountDetails.value?.id) {
     try {
@@ -714,6 +784,81 @@ onMounted(async () => {
   border-radius: 5px;
   border: 1px solid #ccc;
   width: fit-content;
+}
+/* referral path — capsule + initial avatar */
+.refer-node {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #eef0f4;
+  border-radius: 999px;
+  padding: 6px 14px 6px 6px;
+  background: #fff;
+  text-align: left;
+}
+.refer-av {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex: none;
+  color: var(--rc, #7e8299);
+  background: var(--rbg, #f1f1f4);
+}
+.refer-col {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+.refer-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3f4254;
+}
+.refer-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 5px;
+  color: var(--rc, #7e8299);
+  background: var(--rbg, #f1f1f4);
+  margin-left: 4px;
+}
+.refer-meta {
+  font-size: 11px;
+  color: #a1a5b7;
+}
+.refer-copy {
+  cursor: pointer;
+  margin-left: 4px;
+}
+.refer-copy:hover {
+  color: #1b84ff;
+}
+.refer-arrow {
+  margin: 0 8px;
+  color: #b5b9c5;
+}
+.refer-node.r-rep {
+  --rc: #7239ea;
+  --rbg: #f3eefe;
+}
+.refer-node.r-sales {
+  --rc: #1b84ff;
+  --rbg: #e9f3ff;
+}
+.refer-node.r-ib {
+  --rc: #17c653;
+  --rbg: #e8faf0;
+}
+.refer-node.r-client,
+.refer-node.r-other {
+  --rc: #7e8299;
+  --rbg: #f1f1f4;
 }
 .btn {
   text-align: center;
