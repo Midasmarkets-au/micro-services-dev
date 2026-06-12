@@ -35,6 +35,9 @@
                 >:
                 {{ accountInfo[uid].user.displayName }}
               </div>
+              <div class="mb-2 text-muted fs-8">
+                {{ accountInfo[uid].user.email }}
+              </div>
 
               <span class="typeBadge">{{ uid }}</span>
 
@@ -207,6 +210,9 @@
                 }}</strong
                 >:
                 {{ accountInfo[uid].user.displayName }}
+              </div>
+              <div class="mb-2 text-muted fs-8">
+                {{ accountInfo[uid].user.email }}
               </div>
 
               <span class="typeBadge">{{ uid }}</span>
