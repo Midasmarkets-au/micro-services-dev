@@ -2286,6 +2286,20 @@ public partial class CmdTestService
         Console.WriteLine($"   Tweaked:  {sig3}");
         Console.WriteLine($"   Differs:  {(sig3 != sig1 ? "✅ YES" : "❌ NO")}");
 
+        // Regression: real prod pay-in callback. Pay247 KEEPS empty-string fields (error="")
+        // in the callback signature, unlike the request direction. VerifySignatureFromRaw must
+        // therefore sign with dropEmpty:false, or this false-mismatches like prod did 2026-06-12.
+        Console.WriteLine();
+        Console.WriteLine("   Callback verify (real prod payload, error=\"\" must be kept):");
+        const string callbackRaw =
+            "{\"mch_id\":\"EZC1LTGNQY10177\",\"mch_order_no\":\"pm-26247e15516d\"," +
+            "\"order_no\":\"PIIDR1017720260611153338982328\",\"status\":\"CLOSED\"," +
+            "\"currency\":\"IDR\",\"pay_method\":\"BANK\",\"amount\":\"9143025.00\"," +
+            "\"fee\":\"0.00\",\"error\":\"\",\"created_at\":1781163218000," +
+            "\"sign\":\"68a37848a1738ed424f990565df2dc1b\"}";
+        var callbackOk = Pay247.VerifySignatureFromRaw(callbackRaw, secret, _logger);
+        Console.WriteLine($"   Callback signature valid: {(callbackOk ? "✅ YES" : "❌ NO")}");
+
         Console.WriteLine();
         Console.WriteLine("=====================================");
         Console.WriteLine("✅ Pay247 Signature Test Complete!");

@@ -47,17 +47,26 @@ public static class Pay247
 
     /// <summary>
     /// MD5 signer per Pay247 doc §Signature.
-    /// 1. Drop null / empty / <c>sign</c> entries.
+    /// 1. Drop <c>null</c> / <c>sign</c> entries (and empty-string entries when <paramref name="dropEmpty"/> is true).
     /// 2. Sort by full ASCII key (case-sensitive — <see cref="StringComparer.Ordinal"/>).
     /// 3. Join as <c>k=v&amp;...</c>.
     /// 4. Append <see cref="Pay247Options.SecretKey"/> <b>raw</b> (no <c>&amp;key=</c> prefix).
     /// 5. MD5 hex lowercase (32 chars).
+    ///
+    /// <para>
+    /// <paramref name="dropEmpty"/> exists because Pay247 signs the two directions differently:
+    /// our <b>outbound requests</b> drop empty-string fields (and Pay247's request-verifier agrees,
+    /// since requests carrying empty <c>payer_*</c>/<c>return_url</c> are accepted), but Pay247's
+    /// <b>callback</b> signer KEEPS empty-string fields (observed: it signs <c>error=</c>). Callback
+    /// verification therefore must pass <c>dropEmpty: false</c>, otherwise the empty <c>error</c>
+    /// field is silently stripped and every callback fails with a false signature mismatch.
+    /// </para>
     /// </summary>
-    public static string GenerateSignature(IDictionary<string, object?> spec, string secretKey, ILogger? logger = null)
+    public static string GenerateSignature(IDictionary<string, object?> spec, string secretKey, ILogger? logger = null, bool dropEmpty = true)
     {
         var sorted = spec
             .Where(kv => kv.Key != "sign")
-            .Where(kv => kv.Value is not null && !string.IsNullOrEmpty(Stringify(kv.Value)))
+            .Where(kv => kv.Value is not null && (!dropEmpty || !string.IsNullOrEmpty(Stringify(kv.Value))))
             .OrderBy(kv => kv.Key, StringComparer.Ordinal)
             .ToList();
 
@@ -98,7 +107,9 @@ public static class Pay247
         }
 
         var spec = ToSignSpec(jo);
-        var computed = GenerateSignature(spec, secretKey, logger);
+        // Callbacks: Pay247 keeps empty-string fields in the signed string (e.g. error=""),
+        // unlike the request direction. Do NOT drop empties here or every callback false-mismatches.
+        var computed = GenerateSignature(spec, secretKey, logger, dropEmpty: false);
         var ok = string.Equals(computed, providedSign, StringComparison.OrdinalIgnoreCase);
         if (!ok)
         {
