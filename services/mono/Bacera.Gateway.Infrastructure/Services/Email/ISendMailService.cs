@@ -5,6 +5,12 @@ namespace Bacera.Gateway.Services;
 public interface ISendMailService
 {
     Task<Tuple<bool, string>> DebugAsync(DebugEmailRequest request);
+    Task<Tuple<bool, string>> SendCustomLayoutEmailAsync(
+        string to,
+        string title,
+        string subtitle,
+        string content,
+        string? language = LanguageTypes.English);
     Task<Tuple<bool, string>> SendEmailWithTemplateAsync<T>(T model,
         string? language = LanguageTypes.English,
         bool? applyLayout = true)

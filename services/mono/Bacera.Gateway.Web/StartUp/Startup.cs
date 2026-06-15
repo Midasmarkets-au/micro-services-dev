@@ -261,6 +261,8 @@ public static partial class Startup
         var raw = GetEnvValue("REDIS_CONNECTION");
         var redisPassword = GetEnvValue("REDIS_PASSWORD");
         var isClusterMode = GetEnvValue("REDIS_CLUSTER_MODE", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
+        var useSsl = GetEnvValue("REDIS_SSL", (!AppEnvironment.IsDevelopment()).ToString())
+            .Equals("true", StringComparison.OrdinalIgnoreCase);
 
         // Normalize REDIS_CONNECTION → host and port
         // Supports: redis://host:port, rediss://host:port, host:port, host
@@ -271,6 +273,7 @@ public static partial class Startup
         var parts = hostPort.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var host = parts.Length > 0 ? parts[0] : "localhost";
         var port = parts.Length > 1 && int.TryParse(parts[1], out var p) ? p : 6379;
+        var sslHost = GetEnvValue("REDIS_SSL_HOST", host);
 
         var configOptions = new ConfigurationOptions
         {
@@ -286,6 +289,13 @@ public static partial class Startup
             AbortOnConnectFail = false, // Don't crash if ElastiCache is temporarily unavailable
         };
 
+        if (useSsl)
+        {
+            configOptions.Ssl = true;
+            configOptions.SslHost = sslHost; // SNI
+            configOptions.SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+                                         | System.Security.Authentication.SslProtocols.Tls13;
+        }
 
         configOptions.EndPoints.Add(host, port);
 
@@ -435,6 +445,8 @@ public static partial class Startup
             { 
                 var raw = GetEnvValue("REDIS_CONNECTION");
                 var isClusterMode = GetEnvValue("REDIS_CLUSTER_MODE", "false").Equals("true", StringComparison.OrdinalIgnoreCase);
+                var useSsl = GetEnvValue("REDIS_SSL", (!AppEnvironment.IsDevelopment()).ToString())
+                    .Equals("true", StringComparison.OrdinalIgnoreCase);
 
                 string hostPort = raw.Replace("redis://", "", StringComparison.OrdinalIgnoreCase)
                                      .Replace("rediss://", "", StringComparison.OrdinalIgnoreCase)
@@ -443,6 +455,7 @@ public static partial class Startup
                 var parts = hostPort.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 var host = parts.Length > 0 ? parts[0] : "localhost";
                 var port = parts.Length > 1 && int.TryParse(parts[1], out var p) ? p : 6379;
+                var sslHost = GetEnvValue("REDIS_SSL_HOST", host);
 
                 var config = new ConfigurationOptions
                 {
@@ -456,6 +469,14 @@ public static partial class Startup
                     ReconnectRetryPolicy = new ExponentialRetry(1000, 10000),
                     AllowAdmin = !isClusterMode,
                 };
+
+                if (useSsl)
+                {
+                    config.Ssl = true;
+                    config.SslHost = sslHost;
+                    config.SslProtocols = System.Security.Authentication.SslProtocols.Tls12
+                                          | System.Security.Authentication.SslProtocols.Tls13;
+                }
 
                 config.EndPoints.Add(host, port);
 

@@ -39,6 +39,23 @@ partial class SendMailService
         return result;
     }
 
+    public async Task<Tuple<bool, string>> SendCustomLayoutEmailAsync(
+        string to,
+        string title,
+        string subtitle,
+        string content,
+        string? language = LanguageTypes.English)
+    {
+        language = EnsureLanguage(language);
+        var html = await ApplyDefaultLayout(language, content, title, subtitle);
+        var defaultEmail = await _cfgSvc.GetDefaultEmailAddressAsync();
+        var defaultDisplayName = await _cfgSvc.GetDefaultEmailDisplayNameAsync();
+        var result = await _sendMailSvc.SendEmailAsync(to, title, html, defaultEmail, defaultDisplayName);
+        if (!result.Item1)
+            _logger.LogError("Custom contact email send out failed: {Email} : {Title}", to, title);
+        return result;
+    }
+
     public async Task<Tuple<bool, string>> ApplicationForWholesaleCreatedAsync(
         ApplicationForWholesaleCreatedViewModel model,
         string language = LanguageTypes.English) =>
