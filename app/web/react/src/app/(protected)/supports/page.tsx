@@ -14,6 +14,7 @@ import { submitContact } from '@/actions';
 const contactSchema = z.object({
   name: z.string().min(1, 'nameRequired'),
   email: z.string().email('emailInvalid'),
+  phoneNumber: z.string().optional(),
   subject: z.string().min(1, 'subjectRequired'),
   message: z.string().min(1, 'messageRequired'),
 });
@@ -38,18 +39,18 @@ export default function ContactPage() {
     defaultValues: {
       name: user?.name || '',
       email: user?.email || '',
+      phoneNumber: '',
       subject: '',
       message: '',
     },
   });
 
   const onSubmit = async (data: ContactFormData) => {
-    // 使用 Server Action
     const result = await execute(submitContact, {
       name: data.name,
       email: data.email,
-      subject: data.subject,
-      message: data.message,
+      phoneNumber: data.phoneNumber || '',
+      content: `${data.subject}\n${data.message}`,
     });
     
     if (result.success) {
@@ -100,6 +101,18 @@ export default function ContactPage() {
                 error={errors.email?.message ? t(`form.errors.${errors.email.message}`) : undefined}
               />
             </div>
+          </div>
+
+          {/* 手机号 */}
+          <div>
+            <label className="block text-sm text-text-secondary mb-2">
+              {t('form.phoneNumber')}
+            </label>
+            <Input
+              {...register('phoneNumber')}
+              placeholder={t('form.phoneNumberPlaceholder')}
+              className="w-full dark:bg-surface-secondary dark:border-[#333]"
+            />
           </div>
 
           {/* 主题 */}

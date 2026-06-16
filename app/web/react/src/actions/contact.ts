@@ -10,9 +10,8 @@ import type { ActionResponse } from '@/hooks/useServerAction';
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email'),
-  phone: z.string().optional(),
-  subject: z.string().optional(),
-  message: z.string().min(1, 'Message is required'),
+  phoneNumber: z.string().optional(),
+  content: z.string().min(1, 'Content is required'),
 });
 
 const leadSchema = z.object({
@@ -27,9 +26,8 @@ const leadSchema = z.object({
 interface ContactData {
   name: string;
   email: string;
-  phone?: string;
-  subject?: string;
-  message: string;
+  phoneNumber?: string;
+  content: string;
 }
 
 interface LeadData {
