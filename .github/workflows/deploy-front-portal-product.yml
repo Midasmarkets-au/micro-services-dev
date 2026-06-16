@@ -47,6 +47,7 @@ jobs:
           JWT_EXPIRES_IN=${{ vars.PORTAL_PROD_JWT_EXPIRES_IN }}
           API_BASE_URL=${{ vars.PORTAL_PROD_API_BASE_URL }}
           BACKEND_REQUEST_AUTH_MODE=${{ vars.PORTAL_PROD_BACKEND_REQUEST_AUTH_MODE }}
+          NEXT_PUBLIC_MT5_TERMINAL_URL=${{ vars.PORTAL_PROD_MT5_TERMINAL_URL }}
           ENVEOF
 
       - name: Debug .env contents
