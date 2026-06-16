@@ -37,10 +37,13 @@ export default function WebTrader5Page({ params }: WebTrader5PageProps) {
   const accountNumber = resolvedParams.params?.[0];
 
   const webTraderUrl = useMemo(() => {
-    const base = 'https://mt5.midasmkts.com/terminal';
+    const base = process.env.NEXT_PUBLIC_MT5_TERMINAL_URL ?? 'https://web-mt5.midasmkts.com/terminal';
     const search = new URLSearchParams();
+    search.set('mode', 'connect');
     search.set('lang', webTraderLang);
-    search.set('server', 'MMCo-Main');
+    search.set('marketwatch', 'EURUSD,GBPUSD,USDJPY,XAUUSD');
+    search.set('utm_campaign', 'webterminal');
+    search.set('utm_source', 'midasmkts_client');
     if (accountNumber) {
       search.set('login', accountNumber);
     }
