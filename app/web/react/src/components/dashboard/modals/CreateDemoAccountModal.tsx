@@ -311,7 +311,7 @@ export function CreateDemoAccountModal({
                 </div>
                 <div className="flex items-center justify-between py-3">
                   <span className="text-sm text-text-secondary">{t('fields.initialAmount')}：</span>
-                  <span className="text-sm text-text-primary"> <BalanceShow balance={Number(amount)} currencyId={Number(currency)} /></span>
+                  <span className="text-sm text-text-primary"> <BalanceShow balance={Number(amount) *100 } currencyId={Number(currency)} /></span>
                 </div>
               </div>
             </div>
