@@ -44,7 +44,7 @@ export const platformDownloadLinks: Record<RegionType, Record<PlatformType, Plat
     mm: {
       windows:'https://windows.midasmkts.com',
       mac: 'https://mac-a.midasmkts.com',
-      android: 'android.midasmkts.com',
+      android: 'https://android.midasmkts.com',
       ios: 'https://apps.apple.com/au/app/midas-markets/id6757778465',
     },
   },
