@@ -703,7 +703,8 @@
     "EuPayment": "ការទូទាត់ EU មិនទាន់ត្រូវបានកំណត់រចនាសម្ព័ន្ធ សូមទាក់ទងផ្នែកសេវាកម្មអតិថិជន",
     "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
     "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
-    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits",
+    "Amount_not_valid": "ចំនួនមិនត្រឹមត្រូវ"
   },
   "platforms": {
     "title": "វេទិកាជួញដូរ",

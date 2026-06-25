@@ -703,7 +703,8 @@
     "EuPayment": "EU 결제가 구성되지 않았습니다. 고객 서비스에 문의해 주세요.",
     "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
     "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
-    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits",
+    "Amount_not_valid": "유효하지 않은 금액"
   },
   "platforms": {
     "title": "거래 플랫폼",
