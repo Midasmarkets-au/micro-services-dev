@@ -706,7 +706,8 @@
     "EuPayment": "EU支付未配置，请联系客服",
     "__JPY_KYC_BANK_REQUIRED__": "请选择已实名认证的银行账户",
     "__JPY_KYC_BANK_INVALID__": "所选账户不是有效的实名认证银行账户",
-    "__JPY_KYC_EMAIL_REQUIRED__": "JPY 入金需要已绑定的邮箱地址"
+    "__JPY_KYC_EMAIL_REQUIRED__": "JPY 入金需要已绑定的邮箱地址",
+    "Amount_not_valid": "金额无效"
   },
   "platforms": {
     "title": "交易平台",
