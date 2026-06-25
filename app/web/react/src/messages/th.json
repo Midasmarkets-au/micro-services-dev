@@ -703,7 +703,8 @@
     "EuPayment": "การชำระเงิน EU ยังไม่ได้ตั้งค่า กรุณาติดต่อฝ่ายบริการลูกค้า",
     "__JPY_KYC_BANK_REQUIRED__": "Please select your KYC-bound bank account",
     "__JPY_KYC_BANK_INVALID__": "Selected bank account is not a valid KYC-bound Wire account",
-    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits"
+    "__JPY_KYC_EMAIL_REQUIRED__": "An email on file is required for JPY deposits",
+    "Amount_not_valid": "จำนวนไม่ถูกต้อง"
   },
   "platforms": {
     "title": "แพลตฟอร์มการซื้อขาย",

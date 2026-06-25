@@ -703,7 +703,8 @@
     "EuPayment": "EU決済が設定されていません。カスタマーサービスにお問い合わせください。",
     "__JPY_KYC_BANK_REQUIRED__": "本人確認済みの銀行口座を選択してください",
     "__JPY_KYC_BANK_INVALID__": "選択された口座は本人確認済みの銀行口座ではありません",
-    "__JPY_KYC_EMAIL_REQUIRED__": "JPYのご入金には登録メールアドレスが必要です"
+    "__JPY_KYC_EMAIL_REQUIRED__": "JPYのご入金には登録メールアドレスが必要です",
+    "Amount_not_valid": "金額が無効です"
   },
   "platforms": {
     "title": "取引プラットフォーム",

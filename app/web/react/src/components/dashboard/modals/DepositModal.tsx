@@ -698,6 +698,9 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
       <DialogContent
         className="h-[800px]! flex flex-col justify-between"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="flex flex-1 flex-col gap-6 overflow-hidden">
           <DialogHeader>
