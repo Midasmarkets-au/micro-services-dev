@@ -191,3 +191,13 @@ kubectl port-forward svc/mono 9005:9005
 kubectl port-forward svc/boardcast 9003:9003
 kubectl port-forward svc/idgen 50001:50001
 ```
+
+## 8. 生产官网（official-website 命名空间）
+
+| 文件 | 说明 |
+|------|------|
+| `official-website/ingress.yaml` | 官网 Ingress（`www.midasmkts.com`）+ apex 307 重定向（`midasmkts.com` → `www.midasmkts.com`） |
+
+```bash
+kubectl apply -f deployment/k8s/official-website/ingress.yaml
+```
