@@ -104,6 +104,7 @@ function ChartEmptyState() {
 function HierarchyRow({ node, depth = 0 }: { node: SalesHierarchyNode; depth?: number }) {
   const [expanded, setExpanded] = useState(false);
   const hasChildren = node.children && node.children.length > 0;
+  const currencyId = node.currencyId ?? 840;
 
   return (
     <>
@@ -129,16 +130,16 @@ function HierarchyRow({ node, depth = 0 }: { node: SalesHierarchyNode; depth?: n
         <td className="px-4 py-3 text-text-secondary">{CurrencyCodeMap[node.currencyId ?? 840] || 'USD'}</td>
         <td className="px-4 py-3 text-right text-text-primary">{node.trades ?? 0}</td>
         <td className="px-4 py-3 text-right text-text-primary">
-          <BalanceShow balance={Number(node.netDeposit ?? 0)} currencyId={840} />
+          <BalanceShow balance={Number(node.netDeposit ?? 0)} currencyId={currencyId} />
         </td>
         <td className="px-4 py-3 text-right text-text-primary">
-          <BalanceShow balance={Number(node.deposit ?? 0)} currencyId={840} />
+          <BalanceShow balance={Number(node.deposit ?? 0)} currencyId={currencyId} />
         </td>
         <td className="px-4 py-3 text-right text-text-primary">
-          <BalanceShow balance={Number(node.withdrawal ?? 0)} currencyId={840} />
+          <BalanceShow balance={Number(node.withdrawal ?? 0)} currencyId={currencyId} />
         </td>
         <td className="px-4 py-3 text-right text-text-primary">
-          <BalanceShow balance={Number(node.rebate ?? 0)} currencyId={840} />
+          <BalanceShow balance={Number(node.rebate ?? 0)} currencyId={currencyId} />
         </td>
         <td className="px-4 py-3 text-right text-text-primary">{Number(node.lots ?? 0).toFixed(2)}</td>
       </tr>
