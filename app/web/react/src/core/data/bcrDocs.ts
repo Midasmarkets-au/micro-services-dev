@@ -3,36 +3,10 @@
  * 用于注册页面的协议文档链接
  */
 
+import { reverseLocaleMap } from '@/i18n/config';
+
 export const prefixLink =
   '/docs';
-
-// 语言代码映射（用于文档路径）
-const websiteLangCode: Record<string, string> = {
-  // i18n locale 短码（useLocale 返回）-> S3 目录
-  'en': 'en-us',
-  'zh': 'zh-cn',
-  'zh-tw': 'zh-tw',
-  'vi': 'vi-vn',
-  'th': 'th-th',
-  'jp': 'jp-jp',
-  'id': 'en-us',
-  'ms': 'ms-my',
-  'ko': 'ko-kr',
-  'km': 'km-kh',
-  'es': 'es-es',
-  // 兼容后端完整语言码
-  'en-us': 'en-us',
-  'zh-cn': 'zh-cn',
-  'zh-hk': 'zh-tw',
-  'id-id': 'en-us',
-  'ms-my': 'ms-my',
-  'th-th': 'th-th',
-  'vi-vn': 'vi-vn',
-  'jp-jp': 'jp-jp',
-  'ko-kr': 'ko-kr',
-  'km-kh': 'km-kh',
-  'es-es': 'es-es',
-};
 
 // 澳洲文档配置
 export const baDocs: Record<string, { title: string; src: string }> = {
@@ -125,7 +99,7 @@ const excludeLangBa = ['id-id', 'ko-kr', 'km-kh'];
  */
 export const getBaDocs = (fileName: string, locale: string): string => {
   // 转换 locale 格式 (zh -> zh-cn, en -> en-us)
-  let lang = websiteLangCode[locale] || websiteLangCode[locale.toLowerCase()] || 'en-us';
+  let lang = reverseLocaleMap[locale] || reverseLocaleMap[locale.toLowerCase()] || 'en-us';
   
   if (excludeLangBa.includes(lang)) {
     lang = 'en-us';
@@ -156,7 +130,7 @@ export const getBviDocs = (
   showIbDocs = false
 ): string | false => {
   // 转换 locale 格式 (zh -> zh-cn, en -> en-us)
-  let lang = websiteLangCode[locale] || websiteLangCode[locale.toLowerCase()] || 'en-us';
+  let lang = reverseLocaleMap[locale] || reverseLocaleMap[locale.toLowerCase()] || 'en-us';
   
   if (excludeLangBvi.includes(lang)) {
     lang = 'en-us';
