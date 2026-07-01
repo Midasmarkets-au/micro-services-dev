@@ -4,17 +4,27 @@
  */
 
 export const prefixLink =
-  'https://mm-s3-pro.s3.ap-southeast-1.amazonaws.com/docs';
+  '/docs';
 
 // 语言代码映射（用于文档路径）
 const websiteLangCode: Record<string, string> = {
-  'zh-cn': 'zh-cn',
-  'zh': 'zh-cn',
-  'en-us': 'en-us',
+  // i18n locale 短码（useLocale 返回）-> S3 目录
   'en': 'en-us',
-  'id-id': 'en-us',
-  'zh-hk': 'zh-tw',
+  'zh': 'zh-cn',
   'zh-tw': 'zh-tw',
+  'vi': 'vi-vn',
+  'th': 'th-th',
+  'jp': 'jp-jp',
+  'id': 'en-us',
+  'ms': 'ms-my',
+  'ko': 'ko-kr',
+  'km': 'km-kh',
+  'es': 'es-es',
+  // 兼容后端完整语言码
+  'en-us': 'en-us',
+  'zh-cn': 'zh-cn',
+  'zh-hk': 'zh-tw',
+  'id-id': 'en-us',
   'ms-my': 'ms-my',
   'th-th': 'th-th',
   'vi-vn': 'vi-vn',
