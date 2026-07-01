@@ -53,6 +53,11 @@ const nextConfig: NextConfig = {
         source: '/images/:path*',
         destination: 'https://mm-front-public.s3.ap-southeast-2.amazonaws.com/images/:path*',
       },
+      // 将 /docs/bvi/* 反向代理到 S3（隐藏 S3 地址，与 official-web 一致）
+      {
+        source: '/docs/bvi/:path*',
+        destination: 'https://mm-front-public.s3.ap-southeast-2.amazonaws.com/docs/bvi/:path*',
+      },
     ];
   },
   webpack(config) {
