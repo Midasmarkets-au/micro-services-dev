@@ -83,16 +83,8 @@ spec:
                 name: front-portal-product
                 port:
                   number: 80
-    - host: k8s-ingressn-ingressn-d9fbebf220-740d31339032cd06.elb.ap-southeast-2.amazonaws.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: front-portal-product
-                port:
-                  number: 80
+    # NLB 裸域名已改给 old-tenant（见 MM-Front k8s/old-tenant-ingress.yaml）。
+    # front-portal-product 通过上面的正式域名对外服务，不再占用 NLB 裸域名。
 ---
 # ============================================================================
 #  midasmkts-event-ingress — SSE /api/v1/event for midasmkts.com
