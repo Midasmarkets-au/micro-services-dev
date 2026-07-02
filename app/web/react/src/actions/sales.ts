@@ -2,7 +2,7 @@
 import logger from '@/lib/logger';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList,buildQuery } from '@/lib/utils';
+import { normalizeAmountList, buildQuery } from '@/lib/utils';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   SalesClientListResponse,
@@ -22,6 +22,7 @@ import type {
   SalesChildStat,
   SalesAccountStat,
   SalesStatistics,
+  SalesHierarchyNode,
   SalesListParams,
   SymbolCategory,
 } from '@/types/sales';
@@ -642,6 +643,45 @@ export async function addSalesLeadComment(
 // Sales Statistics API
 // ============================================
 
+type SalesStatisticsSummary = NonNullable<SalesStatistics['summaryStats']>;
+type SalesStatisticsTimeSeriesRow = NonNullable<SalesStatistics['timeSeriesData']>[number];
+
+function normalizeSalesStatisticsHierarchy(nodes?: SalesHierarchyNode[]): SalesHierarchyNode[] | undefined {
+  if (!nodes) return nodes;
+
+  return nodes.map((node) => {
+    const normalized = normalizeAmountList<SalesHierarchyNode>(
+      node,
+      ['netDeposit', 'deposit', 'withdrawal', 'rebate']
+    ) as SalesHierarchyNode;
+
+    if (normalized.children?.length) {
+      normalized.children = normalizeSalesStatisticsHierarchy(normalized.children);
+    }
+
+    return normalized;
+  });
+}
+
+function normalizeSalesStatistics(response: SalesStatistics): SalesStatistics {
+  return {
+    ...response,
+    summaryStats: response.summaryStats
+      ? normalizeAmountList<SalesStatisticsSummary>(
+          response.summaryStats,
+          ['totalNetDeposit', 'totalRebate', 'totalDeposit', 'totalWithdrawal']
+        ) as SalesStatisticsSummary
+      : response.summaryStats,
+    timeSeriesData: response.timeSeriesData
+      ? normalizeAmountList<SalesStatisticsTimeSeriesRow>(
+          response.timeSeriesData,
+          ['deposit', 'withdrawal', 'netDeposit', 'rebate']
+        ) as SalesStatisticsTimeSeriesRow[]
+      : response.timeSeriesData,
+    hierarchyData: normalizeSalesStatisticsHierarchy(response.hierarchyData),
+  };
+}
+
 export async function getSalesStatistics(
   params?: SalesListParams
 ): Promise<ActionResponse<SalesStatistics>> {
@@ -649,7 +689,7 @@ export async function getSalesStatistics(
     const response = await apiClient.v1.get<SalesStatistics>(
       `/sales/statistics${buildQuery(params)}`
     );
-    return { success: true, data: unwrapData<SalesStatistics>(response) };
+    return { success: true, data: normalizeSalesStatistics(unwrapData<SalesStatistics>(response)) };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch sales statistics');
   }
