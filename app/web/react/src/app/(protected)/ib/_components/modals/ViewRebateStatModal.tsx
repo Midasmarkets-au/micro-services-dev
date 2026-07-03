@@ -248,7 +248,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
           </div>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-auto">
+        <div className="max-h-[60vh] overflow-auto border-t border-border pt-4">
           {renderAmountTags()}
 
           <DataTable<RebateSymbolRow>
