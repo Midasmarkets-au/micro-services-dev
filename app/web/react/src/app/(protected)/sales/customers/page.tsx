@@ -25,6 +25,7 @@ import type { SalesClientAccount, SalesClientCriteria, IbLevelItem } from '@/typ
 import { CustomerFilter } from '@/components/CustomerFilter';
 import type { CustomerFilterRef, CustomerFilterParams } from '@/components/CustomerFilter';
 import { useUserStore } from '@/stores';
+import { useTheme } from '@/hooks/useTheme';
 import { ViewRebateStatModal } from '../_components/modals/ViewRebateStatModal';
 import { OpenTradeAccountModal } from '../_components/modals/OpenTradeAccountModal';
 import { AccountRebateRelationModal } from '../_components/modals/AccountRebateRelationModal';
@@ -71,6 +72,8 @@ export default function SalesCustomersPage() {
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
+  const { isDark } = useTheme();
+  const settingIcon = isDark ? 'setting-night' : 'setting-day';
 
   const [customers, setCustomers] = useState<SalesClientAccount[]>([]);
   const [criteria, setCriteria] = useState<SalesClientCriteria>(INITIAL_CRITERIA);
@@ -524,14 +527,135 @@ export default function SalesCustomersPage() {
         </div>
       )}
 
-      {/* Table */}
-      <DataTable<SalesClientAccount>
-        columns={columns}
-        data={customers}
-        rowKey={(item) => item.uid}
-        loading={isLoading}
-        stretchHeight={false}
-      />
+      {/* Mobile card list — only on small screens */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-4">
+              <Skeleton className="size-10 shrink-0 rounded-full" />
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </div>
+          ))
+        ) : customers.length === 0 ? (
+          <div className="py-12 text-center text-sm text-text-secondary">
+            {t('dashboard.noData')}
+          </div>
+        ) : (
+          customers.map((item) => {
+            const name = getUserName(item);
+            const isClient = item.role === AccountRoleTypes.Client;
+            const isNonClient = !isClient;
+            const accountId = isClient
+              ? (item.tradeAccount?.accountNumber ?? t('customers.noTradeAccount'))
+              : String(item.uid);
+            const subInfo = item.code || item.group || '-';
+
+            // 角色 Tag 样式
+            let roleVariant: 'success' | 'danger' | 'warning' = 'warning';
+            let roleLabel = t('customers.clientType');
+            if (item.role === AccountRoleTypes.IB) { roleVariant = 'success'; roleLabel = t('customers.ibType'); }
+            else if (item.role === AccountRoleTypes.Sales) { roleVariant = 'danger'; roleLabel = t('customers.salesType'); }
+
+            // 非 Client 的 dropdown
+            const mobileDropdownItems: DropdownMenuItem[] = [];
+            if (isNonClient) {
+              mobileDropdownItems.push({ key: 'viewAccounts', label: t('action.viewAccounts'), onClick: () => handleIbDrillDown(item) });
+            }
+            mobileDropdownItems.push(
+              { key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) },
+              { key: 'createTradeAccount', label: t('action.createTradeAccount'), onClick: () => showOpenAccount(item) },
+            );
+            if (item.role === AccountRoleTypes.IB) {
+              mobileDropdownItems.push(
+                { key: 'viewRebateRelation', label: t('action.viewRebateRelation'), onClick: () => showRebateRelation(item) },
+                { key: 'referralCodeList', label: t('action.referralCodeList'), onClick: () => showIbLinks(item) },
+                { key: 'editSchema', label: t('action.editSchema'), onClick: () => showEditSchema(item), hidden: !siteConfig?.rebateEnabled },
+                { key: 'newIBReferralCode', label: t('action.newIBReferralCode'), onClick: () => showNewReferral(item), hidden: !siteConfig?.rebateEnabled },
+              );
+            }
+            if (item.role === AccountRoleTypes.Sales) {
+              mobileDropdownItems.push(
+                { key: 'referralCodeList', label: t('action.referralCodeList'), onClick: () => showIbLinks(item) },
+                { key: 'newIBReferralCode', label: t('action.newIBReferralCode'), onClick: () => showNewReferral(item), hidden: !siteConfig?.rebateEnabled || ibChain.length > 0 },
+              );
+            }
+
+            return (
+              <div
+                key={item.uid}
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4"
+              >
+                <Avatar src={item.user?.avatar} alt={name} size="sm" className="shrink-0" />
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium text-text-primary">{name}</p>
+                    {showRoleColumn && (
+                      <Tag variant={roleVariant} soft className="shrink-0 text-[10px] px-1 py-0">
+                        {roleLabel}
+                      </Tag>
+                    )}
+                  </div>
+                  <p
+                    className="cursor-pointer truncate text-xs text-text-secondary"
+                    onClick={() => showUnlockEmailAddress(item.uid, item.user?.email)}
+                  >
+                    {item.user?.email}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-medium text-text-primary">{accountId}</span>
+                    <span className="text-xs text-text-secondary">{subInfo}</span>
+                  </div>
+
+                  {isClient ? (
+                    <Link
+                      href={`/sales/customers/${item.uid}`}
+                      className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                      aria-label={t('action.viewDetails')}
+                    >
+                      <Icon name="eye_open" size={18} />
+                    </Link>
+                  ) : (
+                    <DropdownMenu
+                      trigger={
+                        <button
+                          type="button"
+                          className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                          aria-label={t('action.action')}
+                        >
+                          <Icon name={settingIcon} size={18} />
+                        </button>
+                      }
+                      items={mobileDropdownItems}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table — hidden on mobile */}
+      <div className="hidden md:block">
+        <DataTable<SalesClientAccount>
+          columns={columns}
+          data={customers}
+          rowKey={(item) => item.uid}
+          loading={isLoading}
+          stretchHeight={false}
+        />
+      </div>
 
       {/* Pagination */}
       <Pagination
