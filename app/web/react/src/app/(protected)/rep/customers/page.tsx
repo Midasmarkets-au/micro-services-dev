@@ -8,11 +8,13 @@ import { getRepClients, repFuzzySearchAccount, getRepViewEmailCode, getRepEmailB
 import { fetchAction } from '@/lib/api/browser-client';
 import { useRepStore } from '@/stores/repStore';
 import { AccountRoleTypes } from '@/types/accounts';
+import { useTheme } from '@/hooks/useTheme';
 import {
   Avatar,
   BalanceShow,
   Button,
   Skeleton,
+  Tag,
   DataTable,
   Pagination,
   Icon,
@@ -43,6 +45,8 @@ export default function RepCustomersPage() {
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
   const repAccount = useRepStore((s) => s.repAccount);
+  const { theme } = useTheme();
+  const settingIcon = theme === 'dark' ? 'setting-night' : 'setting-day';
 
   const [customers, setCustomers] = useState<RepClientAccount[]>([]);
   const [criteria, setCriteria] = useState<RepClientCriteria>(INITIAL_CRITERIA);
@@ -463,14 +467,113 @@ export default function RepCustomersPage() {
         </div>
       )}
 
-      {/* 数据表格 */}
-      <DataTable<RepClientAccount>
-        columns={columns}
-        data={customers}
-        rowKey={(item) => item.uid}
-        loading={isLoading}
-        stretchHeight={false}
-      />
+      {/* Mobile card list — only on small screens */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-4">
+              <Skeleton className="size-10 shrink-0 rounded-full" />
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </div>
+          ))
+        ) : customers.length === 0 ? (
+          <div className="py-12 text-center text-sm text-text-secondary">
+            {t('customers.noData')}
+          </div>
+        ) : (
+          customers.map((item) => {
+            const name = getUserName(item);
+            const isClient = item.role === AccountRoleTypes.Client;
+            const accountId = isClient
+              ? (item.tradeAccount?.accountNumber ?? t('customers.noTradeAccount'))
+              : String(item.uid);
+            const subInfo = item.code || item.group || '-';
+
+            return (
+              <div
+                key={item.uid}
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4"
+              >
+                {/* Avatar */}
+                <Avatar
+                  src={item.user?.avatar}
+                  alt={name}
+                  size="sm"
+                  className="shrink-0"
+                />
+
+                {/* Name + email */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium text-text-primary">{name}</p>
+                    {isDrilledIn && (
+                      <Tag
+                        variant={isClient ? 'success' : 'warning'}
+                        soft
+                        className="shrink-0 px-1 py-0 text-[10px]"
+                      >
+                        {isClient ? t('customers.clientType') : t('customers.ibType')}
+                      </Tag>
+                    )}
+                  </div>
+                  <p
+                    className="cursor-pointer truncate text-xs text-text-secondary"
+                    onClick={() => showUnlockEmailAddress(item.uid, item.user?.email)}
+                  >
+                    {item.user?.email || '-'}
+                  </p>
+                </div>
+
+                {/* Account info + action */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-medium text-text-primary">{accountId}</span>
+                    <span className="text-xs text-text-secondary">{subInfo}</span>
+                  </div>
+
+                  {/* Action icon */}
+                  {isClient ? (
+                    <Link
+                      href={`/rep/customers/${item.uid}`}
+                      className="flex items-center justify-center text-text-secondary transition-colors hover:text-text-primary"
+                      aria-label={t('action.viewDetails')}
+                    >
+                      <Icon name="eye_open" size={18} />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleIbSearch(item)}
+                      className="flex items-center justify-center text-text-secondary transition-colors hover:text-text-primary"
+                      aria-label={t('action.viewAccounts')}
+                    >
+                      <Icon name={settingIcon} size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table — hidden on mobile */}
+      <div className="hidden md:block">
+        <DataTable<RepClientAccount>
+          columns={columns}
+          data={customers}
+          rowKey={(item) => item.uid}
+          loading={isLoading}
+          stretchHeight={false}
+        />
+      </div>
 
       {/* 分页 */}
       <Pagination
