@@ -26,6 +26,7 @@ import { CustomerFilter } from '@/components/CustomerFilter';
 import type { CustomerFilterRef, CustomerFilterParams } from '@/components/CustomerFilter';
 import type { IBClientAccount, IBClientCriteria } from '@/types/ib';
 import { useUserStore } from '@/stores';
+import { useTheme } from '@/hooks/useTheme';
 import { ViewRebateStatModal } from '../_components/modals/ViewRebateStatModal';
 import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
 import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
@@ -68,6 +69,8 @@ export default function IBCustomersPage() {
   useEffect(() => { executeRef.current = execute; });
   const agentAccount = useIBStore((s) => s.agentAccount);
   const siteConfig = useUserStore((s) => s.siteConfig);
+  const { isDark } = useTheme();
+  const settingIcon = isDark ? 'setting-night' : 'setting-day';
 
   const [customers, setCustomers] = useState<IBClientAccount[]>([]);
   const [criteria, setCriteria] = useState<IBClientCriteria>(INITIAL_CRITERIA);
@@ -449,13 +452,131 @@ export default function IBCustomersPage() {
         </div>
       )}
 
-      {/* Table */}
-      <DataTable<IBClientAccount>
-        columns={columns}
-        data={customers}
-        rowKey={(item) => item.uid}
-        loading={isLoading}
-      />
+      {/* Mobile card list — only on small screens */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-4">
+              <Skeleton className="size-10 shrink-0 rounded-full" />
+              <div className="flex flex-1 flex-col gap-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </div>
+          ))
+        ) : customers.length === 0 ? (
+          <div className="py-12 text-center text-sm text-text-secondary">
+            {t('dashboard.noData')}
+          </div>
+        ) : (
+          customers.map((item) => {
+            const name = getUserName(item);
+            const isIB = item.role === AccountRoleTypes.IB;
+            const accountId = isIB
+              ? String(item.uid)
+              : (item.tradeAccount?.accountNumber ?? t('customers.noTradeAccount'));
+            const subInfo = item.code || item.group || '-';
+
+            const ibDropdownItems: DropdownMenuItem[] = [
+              {
+                key: 'viewAccounts',
+                label: t('action.viewAccounts'),
+                onClick: () => handleIbDrillDown(item),
+              },
+              {
+                key: 'viewRebateStat',
+                label: t('action.viewRebateStatistics'),
+                onClick: () => showRebateStat(item),
+              },
+              {
+                key: 'editSchema',
+                label: t('action.editSchema'),
+                onClick: () => showEditSchema(item),
+                hidden: !siteConfig?.rebateEnabled || ibChain.length > 0,
+              },
+            ];
+
+            return (
+              <div
+                key={item.uid}
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4"
+              >
+                {/* Avatar */}
+                <Avatar
+                  src={item.user?.avatar}
+                  alt={name}
+                  size="sm"
+                  className="shrink-0"
+                />
+
+                {/* Name + email */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium text-text-primary">{name}</p>
+                    {showRoleColumn && (
+                      <Tag variant={isIB ? 'danger' : 'success'} soft className="shrink-0 text-[10px] px-1 py-0">
+                        {isIB ? t('customers.ibType') : t('customers.clientType')}
+                      </Tag>
+                    )}
+                  </div>
+                  <p
+                    className="cursor-pointer truncate text-xs text-text-secondary"
+                    onClick={() => showUnlockEmailAddress(item.uid, item.user?.email)}
+                  >
+                    {item.user?.email}
+                  </p>
+                </div>
+
+                {/* Account info + action */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-medium text-text-primary">{accountId}</span>
+                    <span className="text-xs text-text-secondary">{subInfo}</span>
+                  </div>
+
+                  {/* Action button */}
+                  {isIB ? (
+                    <DropdownMenu
+                      trigger={
+                        <button
+                          type="button"
+                          className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                          aria-label={t('fields.action')}
+                        >
+                          <Icon name={settingIcon} size={18} />
+                        </button>
+                      }
+                      items={ibDropdownItems}
+                    />
+                  ) : (
+                    <Link
+                      href={`/ib/customers/${item.uid}`}
+                      className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                      aria-label={t('action.view')}
+                    >
+                      <Icon name="eye_open" size={18} />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table — hidden on mobile */}
+      <div className="hidden md:block">
+        <DataTable<IBClientAccount>
+          columns={columns}
+          data={customers}
+          rowKey={(item) => item.uid}
+          loading={isLoading}
+        />
+      </div>
 
       {/* Pagination */}
       <Pagination

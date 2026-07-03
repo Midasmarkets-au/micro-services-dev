@@ -276,20 +276,22 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex flex-col gap-10">
         {/* 内容主体 */}
-        <div className="flex flex-col flex-wrap gap-10">
-          {/* 头部行：标题+日期选择器 | 清除+搜索 */}
-          <DialogHeader className="flex-col items-stretch gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5">
-              <DialogTitle className="shrink-0">{title}</DialogTitle>
-              <DatePicker
-                mode="range"
-                size="sm"
-                value={dateRange}
-                className="w-full sm:w-auto"
-                onChange={(val) => setDateRange(val as DateRange | undefined)}
-              />
-            </div>
-            <div className="flex w-full items-center gap-3 sm:w-auto sm:gap-5">
+        <div className="flex flex-col gap-4">
+          {/* 标题 */}
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+
+          {/* 筛选栏：移动端垂直堆叠，桌面端水平排列 */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <DatePicker
+              mode="range"
+              size="sm"
+              value={dateRange}
+              className="w-full sm:flex-1"
+              onChange={(val) => setDateRange(val as DateRange | undefined)}
+            />
+            <div className="flex gap-3">
               <Button
                 size="sm"
                 className="flex-1 bg-(--color-btn-dark) text-white hover:bg-(--color-btn-dark)/80 whitespace-nowrap sm:flex-none"
@@ -308,10 +310,12 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
                 {t('action.search')}
               </Button>
             </div>
-          </DialogHeader>
+          </div>
 
           {/* 统计标签 */}
-          {renderAmountTags()}
+          <div className="border-t border-border pt-4">
+            {renderAmountTags()}
+          </div>
 
           {/* 数据表格 */}
           <div className="max-h-[50vh] overflow-x-auto overflow-y-auto">
