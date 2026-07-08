@@ -252,7 +252,7 @@ export default function AccountDetailPage() {
     }
   }, [currentAccount, activeTab, execute, filterParams]);
 
-  // 注意：这里不再用 useEffect 被动监听 activeTab/filterParams 去调用 loadTabData。
+  // 注意： 
   // 数据拉取已经由 TradeFilter 覆盖：它在 key={`trade-filter-${activeTab}`} 下随
   // 切 tab 强制 remount，挂载时会自动触发一次 onSearch -> handleSearch -> loadTabData；
   // 手动搜索/翻页也是 handleSearch/handlePageChange 直接调用 loadTabData。
