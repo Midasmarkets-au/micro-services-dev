@@ -1685,6 +1685,9 @@
       "deposit": "Deposit",
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
+      "walletTransferIn": "Pindahan Masuk Dompet",
+      "accountTransferIn": "Pindahan Masuk Akaun",
+      "accountTransferOut": "Pindahan Keluar Akaun",
       "ibLink": "Pautan IB",
       "referral": "Kod rujukan"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "Ada deposit",
       "noDeposit": "Tiada deposit",
       "status": "Status",
+      "category": "Kategori",
       "amount": "Jumlah",
       "currency": "Mata wang",
       "symbol": "Produk",
@@ -2084,7 +2088,10 @@
       "lead": "Lead",
       "link": "Pautan jualan",
       "statistics": "Statistik",
-      "rebate": "Rebat"
+      "rebate": "Rebat",
+      "walletTransferIn": "Pindahan Masuk Dompet",
+      "accountTransferIn": "Pindahan Masuk Akaun",
+      "accountTransferOut": "Pindahan Keluar Akaun"
     },
     "noSalesAccount": "Akaun jualan tidak dijumpai. Sila hubungi perkhidmatan pelanggan.",
     "selectAccount": "Pilih akaun",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "Ada Deposit",
       "noDeposit": "Tiada Deposit",
       "status": "Status",
+      "category": "Kategori",
       "amount": "Jumlah",
       "currency": "Mata wang",
       "symbol": "Produk",

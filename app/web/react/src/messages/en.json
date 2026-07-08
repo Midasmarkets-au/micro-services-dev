@@ -1688,6 +1688,9 @@
       "deposit": "Deposit",
       "withdrawal": "Withdrawal",
       "rebate": "Rebate",
+      "walletTransferIn": "Wallet Transfer In",
+      "accountTransferIn": "Account Transfer In",
+      "accountTransferOut": "Account Transfer Out",
       "ibLink": "IB Link",
       "referral": "Referral"
     },
@@ -1715,6 +1718,7 @@
       "hasDeposit": "Has Deposit",
       "noDeposit": "No Deposit",
       "status": "Status",
+      "category": "Category",
       "amount": "Amount",
       "currency": "Currency",
       "symbol": "Product",
@@ -2087,7 +2091,10 @@
       "lead": "Lead",
       "link": "Link",
       "statistics": "Statistics",
-      "rebate": "Rebate"
+      "rebate": "Rebate",
+      "walletTransferIn": "Wallet Transfer In",
+      "accountTransferIn": "Account Transfer In",
+      "accountTransferOut": "Account Transfer Out"
     },
     "noSalesAccount": "No Sales account found. Please contact support.",
     "selectAccount": "Select Account",
@@ -2113,6 +2120,7 @@
       "hasDeposit": "Has Deposit",
       "noDeposit": "No Deposit",
       "status": "Status",
+      "category": "Category",
       "amount": "Amount",
       "currency": "Currency",
       "symbol": "Product",

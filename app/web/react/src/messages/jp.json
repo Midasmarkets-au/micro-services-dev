@@ -1685,6 +1685,9 @@
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "リベート",
+      "walletTransferIn": "ウォレット振替入金",
+      "accountTransferIn": "口座振替入金",
+      "accountTransferOut": "口座振替出金",
       "ibLink": "エージェントリンク",
       "referral": "紹介コード"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "入金あり",
       "noDeposit": "入金なし",
       "status": "ステータス",
+      "category": "分類",
       "amount": "金額",
       "currency": "通貨",
       "symbol": "商品",
@@ -2084,7 +2088,10 @@
       "lead": "リード",
       "link": "セールスリンク",
       "statistics": "統計",
-      "rebate": "リベート"
+      "rebate": "リベート",
+      "walletTransferIn": "ウォレット振替入金",
+      "accountTransferIn": "口座振替入金",
+      "accountTransferOut": "口座振替出金"
     },
     "noSalesAccount": "セールスアカウントが見つかりません。カスタマーサービスにお問い合わせください。",
     "selectAccount": "口座を選択",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "入金あり",
       "noDeposit": "入金なし",
       "status": "ステータス",
+      "category": "分類",
       "amount": "金額",
       "currency": "通貨",
       "symbol": "商品",

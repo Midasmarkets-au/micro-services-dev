@@ -1685,6 +1685,9 @@
       "deposit": "Nạp tiền",
       "withdrawal": "Rút tiền",
       "rebate": "Hoàn phí",
+      "walletTransferIn": "Chuyển vào ví",
+      "accountTransferIn": "Chuyển vào tài khoản",
+      "accountTransferOut": "Chuyển ra tài khoản",
       "ibLink": "Liên kết IB",
       "referral": "Mã giới thiệu"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "Có nạp tiền",
       "noDeposit": "Không nạp tiền",
       "status": "Trạng thái",
+      "category": "Danh mục",
       "amount": "Số tiền",
       "currency": "Tiền tệ",
       "symbol": "Sản phẩm",
@@ -2084,7 +2088,10 @@
       "lead": "Lead",
       "link": "Liên kết bán hàng",
       "statistics": "Thống kê",
-      "rebate": "Hoàn phí"
+      "rebate": "Hoàn phí",
+      "walletTransferIn": "Chuyển vào ví",
+      "accountTransferIn": "Chuyển vào tài khoản",
+      "accountTransferOut": "Chuyển ra tài khoản"
     },
     "noSalesAccount": "Không tìm thấy tài khoản bán hàng, vui lòng liên hệ dịch vụ khách hàng",
     "selectAccount": "Chọn tài khoản",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "Đã nạp tiền",
       "noDeposit": "Chưa nạp tiền",
       "status": "Trạng thái",
+      "category": "Danh mục",
       "amount": "Số tiền",
       "currency": "Tiền tệ",
       "symbol": "Sản phẩm",

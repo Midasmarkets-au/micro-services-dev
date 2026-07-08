@@ -252,11 +252,12 @@ export default function AccountDetailPage() {
     }
   }, [currentAccount, activeTab, execute, filterParams]);
 
-  useEffect(() => {
-    if (currentAccount) {
-      loadTabData();
-    }
-  }, [currentAccount, activeTab, loadTabData]);
+  // 注意：这里不再用 useEffect 被动监听 activeTab/filterParams 去调用 loadTabData。
+  // 数据拉取已经由 TradeFilter 覆盖：它在 key={`trade-filter-${activeTab}`} 下随
+  // 切 tab 强制 remount，挂载时会自动触发一次 onSearch -> handleSearch -> loadTabData；
+  // 手动搜索/翻页也是 handleSearch/handlePageChange 直接调用 loadTabData。
+  // 之前同时保留这个 effect（依赖 loadTabData，而 loadTabData 又依赖 filterParams）
+  // 会导致每次筛选变化被重复触发一次，切 tab 时更是叠加成 3 次重复请求。
 
   const handleCopy = useCallback(() => {
     if (!currentAccount?.tradeAccount?.accountNumber) return;

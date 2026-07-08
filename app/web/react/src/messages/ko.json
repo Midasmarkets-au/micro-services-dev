@@ -1685,6 +1685,9 @@
       "deposit": "입금",
       "withdrawal": "출금",
       "rebate": "리베이트",
+      "walletTransferIn": "지갑 이체 입금",
+      "accountTransferIn": "계좌 이체 입금",
+      "accountTransferOut": "계좌 이체 출금",
       "ibLink": "에이전트 링크",
       "referral": "추천 코드"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "입금 완료",
       "noDeposit": "입금 없음",
       "status": "상태",
+      "category": "분류",
       "amount": "금액",
       "currency": "통화",
       "symbol": "상품",
@@ -2084,7 +2088,10 @@
       "lead": "리드",
       "link": "영업 링크",
       "statistics": "통계",
-      "rebate": "리베이트"
+      "rebate": "리베이트",
+      "walletTransferIn": "지갑 이체 입금",
+      "accountTransferIn": "계좌 이체 입금",
+      "accountTransferOut": "계좌 이체 출금"
     },
     "noSalesAccount": "영업 계정을 찾을 수 없습니다. 고객 서비스에 문의해 주세요.",
     "selectAccount": "계정 선택",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "입금 있음",
       "noDeposit": "입금 없음",
       "status": "상태",
+      "category": "분류",
       "amount": "금액",
       "currency": "통화",
       "symbol": "상품",

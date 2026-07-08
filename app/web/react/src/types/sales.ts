@@ -496,6 +496,10 @@ export interface SalesChildStat {
   netAmounts?: Record<string, number[]>;
   profitAmounts?: Record<string, number[]>;
   withdrawalAmounts?: Record<string, number[]>;
+  // 与上面几个字段不同，这三个转账相关字段后端返回的是 currencyId -> 单个数值，不是数组。
+  walletTransferInAmounts?: Record<string, number>;
+  accountTransferInAmounts?: Record<string, number>;
+  accountTransferOutAmounts?: Record<string, number>;
 }
 
 // ============================================

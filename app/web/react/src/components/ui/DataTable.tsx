@@ -46,6 +46,8 @@ export interface DataTableGroupConfig<T> {
   renderGroupHeader: (groupKey: string, items: T[]) => React.ReactNode;
   /** 分组头单元格宽度 class */
   headerWidth?: string;
+  /** 分组头所在列的表头文字，默认留空（如日期分组场景不需要标题） */
+  headerTitle?: React.ReactNode;
 }
 
 /**
@@ -331,7 +333,9 @@ function GroupedDataTable<T>({
           {/* Header */}
           <thead>
             <tr className="text-sm text-text-secondary">
-              <th className={cn('px-5 py-3 font-medium', groupConfig.headerWidth)} />
+              <th className={cn('px-5 py-3 font-medium', groupConfig.headerWidth)}>
+                {groupConfig.headerTitle}
+              </th>
               {columns.map((col) => (
                 <th
                   key={col.key}
