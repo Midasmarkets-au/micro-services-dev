@@ -4,7 +4,7 @@ import { CenterSidebar, type CenterMenuItem } from '@/components/layout/CenterSi
 
 const salesMenuItems: CenterMenuItem[] = [
   // { id: 'dashboard', path: '/sales', labelKey: 'dashboard', icon: '/images/icons/ib/gailan.svg', group: 0 },
-  { id: 'statistics', path: '/sales/statistics', labelKey: 'statistics', icon: '/images/icons/ib/gailan.svg', group: 1 },
+  // { id: 'statistics', path: '/sales/statistics', labelKey: 'statistics', icon: '/images/icons/ib/gailan.svg', group: 1 },
   { id: 'customers', path: '/sales/customers', labelKey: 'customers', icon: '/images/icons/ib/kehu.svg', group: 1 },
   { id: 'new-customers', path: '/sales/new-customers', labelKey: 'newCustomers', icon: '/images/icons/ib/xinkehu.svg', group: 1 },
   { id: 'trade', path: '/sales/trade', labelKey: 'trade', icon: '/images/icons/ib/jiaoyi.svg', group: 2 },

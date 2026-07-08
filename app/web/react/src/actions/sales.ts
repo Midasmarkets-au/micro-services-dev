@@ -717,6 +717,16 @@ export async function getSalesChildStat(
         }
       }
     }
+    // 这三个字段服务端返回的是 currencyId -> 单个数值（不是数组），单独处理。
+    const transferAmountFields = ['walletTransferInAmounts', 'accountTransferInAmounts', 'accountTransferOutAmounts'] as const;
+    for (const field of transferAmountFields) {
+      if (normalized[field]) {
+        const obj = normalized[field] as Record<string, number>;
+        for (const key of Object.keys(obj)) {
+          obj[key] = normalizeAmountList(obj[key]) as number;
+        }
+      }
+    }
     return { success: true, data: normalized };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch child stat');

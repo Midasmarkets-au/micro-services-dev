@@ -13,7 +13,8 @@ import { CurrencyCodeMap } from '@/components/ui/BalanceShow';
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useIBStore } from '@/stores/ibStore';
-import { getIBChildStat, getIBRebateStatBySymbol } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
+import { cn } from '@/lib/utils';
 import type { IBChildStat, IBClientAccount } from '@/types/ib';
 
 interface RebateSymbolRow {
@@ -28,6 +29,24 @@ interface RebateTotal {
   amount: number;
   currencyId: number;
 }
+
+type AmountCategory = 'deposit' | 'accountTransferIn' | 'walletTransferIn' | 'rebate' | 'withdrawal' | 'accountTransferOut';
+
+interface AmountSummaryRow {
+  category: AmountCategory;
+  currencyId: number;
+  amount: number;
+}
+
+// 转入类（入金/转入）复用蓝色，转出类（出金/转出）复用黄色，返佣单独用绿色，跟原来的 tag 配色保持一致。
+const AMOUNT_CATEGORY_STYLE: Record<AmountCategory, string> = {
+  deposit: 'bg-primary',
+  accountTransferIn: 'bg-primary',
+  walletTransferIn: 'bg-primary',
+  rebate: 'bg-green-600',
+  withdrawal: 'bg-[#E6A700]',
+  accountTransferOut: 'bg-[#E6A700]',
+};
 
 interface ViewRebateStatModalProps {
   open: boolean;
@@ -55,8 +74,9 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       if (to) params.to = to;
 
       const [statResult, rebateResult] = await Promise.all([
-        execute(getIBChildStat, agentAccount.uid, params),
-        execute(getIBRebateStatBySymbol, agentAccount.uid, params),
+        execute(() => fetchAction<IBChildStat>('getIBChildStat', agentAccount.uid, params)),
+        execute(() => fetchAction<Record<string, { amounts: Record<string, number[]> }>>(
+          'getIBRebateStatBySymbol', agentAccount.uid, params)),
       ]);
 
       if (statResult.success && statResult.data) {
@@ -173,45 +193,50 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     </tr>
   ) : null;
 
-  const renderAmountTags = () => {
-    if (!stats) return null;
-    const tags: React.ReactNode[] = [];
+  const amountSummaryRows = useMemo<AmountSummaryRow[]>(() => {
+    if (!stats) return [];
+    const rows: AmountSummaryRow[] = [];
+    const pushRows = (category: AmountCategory, amounts?: Record<string, number[] | number>) => {
+      if (!amounts) return;
+      for (const [currencyId, amountVal] of Object.entries(amounts)) {
+        const amount = Array.isArray(amountVal) ? amountVal[0] ?? 0 : Number(amountVal) || 0;
+        rows.push({ category, currencyId: Number(currencyId), amount });
+      }
+    };
+    // 顺序即分组展示顺序：先「转入」类，再「转出」类。
+    pushRows('deposit', stats.depositAmounts);
+    pushRows('accountTransferIn', stats.accountTransferInAmounts);
+    pushRows('walletTransferIn', stats.walletTransferInAmounts);
+    pushRows('rebate', stats.rebateAmounts);
+    pushRows('withdrawal', stats.withdrawalAmounts);
+    pushRows('accountTransferOut', stats.accountTransferOutAmounts);
+    return rows;
+  }, [stats]);
 
-    if (stats.depositAmounts) {
-      for (const [currencyId, amounts] of Object.entries(stats.depositAmounts)) {
-        const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
-        tags.push(
-          <span key={`dep-${currencyId}`} className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1 text-xs text-white">
-            <span>{t('menu.deposit')}:</span>
-            <BalanceShow balance={val} currencyId={Number(currencyId)} />
-          </span>
-        );
-      }
-    }
-    if (stats.withdrawalAmounts) {
-      for (const [currencyId, amounts] of Object.entries(stats.withdrawalAmounts)) {
-        const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
-        tags.push(
-          <span key={`wd-${currencyId}`} className="inline-flex items-center gap-1 rounded bg-[#E6A700] px-3 py-1 text-xs text-white">
-            <span>{t('menu.withdrawal')}:</span>
-            <BalanceShow balance={val} currencyId={Number(currencyId)} />
-          </span>
-        );
-      }
-    }
-    if (stats.rebateAmounts) {
-      for (const [currencyId, amounts] of Object.entries(stats.rebateAmounts)) {
-        const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
-        tags.push(
-          <span key={`rb-${currencyId}`} className="inline-flex items-center gap-1 rounded bg-green-600 px-3 py-1 text-xs text-white">
-            <span>{t('menu.rebate')}:</span>
-            <BalanceShow balance={val} currencyId={Number(currencyId)} />
-          </span>
-        );
-      }
-    }
-    return tags.length > 0 ? <div className="mb-4 flex flex-wrap gap-2">{tags}</div> : null;
+  const amountCategoryLabel: Record<AmountCategory, string> = {
+    deposit: t('menu.deposit'),
+    accountTransferIn: t('menu.accountTransferIn'),
+    walletTransferIn: t('menu.walletTransferIn'),
+    rebate: t('menu.rebate'),
+    withdrawal: t('menu.withdrawal'),
+    accountTransferOut: t('menu.accountTransferOut'),
   };
+
+  const amountSummaryColumns = useMemo<DataTableColumn<AmountSummaryRow>[]>(() => [
+    {
+      key: 'currency',
+      title: t('fields.currency'),
+      skeletonWidth: 'w-16',
+      render: (row) => CurrencyCodeMap[row.currencyId] || 'USD',
+    },
+    {
+      key: 'amount',
+      title: t('fields.amount'),
+      skeletonWidth: 'w-24',
+      align: 'right',
+      render: (row) => <BalanceShow balance={row.amount} currencyId={row.currencyId} />,
+    },
+  ], [t]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -249,7 +274,30 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-auto border-t border-border pt-4">
-          {renderAmountTags()}
+          {amountSummaryRows.length > 0 && (
+            <div className="mb-5">
+              <DataTable<AmountSummaryRow>
+                columns={amountSummaryColumns}
+                data={amountSummaryRows}
+                rowKey={(row, idx) => `${row.category}-${row.currencyId}-${idx}`}
+                groupConfig={{
+                  groupBy: (row) => row.category,
+                  headerWidth: 'w-32',
+                  headerTitle: t('fields.category'),
+                  renderGroupHeader: (key) => (
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded px-2 py-1 text-xs text-white',
+                        AMOUNT_CATEGORY_STYLE[key as AmountCategory]
+                      )}
+                    >
+                      {amountCategoryLabel[key as AmountCategory]}
+                    </span>
+                  ),
+                }}
+              />
+            </div>
+          )}
 
           <DataTable<RebateSymbolRow>
             columns={columns}
