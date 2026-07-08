@@ -1683,6 +1683,9 @@
       "deposit": "Depósito",
       "withdrawal": "Retiro",
       "rebate": "Reembolso",
+      "walletTransferIn": "Transferencia entrante a monedero",
+      "accountTransferIn": "Transferencia entrante a cuenta",
+      "accountTransferOut": "Transferencia saliente de cuenta",
       "ibLink": "Enlace de agente",
       "referral": "Código de referido"
     },
@@ -1710,6 +1713,7 @@
       "hasDeposit": "Con depósito",
       "noDeposit": "Sin depósito",
       "status": "Estado",
+      "category": "Categoría",
       "amount": "Monto",
       "currency": "Moneda",
       "symbol": "Producto",
@@ -2082,7 +2086,10 @@
       "lead": "Prospecto",
       "link": "Enlace de ventas",
       "statistics": "Estadísticas",
-      "rebate": "Reembolso"
+      "rebate": "Reembolso",
+      "walletTransferIn": "Transferencia entrante a monedero",
+      "accountTransferIn": "Transferencia entrante a cuenta",
+      "accountTransferOut": "Transferencia saliente de cuenta"
     },
     "noSalesAccount": "No se encontró cuenta de ventas, por favor contacte al servicio al cliente.",
     "selectAccount": "Seleccionar cuenta",
@@ -2108,6 +2115,7 @@
       "hasDeposit": "Con Depósito",
       "noDeposit": "Sin Depósito",
       "status": "Estado",
+      "category": "Categoría",
       "amount": "Monto",
       "currency": "Moneda",
       "symbol": "Producto",

@@ -1685,6 +1685,9 @@
       "deposit": "ฝากเงิน",
       "withdrawal": "ถอนเงิน",
       "rebate": "รีเบต",
+      "walletTransferIn": "โอนเข้ากระเป๋าเงิน",
+      "accountTransferIn": "โอนเข้าบัญชี",
+      "accountTransferOut": "โอนออกจากบัญชี",
       "ibLink": "ลิงก์ IB",
       "referral": "รหัสอ้างอิง"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "มีการฝาก",
       "noDeposit": "ไม่มีการฝาก",
       "status": "สถานะ",
+      "category": "หมวดหมู่",
       "amount": "จำนวน",
       "currency": "สกุลเงิน",
       "symbol": "สินค้า",
@@ -2084,7 +2088,10 @@
       "lead": "Lead",
       "link": "ลิงก์การขาย",
       "statistics": "สถิติ",
-      "rebate": "รีเบต"
+      "rebate": "รีเบต",
+      "walletTransferIn": "โอนเข้ากระเป๋าเงิน",
+      "accountTransferIn": "โอนเข้าบัญชี",
+      "accountTransferOut": "โอนออกจากบัญชี"
     },
     "noSalesAccount": "ไม่พบบัญชีการขาย กรุณาติดต่อฝ่ายบริการลูกค้า",
     "selectAccount": "เลือกบัญชี",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "มีเงินฝาก",
       "noDeposit": "ไม่มีเงินฝาก",
       "status": "สถานะ",
+      "category": "หมวดหมู่",
       "amount": "จำนวน",
       "currency": "สกุลเงิน",
       "symbol": "สินค้า",

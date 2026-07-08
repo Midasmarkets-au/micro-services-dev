@@ -1685,6 +1685,9 @@
       "deposit": "ដាក់ប្រាក់",
       "withdrawal": "ដកប្រាក់",
       "rebate": "Rebate",
+      "walletTransferIn": "ផ្ទេរចូលកាបូប",
+      "accountTransferIn": "ផ្ទេរចូលគណនី",
+      "accountTransferOut": "ផ្ទេរចេញពីគណនី",
       "ibLink": "តំណភ្ជាប់ IB",
       "referral": "លេខកូដបញ្ជូន"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "មានការដាក់ប្រាក់",
       "noDeposit": "គ្មានការដាក់ប្រាក់",
       "status": "ស្ថានភាព",
+      "category": "ប្រភេទ",
       "amount": "ចំនួន",
       "currency": "រូបិយប័ណ្ណ",
       "symbol": "ផលិតផល",
@@ -2084,7 +2088,10 @@
       "lead": "Lead",
       "link": "តំណលក់",
       "statistics": "ស្ថិតិ",
-      "rebate": "Rebate"
+      "rebate": "Rebate",
+      "walletTransferIn": "ផ្ទេរចូលកាបូប",
+      "accountTransferIn": "ផ្ទេរចូលគណនី",
+      "accountTransferOut": "ផ្ទេរចេញពីគណនី"
     },
     "noSalesAccount": "រក​មិន​ឃើញ​គណនីលក់ សូមទំនាក់ទំនងសេវាអតិថិជន",
     "selectAccount": "ជ្រើសរើសគណនី",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "មានប្រាក់បញ្ញើ",
       "noDeposit": "គ្មានប្រាក់បញ្ញើ",
       "status": "ស្ថានភាព",
+      "category": "ប្រភេទ",
       "amount": "ចំនួន",
       "currency": "រូបិយប័ណ្ណ",
       "symbol": "ផលិតផល",

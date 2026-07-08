@@ -18,7 +18,7 @@ import { fetchAction } from '@/lib/api/browser-client';
 import type { SalesClientAccount, SalesChildStat } from '@/types/sales';
 import { AccountRoleTypes } from '@/types/accounts';
 import { CurrencyCodeMap } from '@/components/ui/BalanceShow';
-import { convertTradeTime } from '@/lib/utils';
+import { convertTradeTime, cn } from '@/lib/utils';
 
 interface RebateSymbolRow {
   symbol: string;
@@ -32,6 +32,24 @@ interface RebateTotal {
   amount: number;
   currencyId: number;
 }
+
+type AmountCategory = 'deposit' | 'accountTransferIn' | 'walletTransferIn' | 'rebate' | 'withdrawal' | 'accountTransferOut';
+
+interface AmountSummaryRow {
+  category: AmountCategory;
+  currencyId: number;
+  amount: number;
+}
+
+// 转入类（入金/转入）复用存款配色，转出类（出金/转出）复用取款配色，跟原来的 tag 保持一致。
+const AMOUNT_CATEGORY_STYLE: Record<AmountCategory, string> = {
+  deposit: 'bg-(--color-tag-deposit-bg) text-(--color-tag-deposit)',
+  accountTransferIn: 'bg-(--color-tag-deposit-bg) text-(--color-tag-deposit)',
+  walletTransferIn: 'bg-(--color-tag-deposit-bg) text-(--color-tag-deposit)',
+  rebate: 'bg-(--color-tag-rebate-bg) text-(--color-tag-rebate)',
+  withdrawal: 'bg-(--color-tag-withdrawal-bg) text-(--color-tag-withdrawal)',
+  accountTransferOut: 'bg-(--color-tag-withdrawal-bg) text-(--color-tag-withdrawal)',
+};
 
 interface ViewRebateStatModalProps {
   open: boolean;
@@ -225,54 +243,50 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     </>
   ) : null;
 
-  const renderAmountTags = () => {
-    if (!stats) return null;
-    const tags: React.ReactNode[] = [];
+  const amountSummaryRows = useMemo<AmountSummaryRow[]>(() => {
+    if (!stats) return [];
+    const rows: AmountSummaryRow[] = [];
+    const pushRows = (category: AmountCategory, amounts?: Record<string, number[] | number>) => {
+      if (!amounts) return;
+      for (const [currencyId, amountVal] of Object.entries(amounts)) {
+        const amount = Array.isArray(amountVal) ? amountVal[0] ?? 0 : Number(amountVal) || 0;
+        rows.push({ category, currencyId: Number(currencyId), amount });
+      }
+    };
+    // 顺序即分组展示顺序：先「转入」类，再「转出」类。
+    pushRows('deposit', stats.depositAmounts);
+    pushRows('accountTransferIn', stats.accountTransferInAmounts);
+    pushRows('walletTransferIn', stats.walletTransferInAmounts);
+    pushRows('rebate', stats.rebateAmounts);
+    pushRows('withdrawal', stats.withdrawalAmounts);
+    pushRows('accountTransferOut', stats.accountTransferOutAmounts);
+    return rows;
+  }, [stats]);
 
-    if (stats.depositAmounts) {
-      for (const [currencyId, amounts] of Object.entries(stats.depositAmounts)) {
-        const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
-        tags.push(
-          <span
-            key={`dep-${currencyId}`}
-            className="inline-flex items-center gap-1 rounded bg-(--color-tag-deposit-bg) px-3 py-1 text-xs text-(--color-tag-deposit)"
-          >
-            <span>{t('menu.deposit')}:</span>
-            <BalanceShow balance={val} currencyId={Number(currencyId)} />
-          </span>
-        );
-      }
-    }
-    if (stats.withdrawalAmounts) {
-      for (const [currencyId, amounts] of Object.entries(stats.withdrawalAmounts)) {
-        const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
-        tags.push(
-          <span
-            key={`wd-${currencyId}`}
-            className="inline-flex items-center gap-1 rounded bg-(--color-tag-withdrawal-bg) px-3 py-1 text-xs text-(--color-tag-withdrawal)"
-          >
-            <span>{t('menu.withdrawal')}:</span>
-            <BalanceShow balance={val} currencyId={Number(currencyId)} />
-          </span>
-        );
-      }
-    }
-    if (stats.rebateAmounts) {
-      for (const [currencyId, amounts] of Object.entries(stats.rebateAmounts)) {
-        const val = Array.isArray(amounts) ? amounts[0] ?? 0 : Number(amounts) || 0;
-        tags.push(
-          <span
-            key={`rb-${currencyId}`}
-            className="inline-flex items-center gap-1 rounded bg-(--color-tag-rebate-bg) px-3 py-1 text-xs text-(--color-tag-rebate)"
-          >
-            <span>{t('menu.rebate')}:</span>
-            <BalanceShow balance={val} currencyId={Number(currencyId)} />
-          </span>
-        );
-      }
-    }
-    return tags.length > 0 ? <div className="flex flex-wrap gap-5">{tags}</div> : null;
+  const amountCategoryLabel: Record<AmountCategory, string> = {
+    deposit: t('menu.deposit'),
+    accountTransferIn: t('menu.accountTransferIn'),
+    walletTransferIn: t('menu.walletTransferIn'),
+    rebate: t('menu.rebate'),
+    withdrawal: t('menu.withdrawal'),
+    accountTransferOut: t('menu.accountTransferOut'),
   };
+
+  const amountSummaryColumns = useMemo<DataTableColumn<AmountSummaryRow>[]>(() => [
+    {
+      key: 'currency',
+      title: t('fields.currency'),
+      skeletonWidth: 'w-16',
+      render: (row) => CurrencyCodeMap[row.currencyId] || 'USD',
+    },
+    {
+      key: 'amount',
+      title: t('fields.amount'),
+      skeletonWidth: 'w-24',
+      align: 'right',
+      render: (row) => <BalanceShow balance={row.amount} currencyId={row.currencyId} />,
+    },
+  ], [t]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -315,9 +329,30 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
           </div>
 
           {/* 统计标签 */}
-          <div className="border-t border-border pt-4">
-            {renderAmountTags()}
-          </div>
+          {amountSummaryRows.length > 0 && (
+            <div className="border-t border-border pt-4">
+              <DataTable<AmountSummaryRow>
+                columns={amountSummaryColumns}
+                data={amountSummaryRows}
+                rowKey={(row, idx) => `${row.category}-${row.currencyId}-${idx}`}
+                groupConfig={{
+                  groupBy: (row) => row.category,
+                  headerWidth: 'w-32',
+                  headerTitle: t('fields.category'),
+                  renderGroupHeader: (key) => (
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded px-2 py-1 text-xs',
+                        AMOUNT_CATEGORY_STYLE[key as AmountCategory]
+                      )}
+                    >
+                      {amountCategoryLabel[key as AmountCategory]}
+                    </span>
+                  ),
+                }}
+              />
+            </div>
+          )}
 
           {/* 数据表格 */}
           <div className="max-h-[50vh] overflow-x-auto overflow-y-auto">

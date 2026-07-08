@@ -1685,6 +1685,9 @@
       "deposit": "Setoran",
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
+      "walletTransferIn": "Transfer Masuk Dompet",
+      "accountTransferIn": "Transfer Masuk Akun",
+      "accountTransferOut": "Transfer Keluar Akun",
       "ibLink": "Tautan IB",
       "referral": "Referral"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "Sudah Setor",
       "noDeposit": "Belum Setor",
       "status": "Status",
+      "category": "Kategori",
       "amount": "Jumlah",
       "currency": "Mata Uang",
       "symbol": "Produk",
@@ -2084,7 +2088,10 @@
       "lead": "Prospek",
       "link": "Tautan",
       "statistics": "Statistik",
-      "rebate": "Rabat"
+      "rebate": "Rabat",
+      "walletTransferIn": "Transfer Masuk Dompet",
+      "accountTransferIn": "Transfer Masuk Akun",
+      "accountTransferOut": "Transfer Keluar Akun"
     },
     "noSalesAccount": "Tidak ada akun Sales ditemukan. Silakan hubungi dukungan.",
     "selectAccount": "Pilih Akun",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "Ada Deposit",
       "noDeposit": "Tidak Ada Deposit",
       "status": "Status",
+      "category": "Kategori",
       "amount": "Jumlah",
       "currency": "Mata Uang",
       "symbol": "Produk",

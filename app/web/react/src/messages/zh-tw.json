@@ -1685,6 +1685,9 @@
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "返佣",
+      "walletTransferIn": "錢包轉入",
+      "accountTransferIn": "帳戶轉入",
+      "accountTransferOut": "帳戶轉出",
       "ibLink": "代理連結",
       "referral": "推薦碼"
     },
@@ -1712,6 +1715,7 @@
       "hasDeposit": "已入金",
       "noDeposit": "未入金",
       "status": "狀態",
+      "category": "分類",
       "amount": "金額",
       "currency": "貨幣",
       "symbol": "產品",
@@ -2084,7 +2088,10 @@
       "lead": "線索",
       "link": "銷售連結",
       "statistics": "統計",
-      "rebate": "返佣"
+      "rebate": "返佣",
+      "walletTransferIn": "錢包轉入",
+      "accountTransferIn": "帳戶轉入",
+      "accountTransferOut": "帳戶轉出"
     },
     "noSalesAccount": "未找到銷售帳戶，請聯絡客服。",
     "selectAccount": "選擇帳戶",
@@ -2110,6 +2117,7 @@
       "hasDeposit": "有入金",
       "noDeposit": "無入金",
       "status": "狀態",
+      "category": "分類",
       "amount": "金額",
       "currency": "幣種",
       "symbol": "產品",

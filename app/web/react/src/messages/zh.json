@@ -1688,6 +1688,9 @@
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "返佣",
+      "walletTransferIn": "钱包转入",
+      "accountTransferIn": "帐户转入",
+      "accountTransferOut": "帐户转出",
       "ibLink": "代理链接",
       "referral": "推荐码"
     },
@@ -1715,6 +1718,7 @@
       "hasDeposit": "已入金",
       "noDeposit": "未入金",
       "status": "状态",
+      "category": "分类",
       "amount": "金额",
       "currency": "货币",
       "symbol": "产品",
@@ -2087,7 +2091,10 @@
       "lead": "线索",
       "link": "销售链接",
       "statistics": "统计",
-      "rebate": "返佣"
+      "rebate": "返佣",
+      "walletTransferIn": "钱包转入",
+      "accountTransferIn": "帐户转入",
+      "accountTransferOut": "帐户转出"
     },
     "noSalesAccount": "未找到销售账户，请联系客服。",
     "selectAccount": "选择账户",
@@ -2113,6 +2120,7 @@
       "hasDeposit": "有入金",
       "noDeposit": "无入金",
       "status": "状态",
+      "category": "分类",
       "amount": "金额",
       "currency": "币种",
       "symbol": "产品",
