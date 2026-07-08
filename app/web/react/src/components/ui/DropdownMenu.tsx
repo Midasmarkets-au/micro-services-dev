@@ -124,7 +124,36 @@ export function DropdownMenu({ trigger, items, align = 'right', className }: Dro
       }
     };
 
-    const handleScroll = () => setOpen(false);
+    // scroll 监听用捕获阶段是为了感知页面内任意可滚动容器（比如表格自身的
+    // overflow-auto）产生的滚动，而不仅仅是 window 的滚动。但不能不分青红皂白
+    // 直接关闭菜单，否则会有两个问题：
+    // 1. 菜单项较多时自身会变成可滚动（见 maxHeight 那段逻辑），用户在菜单内部
+    //    往下滚动查看更多选项时，这次滚动也会被这里捕获到，菜单立刻被关掉。
+    // 2. 点击菜单项时，浏览器会在 mousedown 之后自动给该按钮设置焦点；如果按钮
+    //    所在的可滚动祖先容器判断它不完全可见，会自动"滚动到可视区域"，这一步
+    //    发生在真正的 click 事件之前。如果这里直接 setOpen(false)，菜单（含
+    //    该按钮）会立刻从 DOM 里卸载，click 事件根本来不及派发到按钮上，
+    //    item.onClick 永远不会执行，表现为"点一下菜单项，下拉框就消失了"。
+    // 所以：菜单自身内部的滚动直接忽略；其余滚动只重新定位（跟 resize 一样），
+    // 只有触发器彻底滚出视口才真正关闭。用 rAF 节流，避免高频 scroll 触发过多计算。
+    let rafId: number | null = null;
+    const handleScroll = (e: Event) => {
+      const target = e.target as Node | null;
+      if (menuRef.current && target && menuRef.current.contains(target)) return;
+
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const outOfView = rect.bottom < 0 || rect.top > window.innerHeight;
+        if (outOfView) {
+          setOpen(false);
+        } else {
+          computePosition();
+        }
+      });
+    };
     const handleResize = () => computePosition();
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -134,6 +163,7 @@ export function DropdownMenu({ trigger, items, align = 'right', className }: Dro
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', handleResize);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [open, computePosition]);
 

@@ -13,7 +13,7 @@ import { CurrencyCodeMap } from '@/components/ui/BalanceShow';
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useIBStore } from '@/stores/ibStore';
-import { getIBChildStat, getIBRebateStatBySymbol } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type { IBChildStat, IBClientAccount } from '@/types/ib';
 
 interface RebateSymbolRow {
@@ -55,8 +55,9 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       if (to) params.to = to;
 
       const [statResult, rebateResult] = await Promise.all([
-        execute(getIBChildStat, agentAccount.uid, params),
-        execute(getIBRebateStatBySymbol, agentAccount.uid, params),
+        execute(() => fetchAction<IBChildStat>('getIBChildStat', agentAccount.uid, params)),
+        execute(() => fetchAction<Record<string, { amounts: Record<string, number[]> }>>(
+          'getIBRebateStatBySymbol', agentAccount.uid, params)),
       ]);
 
       if (statResult.success && statResult.data) {

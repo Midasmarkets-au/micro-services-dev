@@ -14,7 +14,7 @@ import { Button, BalanceShow, DatePicker, DataTable, Icon } from '@/components/u
 import type { DateRange, DataTableColumn } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useSalesStore } from '@/stores/salesStore';
-import { getSalesChildStat, getSalesRebateStatBySymbol, getSalesIbRebateStatBySymbol } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type { SalesClientAccount, SalesChildStat } from '@/types/sales';
 import { AccountRoleTypes } from '@/types/accounts';
 import { CurrencyCodeMap } from '@/components/ui/BalanceShow';
@@ -116,11 +116,13 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       const isSales = account?.role === AccountRoleTypes.Sales;
 
       const [statResult, rebateResult] = await Promise.all([
-        execute(getSalesChildStat, salesAccount.uid, params),
+        execute(() => fetchAction<SalesChildStat>('getSalesChildStat', salesAccount.uid, params)),
         isIb
-          ? execute(getSalesIbRebateStatBySymbol, salesAccount.uid, params)
+          ? execute(() => fetchAction<Record<string, { amounts: Record<string, number>; volume: number }>>(
+              'getSalesIbRebateStatBySymbol', salesAccount.uid, params))
           : isSales
-            ? execute(getSalesRebateStatBySymbol, salesAccount.uid, params)
+            ? execute(() => fetchAction<Record<string, { symbol?: string; currencyId?: number; volume?: number; profit?: number }>>(
+                'getSalesRebateStatBySymbol', salesAccount.uid, params))
             : Promise.resolve({ success: false, data: null }),
       ]);
 
