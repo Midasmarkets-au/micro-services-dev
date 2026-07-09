@@ -99,6 +99,66 @@ partial class Mt4Trade
 
 public static class MtrTradeCriteriaExt
 {
+    public static IQueryable<Mt4OpenTrade> PagedApplyTo(this Mt4Trade.Criteria criteria,
+        IQueryable<Mt4OpenTrade> source)
+    {
+        if (criteria.Id.HasValue) source = source.Where(x => x.Ticket == (int)criteria.Id);
+        if (!string.IsNullOrEmpty(criteria.Symbol)) source = source.Where(x => x.Symbol == criteria.Symbol);
+        if (criteria.Login.HasValue) source = source.Where(x => x.Login == (int)criteria.Login);
+        if (criteria.Logins != null)
+        {
+            var logins = criteria.Logins.Select(l => (int)l).ToList();
+            source = source.Where(x => logins.Contains(x.Login));
+        }
+
+        if (criteria.Command.HasValue) source = source.Where(x => x.Cmd == criteria.Command);
+        if (criteria.Commands != null && criteria.Commands.Any())
+            source = source.Where(x => criteria.Commands.Contains(x.Cmd));
+        if (criteria.From != null && criteria.From.IsTangible())
+            source = source.Where(x => x.CloseTime >= criteria.From.Value);
+        if (criteria.To != null && criteria.To.IsTangible())
+            source = source.Where(x => x.CloseTime < criteria.To.Value);
+        if (criteria.OpenedFrom != null && criteria.OpenedFrom.IsTangible())
+            source = source.Where(x => x.OpenTime >= criteria.OpenedFrom.Value);
+        if (criteria.OpenedTo != null && criteria.OpenedTo.IsTangible())
+            source = source.Where(x => x.OpenTime < criteria.OpenedTo.Value);
+
+        if (criteria.Page < 1 && criteria.Size < 1) return source;
+        criteria.Page = criteria.Page < 1 ? 1 : criteria.Page;
+        criteria.Size = criteria.Size < 1 ? 20 : criteria.Size;
+
+        if (criteria.Total == 0
+            || criteria.TotalSwap is null or 0
+            || criteria.TotalVolume is null or 0
+            || criteria.TotalProfit is null or 0
+            || criteria.TotalCommission is null or 0)
+        {
+            var summary = source
+                .GroupBy(x => 1)
+                .Select(g => new
+                {
+                    Total = g.Count(),
+                    TotalVolume = g.Sum(x => x.Volume),
+                    TotalProfit = g.Sum(x => x.Profit),
+                    TotalCommission = g.Sum(x => x.Commission),
+                    TotalSwap = g.Sum(x => x.Swaps),
+                })
+                .FirstOrDefault();
+
+            if (summary is not null)
+            {
+                criteria.Total = summary.Total;
+                criteria.TotalVolume = summary.TotalVolume / 100.0;
+                criteria.TotalProfit = Math.Round(summary.TotalProfit, 2);
+                criteria.TotalCommission = Math.Round(summary.TotalCommission, 2);
+                criteria.TotalSwap = Math.Round(summary.TotalSwap, 2);
+                criteria.PageCount = (int)Math.Ceiling(criteria.Total / (decimal)criteria.Size);
+            }
+        }
+
+        return source.Skip((criteria.Page - 1) * criteria.Size).Take(criteria.Size);
+    }
+
     public static Mt4Trade.Criteria ToMt4Criteria(this TradeViewModel.Criteria criteria)
     {
         return new Mt4Trade.Criteria

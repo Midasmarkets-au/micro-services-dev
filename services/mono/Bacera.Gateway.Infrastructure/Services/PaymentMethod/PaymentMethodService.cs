@@ -492,6 +492,57 @@ public class PaymentMethodService(
     }
 
     /// <summary>
+    /// Discover the ExLink collection paymentType configured for JPY for this merchant.
+    /// Calls queryCollectionPaymentType once per hour (cached) and prefers VirtualAccount
+    /// when multiple entries are returned. Falls back to "VirtualAccount" when the API
+    /// fails so JPY deposit submission is never silently broken by an upstream outage.
+    /// </summary>
+    public async Task<string> GetExLinkJpyCollectionPaymentTypeAsync(ExLinkCashierOptions options)
+    {
+        // Sandbox confirmed the JPY merchant is provisioned with paymentType "BankTransfer".
+        // Used only as a defensive fallback when the discovery API is unreachable.
+        const string fallback = "BankTransfer";
+        if (string.IsNullOrEmpty(options.Uid) || string.IsNullOrEmpty(options.SecretKey))
+        {
+            logger.LogWarning("PaymentMethodService.GetExLinkJpyCollectionPaymentTypeAsync - Invalid ExLink configuration, using fallback {Fallback}", fallback);
+            return fallback;
+        }
+
+        var cacheKey = $"exlink:jpy:paymentType:{options.Uid}";
+        var cached = await cache.GetStringAsync(cacheKey);
+        if (!string.IsNullOrEmpty(cached)) return cached;
+
+        try
+        {
+            var client = clientFactory.CreateClient();
+            var response = await ExLinkCashier.QueryCollectionPaymentTypesAsync(
+                options.Uid, options.SecretKey, "JPY", client, logger);
+
+            if (response?.Data == null || response.Data.Count == 0)
+            {
+                logger.LogWarning("PaymentMethodService.GetExLinkJpyCollectionPaymentTypeAsync - No payment types returned from ExLink, using fallback {Fallback}", fallback);
+                return fallback;
+            }
+
+            // Prefer BankTransfer (current JPY provisioning, matches the KYC-bank requirement);
+            // fall back to VirtualAccount if present, otherwise the first configured type.
+            var picked = response.Data
+                .FirstOrDefault(x => string.Equals(x.PaymentType, "BankTransfer", StringComparison.OrdinalIgnoreCase))?.PaymentType
+                ?? response.Data.FirstOrDefault(x => string.Equals(x.PaymentType, "VirtualAccount", StringComparison.OrdinalIgnoreCase))?.PaymentType
+                ?? response.Data.First().PaymentType;
+            logger.LogInformation("PaymentMethodService.GetExLinkJpyCollectionPaymentTypeAsync - Resolved paymentType for JPY = {PaymentType}", picked);
+
+            await cache.SetStringAsync(cacheKey, picked, TimeSpan.FromHours(1));
+            return picked;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "PaymentMethodService.GetExLinkJpyCollectionPaymentTypeAsync - Exception, using fallback {Fallback}", fallback);
+            return fallback;
+        }
+    }
+
+    /// <summary>
     /// Try to get exchange rate from ExLink API
     /// ExLink API returns USDT-based rates (e.g., VND/USDT, THB/USDT)
     /// </summary>

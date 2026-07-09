@@ -3,6 +3,7 @@ using Bacera.Gateway.DTO;
 using Bacera.Gateway.Services;
 using Bacera.Gateway.Services.AccountManage;
 using Bacera.Gateway.Vendor.EuPayment;
+using Bacera.Gateway.Vendor.Help2Pay.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -199,7 +200,7 @@ public class PaymentMethodController(
                 .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Id).First());
 
             var hasDeposit = await accManageSvc.AccountHasCompleteDepositByIdAsync(account.Id);
-            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
+            var paymentMethods = new List<PaymentMethodDTO.GroupPaymentMethodInfo>();
             foreach (var m in catalogByCurrency.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
             {
                 // Each ExLinkGlobal variant has its own MinValue/MaxValue — compute range per method,
@@ -207,7 +208,7 @@ public class PaymentMethodController(
                 var minVal = hasDeposit ? m.MinValue * 100 : m.InitialValue * 100;
                 var methodRange = new long[] { minVal, m.MaxValue * 100 };
 
-                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
+                paymentMethods.Add(new PaymentMethodDTO.GroupPaymentMethodInfo
                 {
                     CurrencyId = (CurrencyTypes)m.CurrencyId,
                     HashId = PaymentMethod.HashEncode(m.Id),
@@ -217,6 +218,79 @@ public class PaymentMethodController(
             }
 
             result.PaymentMethods = paymentMethods;
+        }
+
+        // Help2Pay: list one dropdown entry per accessible (channel x currency) row.
+        // Unlike ExLink Global we do NOT group by currency — two Help2Pay rows can share
+        // a currency (e.g. LBT-IDR and VA-IDR both CurrencyId=360) and must remain
+        // independently selectable.
+        else if (method.Platform == (int)PaymentPlatformTypes.Help2Pay)
+        {
+            var allMethods = await paymentMethodSvc.GetMethodsAsync();
+
+            var accessibleIds = (await paymentMethodSvc.GetAccountAccessIdsAsync(account.Id,
+                PaymentMethodTypes.Deposit,
+                PaymentMethodStatusTypes.Active,
+                PaymentMethodAccessStatusTypes.Active)).ToHashSet();
+
+            var help2PayRows = allMethods
+                .Where(x => x.MethodType == PaymentMethodTypes.Deposit
+                    && x.Status == (int)PaymentMethodStatusTypes.Active
+                    && x.Platform == (int)PaymentPlatformTypes.Help2Pay
+                    && x.Group == method.Group
+                    && accessibleIds.Contains(x.Id))
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var paymentMethods = new List<PaymentMethodDTO.GroupPaymentMethodInfo>();
+            foreach (var m in help2PayRows)
+            {
+                // Range in cents, matches the deposit-group-info convention used by ExLink Global.
+                var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
+
+                // Per-row bank whitelist (Help2Pay-only). Pulled straight from
+                // Configuration.Banks[<ISO currency>] — names live in the DB row so we never
+                // hardcode a bank table on the server. Help2PayBanksConverter upgrades the
+                // legacy code-only shape (Name = Code) so old rows still parse.
+                List<PaymentMethodDTO.BankOption>? banks = null;
+                try
+                {
+                    var options = Help2PayOptions.FromJson(m.Configuration ?? string.Empty);
+                    var currencyCode = ((CurrencyTypes)m.CurrencyId).ToString();
+                    var entries = options.GetBanksForCurrency(currencyCode);
+                    if (entries.Length > 0)
+                    {
+                        banks = entries
+                            .Select(e => new PaymentMethodDTO.BankOption { Code = e.Code, Name = e.Name })
+                            .ToList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Malformed Configuration shouldn't break the picker — log and leave Banks null
+                    // so the FE falls back to the legacy free-text bank input for this row.
+                    logger.LogWarning(ex, "Failed to parse Help2Pay Configuration for method {MethodId}", m.Id);
+                }
+
+                paymentMethods.Add(new PaymentMethodDTO.GroupPaymentMethodInfo
+                {
+                    CurrencyId = (CurrencyTypes)m.CurrencyId,
+                    HashId = PaymentMethod.HashEncode(m.Id),
+                    Range = methodRange,
+                    PaymentMethodName = m.Name,
+                    Banks = banks
+                });
+            }
+
+            result.PaymentMethods = paymentMethods;
+
+            // Re-expand currencyRates so the FE rate lookup works for any variant the user
+            // picks in step 3, not just the random pick's single AvailableCurrencies.
+            var allCurrencies = paymentMethods.Select(x => x.CurrencyId).ToHashSet();
+            if (allCurrencies.Count > 0)
+            {
+                result.CurrencyRates = await paymentMethodSvc.GetSellingExchangeRatesAsync(toCurrency, allCurrencies);
+            }
         }
 
         // Pay247: one dropdown entry per accessible (currency x pay_method) row, mirroring Help2Pay.
@@ -241,13 +315,13 @@ public class PaymentMethodController(
                 .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
+            var paymentMethods = new List<PaymentMethodDTO.GroupPaymentMethodInfo>();
             foreach (var m in pay247Rows)
             {
                 // Range in cents, matches the deposit-group-info convention used by ExLink Global / Help2Pay.
                 var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
 
-                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
+                paymentMethods.Add(new PaymentMethodDTO.GroupPaymentMethodInfo
                 {
                     CurrencyId = (CurrencyTypes)m.CurrencyId,
                     HashId = PaymentMethod.HashEncode(m.Id),
@@ -326,14 +400,14 @@ public class PaymentMethodController(
                 .GroupBy(x => (CurrencyTypes)x.CurrencyId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(m => m.Id).First());
 
-            var paymentMethods = new List<PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo>();
+            var paymentMethods = new List<PaymentMethodDTO.GroupPaymentMethodInfo>();
             foreach (var m in catalogByCurrency.Values.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
             {
                 // Each ExLinkGlobal variant has its own MinValue/MaxValue — compute range per method.
                 // Multiplied by 100 to match the deposit-group-info convention (paymentMethods.Range in cents).
                 var methodRange = new long[] { m.MinValue * 100, m.MaxValue * 100 };
 
-                paymentMethods.Add(new PaymentMethodDTO.ExLinkGlobalPaymentMethodInfo
+                paymentMethods.Add(new PaymentMethodDTO.GroupPaymentMethodInfo
                 {
                     CurrencyId = (CurrencyTypes)m.CurrencyId,
                     HashId = PaymentMethod.HashEncode(m.Id),

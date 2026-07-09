@@ -108,6 +108,155 @@ public class ExLinkCashier
     }
 
     /// <summary>
+    /// H2H (Host-to-Host) Direct Create Collection Order Client for ExLink.
+    /// Used for JPY where the merchant configuration mandates full-parameter
+    /// integration with the customer's KYC-bound real-name (Katakana) and bank info.
+    /// API: https://api.exlinked.global/coin/pay/recharge/order/create
+    /// Doc: https://exlink-doc.exlinked.global/en/japan/collection/create-collection (Access Method 1)
+    /// </summary>
+    public class H2HRequestClient
+    {
+        public string PaymentNumber { get; set; } = null!;
+        public decimal Amount { get; set; }
+
+        /// <summary>e.g. <c>VirtualAccount</c> (bank deposit) or <c>JCB</c> (credit card). Discovered via queryCollectionPaymentType.</summary>
+        public string PaymentType { get; set; } = null!;
+
+        /// <summary>Customer real name (Katakana for JPY) from KYC-bound bank info.</summary>
+        public string PaymentName { get; set; } = null!;
+
+        /// <summary>Customer bank account number (or card number) from KYC-bound bank info.</summary>
+        public string PaymentCardNumber { get; set; } = null!;
+
+        public string CustomerEmail { get; set; } = null!;
+
+        /// <summary>Credit card expiry (MM/yy). Empty for VirtualAccount.</summary>
+        public string BankDate { get; set; } = string.Empty;
+
+        /// <summary>Credit card CVV. Empty for VirtualAccount.</summary>
+        public string BankCvv { get; set; } = string.Empty;
+
+        public ExLinkCashierOptions Options { get; set; } = new();
+        public HttpClient Client { get; set; } = null!;
+        public ILogger Logger { get; set; } = null!;
+
+        private Dictionary<string, object> BuildForm()
+        {
+            // H2H Direct Create Collection Order - all included fields participate in signature.
+            //
+            // Important: ExLink's BankTransfer / VirtualAccount paymentTypes do NOT accept
+            // credit-card fields. Empty `bankDate=` / `bankCvv=` segments break the signature
+            // (yields 1003 recharge signature error), so we omit them entirely when blank.
+            // The credit-card paymentTypes (e.g. JCB) require both fields populated by the
+            // caller and they will be included automatically when non-empty.
+            long uid = long.Parse(Options.Uid);
+            var form = new Dictionary<string, object>
+            {
+                { "uid", uid },
+                { "merchantOrderNo", PaymentNumber },
+                { "currencyCoinName", Options.Currency },
+                { "paymentType", PaymentType },
+                { "amount", Amount.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) },
+                { "paymentName", PaymentName },
+                { "paymentCardNumber", PaymentCardNumber },
+                { "customerEmail", CustomerEmail }
+            };
+            if (!string.IsNullOrEmpty(BankDate)) form.Add("bankDate", BankDate);
+            if (!string.IsNullOrEmpty(BankCvv)) form.Add("bankCvv", BankCvv);
+            return form;
+        }
+
+        public async Task<DepositCreatedResponseModel> RequestAsync()
+        {
+            var form = BuildForm();
+            Logger.LogInformation("ExLinkCashier.H2HRequestClient - Form before signature:");
+            foreach (var kvp in form)
+            {
+                Logger.LogInformation("  {Key} = {Value} (type: {Type})", kvp.Key, kvp.Value, kvp.Value?.GetType().Name ?? "null");
+            }
+
+            var signature = GenerateSignature(form, Options.SecretKey, Logger);
+            form.Add("signature", signature);
+
+            var jsonBody = JsonConvert.SerializeObject(form);
+            Logger.LogInformation("ExLinkCashier.H2HRequestClient - Final JSON body: {jsonBody}", jsonBody);
+            Logger.LogInformation("ExLinkCashier.H2HRequestClient - Posting to: {RequestUrl}", Options.RequestUrl);
+
+            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            var request = new HttpRequestMessage(HttpMethod.Post, Options.RequestUrl)
+            {
+                Content = content
+            };
+            request.Headers.Add("Language", "en_us");
+
+            var response = await Client.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+            Logger.LogInformation("ExLinkCashier.H2HRequestClient ({Currency}) - Response: {json}", Options.Currency, json);
+
+            var obj = Utils.JsonDeserializeObjectWithDefault<dynamic>(json);
+
+            if (obj.success != true || obj.code != 1)
+            {
+                string errorMessage = obj.message?.ToString() ?? "Unknown error";
+                int code = obj.code != null ? (int)obj.code : -1;
+                Logger.LogError("ExLinkCashier.H2HRequestClient - API returned error: code={Code}, message={Message}",
+                    code, errorMessage);
+                return DepositCreatedResponseModel.Fail($"ExLink error ({code}): {errorMessage}");
+            }
+
+            string redirectUrl = obj.data?.url?.ToString() ?? string.Empty;
+            string accountNumber = obj.data?.accountNumber?.ToString() ?? string.Empty;
+            string bankOwner = obj.data?.bankOwner?.ToString() ?? string.Empty;
+            string memoCode = obj.data?.memoCode?.ToString() ?? string.Empty;
+            string qrcode = obj.data?.qrcode?.ToString() ?? string.Empty;
+
+            // Prefer redirect URL when present (the final cashier page the user wants H2H to land on).
+            if (!string.IsNullOrEmpty(redirectUrl))
+            {
+                return new DepositCreatedResponseModel
+                {
+                    Action = PaymentResponseActionTypes.Redirect,
+                    RedirectUrl = redirectUrl,
+                    IsSuccess = true,
+                    PaymentNumber = PaymentNumber,
+                    Info = new
+                    {
+                        accountNumber,
+                        bankOwner,
+                        memoCode,
+                        qrcode
+                    }
+                };
+            }
+
+            // Fallback: virtual-account / QR instructions only (no redirect).
+            if (!string.IsNullOrEmpty(accountNumber) || !string.IsNullOrEmpty(qrcode) || !string.IsNullOrEmpty(memoCode))
+            {
+                return new DepositCreatedResponseModel
+                {
+                    Action = string.IsNullOrEmpty(qrcode)
+                        ? PaymentResponseActionTypes.PopupInstruction
+                        : PaymentResponseActionTypes.QrCode,
+                    TextForQrCode = qrcode,
+                    IsSuccess = true,
+                    PaymentNumber = PaymentNumber,
+                    Reference = memoCode,
+                    Info = new
+                    {
+                        accountNumber,
+                        bankOwner,
+                        memoCode,
+                        qrcode
+                    }
+                };
+            }
+
+            Logger.LogError("ExLinkCashier.H2HRequestClient - No actionable data in successful response");
+            return DepositCreatedResponseModel.Fail("ExLink did not return a payment URL or account info");
+        }
+    }
+
+    /// <summary>
     /// Withdrawal/Payout Request Client for ExLink Cashier
     /// API: https://api.exlinked.global/coin/pay/withdraw/order/create
     /// </summary>
