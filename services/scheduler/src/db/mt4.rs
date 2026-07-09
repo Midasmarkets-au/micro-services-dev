@@ -92,6 +92,10 @@ pub async fn get_daily_equity(
 
 /// 已平仓 trade（TradeMonitor 轮询专用）。MT4 把开仓/平仓数据存在同一行里
 /// （不像 MT5 拆成两条 deal），所以不需要额外的 position join。
+///
+/// 除了 TICKET/LOGIN/CMD/CLOSE_TIME（分别是主键、必填账号、WHERE 里已约束为
+/// 0/1、WHERE 里已约束为非哨兵值，实测都不为 NULL）以外的字段全部用 Option
+/// 接——真实数据里 REASON 等文档标称 NOT NULL 的列实际出现过 NULL。
 #[derive(Debug, sqlx::FromRow)]
 pub struct Mt4ClosedTrade {
     #[sqlx(rename = "TICKET")]
@@ -99,34 +103,34 @@ pub struct Mt4ClosedTrade {
     #[sqlx(rename = "LOGIN")]
     pub login: i64,
     #[sqlx(rename = "SYMBOL")]
-    pub symbol: String,
+    pub symbol: Option<String>,
     #[sqlx(rename = "DIGITS")]
-    pub digits: i32,
+    pub digits: Option<i32>,
     #[sqlx(rename = "CMD")]
     pub cmd: i32,
     #[sqlx(rename = "VOLUME")]
-    pub volume: i32,
+    pub volume: Option<i32>,
     #[sqlx(rename = "OPEN_TIME")]
-    pub open_time: DateTime<Utc>,
+    pub open_time: Option<DateTime<Utc>>,
     #[sqlx(rename = "OPEN_PRICE")]
-    pub open_price: f64,
+    pub open_price: Option<f64>,
     #[sqlx(rename = "CLOSE_TIME")]
     pub close_time: DateTime<Utc>,
     #[sqlx(rename = "CLOSE_PRICE")]
-    pub close_price: f64,
+    pub close_price: Option<f64>,
     #[sqlx(rename = "PROFIT")]
-    pub profit: f64,
+    pub profit: Option<f64>,
     #[sqlx(rename = "COMMISSION")]
-    pub commission: f64,
+    pub commission: Option<f64>,
     #[sqlx(rename = "SWAPS")]
-    pub swaps: f64,
+    pub swaps: Option<f64>,
     #[sqlx(rename = "REASON")]
-    pub reason: i32,
+    pub reason: Option<i32>,
     // MT4's TIMESTAMP is documented as int(11) but is effectively an ever-growing
     // internal modification counter on busy servers, not a plain unix-seconds
     // value — real values have been observed to exceed i32::MAX. Widen to i64.
     #[sqlx(rename = "TIMESTAMP")]
-    pub timestamp: i64,
+    pub timestamp: Option<i64>,
 }
 
 /// 查询新的已平仓 trades（cursor-based 分页，供 TradeMonitor 轮询）。

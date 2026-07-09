@@ -262,30 +262,31 @@ fn build_meta_trade(
 /// MT4 stores open+close data in a single MT4_TRADES row (unlike MT5's separate
 /// open/close deal rows), so unlike build_meta_trade there's no position join.
 fn build_meta_trade_mt4(t: &mt4::Mt4ClosedTrade, service_id: i32) -> MetaTrade {
+    let volume = t.volume.unwrap_or(0);
     MetaTrade {
         id: 0,
         tenant_id: 0,
         account_number: t.login,
         service_id,
         ticket: t.ticket,
-        symbol: t.symbol.clone(),
+        symbol: t.symbol.clone().unwrap_or_default(),
         cmd: t.cmd,
-        open_at: Some(t.open_time),
+        open_at: t.open_time,
         close_at: Some(t.close_time),
-        time_stamp: t.timestamp,
+        time_stamp: t.timestamp.unwrap_or(0),
         position: None,
-        digits: t.digits,
+        digits: t.digits.unwrap_or(0),
         // MT4's VOLUME is a native int already in the "x100 lots" convention —
         // unlike MT5's VolumeClosed it does not need dividing before it lands
         // in trade_rebate_k8s.volume (see volume_original below).
-        volume: t.volume as f64 / 100.0,
-        volume_original: t.volume,
-        open_price: Decimal::from_f64(t.open_price),
-        close_price: Decimal::from_f64(t.close_price),
-        reason: t.reason,
-        profit: Decimal::from_f64(t.profit).unwrap_or(Decimal::ZERO),
-        commission: Decimal::from_f64(t.commission).unwrap_or(Decimal::ZERO),
-        swaps: Decimal::from_f64(t.swaps).unwrap_or(Decimal::ZERO),
+        volume: volume as f64 / 100.0,
+        volume_original: volume,
+        open_price: t.open_price.and_then(Decimal::from_f64),
+        close_price: t.close_price.and_then(Decimal::from_f64),
+        reason: t.reason.unwrap_or(0),
+        profit: t.profit.and_then(Decimal::from_f64).unwrap_or(Decimal::ZERO),
+        commission: t.commission.and_then(Decimal::from_f64).unwrap_or(Decimal::ZERO),
+        swaps: t.swaps.and_then(Decimal::from_f64).unwrap_or(Decimal::ZERO),
     }
 }
 
@@ -297,19 +298,19 @@ mod tests {
         mt4::Mt4ClosedTrade {
             ticket: 12345,
             login: 43591372,
-            symbol: "EURUSD".to_string(),
-            digits: 5,
+            symbol: Some("EURUSD".to_string()),
+            digits: Some(5),
             cmd: 0,
-            volume,
-            open_time: Utc::now(),
-            open_price: 1.10000,
+            volume: Some(volume),
+            open_time: Some(Utc::now()),
+            open_price: Some(1.10000),
             close_time: Utc::now(),
-            close_price: 1.10500,
-            profit: 50.0,
-            commission: -2.0,
-            swaps: 0.0,
-            reason: 0,
-            timestamp: 1_700_000_000,
+            close_price: Some(1.10500),
+            profit: Some(50.0),
+            commission: Some(-2.0),
+            swaps: Some(0.0),
+            reason: Some(0),
+            timestamp: Some(1_700_000_000),
         }
     }
 
