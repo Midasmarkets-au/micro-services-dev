@@ -272,7 +272,7 @@ fn build_meta_trade_mt4(t: &mt4::Mt4ClosedTrade, service_id: i32) -> MetaTrade {
         cmd: t.cmd,
         open_at: Some(t.open_time),
         close_at: Some(t.close_time),
-        time_stamp: t.timestamp as i64,
+        time_stamp: t.timestamp,
         position: None,
         digits: t.digits,
         // MT4's VOLUME is a native int already in the "x100 lots" convention —

@@ -122,8 +122,11 @@ pub struct Mt4ClosedTrade {
     pub swaps: f64,
     #[sqlx(rename = "REASON")]
     pub reason: i32,
+    // MT4's TIMESTAMP is documented as int(11) but is effectively an ever-growing
+    // internal modification counter on busy servers, not a plain unix-seconds
+    // value — real values have been observed to exceed i32::MAX. Widen to i64.
     #[sqlx(rename = "TIMESTAMP")]
-    pub timestamp: i32,
+    pub timestamp: i64,
 }
 
 /// 查询新的已平仓 trades（cursor-based 分页，供 TradeMonitor 轮询）。
