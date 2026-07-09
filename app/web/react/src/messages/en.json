@@ -741,6 +741,8 @@
       "namePlaceholder": "Nickname",
       "email": "Email",
       "emailPlaceholder": "Please enter your email",
+      "phoneNumber": "Phone Number",
+      "phoneNumberPlaceholder": "Please enter your phone number",
       "subject": "Subject",
       "subjectPlaceholder": "Please enter subject",
       "message": "Inquiry",

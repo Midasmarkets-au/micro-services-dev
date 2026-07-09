@@ -738,6 +738,8 @@
       "namePlaceholder": "Biệt danh",
       "email": "Email",
       "emailPlaceholder": "Nhập email",
+      "phoneNumber": "Số điện thoại",
+      "phoneNumberPlaceholder": "Vui lòng nhập số điện thoại",
       "subject": "Chủ đề",
       "subjectPlaceholder": "Nhập chủ đề",
       "message": "Tin nhắn",

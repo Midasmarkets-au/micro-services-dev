@@ -738,6 +738,8 @@
       "namePlaceholder": "닉네임",
       "email": "이메일",
       "emailPlaceholder": "이메일을 입력하세요",
+      "phoneNumber": "전화번호",
+      "phoneNumberPlaceholder": "전화번호를 입력해 주세요",
       "subject": "제목",
       "subjectPlaceholder": "제목을 입력하세요",
       "message": "문의 내용",

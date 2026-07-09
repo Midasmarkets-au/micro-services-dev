@@ -738,6 +738,8 @@
       "namePlaceholder": "ឈ្មោះហៅក្រៅ",
       "email": "អ៊ីមែល",
       "emailPlaceholder": "បញ្ចូលអ៊ីមែល",
+      "phoneNumber": "លេខទូរស័ព្ទ",
+      "phoneNumberPlaceholder": "សូមបញ្ចូលលេខទូរស័ព្ទរបស់អ្នក",
       "subject": "ប្រធានបទ",
       "subjectPlaceholder": "បញ្ចូលប្រធានបទ",
       "message": "ខ្លឹមសារ",

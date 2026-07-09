@@ -741,6 +741,8 @@
       "namePlaceholder": "Nickname",
       "email": "电子邮件",
       "emailPlaceholder": "请输入电子邮件",
+      "phoneNumber": "手机号",
+      "phoneNumberPlaceholder": "请输入手机号",
       "subject": "主题",
       "subjectPlaceholder": "请填写主题",
       "message": "查询",

@@ -738,6 +738,8 @@
       "namePlaceholder": "Apodo",
       "email": "Correo electrónico",
       "emailPlaceholder": "Por favor ingrese su correo electrónico",
+      "phoneNumber": "Número de teléfono",
+      "phoneNumberPlaceholder": "Por favor ingrese su número de teléfono",
       "subject": "Asunto",
       "subjectPlaceholder": "Por favor ingrese el asunto",
       "message": "Consulta",

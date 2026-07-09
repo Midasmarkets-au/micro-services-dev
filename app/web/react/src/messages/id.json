@@ -738,6 +738,8 @@
       "namePlaceholder": "Nama Panggilan",
       "email": "Email",
       "emailPlaceholder": "Masukkan email Anda",
+      "phoneNumber": "Nomor Telepon",
+      "phoneNumberPlaceholder": "Silakan masukkan nomor telepon Anda",
       "subject": "Subjek",
       "subjectPlaceholder": "Masukkan subjek",
       "message": "Pesan",

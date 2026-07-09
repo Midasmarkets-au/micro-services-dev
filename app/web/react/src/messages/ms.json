@@ -738,6 +738,8 @@
       "namePlaceholder": "Nama samaran",
       "email": "E-mel",
       "emailPlaceholder": "Masukkan e-mel",
+      "phoneNumber": "Nombor Telefon",
+      "phoneNumberPlaceholder": "Sila masukkan nombor telefon anda",
       "subject": "Subjek",
       "subjectPlaceholder": "Masukkan subjek",
       "message": "Mesej",

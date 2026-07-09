@@ -738,6 +738,8 @@
       "namePlaceholder": "暱稱",
       "email": "電子郵件",
       "emailPlaceholder": "請輸入電子郵件",
+      "phoneNumber": "手機號碼",
+      "phoneNumberPlaceholder": "請輸入手機號碼",
       "subject": "主題",
       "subjectPlaceholder": "請填寫主題",
       "message": "查詢",

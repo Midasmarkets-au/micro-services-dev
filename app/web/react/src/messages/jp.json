@@ -738,6 +738,8 @@
       "namePlaceholder": "ニックネーム",
       "email": "メールアドレス",
       "emailPlaceholder": "メールアドレスを入力してください",
+      "phoneNumber": "電話番号",
+      "phoneNumberPlaceholder": "電話番号を入力してください",
       "subject": "件名",
       "subjectPlaceholder": "件名を入力してください",
       "message": "お問い合わせ内容",

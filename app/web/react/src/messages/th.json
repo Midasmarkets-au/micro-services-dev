@@ -738,6 +738,8 @@
       "namePlaceholder": "ชื่อเล่น",
       "email": "อีเมล",
       "emailPlaceholder": "ป้อนอีเมล",
+      "phoneNumber": "หมายเลขโทรศัพท์",
+      "phoneNumberPlaceholder": "กรุณากรอกหมายเลขโทรศัพท์",
       "subject": "หัวข้อ",
       "subjectPlaceholder": "ป้อนหัวข้อ",
       "message": "ข้อความ",
