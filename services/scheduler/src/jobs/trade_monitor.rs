@@ -126,6 +126,13 @@ async fn poll_once(ctx: &AppContext, service_id: i32, tenant_pool: &sqlx::PgPool
         let open_opt = open_map.get(&closed.position_id).copied();
         let trade = build_meta_trade(closed, open_opt, service_id);
 
+        // Cursor must advance for every deal we've seen, even ones already
+        // enqueued (dedup hit) — otherwise a batch that's entirely dedup hits
+        // never moves last_time/last_deal, poll_closed_deals keeps returning
+        // the exact same batch forever, and the poller stalls permanently.
+        last_time = closed.time_msc;
+        last_deal = closed.deal;
+
         let field = format!("{}:{}", service_id, trade.ticket);
         if ctx.cache.hget(DEDUP_HASH_KEY, &field).await?.is_some() {
             continue; // already enqueued
@@ -140,9 +147,6 @@ async fn poll_once(ctx: &AppContext, service_id: i32, tenant_pool: &sqlx::PgPool
             .map_err(|e| anyhow::anyhow!("NATS publish ack error: {}", e))?;
 
         ctx.cache.hset(DEDUP_HASH_KEY, &field, "1").await?;
-
-        last_time = closed.time_msc;
-        last_deal = closed.deal;
     }
 
     // Update cursor (TTL = 30 days; keys are refreshed every poll so they stay alive)
