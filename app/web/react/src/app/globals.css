@@ -250,6 +250,12 @@ input:-webkit-autofill:active {
   background-color: var(--color-surface-secondary);
 }
 
+/* DataTable 行悬停高亮 */
+.data-table-row:hover > td,
+.data-table-row-active > td {
+  background-color: var(--color-surface-secondary);
+}
+
 .bg-input-bg {
   background-color: var(--color-input-bg);
 }

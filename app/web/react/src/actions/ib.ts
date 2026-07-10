@@ -2,7 +2,8 @@
 import logger from '@/lib/logger';
 
 import { apiClient, ApiError } from '@/lib/api/client';
-import { normalizeAmountList,buildQuery } from '@/lib/utils';
+import { normalizeAmountList, buildQuery } from '@/lib/utils';
+import { normalizeWalletDetails } from '@/lib/normalizeWalletDetails';
 import type { ActionResponse } from '@/hooks/useServerAction';
 import type {
   IBClientListResponse,
@@ -426,6 +427,21 @@ export async function getIBChildStat(
         }
       }
     }
+    const usdTotalFields = [
+      'totalDepositAmountUsd',
+      'totalAccountTransferInAmountUsd',
+      'totalWalletTransferInAmountUsd',
+      'totalWithdrawalAmountUsd',
+      'totalAccountTransferOutAmountUsd',
+    ] as const;
+    for (const field of usdTotalFields) {
+      if (normalized[field] != null) {
+        (normalized as Record<string, number>)[field] = normalizeAmountList(
+          normalized[field] as number
+        ) as number;
+      }
+    }
+    normalized.walletDetails = normalizeWalletDetails(normalized.walletDetails);
     return { success: true, data: normalized };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch child stat');
