@@ -25,14 +25,14 @@ public class TradeRebateController(
     /// <param name="criteria"></param>
     /// <returns></returns>
     [HttpGet]
-    [ProducesResponseType(typeof(Result<List<TradeRebate>, TradeRebate.Criteria>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Index([FromQuery] TradeRebate.Criteria? criteria)
+    [ProducesResponseType(typeof(Result<List<TradeRebateK8s>, TradeRebateK8s.Criteria>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Index([FromQuery] TradeRebateK8s.Criteria? criteria)
     {
-        criteria ??= new TradeRebate.Criteria();
-        var items = await tenantDbContext.TradeRebates
+        criteria ??= new TradeRebateK8s.Criteria();
+        var items = await tenantDbContext.TradeRebateK8s
             .PagedFilterBy(criteria)
             .ToListAsync();
-        return Ok(Result<List<TradeRebate>, TradeRebate.Criteria>.Of(items, criteria));
+        return Ok(Result<List<TradeRebateK8s>, TradeRebateK8s.Criteria>.Of(items, criteria));
     }
 
     /// <summary>
@@ -46,13 +46,13 @@ public class TradeRebateController(
     public async Task<IActionResult> Get(long id)
     {
         var hideEmail = ShouldHideEmail();
-        var item = await tenantDbContext.TradeRebates
+        var item = await tenantDbContext.TradeRebateK8s
             .Where(x => x.Id == id)
             .ToTenantViewModel(hideEmail)
             .FirstOrDefaultAsync() ?? new TradeRebateViewModel();
 
-        item.Rebates = await tenantDbContext.Rebates
-            .Where(x => item.RebateIds.Contains(x.Id))
+        item.Rebates = await tenantDbContext.RebateK8s
+            .Where(x => x.TradeRebateId == id)
             .ToRebateBasicViewModel(hideEmail)
             .ToListAsync();
 

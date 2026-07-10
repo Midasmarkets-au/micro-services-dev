@@ -8,5 +8,5 @@ public class ChangeBalanceResponse : BaseResponse
     [JsonProperty("newbalance")] public decimal NewBalance { get; set; }
 
     // ReSharper disable once StringLiteralTypo
-    [JsonProperty("orderid")] public long OrderId { get; set; }
+    [JsonProperty("order")] public long OrderId { get; set; }
 }

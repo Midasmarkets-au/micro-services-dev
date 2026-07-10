@@ -380,7 +380,13 @@ public partial class DepositService
         , Dictionary<string, string> request)
     {
         var options = ExLinkCashierOptions.FromJson(method.Configuration);
-        
+
+        // JPY routes through the Direct Create Collection Order (H2H) flow that binds the
+        // deposit to the customer's KYC-verified Wire PaymentInfo (Katakana name + bank account).
+        // All other ExLinkGlobal currencies still use the legacy Cashier flow below.
+        if (string.Equals(options.Currency, "JPY", StringComparison.OrdinalIgnoreCase))
+            return await ProcessExLinkJpyH2HAsync(method, account, exchangedAmount, request, options);
+
         var client = new ExLinkCashier.RequestClient
         {
             PaymentNumber = Payment.GenerateNumber(),
@@ -392,6 +398,61 @@ public partial class DepositService
 
         var response = await client.RequestAsync();
         return response;
+    }
+
+    private async Task<DepositCreatedResponseModel> ProcessExLinkJpyH2HAsync(
+        PaymentMethod method
+        , Account account
+        , long exchangedAmount
+        , Dictionary<string, string> request
+        , ExLinkCashierOptions options)
+    {
+        // 1. Client must supply paymentInfoId pointing at one of THIS user's verified Wire PaymentInfos.
+        //    The constants are sentinel codes the FE matches to render the localised warning copy.
+        if (!request.TryGetValue("paymentInfoId", out var pidRaw) || !long.TryParse(pidRaw, out var paymentInfoId))
+            return DepositCreatedResponseModel.Fail("__JPY_KYC_BANK_REQUIRED__");
+
+        var info = await tenantCtx.PaymentInfos
+            .Where(x => x.Id == paymentInfoId
+                && x.PartyId == account.PartyId
+                && x.PaymentPlatform == (int)PaymentPlatformTypes.Wire)
+            .FirstOrDefaultAsync();
+        if (info == null) return DepositCreatedResponseModel.Fail("__JPY_KYC_BANK_INVALID__");
+
+        var bank = Utils.JsonDeserializeObjectWithDefault<PaymentInfo.BankWireInfo>(info.Info);
+        if (string.IsNullOrWhiteSpace(bank.AccountNo))
+            return DepositCreatedResponseModel.Fail("__JPY_KYC_BANK_INVALID__");
+
+        // 2. Resolve the JPY paymentType server-side (cached; falls back to BankTransfer).
+        var paymentType = await paymentMethodSvc.GetExLinkJpyCollectionPaymentTypeAsync(options);
+
+        // 3. Pull Katakana name + email from server state; never trust client-supplied values.
+        var user = await userSvc.GetPartyAsync(account.PartyId);
+        var katakana = !string.IsNullOrWhiteSpace(bank.Holder) ? bank.Holder : user.GuessNativeName();
+        if (string.IsNullOrWhiteSpace(katakana))
+            return DepositCreatedResponseModel.Fail("__JPY_KYC_BANK_INVALID__");
+
+        var email = user.EmailRaw;
+        if (string.IsNullOrWhiteSpace(email))
+            return DepositCreatedResponseModel.Fail("__JPY_KYC_EMAIL_REQUIRED__");
+
+        var client = new ExLinkCashier.H2HRequestClient
+        {
+            PaymentNumber = Payment.GenerateNumber(),
+            Amount = RoundUp(exchangedAmount / 100m),
+            PaymentType = paymentType,
+            PaymentName = katakana,
+            PaymentCardNumber = bank.AccountNo,
+            CustomerEmail = email,
+            // BankDate / BankCvv are credit-card-only and intentionally left empty for BankTransfer / VirtualAccount.
+            BankDate = string.Empty,
+            BankCvv = string.Empty,
+            Options = options,
+            Client = clientFactory.CreateClient(),
+            Logger = logger
+        };
+
+        return await client.RequestAsync();
     }
 
     private async Task<DepositCreatedResponseModel> ProcessNPayAsync(

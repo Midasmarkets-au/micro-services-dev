@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use tracing::{info, warn};
 
 use crate::db::rebate_calc as db;
+use crate::db::tenant;
 use crate::models::rebate::{
     AgentAccount, BaseRebate, DirectSchemaItem, NewRebate, TradeRebateRow,
     DIST_ALLOCATION, DIST_DIRECT, DIST_LEVEL_PERCENTAGE, STATUS_COMPLETED, STATUS_HAS_NO_REBATE,
@@ -203,16 +204,19 @@ fn get_mt_exchange_rate_inner<'a>(
         let to_name = currency_id_to_name(to_currency_id);
 
         let mt5_pool = ctx.mt5_pool(service_id, tenant_pool).await?;
+        let is_mt4 = tenant::get_platform_by_service_id(tenant_pool, service_id)
+            .await?
+            .is_some_and(|p| p == tenant::PLATFORM_MT4);
 
         let symbol = format!("{}{}", from_name, to_name);
-        if let Some(price) = db::get_mt5_price(&mt5_pool, &symbol).await? {
+        if let Some(price) = db::get_price(&mt5_pool, &symbol, is_mt4).await? {
             if price.bid != 0.0 {
                 return Ok(price.bid);
             }
         }
 
         let symbol_inv = format!("{}{}", to_name, from_name);
-        if let Some(price) = db::get_mt5_price(&mt5_pool, &symbol_inv).await? {
+        if let Some(price) = db::get_price(&mt5_pool, &symbol_inv, is_mt4).await? {
             if price.bid != 0.0 {
                 return Ok(1.0 / price.bid);
             }
@@ -231,9 +235,12 @@ pub async fn get_pip_value(
     symbol_code: &str,
 ) -> Result<(f64, f64)> {
     let mt5_pool = ctx.mt5_pool(service_id, tenant_pool).await?;
+    let is_mt4 = tenant::get_platform_by_service_id(tenant_pool, service_id)
+        .await?
+        .is_some_and(|p| p == tenant::PLATFORM_MT4);
 
     if symbol_code.ends_with("USD") {
-        if let Some(price) = db::get_mt5_price(&mt5_pool, symbol_code).await? {
+        if let Some(price) = db::get_price(&mt5_pool, symbol_code, is_mt4).await? {
             let contract = get_contract_size(symbol_code) as f64;
             // bid cancels out: 1/10^d/bid * contract * bid = contract/10^d
             // Compute directly to avoid floating-point precision loss
@@ -254,14 +261,14 @@ pub async fn get_pip_value(
             } else {
                 "EURUSD"
             };
-            if let Some(price) = db::get_mt5_price(&mt5_pool, pair).await? {
+            if let Some(price) = db::get_price(&mt5_pool, pair, is_mt4).await? {
                 return Ok((price.bid * get_prefix_pip_value(symbol_code), price.bid));
             }
             return Ok((0.0, 0.0));
         }
 
         if symbol_code == "#HKG50" {
-            if let Some(price) = db::get_mt5_price(&mt5_pool, "USDHKD").await? {
+            if let Some(price) = db::get_price(&mt5_pool, "USDHKD", is_mt4).await? {
                 // Mirror mono: Math.Round(1 / price.Bid, 5)
                 let rounded = (1.0 / price.bid * 100000.0).round() / 100000.0;
                 let val = rounded * get_prefix_pip_value(symbol_code);
@@ -274,7 +281,7 @@ pub async fn get_pip_value(
     }
 
     if symbol_code.starts_with("USD") {
-        if let Some(price) = db::get_mt5_price(&mt5_pool, symbol_code).await? {
+        if let Some(price) = db::get_price(&mt5_pool, symbol_code, is_mt4).await? {
             let contract = get_contract_size(symbol_code) as f64;
             let value = contract / 10f64.powi(price.digits) / price.bid;
             return Ok((value, price.bid));
@@ -291,14 +298,14 @@ pub async fn get_pip_value(
     let last_three = &symbol_code[3..];
     let usd_pair = format!("{}USD", last_three);
     if contract_size().contains_key(usd_pair.as_str()) {
-        if let Some(price) = db::get_mt5_price(&mt5_pool, &usd_pair).await? {
+        if let Some(price) = db::get_price(&mt5_pool, &usd_pair, is_mt4).await? {
             return Ok((price.bid, price.bid));
         }
     }
 
     let usd_pair_inv = format!("USD{}", last_three);
     if contract_size().contains_key(usd_pair_inv.as_str()) {
-        if let Some(price) = db::get_mt5_price(&mt5_pool, &usd_pair_inv).await? {
+        if let Some(price) = db::get_price(&mt5_pool, &usd_pair_inv, is_mt4).await? {
             let contract = get_contract_size(symbol_code) as f64;
             let value = 1.0 / 10f64.powi(price.digits) / price.bid * contract;
             return Ok((value, price.bid));

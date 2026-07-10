@@ -172,7 +172,7 @@ impl AppContext {
             .ok_or_else(|| anyhow::anyhow!("No MT5 connection string for service {}", service_id))?;
         let mysql_url = parse_cs_connection_string(&conn_str)?;
         let pool = sqlx::mysql::MySqlPoolOptions::new()
-            .max_connections(5)
+            .max_connections(20)
             .connect(&mysql_url)
             .await?;
         {

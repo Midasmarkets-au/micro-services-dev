@@ -168,13 +168,18 @@ pub struct Mt5OpenDeal {
     pub price: f64,           // open price
 }
 
-/// 查询新的已平仓 deals（TradeMonitor 专用，cursor-based 分页）
+/// 查询新的已平仓 deals（TradeMonitor 专用，cursor-based 分页）。
+/// TimeMsc 是本地时间（见 db::mysql_utc_offset 上的说明）：游标转成本地时间再绑定，
+/// 查出来的行再转回 UTC，调用方只处理 UTC。
 pub async fn poll_closed_deals(
     pool: &MySqlPool,
     after_time: chrono::DateTime<chrono::Utc>,
     after_deal: u64,
     limit: u32,
 ) -> Result<Vec<Mt5ClosedDeal>> {
+    let offset = super::mysql_utc_offset(pool).await?;
+    let local_after_time = after_time - offset;
+
     let sql = r#"
         SELECT Deal, Login, TimeMsc, Symbol, Price, VolumeClosed, Volume,
                Profit, Commission, Storage, Reason, Action, Digits, PositionID, Timestamp
@@ -186,13 +191,16 @@ pub async fn poll_closed_deals(
         ORDER BY TimeMsc ASC, Deal ASC
         LIMIT ?
     "#;
-    let rows = sqlx::query_as::<_, Mt5ClosedDeal>(sql)
-        .bind(after_time)
-        .bind(after_time)
+    let mut rows = sqlx::query_as::<_, Mt5ClosedDeal>(sql)
+        .bind(local_after_time)
+        .bind(local_after_time)
         .bind(after_deal)
         .bind(limit)
         .fetch_all(pool)
         .await?;
+    for row in &mut rows {
+        row.time_msc += offset;
+    }
     Ok(rows)
 }
 
@@ -204,6 +212,7 @@ pub async fn get_open_deals_by_positions(
     if position_ids.is_empty() {
         return Ok(vec![]);
     }
+    let offset = super::mysql_utc_offset(pool).await?;
     let placeholders = position_ids.iter().map(|_| "?").collect::<Vec<_>>().join(", ");
     let sql = format!(
         r#"SELECT PositionID, TimeMsc, Price
@@ -216,6 +225,9 @@ pub async fn get_open_deals_by_positions(
     for id in position_ids {
         q = q.bind(id);
     }
-    let rows = q.fetch_all(pool).await?;
+    let mut rows = q.fetch_all(pool).await?;
+    for row in &mut rows {
+        row.time_msc += offset;
+    }
     Ok(rows)
 }
