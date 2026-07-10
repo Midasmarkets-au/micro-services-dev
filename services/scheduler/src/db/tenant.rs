@@ -331,8 +331,22 @@ pub async fn find_account_by_number(
 /// MetaTrader4=20, MetaTrader4Demo=21, MetaTrader5=30, MetaTrader5Demo=31, CTrader=40).
 /// Demo/live are already distinct enum values, so filtering on an exact code excludes
 /// demo services without any name/description string matching.
-const PLATFORM_MT4: i16 = 20;
-const PLATFORM_MT5: i16 = 30;
+pub const PLATFORM_MT4: i16 = 20;
+pub const PLATFORM_MT5: i16 = 30;
+
+/// 查询单个 TradeService 的 Platform（用于价格/汇率查询按 MT4 还是 MT5 分流）。
+pub async fn get_platform_by_service_id(
+    tenant_pool: &sqlx::PgPool,
+    service_id: i32,
+) -> anyhow::Result<Option<i16>> {
+    let row: Option<(i16,)> = sqlx::query_as(
+        r#"SELECT "Platform" FROM trd."_TradeService" WHERE "Id" = $1"#,
+    )
+    .bind(service_id)
+    .fetch_optional(tenant_pool)
+    .await?;
+    Ok(row.map(|(p,)| p))
+}
 
 async fn get_service_ids_by_platform(
     tenant_pool: &sqlx::PgPool,
