@@ -1,5 +1,6 @@
 import type { CurrencyTypes, TradeAccount } from './accounts';
 import type { ReferralHistoryVerification } from './verification';
+import type { WalletDetailsStat } from './sales';
 
 // ============================================
 // IB Agent 账户相关
@@ -439,6 +440,8 @@ export interface IBLatestDeposit {
   user?: IBClientUser;
 }
 
+export type { WalletDetailCategoryStat, WalletDetailsStat } from './sales';
+
 export interface IBChildStat {
   rebateAmounts?: Record<string, number[]>;
   depositAmounts?: Record<string, number[]>;
@@ -449,6 +452,13 @@ export interface IBChildStat {
   walletTransferInAmounts?: Record<string, number>;
   accountTransferInAmounts?: Record<string, number>;
   accountTransferOutAmounts?: Record<string, number>;
+  /** 各分类按 USD 折算的汇总金额（单位：分） */
+  totalDepositAmountUsd?: number;
+  totalAccountTransferInAmountUsd?: number;
+  totalWalletTransferInAmountUsd?: number;
+  totalWithdrawalAmountUsd?: number;
+  totalAccountTransferOutAmountUsd?: number;
+  walletDetails?: WalletDetailsStat;
 }
 
 // ============================================

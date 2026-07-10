@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
@@ -121,6 +121,7 @@ export default function SalesCustomerDetailPage({
   const { accountId } = use(params);
   const accountUid = parseInt(accountId, 10);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations('sales');
   const td = useTranslations('sales.customerDetail');
   const tState = useTranslations('accounts.transactionState');
@@ -144,6 +145,16 @@ export default function SalesCustomerDetailPage({
     ...(TAB_FIXED_FILTER_PARAMS.transaction ?? {}),
   });
 
+  const backToListHref = useMemo(() => {
+    const params = new URLSearchParams();
+    const parent = searchParams.get('parent');
+    const tab = searchParams.get('tab');
+    if (parent) params.set('parent', parent);
+    if (tab) params.set('tab', tab);
+    const qs = params.toString();
+    return `/sales/customers${qs ? `?${qs}` : ''}`;
+  }, [searchParams]);
+
   // ---- 加载账户详情（使用 queryAccounts 查询参数 uid=xxx） ----
   useEffect(() => {
     if (!salesAccount || !accountUid) return;
@@ -153,10 +164,10 @@ export default function SalesCustomerDetailPage({
         if (result.success && result.data?.data?.length) {
           setAccountDetail(result.data.data[0]);
         } else {
-          router.push('/sales/customers');
+          router.push(backToListHref);
         }
       } catch {
-        router.push('/sales/customers');
+        router.push(backToListHref);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -498,7 +509,7 @@ export default function SalesCustomerDetailPage({
   return (
     <div className="@container flex w-full flex-col gap-3">
       {/* 返回链接 */}
-      <Link href="/sales/customers" className="flex items-center gap-3">
+      <Link href={backToListHref} className="flex items-center gap-3">
         <Icon name="arrow-left" size={24} className="text-text-secondary" />
         <span className="text-xl text-text-secondary">{td('backToList')}</span>
       </Link>
