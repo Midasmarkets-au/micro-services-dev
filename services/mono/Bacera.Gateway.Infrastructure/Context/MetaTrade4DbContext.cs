@@ -214,7 +214,7 @@ public partial class MetaTrade4DbContext(DbContextOptions<MetaTrade4DbContext> o
                 .HasColumnName("SYMBOL");
             entity.Property(e => e.Taxes).HasColumnName("TAXES");
             entity.Property(e => e.Timestamp)
-                .HasColumnType("int(11)")
+                .HasColumnType("bigint(20)")
                 .HasColumnName("TIMESTAMP");
             entity.Property(e => e.Tp).HasColumnName("TP");
             entity.Property(e => e.Volume)
@@ -314,7 +314,7 @@ public partial class MetaTrade4DbContext(DbContextOptions<MetaTrade4DbContext> o
                 .HasColumnName("SYMBOL");
             entity.Property(e => e.Taxes).HasColumnName("TAXES");
             entity.Property(e => e.Timestamp)
-                .HasColumnType("int(11)")
+                .HasColumnType("bigint(20)")
                 .HasColumnName("TIMESTAMP");
             entity.Property(e => e.Tp).HasColumnName("TP");
             entity.Property(e => e.Volume)
@@ -446,7 +446,7 @@ public partial class MetaTrade4DbContext(DbContextOptions<MetaTrade4DbContext> o
                 .HasColumnName("STATUS");
             entity.Property(e => e.Taxes).HasColumnName("TAXES");
             entity.Property(e => e.Timestamp)
-                .HasColumnType("int(11)")
+                .HasColumnType("bigint(20)")
                 .HasColumnName("TIMESTAMP");
             entity.Property(e => e.UserColor)
                 .HasColumnType("int(11)")

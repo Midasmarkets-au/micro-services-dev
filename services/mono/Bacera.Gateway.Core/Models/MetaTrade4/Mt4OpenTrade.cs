@@ -53,7 +53,7 @@ public partial class Mt4OpenTrade
 
     public double MarginRate { get; set; }
 
-    public int Timestamp { get; set; }
+    public long Timestamp { get; set; }
 
     public int Magic { get; set; }
 

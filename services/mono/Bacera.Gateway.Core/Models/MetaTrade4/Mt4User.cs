@@ -51,7 +51,7 @@ public partial class Mt4User
 
     public int AgentAccount { get; set; }
 
-    public int Timestamp { get; set; }
+    public long Timestamp { get; set; }
 
     public double Balance { get; set; }
 

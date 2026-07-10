@@ -81,4 +81,46 @@ public static class TradeRebateViewModelExtension
                     }
                     : new AccountBasicViewModel()
             });
+
+    public static IQueryable<TradeRebateViewModel> ToTenantViewModel(this IQueryable<TradeRebateK8s> query,
+        bool hideEmail = false) =>
+        query
+            .Include(x => x.Account!.Party.PartyComments)
+            .Include(x => x.Account!.Party.Tags)
+            .Select(x => new TradeRebateViewModel
+            {
+                Id = x.Id,
+                TradeServiceId = x.TradeServiceId,
+                Ticket = x.Ticket,
+                CurrencyId = (CurrencyTypes)x.CurrencyId,
+                Volume = x.Volume,
+                Symbol = x.Symbol,
+                Status = (TradeRebateStatusTypes)x.Status,
+                RuleType = (RebateRuleTypes)x.RuleType,
+                CreatedOn = x.CreatedOn,
+                UpdatedOn = x.UpdatedOn,
+                ClosedOn = x.ClosedOn,
+                OpenedOn = x.OpenedOn,
+                // RebateIds intentionally left empty: trade_rebate_k8s has no EF nav collection to
+                // rebate_k8s. Rebates are looked up separately by TradeRebateId in the controller.
+                SourceTradeAccount = x.AccountId != null
+                    ? new AccountBasicViewModel
+                    {
+                        Id = x.Account!.Id,
+                        Uid = x.Account.Uid,
+                        PartyId = x.Account.PartyId,
+                        Role = (AccountRoleTypes)x.Account.Role,
+                        Name = x.Account.Name,
+                        ReferPath = x.Account.ReferPath,
+                        Code = x.Account.Role == (short)AccountRoleTypes.Sales
+                            ? x.Account.Code
+                            : x.Account.SalesAccount != null
+                                ? x.Account.SalesAccount.Code
+                                : string.Empty,
+                        Group = x.Account.Group,
+                        AccountNumber = x.AccountNumber,
+                        User = x.Account.Party.ToTenantBasicViewModel(hideEmail)
+                    }
+                    : new AccountBasicViewModel()
+            });
 }

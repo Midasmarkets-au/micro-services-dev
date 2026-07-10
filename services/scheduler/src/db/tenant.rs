@@ -327,17 +327,48 @@ pub async fn find_account_by_number(
     Ok(row)
 }
 
-/// 从租户库的 trd._TradeService 获取所有 MT5 Real 服务 ID。
-/// 与 mono TradeMonitorService 一致：Name 包含 "MT5"，Description 不含 "DEMO"
-pub async fn get_mt5_service_ids_from_central(tenant_pool: &sqlx::PgPool) -> anyhow::Result<Vec<i32>> {
-    let rows: Vec<(i32,)> = sqlx::query_as(
-        r#"SELECT "Id" FROM trd."_TradeService"
-           WHERE UPPER("Name") LIKE '%MT5%'
-             AND UPPER("Description") NOT LIKE '%DEMO%'"#,
+/// Platform codes from trd."_TradeService"."Platform" (mirrors Bacera.Gateway.PlatformTypes:
+/// MetaTrader4=20, MetaTrader4Demo=21, MetaTrader5=30, MetaTrader5Demo=31, CTrader=40).
+/// Demo/live are already distinct enum values, so filtering on an exact code excludes
+/// demo services without any name/description string matching.
+pub const PLATFORM_MT4: i16 = 20;
+pub const PLATFORM_MT5: i16 = 30;
+
+/// 查询单个 TradeService 的 Platform（用于价格/汇率查询按 MT4 还是 MT5 分流）。
+pub async fn get_platform_by_service_id(
+    tenant_pool: &sqlx::PgPool,
+    service_id: i32,
+) -> anyhow::Result<Option<i16>> {
+    let row: Option<(i16,)> = sqlx::query_as(
+        r#"SELECT "Platform" FROM trd."_TradeService" WHERE "Id" = $1"#,
     )
+    .bind(service_id)
+    .fetch_optional(tenant_pool)
+    .await?;
+    Ok(row.map(|(p,)| p))
+}
+
+async fn get_service_ids_by_platform(
+    tenant_pool: &sqlx::PgPool,
+    platform: i16,
+) -> anyhow::Result<Vec<i32>> {
+    let rows: Vec<(i32,)> = sqlx::query_as(
+        r#"SELECT "Id" FROM trd."_TradeService" WHERE "Platform" = $1"#,
+    )
+    .bind(platform)
     .fetch_all(tenant_pool)
     .await?;
     Ok(rows.into_iter().map(|(id,)| id).collect())
+}
+
+/// 从租户库的 trd._TradeService 获取所有 MT5 Real 服务 ID (Platform = MetaTrader5).
+pub async fn get_mt5_service_ids_from_central(tenant_pool: &sqlx::PgPool) -> anyhow::Result<Vec<i32>> {
+    get_service_ids_by_platform(tenant_pool, PLATFORM_MT5).await
+}
+
+/// 从租户库的 trd._TradeService 获取所有 MT4 Real 服务 ID (Platform = MetaTrader4).
+pub async fn get_mt4_service_ids_from_central(tenant_pool: &sqlx::PgPool) -> anyhow::Result<Vec<i32>> {
+    get_service_ids_by_platform(tenant_pool, PLATFORM_MT4).await
 }
 
 /// 从租户库的 trd._TradeService 获取 MT5 服务的 MySQL 连接字符串。

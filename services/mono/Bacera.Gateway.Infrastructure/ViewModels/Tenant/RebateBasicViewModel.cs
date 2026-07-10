@@ -65,4 +65,32 @@ public static class RebateBasicViewModelExtension
             },
             // User = x.Party.ToTenantBasicViewModel(false)
         });
+
+    // rebate_k8s.amount is NUMERIC — a real currency amount, unlike the legacy trd."_Rebate".Amount
+    // BIGINT column which the frontend expects scaled by 1,000,000 (normalizeAmountList /10000, then
+    // BalanceShow/toCurrency /100). Multiply back by 1,000,000 here so the existing frontend pipeline
+    // renders the correct value without any frontend changes.
+    public static IQueryable<RebateBasicViewModel> ToRebateBasicViewModel(this IQueryable<RebateK8s> query,
+        bool hideEmail = false)
+        => query.Include(x => x.Party.PartyComments)
+            .Include(x => x.Party.Tags).Select(x => new RebateBasicViewModel
+            {
+                Id = x.Id,
+                Amount = (long)Math.Round(x.Amount * 1_000_000),
+                PartyId = x.PartyId,
+                PostedOn = x.Matter.PostedOn,
+                ReleasedOn = x.Matter.StatedOn,
+                CurrencyId = (CurrencyTypes)x.CurrencyId,
+                TargetWalletId = x.Matter.WalletTransactions.Any() ? x.Matter.WalletTransactions.First().WalletId : null,
+                TargetAccount = new AccountBasicViewModel
+                {
+                    Id = x.AccountId,
+                    Uid = x.Account.Uid,
+                    Code = x.Account.Code,
+                    Group = x.Account.Group,
+                    PartyId = x.Account.PartyId,
+                    Role = (AccountRoleTypes)x.Account.Role,
+                },
+                User = x.Party.ToTenantBasicViewModel(hideEmail)
+            });
 }
