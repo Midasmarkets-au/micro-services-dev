@@ -41,6 +41,56 @@ spec:
                 name: front-portal-product
                 port:
                   number: 80
+    - host: au.midasmkts.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-portal-product
+                port:
+                  number: 80
+    - host: bvi.midasmkts.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-portal-product
+                port:
+                  number: 80
+    - host: sea.midasmkts.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-portal-product
+                port:
+                  number: 80
+    - host: jp.midasmkts.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-portal-product
+                port:
+                  number: 80
+    - host: k8s-ingressn-ingressn-d9fbebf220-740d31339032cd06.elb.ap-southeast-2.amazonaws.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-portal-product
+                port:
+                  number: 80
 ---
 # ============================================================================
 #  midasmkts-event-ingress — SSE /api/v1/event for midasmkts.com

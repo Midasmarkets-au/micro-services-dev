@@ -104,11 +104,25 @@ partial class TradingService
         await using var ctx = myDbContextPool.CreateCentralMT4DbContextAsync(criteria.ServiceId.Value, true);
         var mt4Criteria = criteria.ToMt4Criteria();
         mt4Criteria.SortField = null;
-        var query = mt4Criteria.PagedApplyTo(ctx.Mt4Trades);
-        var items = await query
-            .OrderByDescending(x => x.OpenTime)
-            .ToTradeViewModel(tenancy.GetTenantId(), criteria.ServiceId.Value)
-            .ToListAsync();
+
+        List<TradeViewModel> items;
+        if (criteria.IsClosed == true)
+        {
+            var query = mt4Criteria.PagedApplyTo(ctx.Mt4Trades);
+            items = await query
+                .OrderByDescending(x => x.OpenTime)
+                .ToTradeViewModel(tenancy.GetTenantId(), criteria.ServiceId.Value)
+                .ToListAsync();
+        }
+        else
+        {
+            var query = mt4Criteria.PagedApplyTo(ctx.Mt4OpenTrades);
+            items = await query
+                .OrderByDescending(x => x.OpenTime)
+                .ToTradeViewModel(tenancy.GetTenantId(), criteria.ServiceId.Value)
+                .ToListAsync();
+        }
+
         mt4Criteria.MergeToViewModelCriteria(criteria, items);
         return items;
     }

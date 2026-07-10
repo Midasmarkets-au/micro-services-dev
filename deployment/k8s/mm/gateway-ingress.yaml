@@ -29,7 +29,7 @@
 ---
 # ============================================================================
 #  ingress-nginx-controller Service — AWS NLB + ACM TLS 终止
-#  绑定 3 个 ACM 证书（覆盖多域名 SAN）
+#  绑定 1 个 *.trademdm.com 通配符 ACM 证书（覆盖 portal/tenant/au-portal/www 等所有子域名）
 #  应用：kubectl apply -f deployment/k8s/mm/gateway-ingress.yaml
 # ============================================================================
 apiVersion: v1
@@ -49,7 +49,7 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
     service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
     service.beta.kubernetes.io/aws-load-balancer-ssl-cert: >-
-      arn:aws:acm:ap-southeast-2:961341529237:certificate/ae1bbd76-96d9-44e2-94fe-7dcb21c63398,arn:aws:acm:ap-southeast-2:961341529237:certificate/6c577a74-880c-4793-b8c2-c02b3a3df445,arn:aws:acm:ap-southeast-2:961341529237:certificate/5f466aa8-07ae-430e-8c7d-ab59929f6ccc
+      arn:aws:acm:ap-southeast-2:961341529237:certificate/6eb2187c-8593-49db-9648-e16f2df4f626
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
