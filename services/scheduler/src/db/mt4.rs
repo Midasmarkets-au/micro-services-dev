@@ -136,12 +136,19 @@ pub struct Mt4ClosedTrade {
 /// 查询新的已平仓 trades（cursor-based 分页，供 TradeMonitor 轮询）。
 /// CLOSE_TIME > epoch 用来排除还未平仓的单子 —— MT4_TRADES 把开仓和平仓数据
 /// 放在同一行，未平仓的单子 CLOSE_TIME 停在 1970-01-01 哨兵值，不是这一行不存在。
+///
+/// `after_time` is UTC (matches the Redis cursor); converted to the server's local time
+/// before binding, and OPEN_TIME/CLOSE_TIME on the returned rows are converted back to UTC,
+/// so every caller of this function only ever deals in UTC.
 pub async fn poll_closed_trades(
     pool: &MySqlPool,
     after_time: DateTime<Utc>,
     after_ticket: i64,
     limit: u32,
 ) -> Result<Vec<Mt4ClosedTrade>> {
+    let offset = super::mysql_utc_offset(pool).await?;
+    let local_after_time = after_time - offset;
+
     let sql = r#"
         SELECT TICKET, LOGIN, SYMBOL, DIGITS, CMD, VOLUME, OPEN_TIME, OPEN_PRICE,
                CLOSE_TIME, CLOSE_PRICE, PROFIT, COMMISSION, SWAPS, REASON, TIMESTAMP
@@ -152,13 +159,19 @@ pub async fn poll_closed_trades(
         ORDER BY CLOSE_TIME ASC, TICKET ASC
         LIMIT ?
     "#;
-    let rows = sqlx::query_as::<_, Mt4ClosedTrade>(sql)
-        .bind(after_time)
-        .bind(after_time)
+    let mut rows = sqlx::query_as::<_, Mt4ClosedTrade>(sql)
+        .bind(local_after_time)
+        .bind(local_after_time)
         .bind(after_ticket)
         .bind(limit)
         .fetch_all(pool)
         .await?;
+
+    for row in &mut rows {
+        row.open_time = row.open_time.map(|t| t + offset);
+        row.close_time += offset;
+    }
+
     Ok(rows)
 }
 
