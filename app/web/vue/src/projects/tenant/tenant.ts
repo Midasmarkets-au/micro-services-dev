@@ -101,6 +101,9 @@ app.use(ReportModule, { router, menu, api });
 import TopicModule from "./modules/topic";
 app.use(TopicModule, { router, i18n, menu, api });
 
+import ContactModule from "./modules/contact";
+app.use(ContactModule, { router, menu, api });
+
 // import ShopModule from "./modules/Shop";
 // app.use(ShopModule, { router, menu, api });
 

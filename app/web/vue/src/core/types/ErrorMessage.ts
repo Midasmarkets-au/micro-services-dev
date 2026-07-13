@@ -32,5 +32,7 @@ export const processErrorMessage = (error) => {
 const checkCases = (error) => {
   if (error == "Wallet address already exists") {
     return t("error.walletAddressAlreadyExists");
+  } else if (error == "No available payment codes") {
+    return t("error.noAvailablePaymentCodes");
   } else return error;
 };
