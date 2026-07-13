@@ -208,7 +208,33 @@ const getUserInfos = async () => {
   } catch (error) {
     MsgPrompt.error(error);
   } finally {
-    formData.value["referCode"] = accountDetails.value.referCode;
+    const acc = accountDetails.value;
+    const fill = (formKey: string, accKey = formKey) => {
+      if (!formData.value[formKey] && acc[accKey])
+        formData.value[formKey] = acc[accKey];
+    };
+    fill("email");
+    fill("nativeName");
+    fill("firstName");
+    fill("lastName");
+    fill("citizen");
+    fill("address");
+    fill("ccc");
+    fill("idNumber");
+    fill("idIssuer");
+    fill("referCode");
+    fill("phone", "phoneNumber");
+    for (const f of ["birthday", "idIssuedOn", "idExpireOn"]) {
+      if (!formData.value[f] && acc[f] && acc[f] !== "0001-01-01")
+        formData.value[f] = acc[f];
+    }
+    if (!formData.value["idType"] && acc.idType)
+      formData.value["idType"] = acc.idType;
+    if (
+      (isNaN(formData.value["gender"]) || formData.value["gender"] == null) &&
+      acc.gender != null
+    )
+      formData.value["gender"] = acc.gender;
     isLoading.value = false;
   }
 };

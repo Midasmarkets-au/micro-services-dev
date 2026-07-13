@@ -553,6 +553,7 @@
     "failedToFetchData": "无法获取数据",
     "verificationFailed": "验证失败",
     "walletAddressAlreadyExists": "钱包地址已存在",
+    "noAvailablePaymentCodes": "暂无可用支付码",
     "fileTypeNotSupported": "不支持的文件类型",
     "electronicIdentityVerificationRequired": "需要电子身份验证",
     "eupay_EEEEE_EEEE": "未找到代码",
