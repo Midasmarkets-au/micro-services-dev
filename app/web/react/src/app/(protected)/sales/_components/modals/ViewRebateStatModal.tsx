@@ -299,9 +299,13 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       rewards: t('menu.walletDetailRewards'),
       adjust: t('menu.walletDetailAdjust'),
     };
+    // 钱包明细：各子类只展示币种明细，不单独出 Total；最后汇总全部 totalUsd。
+    let walletDetailsUsdTotal = 0;
+    let hasWalletDetailRows = false;
     for (const key of WALLET_DETAIL_ORDER) {
       const detail = stats.walletDetails?.[key];
       if (!detail?.amounts || Object.keys(detail.amounts).length === 0) continue;
+      hasWalletDetailRows = true;
       for (const [currencyId, amountVal] of Object.entries(detail.amounts)) {
         rows.push({
           category: 'walletDetails',
@@ -310,15 +314,17 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
           amount: Number(amountVal) || 0,
         });
       }
-      if (typeof detail.totalUsd === 'number' && detail.totalUsd !== 0) {
-        rows.push({
-          category: 'walletDetails',
-          detailLabel: walletDetailLabel[key],
-          currencyId: 840,
-          amount: detail.totalUsd,
-          isUsdSummary: true,
-        });
+      if (typeof detail.totalUsd === 'number') {
+        walletDetailsUsdTotal += detail.totalUsd;
       }
+    }
+    if (hasWalletDetailRows && walletDetailsUsdTotal !== 0) {
+      rows.push({
+        category: 'walletDetails',
+        currencyId: 840,
+        amount: walletDetailsUsdTotal,
+        isUsdSummary: true,
+      });
     }
     return rows;
   }, [stats, t]);
