@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { getSalesAccountDetail, getSalesViewEmailCode, getSalesEmailByCode } from '@/actions';
@@ -54,16 +55,47 @@ function getRoleValue(tab: RoleTab): number {
   return AccountRoleTypes.Sales;
 }
 
-const INITIAL_CRITERIA: SalesClientCriteria = {
+const LIST_BASE: Omit<SalesClientCriteria, 'role'> = {
   page: 1,
   size: 30,
-  role: AccountRoleTypes.IB,
   sortField: 'createdOn',
   sortFlag: true,
-  searchText: undefined,
-  relativeLevel: 1,
   multiLevel: false,
 };
+
+const INITIAL_CRITERIA: SalesClientCriteria = {
+  ...LIST_BASE,
+  role: AccountRoleTypes.IB,
+  relativeLevel: 1,
+};
+
+function parseRoleTab(value: string | null): RoleTab {
+  if (value === 'all' || value === 'ib' || value === 'client' || value === 'sales') return value;
+  return 'ib';
+}
+
+function buildListQuery(parentAccountUid?: number, tab: RoleTab = 'ib'): string {
+  const params = new URLSearchParams();
+  if (parentAccountUid) params.set('parent', String(parentAccountUid));
+  if (tab !== 'ib') params.set('tab', tab);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function toIbLevelItem(account: SalesClientAccount, relativeLevel: number): IbLevelItem {
+  return {
+    uid: account.uid,
+    nativeName: getUserName(account),
+    relativeLevel,
+  };
+}
+
+function buildQueryKey(salesUid: number, parentAccountUid?: number, tab: RoleTab = 'ib'): string {
+  const params = new URLSearchParams();
+  if (parentAccountUid) params.set('parent', String(parentAccountUid));
+  if (tab !== 'ib') params.set('tab', tab);
+  return `${salesUid}:${params.toString()}`;
+}
 
 
 export default function SalesCustomersPage() {
@@ -74,12 +106,20 @@ export default function SalesCustomersPage() {
   const siteConfig = useUserStore((s) => s.siteConfig);
   const { isDark } = useTheme();
   const settingIcon = isDark ? 'setting-night' : 'setting-day';
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const lastFetchedQueryRef = useRef<string | null>(null);
+  const isUserNavigationRef = useRef(false);
+  const fetchRequestIdRef = useRef(0);
+  const ibChainRef = useRef<IbLevelItem[]>([]);
 
   const [customers, setCustomers] = useState<SalesClientAccount[]>([]);
   const [criteria, setCriteria] = useState<SalesClientCriteria>(INITIAL_CRITERIA);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RoleTab>('ib');
   const [ibChain, setIbChain] = useState<IbLevelItem[]>([]);
+  ibChainRef.current = ibChain;
   const filterRef = useRef<CustomerFilterRef>(null);
 
   // 弹窗状态
@@ -108,11 +148,13 @@ export default function SalesCustomersPage() {
   ], [t]);
 
   const fetchData = useCallback(
-    async (params: SalesClientCriteria) => {
+    async (params: SalesClientCriteria, options?: { skipChainUpdate?: boolean }) => {
       if (!salesAccount) return;
+      const requestId = ++fetchRequestIdRef.current;
       setIsLoading(true);
       try {
         const result = await execute(async () => fetchAction<{ data: SalesClientAccount[]; criteria?: SalesClientCriteria }>('getSalesClients', salesAccount.uid, params));
+        if (requestId !== fetchRequestIdRef.current) return;
         if (result.success && result.data) {
           const raw = result.data.criteria || params;
           setCriteria({
@@ -126,13 +168,19 @@ export default function SalesCustomersPage() {
             relativeLevel: raw.relativeLevel,
             childParentAccountUid: raw.childParentAccountUid,
             parentAccountUid: raw.parentAccountUid,
-            multiLevel: raw.multiLevel ?? criteria.multiLevel ?? false,
+            multiLevel: raw.multiLevel ?? params.multiLevel ?? false,
           });
           setCustomers(Array.isArray(result.data.data) ? result.data.data : []);
-          setIbChain(raw.levelAccountsInBetween ?? []);
+          if (!options?.skipChainUpdate) {
+            const chain = raw.levelAccountsInBetween ?? [];
+            ibChainRef.current = chain;
+            setIbChain(chain);
+          }
         }
       } finally {
-        setIsLoading(false);
+        if (requestId === fetchRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [salesAccount, execute]
@@ -142,7 +190,7 @@ export default function SalesCustomersPage() {
     const filterValues = filterRef.current?.getValues();
     const isClient = tab === 'client';
     return {
-      ...INITIAL_CRITERIA,
+      ...LIST_BASE,
       role: getRoleValue(tab) || undefined,
       sortFlag: true,
       searchText: filterValues?.searchText || undefined,
@@ -154,18 +202,63 @@ export default function SalesCustomersPage() {
     };
   }, []);
 
-  // salesAccount 变化时（初始化/切换账户），保留当前 tab 和面包屑
+  const commitNavigation = useCallback((parentAccountUid?: number, tab?: RoleTab) => {
+    if (!salesAccount) return;
+    const tabValue = tab ?? activeTab;
+    router.replace(`${pathname}${buildListQuery(parentAccountUid, tabValue)}`, { scroll: false });
+  }, [router, pathname, activeTab, salesAccount]);
+
+  const navigateWithParent = useCallback((
+    parentAccountUid: number | undefined,
+    tab: RoleTab,
+    params: SalesClientCriteria,
+    nextChain: IbLevelItem[],
+    skipChainUpdate: boolean,
+  ) => {
+    if (!salesAccount) return;
+    ibChainRef.current = nextChain;
+    setIbChain(nextChain);
+    isUserNavigationRef.current = true;
+    lastFetchedQueryRef.current = buildQueryKey(salesAccount.uid, parentAccountUid, tab);
+    commitNavigation(parentAccountUid, tab);
+    fetchData(params, { skipChainUpdate });
+  }, [salesAccount, commitNavigation, fetchData]);
+
+  const buildDetailHref = useCallback((uid: number) => {
+    const parentUid = ibChainRef.current.at(-1)?.uid;
+    return `/sales/customers/${uid}${buildListQuery(parentUid, activeTab)}`;
+  }, [activeTab]);
+
+  // 从 URL 恢复下钻层级（浏览器前进/后退、从详情页返回）
   useEffect(() => {
-    if (salesAccount) {
-      fetchData(buildFetchParams(activeTab, criteria.parentAccountUid));
+    if (!salesAccount) return;
+
+    if (isUserNavigationRef.current) {
+      isUserNavigationRef.current = false;
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [salesAccount, fetchData]);
+
+    const parentParam = searchParams.get('parent');
+    const parentUid = parentParam ? Number(parentParam) : undefined;
+    const tab = parseRoleTab(searchParams.get('tab'));
+    const queryKey = buildQueryKey(salesAccount.uid, parentUid, tab);
+
+    if (lastFetchedQueryRef.current === queryKey) return;
+    lastFetchedQueryRef.current = queryKey;
+
+    setActiveTab(tab);
+    fetchData(buildFetchParams(tab, parentUid));
+  }, [salesAccount, searchParams, fetchData, buildFetchParams]);
 
   const handleTabChange = (tab: RoleTab) => {
     setActiveTab(tab);
-    // 切换 Tab 时保留面包屑（parentAccountUid），只改角色
-    fetchData(buildFetchParams(tab, criteria.parentAccountUid));
+    const parentUid = ibChainRef.current.at(-1)?.uid;
+    isUserNavigationRef.current = true;
+    if (salesAccount) {
+      lastFetchedQueryRef.current = buildQueryKey(salesAccount.uid, parentUid, tab);
+    }
+    commitNavigation(parentUid, tab);
+    fetchData(buildFetchParams(tab, parentUid), { skipChainUpdate: true });
   };
 
   const handleFilterSearch = useCallback(
@@ -195,31 +288,48 @@ export default function SalesCustomersPage() {
   }, [fetchData, criteria.parentAccountUid]);
 
   const handleIbDrillDown = useCallback((ibAccount: SalesClientAccount) => {
-    fetchData({
-      ...criteria,
-      page: 1,
-      parentAccountUid: ibAccount.uid,
-      searchText: undefined,
-    });
-  }, [criteria, fetchData]);
+    const nextChain = [
+      ...ibChainRef.current,
+      toIbLevelItem(ibAccount, ibChainRef.current.length + 1),
+    ];
+    navigateWithParent(
+      ibAccount.uid,
+      activeTab,
+      {
+        ...buildFetchParams(activeTab, ibAccount.uid),
+        page: 1,
+        searchText: undefined,
+      },
+      nextChain,
+      true,
+    );
+  }, [activeTab, buildFetchParams, navigateWithParent]);
 
   const handleClearChain = useCallback(() => {
-    fetchData({
-      ...INITIAL_CRITERIA,
-      role: getRoleValue(activeTab) || undefined,
-      sortFlag: true,
-      multiLevel: criteria.multiLevel ?? false,
-    });
-  }, [activeTab, criteria.multiLevel, fetchData]);
+    navigateWithParent(
+      undefined,
+      activeTab,
+      buildFetchParams(activeTab),
+      [],
+      false,
+    );
+  }, [activeTab, buildFetchParams, navigateWithParent]);
 
-  const handleGoToLevel = useCallback((acc: IbLevelItem) => {
-    fetchData({
-      ...criteria,
-      page: 1,
-      parentAccountUid: acc.uid,
-      searchText: undefined,
-    });
-  }, [criteria, fetchData]);
+  const handleGoToLevel = useCallback((acc: IbLevelItem, idx: number) => {
+    if (idx === ibChainRef.current.length - 1) return;
+    const nextChain = ibChainRef.current.slice(0, idx + 1);
+    navigateWithParent(
+      acc.uid,
+      activeTab,
+      {
+        ...buildFetchParams(activeTab, acc.uid),
+        page: 1,
+        searchText: undefined,
+      },
+      nextChain,
+      true,
+    );
+  }, [activeTab, buildFetchParams, navigateWithParent]);
 
   const showRebateStat = useCallback((item: SalesClientAccount) => {
     setSelectedAccount(item);
@@ -395,16 +505,18 @@ export default function SalesCustomersPage() {
           if (item.role === AccountRoleTypes.Client) {
             dropdownItems.push({
               key: 'viewDetails',
-              label: <Link href={`/sales/customers/${item.uid}`} className="block w-full">{t('action.viewDetails')}</Link>,
+              label: <Link href={buildDetailHref(item.uid)} className="block w-full">{t('action.viewDetails')}</Link>,
               onClick: () => {},
             });
           }
 
-          dropdownItems.push({
-            key: 'viewRebateStat',
-            label: t('action.viewRebateStatistics'),
-            onClick: () => showRebateStat(item),
-          });
+          if (item.role !== AccountRoleTypes.Client) {
+            dropdownItems.push({
+              key: 'viewRebateStat',
+              label: t('action.viewRebateStatistics'),
+              onClick: () => showRebateStat(item),
+            });
+          }
 
           dropdownItems.push({
             key: 'createTradeAccount',
@@ -469,7 +581,7 @@ export default function SalesCustomersPage() {
     );
 
     return cols;
-  }, [showRoleColumn, t, tAccount, handleIbDrillDown, showRebateStat, showOpenAccount, showRebateRelation, showIbLinks, showEditSchema, showNewReferral, showUnlockEmailAddress, siteConfig, ibChain.length]);
+  }, [showRoleColumn, t, tAccount, buildDetailHref, handleIbDrillDown, showRebateStat, showOpenAccount, showRebateRelation, showIbLinks, showEditSchema, showNewReferral, showUnlockEmailAddress, siteConfig, ibChain.length]);
   return (
     <div className="flex flex-1 min-w-0 flex-col gap-5 overflow-hidden rounded bg-surface p-5">
       {/* Tabs + 筛选区同一行 */}
@@ -503,7 +615,7 @@ export default function SalesCustomersPage() {
               <div className="relative inline-block pr-3">
                 <button
                   type="button"
-                  onClick={() => handleGoToLevel(acc)}
+                  onClick={() => handleGoToLevel(acc, idx)}
                   className="text-sm text-primary hover:underline cursor-pointer"
                 >
                   {acc.nativeName}
@@ -568,8 +680,10 @@ export default function SalesCustomersPage() {
             if (isNonClient) {
               mobileDropdownItems.push({ key: 'viewAccounts', label: t('action.viewAccounts'), onClick: () => handleIbDrillDown(item) });
             }
+            if (isNonClient) {
+              mobileDropdownItems.push({ key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) });
+            }
             mobileDropdownItems.push(
-              { key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) },
               { key: 'createTradeAccount', label: t('action.createTradeAccount'), onClick: () => showOpenAccount(item) },
             );
             if (item.role === AccountRoleTypes.IB) {
@@ -590,7 +704,7 @@ export default function SalesCustomersPage() {
             return (
               <div
                 key={item.uid}
-                className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4"
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-(--color-surface-secondary)"
               >
                 <Avatar src={item.user?.avatar} alt={name} size="sm" className="shrink-0" />
 
@@ -619,7 +733,7 @@ export default function SalesCustomersPage() {
 
                   {isClient ? (
                     <Link
-                      href={`/sales/customers/${item.uid}`}
+                      href={buildDetailHref(item.uid)}
                       className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
                       aria-label={t('action.viewDetails')}
                     >
