@@ -409,6 +409,7 @@
     "__ACCOUNT_IS_ALREADY_WHOLESALE__": "Account is already a MDM Pro Account",
     "fileTypeNotSupported": "File type not supported",
     "walletAddressAlreadyExists": "Wallet address already exists",
+    "noAvailablePaymentCodes": "No available payment codes",
     "verificationFailed": "Verification failed",
     "failedToUpdate": "Failed to update",
     "userNotFound": "User not found",

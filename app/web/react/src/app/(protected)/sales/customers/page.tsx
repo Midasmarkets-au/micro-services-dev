@@ -510,11 +510,13 @@ export default function SalesCustomersPage() {
             });
           }
 
-          dropdownItems.push({
-            key: 'viewRebateStat',
-            label: t('action.viewRebateStatistics'),
-            onClick: () => showRebateStat(item),
-          });
+          if (item.role !== AccountRoleTypes.Client) {
+            dropdownItems.push({
+              key: 'viewRebateStat',
+              label: t('action.viewRebateStatistics'),
+              onClick: () => showRebateStat(item),
+            });
+          }
 
           dropdownItems.push({
             key: 'createTradeAccount',
@@ -678,8 +680,10 @@ export default function SalesCustomersPage() {
             if (isNonClient) {
               mobileDropdownItems.push({ key: 'viewAccounts', label: t('action.viewAccounts'), onClick: () => handleIbDrillDown(item) });
             }
+            if (isNonClient) {
+              mobileDropdownItems.push({ key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) });
+            }
             mobileDropdownItems.push(
-              { key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) },
               { key: 'createTradeAccount', label: t('action.createTradeAccount'), onClick: () => showOpenAccount(item) },
             );
             if (item.role === AccountRoleTypes.IB) {
