@@ -21,15 +21,15 @@ public class RebateController : AgentBaseController
     /// <param name="criteria"></param>
     /// <returns></returns>
     [HttpGet]
-    [ProducesResponseType(typeof(Result<List<M>, M.Criteria>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Result<List<M>, M.Criteria>>> Index(long agentUid,
-        [FromQuery] M.Criteria? criteria)
+    [ProducesResponseType(typeof(Result<List<M.ClientResponseModel>, RebateK8s.Criteria>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<Result<List<M.ClientResponseModel>, RebateK8s.Criteria>>> Index(long agentUid,
+        [FromQuery] RebateK8s.Criteria? criteria)
     {
-        criteria ??= new M.Criteria();
+        criteria ??= new RebateK8s.Criteria();
         criteria.AccountUid = agentUid;
         criteria.PartyId = GetPartyId();
         criteria.StateIds = [StateTypes.RebateCompleted, StateTypes.RebateOnHold];
-        var result = await _accountSvc.RebateQueryForClientAsync(criteria);
+        var result = await _accountSvc.RebateK8sQueryForClientAsync(criteria);
         return Ok(result);
     }
 

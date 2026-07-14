@@ -195,7 +195,7 @@ public partial class EventController
         where T : EventShopRewardRebate.BaseModel
     {
         var tickets = items.Select(x => x.Ticket).Distinct().ToList();
-        var trades = await tenantDbContext.TradeRebates
+        var trades = await tenantDbContext.TradeRebateK8s
             .Where(x => tickets.Contains(x.Ticket))
             .Select(x => new { x.Volume, x.Symbol, x.Ticket, x.OpenedOn, x.ClosedOn, x.TradeServiceId })
             .ToListAsync();
