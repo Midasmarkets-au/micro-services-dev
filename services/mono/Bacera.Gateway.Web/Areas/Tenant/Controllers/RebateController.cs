@@ -1,5 +1,6 @@
 
 using Bacera.Gateway.Services;
+using Bacera.Gateway.ViewModels.Tenant;
 using Bacera.Gateway.Web.BackgroundJobs.Hosting.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -43,13 +44,13 @@ public class RebateController(
     /// <param name="criteria"></param>
     /// <returns></returns>
     [HttpGet]
-    [ProducesResponseType(typeof(Result<List<M>, M.Criteria>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Index([FromQuery] M.Criteria? criteria)
+    [ProducesResponseType(typeof(Result<List<RebateViewModel>, RebateK8s.Criteria>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Index([FromQuery] RebateK8s.Criteria? criteria)
 
     {
-        criteria ??= new M.Criteria();
+        criteria ??= new RebateK8s.Criteria();
         var hideEmail = ShouldHideEmail();
-        return Ok(await accountingService.RebateQueryAsync(criteria, hideEmail));
+        return Ok(await accountingService.RebateK8sQueryAsync(criteria, hideEmail));
     }
 
     /// <summary>

@@ -74,9 +74,12 @@ partial class TradingService
     public async Task<double> TradeVolumeTodayValueFromTradeRebate(long agentUid, double timezoneOffset = 0)
     {
         var from = Utils.GetTodayCloseTradeTime().AddDays(-1);
-        var result = await dbContext.TradeRebates
+        var tradeRebateIds = dbContext.RebateK8s
+            .Where(r => r.Account.Uid == agentUid && r.TradeRebateId != null)
+            .Select(r => r.TradeRebateId!.Value);
+        var result = await dbContext.TradeRebateK8s
             .Where(x => x.CreatedOn >= from)
-            .Where(x => x.Rebates.Any(r => r.Account.Uid == agentUid))
+            .Where(x => tradeRebateIds.Contains(x.Id))
             .SumAsync(x => x.Volume);
         return result;
     }
