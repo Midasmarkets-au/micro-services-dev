@@ -148,7 +148,8 @@ public partial class WithdrawalService(
         }
 
         var amountInDecimal = amount / 100m;
-        return account.Equity - account.Credit >= amountInDecimal;
+        var scaledEquity = (account.Equity - account.Credit).ToScaledFromCents();
+        return scaledEquity >= amountInDecimal;
     }
 
     public async Task<bool> IsAmountValidForWalletWithdrawal(long walletId, long amount)

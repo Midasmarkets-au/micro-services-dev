@@ -550,6 +550,7 @@
     "failedToFetchData": "提取數據失敗",
     "verificationFailed": "驗證失敗",
     "walletAddressAlreadyExists": "錢包地址已存在",
+    "noAvailablePaymentCodes": "暫無可用付款碼",
     "fileTypeNotSupported": "檔案類型不受支援",
     "electronicIdentityVerificationRequired": "需要電子身份驗證",
     "eupay_EEEEE_EEEE": "代碼未找到",

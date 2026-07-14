@@ -4,6 +4,11 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './Skeleton';
 import { EmptyState } from './EmptyState';
+import {
+  DataTableHighlightProvider,
+  DataTableRowProvider,
+  useDataTableHighlight,
+} from './DataTableRowContext';
 
 /**
  * DataTable 列定义
@@ -150,7 +155,11 @@ export function DataTable<T>({
   const shouldStretch = stretchHeight && !singleRowAutoHeight;
 
   if (groupConfig) {
-    return <GroupedDataTable columns={columns} data={data} rowKey={rowKey} loading={loading} skeletonRows={skeletonRows} onRowClick={onRowClick} emptyContent={emptyContent} footer={footer} groupConfig={groupConfig} className={className} />;
+    return (
+      <DataTableHighlightProvider>
+        <GroupedDataTable columns={columns} data={data} rowKey={rowKey} loading={loading} skeletonRows={skeletonRows} onRowClick={onRowClick} emptyContent={emptyContent} footer={footer} groupConfig={groupConfig} className={className} />
+      </DataTableHighlightProvider>
+    );
   }
   if (!loading && data.length === 0) {
     return (
@@ -165,6 +174,7 @@ export function DataTable<T>({
   }
 
   return (
+    <DataTableHighlightProvider>
     <div className={cn('flex flex-col', className)}>
       <div
         className={cn(
@@ -237,55 +247,93 @@ export function DataTable<T>({
                 </React.Fragment>
               ))
             ) : (
-              data.map((item, idx) => {
-                const isFirst = idx === 0;
-                const isLast = idx === data.length - 1;
-                return (
-                  <React.Fragment key={rowKey(item, idx)}>
-                    {idx > 0 && (
-                      <tr aria-hidden="true">
-                        <td colSpan={colCount} className="border-l border-r border-border p-0">
-                          <div className="mx-5 border-t border-border" />
-                        </td>
-                      </tr>
-                    )}
-                    <tr
-                      className={cn(
-                        'text-text-table hover:bg-surface-secondary/50',
-                        onRowClick && 'cursor-pointer'
-                      )}
-                      onClick={onRowClick ? () => onRowClick(item, idx) : undefined}
-                    >
-                      {columns.map((col, ci) => (
-                        <td
-                          key={col.key}
-                          className={cn(
-                            'px-5 py-4',
-                            col.width,
-                            ALIGN_CLASS[col.align || 'left'],
-                            ci === 0 && 'border-l border-border',
-                            ci === colCount - 1 && 'border-r border-border',
-                            isFirst && 'border-t border-border',
-                            isFirst && ci === 0 && r.tl,
-                            isFirst && ci === colCount - 1 && r.tr,
-                            isLast && 'border-b border-border',
-                            isLast && ci === 0 && r.bl,
-                            isLast && ci === colCount - 1 && r.br,
-                          )}
-                        >
-                          {col.render(item, idx)}
-                        </td>
-                      ))}
-                    </tr>
-                  </React.Fragment>
-                );
-              })
+              data.map((item, idx) => (
+                <DataTableDataRow
+                  key={rowKey(item, idx)}
+                  item={item}
+                  idx={idx}
+                  isFirst={idx === 0}
+                  isLast={idx === data.length - 1}
+                  columns={columns}
+                  rowKey={rowKey}
+                  colCount={colCount}
+                  onRowClick={onRowClick}
+                  r={r}
+                />
+              ))
             )}
             {!loading && data.length > 0 && footer}
           </tbody>
         </table>
       </div>
     </div>
+    </DataTableHighlightProvider>
+  );
+}
+
+function DataTableDataRow<T>({
+  item,
+  idx,
+  isFirst,
+  isLast,
+  columns,
+  rowKey,
+  colCount,
+  onRowClick,
+  r,
+}: {
+  item: T;
+  idx: number;
+  isFirst: boolean;
+  isLast: boolean;
+  columns: DataTableColumn<T>[];
+  rowKey: (item: T, index: number) => string | number;
+  colCount: number;
+  onRowClick?: (item: T, index: number) => void;
+  r: (typeof ROUNDED_MAP)[keyof typeof ROUNDED_MAP];
+}) {
+  const { activeRowKey } = useDataTableHighlight()!;
+  const key = rowKey(item, idx);
+
+  return (
+    <DataTableRowProvider rowKey={key}>
+      {idx > 0 && (
+        <tr aria-hidden="true">
+          <td colSpan={colCount} className="border-l border-r border-border p-0">
+            <div className="mx-5 border-t border-border" />
+          </td>
+        </tr>
+      )}
+      <tr
+        className={cn(
+          'data-table-row text-text-table',
+          activeRowKey === key && 'data-table-row-active',
+          onRowClick && 'cursor-pointer'
+        )}
+        onClick={onRowClick ? () => onRowClick(item, idx) : undefined}
+      >
+        {columns.map((col, ci) => (
+          <td
+            key={col.key}
+            className={cn(
+              'px-5 py-4 transition-colors',
+              col.width,
+              ALIGN_CLASS[col.align || 'left'],
+              ci === 0 && 'border-l border-border',
+              ci === colCount - 1 && 'border-r border-border',
+              isFirst && 'border-t border-border',
+              isFirst && ci === 0 && r.tl,
+              isFirst && ci === colCount - 1 && r.tr,
+              isLast && 'border-b border-border',
+              isLast && ci === 0 && r.bl,
+              isLast && ci === colCount - 1 && r.br,
+            )}
+          >
+            {col.render(item, idx)}
+          </td>
+        ))}
+      </tr>
+    </DataTableRowProvider>
   );
 }
 
@@ -306,6 +354,7 @@ function GroupedDataTable<T>({
   groupConfig,
   className,
 }: DataTableProps<T> & { groupConfig: DataTableGroupConfig<T> }) {
+  const { activeRowKey } = useDataTableHighlight()!;
   const totalCols = columns.length + 1;
   if (loading) {
     return (
@@ -380,8 +429,10 @@ function GroupedDataTable<T>({
                     return cls.join(' ');
                   };
 
+                  const key = rowKey(item, globalIdx);
+
                   return (
-                    <React.Fragment key={rowKey(item, globalIdx)}>
+                    <DataTableRowProvider key={key} rowKey={key}>
                       {idx > 0 && (
                         <tr aria-hidden="true">
                           <td className={cn('p-0 border-l border-border', groupConfig.headerWidth)} />
@@ -400,7 +451,8 @@ function GroupedDataTable<T>({
                       )}
                       <tr
                         className={cn(
-                          'text-text-table hover:bg-surface-secondary/50',
+                          'data-table-row text-text-table',
+                          activeRowKey === key && 'data-table-row-active',
                           onRowClick && 'cursor-pointer'
                         )}
                         onClick={onRowClick ? () => onRowClick(item, globalIdx) : undefined}
@@ -409,7 +461,7 @@ function GroupedDataTable<T>({
                           <td
                             rowSpan={groupLen * 2 - 1}
                             className={cn(
-                              'px-5 py-4 align-top border-l border-t border-b border-border rounded-l-lg',
+                              'px-5 py-4 align-top border-l border-t border-b border-border rounded-l-lg transition-colors',
                               groupConfig.headerWidth
                             )}
                           >
@@ -420,7 +472,7 @@ function GroupedDataTable<T>({
                           <td
                             key={col.key}
                             className={cn(
-                              'px-5 py-3',
+                              'px-5 py-3 transition-colors',
                               col.width,
                               ALIGN_CLASS[col.align || 'left'],
                               borderCls(ci + 1)
@@ -430,7 +482,7 @@ function GroupedDataTable<T>({
                           </td>
                         ))}
                       </tr>
-                    </React.Fragment>
+                    </DataTableRowProvider>
                   );
                 })}
               </tbody>

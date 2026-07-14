@@ -490,6 +490,19 @@ export interface SalesHierarchyNode {
 // Sales Child Stat
 // ============================================
 
+export interface WalletDetailCategoryStat {
+  amounts?: Record<string, number>;
+  totalUsd?: number;
+}
+
+export interface WalletDetailsStat {
+  refund?: WalletDetailCategoryStat;
+  rebate?: WalletDetailCategoryStat;
+  /** 推广奖励（后端原 eventShop 已改名为 rewards） */
+  rewards?: WalletDetailCategoryStat;
+  adjust?: WalletDetailCategoryStat;
+}
+
 export interface SalesChildStat {
   rebateAmounts?: Record<string, number[]>;
   depositAmounts?: Record<string, number[]>;
@@ -500,6 +513,13 @@ export interface SalesChildStat {
   walletTransferInAmounts?: Record<string, number>;
   accountTransferInAmounts?: Record<string, number>;
   accountTransferOutAmounts?: Record<string, number>;
+  /** 各分类按 USD 折算的汇总金额（单位：分） */
+  totalDepositAmountUsd?: number;
+  totalAccountTransferInAmountUsd?: number;
+  totalWalletTransferInAmountUsd?: number;
+  totalWithdrawalAmountUsd?: number;
+  totalAccountTransferOutAmountUsd?: number;
+  walletDetails?: WalletDetailsStat;
 }
 
 // ============================================

@@ -101,18 +101,25 @@ public partial class Startup
 
         if (!IsHangFireWorkerEnable()) return;
 
-        RecurringJob.AddOrUpdate<IRebateJob>(
-            "Calculate Rebate",
-            "rebate",
-            w => w.CalculateRebate(),
-            "*/2 * * * *");
+        // CalculateRebate / ReleaseRebate moved to the Rust scheduler (execute_calculate /
+        // execute_release in services/scheduler/src/main.rs, same */2 * * * * cadence).
+        // Originally disabled in 975c45b (2026-03-23) but the registrations below were
+        // accidentally reintroduced by the 50ce57f MM-Back bulk sync (2026-04-13) and have
+        // been firing as dead-letter no-ops since (no Status=Created backlog remains in
+        // trd."_TradeRebate"). Re-disabling here to avoid double-processing risk if new
+        // backlog ever appears.
+        // RecurringJob.AddOrUpdate<IRebateJob>(
+        //     "Calculate Rebate",
+        //     "rebate",
+        //     w => w.CalculateRebate(),
+        //     "*/2 * * * *");
+        //
+        // RecurringJob.AddOrUpdate<IRebateJob>(
+        //     "Release Rebate",
+        //     "rebate",
+        //     w => w.ReleaseRebateAsync(),
+        //     "*/2 * * * *");
 
-        RecurringJob.AddOrUpdate<IRebateJob>(
-            "Release Rebate",
-            "rebate",
-            w => w.ReleaseRebateAsync(),
-            "*/2 * * * *");
-        
         RecurringJob.AddOrUpdate<CryptoJob>(
             "Crypto Wallet",
             "crypto-monitor",

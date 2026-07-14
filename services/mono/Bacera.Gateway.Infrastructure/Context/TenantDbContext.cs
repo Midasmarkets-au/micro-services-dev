@@ -175,6 +175,9 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
     public virtual DbSet<SalesRebateK8s>       SalesRebateK8s       { get; set; }
     public virtual DbSet<SalesRebateItemK8s>   SalesRebateItemK8s   { get; set; }
     public virtual DbSet<WalletTransactionK8s> WalletTransactionK8s { get; set; }
+    public virtual DbSet<TradeRebateK8s>       TradeRebateK8s       { get; set; }
+    public virtual DbSet<RebateK8s>            RebateK8s            { get; set; }
+    public virtual DbSet<MatterK8s>            MatterK8s            { get; set; }
 
     public virtual DbSet<Site> Sites { get; set; }
 
@@ -3846,6 +3849,43 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
         {
             entity.HasKey(e => new { e.Id, e.CreatedOn });
             entity.ToTable("wallet_transaction_k8s", "acct");
+        });
+
+        modelBuilder.Entity<TradeRebateK8s>(entity =>
+        {
+            entity.HasKey(e => new { e.Id, e.ClosedOn });
+            entity.ToTable("trade_rebate_k8s", "trd");
+
+            entity.HasOne(d => d.Account).WithMany()
+                .HasForeignKey(d => d.AccountId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<RebateK8s>(entity =>
+        {
+            entity.HasKey(e => new { e.Id, e.CreatedOn });
+            entity.ToTable("rebate_k8s", "trd");
+
+            entity.HasOne(d => d.Account).WithMany()
+                .HasForeignKey(d => d.AccountId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.Party).WithMany()
+                .HasForeignKey(d => d.PartyId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(d => d.Matter).WithOne()
+                .HasForeignKey<RebateK8s>(d => d.Id)
+                .HasPrincipalKey<MatterK8s>(m => m.Id)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<MatterK8s>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("matter_k8s", "core");
+
+            entity.HasMany(d => d.WalletTransactions).WithOne()
+                .HasForeignKey(w => w.MatterId)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         OnModelCreatingPartial(modelBuilder);

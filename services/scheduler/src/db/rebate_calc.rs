@@ -321,6 +321,30 @@ pub async fn get_mt5_price(mt5_pool: &MySqlPool, symbol_code: &str) -> Result<Op
     }))
 }
 
+/// Query MT4 price table for a symbol. Returns (BID, DIGITS) — MT4_PRICES has no
+/// BidLast-equivalent column, just a plain BID, which mirrors mono's Mt4Price.Bid usage.
+pub async fn get_mt4_price(mt4_pool: &MySqlPool, symbol_code: &str) -> Result<Option<MtPrice>> {
+    let row: Option<(f64, i32)> = sqlx::query_as(
+        r#"SELECT BID, DIGITS FROM MT4_PRICES WHERE SYMBOL = ? LIMIT 1"#,
+    )
+    .bind(symbol_code)
+    .fetch_optional(mt4_pool)
+    .await?;
+    Ok(row.map(|(bid, digits)| MtPrice { bid, digits }))
+}
+
+/// Dispatches to get_mt4_price/get_mt5_price by platform. `pool` must already point at the
+/// correct MT4/MT5 database for this service_id (both are resolved the same way via
+/// AppContext::mt5_pool, which is platform-agnostic despite the name — only the table/column
+/// names queried differ between the two platforms).
+pub async fn get_price(pool: &MySqlPool, symbol_code: &str, is_mt4: bool) -> Result<Option<MtPrice>> {
+    if is_mt4 {
+        get_mt4_price(pool, symbol_code).await
+    } else {
+        get_mt5_price(pool, symbol_code).await
+    }
+}
+
 // ── Write ─────────────────────────────────────────────────────────────────────
 
 /// Insert a rebate record in a transaction:

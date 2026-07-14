@@ -38,7 +38,7 @@
             <span style="color: red"
               >Withdrawal Amount (Actual):
               <BalanceShow
-                :balance="wireForm.amount * wireForm.exchangeRate"
+                :balance="actualAmount"
                 :currency-id="wireForm.toCurrencyId"
             /></span>
           </b>
@@ -158,7 +158,7 @@
               <td>
                 <BalanceShow
                   :currency-id="wireForm.toCurrencyId"
-                  :balance="wireForm.amount * wireForm.exchangeRate"
+                  :balance="actualAmount"
                 />
                 ( {{ $t("type.currency." + wireForm.toCurrencyId) }} )
               </td>
@@ -254,7 +254,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject } from "vue";
+import { ref, inject, computed } from "vue";
 import phonesData from "@/core/data/phonesData";
 import SimpleForm from "@/components/SimpleForm.vue";
 import { useI18n } from "vue-i18n";
@@ -277,6 +277,10 @@ const store = useStore();
 const user = store.state.AuthModule.user;
 const t = useI18n().t;
 const openConfirmBox = inject<any>(InjectKeys.OPEN_CONFIRM_MODAL);
+
+const actualAmount = computed(() => {
+  return Math.floor(wireForm.value.amount * wireForm.value.exchangeRate);
+});
 
 const openConfirmPanel = () => {
   const _handler = () =>

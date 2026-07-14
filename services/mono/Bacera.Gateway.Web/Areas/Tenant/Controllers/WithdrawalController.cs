@@ -406,7 +406,8 @@ public class WithdrawalController(
             {
                 TargetId = wallet.Id,
                 TargetType = RefundTargetTypes.Wallet,
-                Amount = item.Amount,
+                Amount = item.Amount.ToCentsFromScaled(),
+                TransferCurrencyId = item.CurrencyId,
                 Comment = comment,
             };
 

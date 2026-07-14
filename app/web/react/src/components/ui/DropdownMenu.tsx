@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
+import { useDataTableRowContext } from './DataTableRowContext';
 
 /**
  * DropdownMenu 下拉菜单组件
@@ -57,6 +58,15 @@ export function DropdownMenu({ trigger, items, align = 'right', className }: Dro
   const triggerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<MenuStyle>({ visibility: 'hidden' });
+  const rowCtx = useDataTableRowContext();
+
+  // 下拉菜单通过 Portal 渲染到 body，鼠标移入菜单时表格行的 :hover 会失效。
+  // 打开菜单时锁定当前行高亮，关闭后保持（点击菜单项后高亮也不消失）。
+  useEffect(() => {
+    if (open) {
+      rowCtx?.activateRow();
+    }
+  }, [open, rowCtx]);
 
   // 第一步：打开时先以 visibility:hidden 渲染菜单，让 DOM 存在但不可见
   const computePosition = useCallback(() => {

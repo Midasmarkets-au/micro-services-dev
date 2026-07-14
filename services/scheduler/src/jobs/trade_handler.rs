@@ -53,7 +53,22 @@ async fn process_message(
     ctx: &AppContext,
     msg: async_nats::jetstream::Message,
 ) -> Result<()> {
-    let trade: MetaTrade = serde_json::from_slice(&msg.payload)?;
+    let trade: MetaTrade = match serde_json::from_slice(&msg.payload) {
+        Ok(t) => t,
+        Err(e) => {
+            // Malformed/empty payloads can never parse successfully — redelivering them
+            // forever (the default when a message is left unacked) permanently occupies
+            // an ack-pending slot and head-of-line-blocks every subsequent trade message.
+            // Terminate instead so JetStream stops redelivering this one.
+            error!(
+                "TradeHandler: terminating unparseable message (seq {}): {:#}",
+                msg.info().map(|i| i.stream_sequence).unwrap_or(0),
+                e
+            );
+            msg.ack_with(async_nats::jetstream::AckKind::Term).await.ok();
+            return Ok(());
+        }
+    };
 
     // Find which tenant owns this account
     let tenant_id = match get_account_tenant_id(ctx, trade.account_number, trade.service_id).await? {
