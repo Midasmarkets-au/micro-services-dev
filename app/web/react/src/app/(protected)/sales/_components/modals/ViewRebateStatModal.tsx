@@ -40,6 +40,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
     const params: Record<string, unknown> = { uid };
     if (from) params.from = from;
     if (to) params.to = to;
+    params.format = 'rows';
 
     type RebateStatRow = {
       symbol?: string;
