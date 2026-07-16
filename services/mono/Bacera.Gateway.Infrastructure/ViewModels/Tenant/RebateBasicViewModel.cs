@@ -66,17 +66,15 @@ public static class RebateBasicViewModelExtension
             // User = x.Party.ToTenantBasicViewModel(false)
         });
 
-    // rebate_k8s.amount is NUMERIC — a real currency amount, unlike the legacy trd."_Rebate".Amount
-    // BIGINT column which the frontend expects scaled by 1,000,000 (normalizeAmountList /10000, then
-    // BalanceShow/toCurrency /100). Multiply back by 1,000,000 here so the existing frontend pipeline
-    // renders the correct value without any frontend changes.
+    // rebate_k8s.amount is written by the scheduler using the same legacy scale as trd."_Rebate".Amount
+    // (real_dollars * 1,000,000), just stored as NUMERIC instead of BIGINT — no rescaling needed here.
     public static IQueryable<RebateBasicViewModel> ToRebateBasicViewModel(this IQueryable<RebateK8s> query,
         bool hideEmail = false)
         => query.Include(x => x.Party.PartyComments)
             .Include(x => x.Party.Tags).Select(x => new RebateBasicViewModel
             {
                 Id = x.Id,
-                Amount = (long)Math.Round(x.Amount * 1_000_000),
+                Amount = (long)Math.Round(x.Amount),
                 PartyId = x.PartyId,
                 PostedOn = x.Matter.PostedOn,
                 ReleasedOn = x.Matter.StatedOn,

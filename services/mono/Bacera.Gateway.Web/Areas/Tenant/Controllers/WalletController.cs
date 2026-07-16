@@ -102,6 +102,9 @@ public class WalletController(AccountingService accountingService, TenantDbConte
         var total = await tenantDbContext.WalletTransactionK8s
             .Where(x => x.WalletId == walletId)
             .CountAsync();
+        // wallet_transaction_k8s.{prev_balance,amount} are raw legacy scale (real_dollars *
+        // 1,000,000); the frontend BalanceShow/toCurrency pipeline expects "cents" scale
+        // (real_dollars * 100), so divide by 10,000 here (UscScale.ToCentsFromScaled convention).
         var items = await tenantDbContext.WalletTransactionK8s
             .Where(x => x.WalletId == walletId)
             .OrderByDescending(x => x.CreatedOn)
@@ -111,8 +114,8 @@ public class WalletController(AccountingService accountingService, TenantDbConte
                 x.Id,
                 x.MatterId,
                 x.InvoiceId,
-                x.PrevBalance,
-                x.Amount,
+                PrevBalance = x.PrevBalance / 10000m,
+                Amount = x.Amount / 10000m,
                 x.CreatedOn,
             })
             .ToListAsync();
