@@ -286,7 +286,7 @@ export function ViewRebateStatModal({
       render: (row) => (
         <BalanceShow
           balance={row.amount}
-          currencyId={row.currencyId}
+          currencyId={840}
           className={row.amount <= 0 ? 'error-text' : ''}
         />
       ),
