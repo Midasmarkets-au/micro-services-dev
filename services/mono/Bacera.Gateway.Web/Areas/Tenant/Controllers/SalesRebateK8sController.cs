@@ -317,8 +317,10 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
             }
 
             // 3. Lock wallet + get prev balance
-            // _Wallet.Balance is old-table bigint×10000; convert to decimal at boundary.
-            long rawBalance;
+            // _Wallet.Balance and wallet_transaction_k8s.{prev_balance,amount} both use the
+            // legacy raw scale: real_dollars * 1,000,000 (same as the regular Rebate release
+            // path in db/rebate.rs — keep wallet_transaction_k8s in that scale everywhere).
+            long prevBalanceRaw;
             await using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
@@ -326,9 +328,8 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
                 cmd.Parameters.AddWithValue("@wid", walletId!);
                 var result = await cmd.ExecuteScalarAsync();
                 if (result == null) return BadRequest(new { error = "Wallet row not found" });
-                rawBalance = Convert.ToInt64(result);
+                prevBalanceRaw = Convert.ToInt64(result);
             }
-            decimal prevBalance = rawBalance / 10000m;
 
             // 4. Idempotency check
             long? existingWtId = null;
@@ -350,8 +351,9 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
             {
                 var now = DateTime.UtcNow;
 
-                // 5. Update _Wallet.Balance — convert back to bigint×10000
-                long newRawBalance = (long)((prevBalance + record.TotalAmount) * 10000m);
+                // 5. Convert real-dollar TotalAmount to raw scale and update _Wallet.Balance
+                long amountRaw = (long)Math.Round(record.TotalAmount * 1_000_000m);
+                long newRawBalance = prevBalanceRaw + amountRaw;
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.Transaction = tx;
@@ -361,7 +363,7 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                // 6. Insert wallet_transaction_k8s — NUMERIC(20,4) columns
+                // 6. Insert wallet_transaction_k8s — NUMERIC(20,4) columns, raw legacy scale
                 await using (var cmd = conn.CreateCommand())
                 {
                     cmd.Transaction = tx;
@@ -371,8 +373,8 @@ public class SalesRebateK8sController(TenantDbContext tenantDbContext, IHttpClie
                         RETURNING id";
                     cmd.Parameters.AddWithValue("@wid", walletId!);
                     cmd.Parameters.AddWithValue("@mid", id);
-                    cmd.Parameters.AddWithValue("@pb",  prevBalance);
-                    cmd.Parameters.AddWithValue("@amt", record.TotalAmount);
+                    cmd.Parameters.AddWithValue("@pb",  prevBalanceRaw);
+                    cmd.Parameters.AddWithValue("@amt", amountRaw);
                     cmd.Parameters.AddWithValue("@now", now);
                     var result = await cmd.ExecuteScalarAsync();
                     wtId = Convert.ToInt64(result!);

@@ -72,7 +72,7 @@ public sealed partial class AccountingService
                 {
                     PartyId = x.PartyId,
                     CurrencyId = (CurrencyTypes)x.CurrencyId,
-                    Amount = (long)Math.Round(x.Amount * 1_000_000),
+                    Amount = (long)Math.Round(x.Amount),
                     TargetAccount = new AccountBasicViewModel
                     {
                         Id = x.AccountId,
@@ -128,7 +128,7 @@ public sealed partial class AccountingService
                 {
                     Id = x.Id,
                     TradeRebateId = x.TradeRebateId,
-                    Amount = (long)Math.Round(x.Amount * 1_000_000),
+                    Amount = (long)Math.Round(x.Amount),
                     AccountUid = x.Account.Uid,
                     CurrencyId = x.CurrencyId,
                     HoldUntilOn = x.HoldUntilOn,
@@ -169,7 +169,7 @@ public sealed partial class AccountingService
 
         var totalsSource = _tenantDbContext.RebateK8s.FilterBy(criteria);
         var totalAmount = await totalsSource.SumAsync(x => (decimal?)x.Amount) ?? 0;
-        criteria.TotalAmount = (long)Math.Round(totalAmount * 1_000_000);
+        criteria.TotalAmount = (long)Math.Round(totalAmount);
         var allTradeRebateIds = await totalsSource
             .Where(x => x.TradeRebateId != null)
             .Select(x => x.TradeRebateId!.Value)
