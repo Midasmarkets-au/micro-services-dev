@@ -191,8 +191,11 @@ public class ReportController(
         [FromQuery] int count = 5)
     {
         var start = Utils.GetTodayCloseTradeTime().AddDays(-1);
-        var items = await tenantCtx.TradeRebates
-            .Where(x => x.Rebates.Any(r => r.Account.Uid == agentUid))
+        var tradeRebateIds = tenantCtx.RebateK8s
+            .Where(r => r.Account.Uid == agentUid && r.TradeRebateId != null)
+            .Select(r => r.TradeRebateId!.Value);
+        var items = await tenantCtx.TradeRebateK8s
+            .Where(x => tradeRebateIds.Contains(x.Id))
             .Where(x => x.CreatedOn >= start)
             .GroupBy(x => x.Symbol)
             .Select(x => new { Symbol = x.Key, Volume = x.Sum(g => g.Volume) })

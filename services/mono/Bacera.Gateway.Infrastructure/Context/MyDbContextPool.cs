@@ -8,6 +8,7 @@ using Bacera.Gateway.Web.Services;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Npgsql;
@@ -40,8 +41,8 @@ public class MyDbContextPool : IDisposable
     private readonly Dictionary<int, string> _mtConnectionStringCache = new();
     private readonly Dictionary<int, PlatformTypes> _platformCache = new();
     private readonly Dictionary<int, string> _serviceNameCache = new();
-    
-    
+
+    private readonly MatterK8sSyncInterceptor _matterK8sSyncInterceptor;
 
     public MyDbContextPool(IServiceProvider serviceProvider)
     {
@@ -54,6 +55,8 @@ public class MyDbContextPool : IDisposable
         _centralMt4PoolSemaphores = new ConcurrentDictionary<int, SemaphoreSlim>();
         _centralMt5PoolSemaphores = new ConcurrentDictionary<int, SemaphoreSlim>();
         _serviceProvider = serviceProvider;
+        _matterK8sSyncInterceptor = new MatterK8sSyncInterceptor(
+            serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<MatterK8sSyncInterceptor>());
         InitializeCentralDbContextPool();
     }
 
@@ -243,6 +246,7 @@ public class MyDbContextPool : IDisposable
         }
 
         builder.UseNpgsql(connection);
+        builder.AddInterceptors(_matterK8sSyncInterceptor);
         return new TenantDbContext(builder.Options);
     }
 
