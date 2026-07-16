@@ -15,4 +15,5 @@ public partial class MatterK8s
     [Column("stated_on")] public DateTime StatedOn { get; set; }
 
     public virtual ICollection<WalletTransactionK8s> WalletTransactions { get; set; } = new List<WalletTransactionK8s>();
+    public virtual ICollection<ActivityK8s> Activities { get; set; } = new List<ActivityK8s>();
 }

@@ -178,6 +178,7 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
     public virtual DbSet<TradeRebateK8s>       TradeRebateK8s       { get; set; }
     public virtual DbSet<RebateK8s>            RebateK8s            { get; set; }
     public virtual DbSet<MatterK8s>            MatterK8s            { get; set; }
+    public virtual DbSet<ActivityK8s>          ActivityK8s          { get; set; }
 
     public virtual DbSet<Site> Sites { get; set; }
 
@@ -3885,6 +3886,19 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
             entity.HasMany(d => d.WalletTransactions).WithOne()
                 .HasForeignKey(w => w.MatterId)
+                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(d => d.Activities).WithOne(a => a.Matter)
+                .HasForeignKey(a => a.MatterId)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<ActivityK8s>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("activity_k8s", "core");
+
+            entity.HasOne(d => d.Party).WithMany()
+                .HasForeignKey(d => d.PartyId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 

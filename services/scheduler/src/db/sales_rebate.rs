@@ -324,7 +324,9 @@ pub async fn release_summary(
         wid
     };
 
-    // 3. Lock wallet row — _Wallet.Balance is bigint×10000 (old table convention)
+    // 3. Lock wallet row — _Wallet.Balance and wallet_transaction_k8s.{prev_balance,amount}
+    // both use the legacy raw scale: real_dollars * 1,000,000 (same as the regular Rebate
+    // release path in db/rebate.rs — keep wallet_transaction_k8s in that scale everywhere).
     let wallet_balance: (i64,) = sqlx::query_as(
         r#"SELECT "Balance" FROM acct."_Wallet" WHERE "Id" = $1 FOR UPDATE"#,
     )
@@ -333,8 +335,7 @@ pub async fn release_summary(
     .await
     .map_err(|e| anyhow!("wallet {} not found: {:#}", wallet_id, e))?;
 
-    // Convert old-table bigint×10000 → Decimal for wallet_transaction_k8s
-    let prev_balance = Decimal::from(wallet_balance.0) / Decimal::from(10000);
+    let prev_balance_raw = wallet_balance.0;
 
     // 4. Idempotency: check existing wallet_transaction_k8s
     let existing: Option<(i64,)> = sqlx::query_as(
@@ -362,18 +363,20 @@ pub async fn release_summary(
 
     let now = Utc::now();
 
-    // 5. Update _Wallet.Balance — convert back to bigint×10000
+    // 5. Convert real-dollar total_amount to raw scale and update _Wallet.Balance
     use rust_decimal::prelude::ToPrimitive;
-    let new_balance_raw = ((prev_balance + total_amount) * Decimal::from(10000))
+    let amount_raw = (total_amount * Decimal::from(1_000_000))
+        .round()
         .to_i64()
-        .ok_or_else(|| anyhow!("overflow converting wallet balance to i64"))?;
+        .ok_or_else(|| anyhow!("overflow converting sales rebate amount to raw scale"))?;
+    let new_balance_raw = prev_balance_raw + amount_raw;
     sqlx::query(r#"UPDATE acct."_Wallet" SET "Balance" = $1 WHERE "Id" = $2"#)
         .bind(new_balance_raw)
         .bind(wallet_id)
         .execute(&mut *tx)
         .await?;
 
-    // 6. Insert wallet_transaction_k8s — NUMERIC(20,4) columns
+    // 6. Insert wallet_transaction_k8s — NUMERIC(20,4) columns, raw legacy scale
     let wt_row: (i64,) = sqlx::query_as(
         r#"INSERT INTO acct.wallet_transaction_k8s
                (wallet_id, matter_id, prev_balance, amount, created_on, updated_on)
@@ -382,8 +385,8 @@ pub async fn release_summary(
     )
     .bind(wallet_id)
     .bind(rebate_id)
-    .bind(prev_balance)
-    .bind(total_amount)
+    .bind(prev_balance_raw)
+    .bind(amount_raw)
     .bind(now)
     .fetch_one(&mut *tx)
     .await?;
