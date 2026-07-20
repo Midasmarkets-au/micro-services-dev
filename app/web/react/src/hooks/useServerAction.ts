@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useToast } from './useToast';
 
@@ -37,16 +36,17 @@ interface UseServerActionOptions {
 
 /**
  * Server Actions Hook
- * 统一包装 Server Actions 调用，保留 Toast 错误处理和国际化
+ * 统一包装 Server Actions 调用，保留 Toast 错误处理和国际化。
+ *
+ * 注意：业务接口返回 401 时只按普通错误处理，不会跳转登录。
+ * 会话失效（缓存 token 已无效）由 UserDataProvider 通过 /api/user/info 统一处理。
  */
 export function useServerAction(options: UseServerActionOptions = {}) {
   const { showErrorToast = true, onSuccess, onError } = options;
   const { showError } = useToast();
-  const router = useRouter();
   const tErrors = useTranslations('errorCodes');
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
-  const unauthorizedRedirectingRef = useRef(false);
 
   // 把所有可能在 render 间变化的依赖收进 ref，
   // 让 execute 自己保持稳定引用（useCallback 空依赖）。
@@ -55,14 +55,15 @@ export function useServerAction(options: UseServerActionOptions = {}) {
   const optionsRef = useRef({ showErrorToast, onSuccess, onError });
   const showErrorRef = useRef(showError);
   const tErrorsRef = useRef(tErrors);
-  const routerRef = useRef(router);
   useEffect(() => {
     optionsRef.current = { showErrorToast, onSuccess, onError };
     showErrorRef.current = showError;
     tErrorsRef.current = tErrors;
-    routerRef.current = router;
   });
 
+  /**
+   * 补全 statusCode：部分接口只返回 errorCode（如 Unauthorized）而未带 statusCode。
+   */
   const normalizeErrorPayload = useCallback(
     (payload?: { errorCode?: string; error?: string; statusCode?: number } | null) => {
       if (!payload) return payload;
@@ -81,7 +82,8 @@ export function useServerAction(options: UseServerActionOptions = {}) {
   );
 
   /**
-   * 统一判断是否为 401 / Unauthorized
+   * 统一判断是否为 401 / Unauthorized（或 403）。
+   * 仅用于错误分类（如跳过 Toast），不会触发跳转登录。
    */
   const isUnauthorizedError = useCallback(
     (payload?: { errorCode?: string; error?: string; statusCode?: number } | null): boolean => {
@@ -140,14 +142,10 @@ export function useServerAction(options: UseServerActionOptions = {}) {
 
       const { showErrorToast: showErrorToastOpt, onSuccess: onSuccessOpt, onError: onErrorOpt } = optionsRef.current;
       const showError = showErrorRef.current;
-      const router = routerRef.current;
 
       try {
         const result = await action(...args);
         if (!result.success) {
-          if (unauthorizedRedirectingRef.current) {
-            return result;
-          }
           const errorPayload = normalizeErrorPayload({
             errorCode: result.errorCode,
             error: result.error || result.message || 'Request failed',
@@ -155,10 +153,9 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           });
           const errorCode = errorPayload?.errorCode;
           const rawError = errorPayload?.error || 'Request failed';
-          // 401/403：静默跳转登录，不弹错误 Toast
+
+          // 401/403：不弹 Toast（会话跳转由 UserDataProvider 负责），仍把错误返回给调用方
           if (isUnauthorizedError(errorPayload)) {
-            unauthorizedRedirectingRef.current = true;
-            router.replace('/sign-in?expired=true');
             const unauthorizedStatus = errorPayload?.statusCode === 403 ? 403 : 401;
             const unauthorizedCode = unauthorizedStatus === 403 ? 'Forbidden' : 'Unauthorized';
             return {
@@ -168,14 +165,14 @@ export function useServerAction(options: UseServerActionOptions = {}) {
               statusCode: unauthorizedStatus,
             };
           }
-          
+
           // 优先翻译 errorCode，其次尝试翻译 error 信息
           // 这样即使后端返回的是英文错误信息（如 "Wallet address already exists"），
           // 也能从国际化文件中找到对应的翻译
           const errorMessage = errorCode
             ? translateError(errorCode)
             : translateError(rawError);
-          
+
           // 由业务 action 决定是否跳过 Toast（通过 skipToast 字段）
           if (showErrorToastOpt && !result.skipToast) {
             // 传入原始 key 给 showError，让 Toast 组件也能尝试翻译
@@ -187,6 +184,7 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           return {
             ...result,
             error: errorMessage,
+            statusCode: errorPayload?.statusCode ?? result.statusCode,
           };
         }
 
@@ -208,15 +206,6 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           return { success: false, error: 'reloading', errorCode: 'reloading' };
         }
 
-        if (unauthorizedRedirectingRef.current) {
-          return {
-            success: false,
-            error: 'Unauthorized',
-            errorCode: 'Unauthorized',
-            statusCode: 401,
-          };
-        }
-
         const errorMessage = error instanceof Error ? error.message : 'Network error';
         const unknownError = error as { statusCode?: number; errorCode?: string; message?: string } | null;
         const errorPayload = normalizeErrorPayload({
@@ -224,13 +213,10 @@ export function useServerAction(options: UseServerActionOptions = {}) {
           error: errorMessage,
           statusCode: unknownError?.statusCode,
         });
-        const statusCode = errorPayload?.statusCode;
-        const errorCode = errorPayload?.errorCode;
-        // 异常场景下也拦截 401/403：不弹框，直接跳转登录
+
+        // 401/403：不弹 Toast，不跳登录
         if (isUnauthorizedError(errorPayload)) {
-          unauthorizedRedirectingRef.current = true;
-          router.push('/sign-in?expired=true');
-          const unauthorizedStatus = statusCode === 403 ? 403 : 401;
+          const unauthorizedStatus = errorPayload?.statusCode === 403 ? 403 : 401;
           const unauthorizedCode = unauthorizedStatus === 403 ? 'Forbidden' : 'Unauthorized';
           return {
             success: false,
@@ -249,14 +235,14 @@ export function useServerAction(options: UseServerActionOptions = {}) {
         return {
           success: false,
           error: errorMessage,
-          errorCode: errorCode || 'networkError',
-          statusCode,
+          errorCode: errorPayload?.errorCode || 'networkError',
+          statusCode: errorPayload?.statusCode,
         };
       } finally {
         setIsLoading(false);
       }
     },
-    [translateError, isUnauthorizedError, normalizeErrorPayload]
+    [translateError, normalizeErrorPayload, isUnauthorizedError]
   );
 
   /**
