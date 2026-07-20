@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useUserStore } from '@/stores/userStore';
-import { setLocale } from '@/actions';
 import { fetchApiRoute } from '@/lib/api/browser-client';
 import { localeMap } from '@/i18n/config';
 import type { UserInfo, SiteConfiguration } from '@/types/user';
@@ -67,6 +66,15 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
         console.log('[UserDataProvider] 用户数据获取成功:', userData.email);
         setUser(userData);
 
+        // 语言同步可能会提前 refresh/return，因此必须先保存已返回的站点配置。
+        if (configResult.status === 'fulfilled' && configResult.value?.success && configResult.value?.data) {
+          console.log('[UserDataProvider] 站点配置获取成功');
+          setSiteConfig(configResult.value.data as SiteConfiguration);
+        } else {
+          console.warn('[UserDataProvider] 获取站点配置失败:',
+            configResult.status === 'rejected' ? configResult.reason : 'No data');
+        }
+
         // 同步 user.language 到 locale Cookie（最高优先级）
         const userLocale = localeMap[userData.language];
         if (userLocale && userLocale !== currentLocale) {
@@ -114,14 +122,6 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
           router.push('/sign-in?expired=true');
         }
         return;
-      }
-
-      if (configResult.status === 'fulfilled' && configResult.value?.success && configResult.value?.data) {
-        console.log('[UserDataProvider] 站点配置获取成功');
-        setSiteConfig(configResult.value.data as SiteConfiguration);
-      } else {
-        console.warn('[UserDataProvider] 获取站点配置失败:',
-          configResult.status === 'rejected' ? configResult.reason : 'No data');
       }
 
       setInitialized(true);
