@@ -1296,6 +1296,45 @@ input:-webkit-autofill:active {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
+/*
+ * DropdownMenu：强制常显滚动条。
+ * macOS + Chrome 在系统「自动显示滚动条」下会用叠加滚动条，
+ * overflow: scroll 仍会隐藏，只有滚动时才出现；自定义 ::-webkit-scrollbar 后会走经典滚动条并常显。
+ */
+.dropdown-menu-scroll {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.35) rgba(0, 0, 0, 0.06);
+}
+
+.dropdown-menu-scroll::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 6px;
+}
+
+.dropdown-menu-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+}
+
+.dropdown-menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+}
+
+.dark .dropdown-menu-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.35) rgba(255, 255, 255, 0.08);
+}
+
+.dark .dropdown-menu-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .dropdown-menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 /* ===== Calendar day button background ===== */
 .calendar-day-btn {
   background-color: var(--color-surface-secondary);

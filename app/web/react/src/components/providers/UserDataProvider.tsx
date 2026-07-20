@@ -82,12 +82,33 @@ export function UserDataProvider({ children }: UserDataProviderProps) {
           return;
         }
       } else {
+        const failedPayload =
+          userResult.status === 'fulfilled'
+            ? (userResult.value as ActionResponse<UserInfo>)
+            : null;
         const reason =
           userResult.status === 'rejected'
             ? userResult.reason
-            : (userResult.value as ActionResponse<UserInfo>)?.error || 'No data';
+            : failedPayload?.error || 'No data';
         console.error('[UserDataProvider] 获取用户数据失败:', reason);
-        // 静默刷新失败时不清除缓存，保留旧数据继续展示
+
+        const statusCode = failedPayload?.statusCode;
+        const errorCode = failedPayload?.errorCode?.toLowerCase();
+        // 仅以 /user/me（会话校验）的 401 判定 token 失效。
+        // 典型场景：本地缓存了登录态，后端上线/轮换后 token 失效；
+        // 其他业务接口的 401 不在这里处理，也不应单独触发跳登录。
+        const isSessionExpired =
+          statusCode === 401 ||
+          errorCode === 'unauthorized' ||
+          errorCode === '__unauthorized__';
+
+        if (isSessionExpired) {
+          clearStore();
+          router.push('/sign-in?expired=true');
+          return;
+        }
+
+        // 非会话失效（如网络抖动）：有缓存则静默保留，无缓存才无法进入受保护页
         if (!hasCachedData) {
           clearStore();
           router.push('/sign-in?expired=true');
