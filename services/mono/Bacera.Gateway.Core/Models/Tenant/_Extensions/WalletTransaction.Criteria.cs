@@ -33,11 +33,12 @@ namespace Bacera.Gateway
                 pool.Add(x => x.WalletId == WalletId, WalletId.IsTangible());
                 pool.Add(x => x.Matter.Type == (int)MatterType!, MatterType.HasValue);
                 pool.Add(x => x.Wallet.PartyId == PartyId, PartyId.IsTangible());
+                pool.Add(x => x.Wallet.Party.Email == Email!, Email != null);
                 pool.Add(x => x.UpdatedOn >= From!.Value.ToUniversalTime(), From != null && From.IsTruthy());
                 pool.Add(x => x.UpdatedOn < To!.Value.ToUniversalTime(), To != null && To.IsTruthy());
             }
         }
-        
+
         public sealed class ClientCriteria : BaseEntityCriteria<M>
         {
             public ClientCriteria()
