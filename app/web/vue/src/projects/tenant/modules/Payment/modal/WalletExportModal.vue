@@ -52,7 +52,9 @@
           @change="txnSearchValue = ''"
         >
           <el-radio value="all" label="all">{{ $t("fields.all") }}</el-radio>
-          <el-radio value="email" label="email">{{ $t("fields.email") }}</el-radio>
+          <el-radio value="email" label="email">{{
+            $t("fields.email")
+          }}</el-radio>
           <el-radio value="walletId" label="walletId">{{
             $t("fields.walletId")
           }}</el-radio>
