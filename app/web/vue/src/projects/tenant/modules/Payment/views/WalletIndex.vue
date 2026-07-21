@@ -276,6 +276,14 @@ const reset = () => {
 };
 
 const search = () => {
+  if (
+    selectedOption.value === "id" &&
+    inputValue.value.trim() !== "" &&
+    !/^\d+$/.test(inputValue.value.trim())
+  ) {
+    MsgPrompt.error("Wallet ID must be a number");
+    return;
+  }
   delete criteria.value.id;
   delete criteria.value.email;
   delete criteria.value.accountUid;

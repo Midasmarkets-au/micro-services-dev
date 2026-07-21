@@ -645,6 +645,7 @@
     "japaneseOnly": "僅限日語"
   },
   "fields": {
+    "searchType": "搜尋類型",
     "isPrimary": "是否主錢包",
     "totalDeposits": "總入金金額",
     "Withdrawals": "已出金總金額",
@@ -2464,7 +2465,8 @@
   },
   "placeholder": {
     "enterCategoryName": "請輸入分類名稱",
-    "enterCategoryCode": "請輸入分類代碼"
+    "enterCategoryCode": "請輸入分類代碼",
+    "leaveBlankExportAllUsers": "留空則匯出所有使用者"
   },
   "rebate": {
     "salesRebateSchema": {
