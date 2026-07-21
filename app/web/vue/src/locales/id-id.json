@@ -621,6 +621,7 @@
     "japaneseOnly": "Hanya bahasa Jepang"
   },
   "fields": {
+    "searchType": "Jenis Pencarian",
     "isPrimary": "Apakah Dompet Utama",
     "totalDeposits": "Total Setoran",
     "Withdrawals": "Total Penarikan",
@@ -2458,7 +2459,8 @@
   },
   "placeholder": {
     "enterCategoryName": "Masukkan nama kategori",
-    "enterCategoryCode": "Masukkan kode kategori"
+    "enterCategoryCode": "Masukkan kode kategori",
+    "leaveBlankExportAllUsers": "Kosongkan untuk mengekspor semua pengguna"
   },
   "type": {
     "eventShopCategory": {

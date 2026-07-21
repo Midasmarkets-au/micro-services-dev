@@ -655,6 +655,7 @@
     "updateFailed": "更新失败"
   },
   "fields": {
+    "searchType": "搜索类型",
     "categoryName": "分类名称",
     "categoryCode": "分类代码",
     "products": "产品",
@@ -2524,7 +2525,8 @@
   },
   "placeholder": {
     "enterCategoryName": "请输入分类名称",
-    "enterCategoryCode": "请输入分类代码"
+    "enterCategoryCode": "请输入分类代码",
+    "leaveBlankExportAllUsers": "留空则导出所有用户"
   },
   "rebate": {
     "customerBaseRebateTable": "客户基础返佣表",

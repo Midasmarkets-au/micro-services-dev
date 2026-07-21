@@ -619,6 +619,7 @@
     "japaneseOnly": "Solo japonés"
   },
   "fields": {
+    "searchType": "Tipo de búsqueda",
     "isPrimary": "¿Es la billetera principal?",
     "totalDeposits": "Monto Total de Depósitos",
     "Withdrawals": "Total de Retiros",
@@ -2456,7 +2457,8 @@
   },
   "placeholder": {
     "enterCategoryName": "Ingrese el nombre de la categoría",
-    "enterCategoryCode": "Ingrese el código de la categoría"
+    "enterCategoryCode": "Ingrese el código de la categoría",
+    "leaveBlankExportAllUsers": "Déjelo en blanco para exportar todos los usuarios"
   },
   "type": {
     "eventShopCategory": {

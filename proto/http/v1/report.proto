@@ -16,43 +16,37 @@ service TenantReportService {
   // HTTP 路由由 MVC ReportController 处理，返回完整 ReportRequest 实体（含 name/generatedOn/expireOn/query/isFromApi）
   rpc ListReportRequests(ListReportRequestsRequest) returns (ListReportRequestsResponse) {}
   // 按 id 获取单条报表请求详情（含 file_url 下载链接）
-  rpc GetReportRequest(GetReportRequestRequest) returns (GetReportRequestResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/report/request/{id}" };
-  }
+  // HTTP 路由由 MVC ReportController.GetRequest 处理（返回完整实体，字段比这里的 proto 精简版多）
+  rpc GetReportRequest(GetReportRequestRequest) returns (GetReportRequestResponse) {}
   // 获取指定报表类型（type）的查询样本（JSON 格式），用于前端填写查询参数
-  rpc GetQuerySample(GetQuerySampleRequest) returns (GetQuerySampleResponse) {
-    option (google.api.http) = { get: "/api/v1/tenant/report/query/{type}/sample" };
-  }
+  // HTTP 路由由 MVC ReportController.QuerySample 处理
+  rpc GetQuerySample(GetQuerySampleRequest) returns (GetQuerySampleResponse) {}
   // 预览报表查询结果（不生成文件），body 字段为 query（JSON 字符串）
-  rpc PreviewQuery(PreviewQueryRequest) returns (PreviewQueryResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/query/{type}/preview", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.QueryPreview 处理（返回分页结果，含 criteria，字段跟这里的 proto 精简版不同）
+  rpc PreviewQuery(PreviewQueryRequest) returns (PreviewQueryResponse) {}
   // 创建报表请求，异步生成报表文件（status 会从 pending → completed）
-  rpc CreateReportRequest(CreateReportRequestRequest) returns (CreateReportRequestResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.CreateRequest 处理（Task.Run 进程内直接处理，
+  // 走 mono 的 ReportService.ProcessRequestAsync；这里的 gRPC 版走 scheduler(Rust) 的
+  // 独立报表生成实现，两者逻辑未共享，且 scheduler 侧对 WalletTransactionForTenant 类型
+  // 有已知 bug（SQL 列名不匹配），不能作为 REST 的等价替代）
+  rpc CreateReportRequest(CreateReportRequestRequest) returns (CreateReportRequestResponse) {}
   // HTTP 路由由 MVC ReportController.RegenRequest 处理（需要 GetPartyId() MVC context）
   rpc RegenReport(RegenReportRequest) returns (RegenReportResponse) {}
   // 创建并立即返回下载 URL（不持久化 ReportRequest 记录）
-  rpc DownloadReport(DownloadReportRequest) returns (DownloadReportResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request/download", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.CreateDownloadRequest 处理（同步返回真实下载链接，这里的 proto 版是异步轮询，两者不等价）
+  rpc DownloadReport(DownloadReportRequest) returns (DownloadReportResponse) {}
   // 创建权益报表；configuration 为 JSON 格式的 ReportConfiguration 对象
-  rpc CreateEquityReport(CreateEquityReportRequest) returns (CreateEquityReportResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.QueueEquityReport 处理（走 Hangfire 直接发邮件，这里的 proto 版没有发邮件逻辑，两者不等价）
+  rpc CreateEquityReport(CreateEquityReportRequest) returns (CreateEquityReportResponse) {}
   // 同步执行报表生成任务（调试用，绕过 Hangfire 队列直接处理）
-  rpc SimulateJob(SimulateJobRequest) returns (SimulateJobResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request/download/simulate-job", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.SimulateHangfireJob 处理
+  rpc SimulateJob(SimulateJobRequest) returns (SimulateJobResponse) {}
   // 生成权益报表 HTML 预览（不持久化，直接返回 HTML 字符串）
-  rpc GetEquityReportHtml(GetEquityReportHtmlRequest) returns (GetEquityReportHtmlResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/html", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.CreateEquityReportHtml 处理（前端直接传 JSON 对象，这里的 proto 版需要字符串包裹，两者不等价）
+  rpc GetEquityReportHtml(GetEquityReportHtmlRequest) returns (GetEquityReportHtmlResponse) {}
   // 获取权益报表所需的登录数据（按账户组和名称分组）
-  rpc GetEquityReportLogins(GetEquityReportLoginsRequest) returns (GetEquityReportLoginsResponse) {
-    option (google.api.http) = { post: "/api/v1/tenant/report/request/equity/logins", body: "*" };
-  }
+  // HTTP 路由由 MVC ReportController.GetLogins 处理（前端直接传 JSON 对象，这里的 proto 版需要字符串包裹，两者不等价）
+  rpc GetEquityReportLogins(GetEquityReportLoginsRequest) returns (GetEquityReportLoginsResponse) {}
 }
 
 // ─── Tenant Account Report API (api/v1/tenant/account-report) ────────────────

@@ -472,6 +472,7 @@
     "oopsErrorAccured": "Ой, алдаа гарлаа. Дээрх кодыг MDM дэмжлэгт хуваалц"
   },
   "fields": {
+    "searchType": "Хайлтын төрөл",
     "isPrimary": "Үндсэн түрийвч мөн эсэх",
     "totalDeposits": "Нийт орлого",
     "Withdrawals": "Нийт зарлага",
@@ -1911,7 +1912,8 @@
   },
   "placeholder": {
     "enterCategoryName": "Ангиллын нэр оруулах",
-    "enterCategoryCode": "Ангиллын код оруулах"
+    "enterCategoryCode": "Ангиллын код оруулах",
+    "leaveBlankExportAllUsers": "Хоосон орхивол бүх хэрэглэгчийг экспортлоно"
   },
   "type": {
     "eventShopCategory": {
