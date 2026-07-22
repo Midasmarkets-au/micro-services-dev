@@ -623,6 +623,7 @@
     "japaneseOnly": "Jepun sahaja"
   },
   "fields": {
+    "searchType": "Jenis Carian",
     "isPrimary": "Adakah Dompet Utama",
     "totalDeposits": "Jumlah Deposit Keseluruhan",
     "Withdrawals": "Jumlah Pengeluaran Keseluruhan",
@@ -2455,7 +2456,8 @@
   },
   "placeholder": {
     "enterCategoryName": "Masukkan nama kategori",
-    "enterCategoryCode": "Masukkan kod kategori"
+    "enterCategoryCode": "Masukkan kod kategori",
+    "leaveBlankExportAllUsers": "Biarkan kosong untuk mengeksport semua pengguna"
   },
   "type": {
     "eventShopCategory": {

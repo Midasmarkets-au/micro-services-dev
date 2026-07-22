@@ -36,7 +36,7 @@
           {{ $t("fields.period") }}
         </label>
         <el-date-picker
-          class="w-400px"
+          class="w-400px safari-border-fix"
           v-model="period"
           type="datetimerange"
           :start-placeholder="$t('fields.startDate')"
@@ -44,6 +44,36 @@
           format="YYYY-MM-DD HH:mm:ss"
           value-format="YYYY-MM-DD HH:mm:ss"
         />
+
+        <label class="mb-1 mt-3">{{ $t("fields.searchType") }}</label>
+        <el-radio-group
+          v-model="txnSearchType"
+          :disabled="exporting"
+          @change="txnSearchValue = ''"
+        >
+          <el-radio value="all" label="all">{{ $t("fields.all") }}</el-radio>
+          <el-radio value="email" label="email">{{
+            $t("fields.email")
+          }}</el-radio>
+          <el-radio value="walletId" label="walletId">{{
+            $t("fields.walletId")
+          }}</el-radio>
+        </el-radio-group>
+
+        <template v-if="txnSearchType !== 'all'">
+          <label class="mb-1 mt-3">
+            {{
+              txnSearchType === "email"
+                ? $t("fields.email")
+                : $t("fields.walletId")
+            }}
+          </label>
+          <el-input
+            class="w-400px safari-border-fix"
+            v-model="txnSearchValue"
+            :disabled="exporting"
+          />
+        </template>
       </div>
       <div v-else class="w-100 px-10">
         <el-divider></el-divider>
@@ -53,7 +83,7 @@
         </div>
 
         <el-form label-width="auto" class="border">
-          <el-form-item label="Search Type">
+          <el-form-item :label="$t('fields.searchType')">
             <el-select
               v-model="selectedOption"
               placeholder="Select option"
@@ -132,6 +162,8 @@ const formData = ref({
 } as any);
 const exporting = ref(false);
 const period = ref([] as any);
+const txnSearchType = ref("all");
+const txnSearchValue = ref("");
 const selectedOption = ref("id");
 const inputValue = ref("");
 const criteria = ref({
@@ -161,10 +193,19 @@ const convertToISO = (prd) => {
 const submitReportRequestJob = async () => {
   // const criteria = parsePeriodIntoCriteria(period.value);
   const datesRange = convertToISO(period.value);
+  const searchValue = txnSearchValue.value.trim();
   const spec: CreateReportSpec = {
     type: ReportRequestTypes.WalletTransactionForTenant,
     name: formData.value.name,
-    query: datesRange,
+    query: {
+      ...datesRange,
+      ...(txnSearchType.value === "email" && searchValue
+        ? { email: searchValue }
+        : {}),
+      ...(txnSearchType.value === "walletId" && searchValue
+        ? { walletId: searchValue }
+        : {}),
+    },
   };
   try {
     exporting.value = true;
@@ -205,6 +246,8 @@ const resetCriteria = () => {
   criteria.value.fundType = "";
   selectedOption.value = "id";
   inputValue.value = "";
+  txnSearchType.value = "all";
+  txnSearchValue.value = "";
 };
 
 const configCriteria = async () => {
@@ -255,5 +298,17 @@ defineExpose({
   border: 1px solid #dedeee !important;
   border-radius: 5px;
   padding: 10px;
+}
+
+/*
+ * Safari fails to repaint the box-shadow-based border on these two fields
+ * after the radio group toggles the conditional input in/out (the very
+ * light global border color makes the missing edge easy to notice).
+ * Forcing a GPU compositing layer works around Safari's repaint bug;
+ * Chrome/Firefox are unaffected either way.
+ */
+.safari-border-fix :deep(.el-input__wrapper),
+.safari-border-fix :deep(.el-range-editor) {
+  transform: translateZ(0);
 }
 </style>

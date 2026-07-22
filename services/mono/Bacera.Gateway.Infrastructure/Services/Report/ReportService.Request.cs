@@ -945,6 +945,8 @@ partial class ReportService
                 IQueryable<WalletTransaction> walletTransactionBaseQuery = tenantDbContext.WalletTransactions
                     // .Where(x => x.Wallet.Party.Status == (short)PartyStatusTypes.Active) // dealing said export all reports regardless of the party status, 05/19/2025
                     // .Where(x => x.Wallet.PartyId == 328864)
+                    .Where(x => string.IsNullOrEmpty(criteria.Email) || x.Wallet.Party.Email == criteria.Email)
+                    .Where(x => criteria.WalletId == null || x.WalletId == criteria.WalletId)
                     .OrderBy(x => x.Id);
 
                 // Api入口, **** 根据用户自定义criteria查询 *****

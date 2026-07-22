@@ -621,6 +621,7 @@
     "japaneseOnly": "ภาษาญี่ปุ่นเท่านั้น"
   },
   "fields": {
+    "searchType": "ประเภทการค้นหา",
     "isPrimary": "เป็นกระเป๋าหลักหรือไม่",
     "totalDeposits": "ยอดฝากรวม",
     "Withdrawals": "ยอดถอนรวม",
@@ -2420,6 +2421,9 @@
     "PrivacyPolicy": "นโยบายความเป็นส่วนตัว",
     "RiskWarningNotice": "ประกาศคำเตือนความเสี่ยง",
     "TermsAndConditions": "ข้อกำหนดและเงื่อนไข"
+  },
+  "placeholder": {
+    "leaveBlankExportAllUsers": "เว้นว่างเพื่อส่งออกผู้ใช้ทั้งหมด"
   },
   "type": {
     "eventShopCategory": {

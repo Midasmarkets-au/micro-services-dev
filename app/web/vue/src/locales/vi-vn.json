@@ -621,6 +621,7 @@
     "japaneseOnly": "Chỉ tiếng Nhật."
   },
   "fields": {
+    "searchType": "Loại tìm kiếm",
     "isPrimary": "Có phải Ví chính hay không",
     "totalDeposits": "Tổng tiền gửi",
     "Withdrawals": "Tổng tiền rút",
@@ -2429,6 +2430,9 @@
     "PrivacyPolicy": "Chính sách Bảo mật",
     "RiskWarningNotice": "Thông báo Cảnh báo Rủi ro",
     "TermsAndConditions": "Điều khoản và Điều kiện"
+  },
+  "placeholder": {
+    "leaveBlankExportAllUsers": "Để trống để xuất tất cả người dùng"
   },
   "type": {
     "eventShopCategory": {

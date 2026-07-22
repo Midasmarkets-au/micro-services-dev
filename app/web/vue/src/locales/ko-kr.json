@@ -619,6 +619,7 @@
     "japaneseOnly": "일본어만."
   },
   "fields": {
+    "searchType": "검색 유형",
     "isPrimary": "주 지갑 여부",
     "totalDeposits": "총 입금액",
     "Withdrawals": "총 출금액",
@@ -2448,7 +2449,8 @@
   },
   "placeholder": {
     "enterCategoryName": "카테고리명 입력",
-    "enterCategoryCode": "카테고리 코드 입력"
+    "enterCategoryCode": "카테고리 코드 입력",
+    "leaveBlankExportAllUsers": "비워두면 모든 사용자를 내보냅니다"
   },
   "type": {
     "eventShopCategory": {
