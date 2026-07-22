@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   Dialog,
   DialogContent,
@@ -17,9 +18,8 @@ import { Stepper } from '@/components/ui/Stepper';
 import { SimpleSelect, type SelectOption } from '@/components/ui/radix/Select';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
+import { fetchAction } from '@/lib/api/browser-client';
 import {
-  getDepositGroups,
-  getDepositGroupInfo,
   postAccountDeposit,
   postQrCodePaid,
   getExLinkCurrencies,
@@ -44,6 +44,7 @@ const EXLINK_GLOBAL_TYPE = 'ExLinkGlobal';
 const WIRE_PAYMENT_PLATFORM = 100 as const;
 const HELP2PAY_TYPE = 'Help2Pay';
 const PAY247_TYPE = 'Pay247';
+const RDDPAY_TYPE ='RDDPay';
 
 /**
  * Groups that fan out into multiple PaymentMethod rows on the backend
@@ -52,7 +53,7 @@ const PAY247_TYPE = 'Pay247';
  * - Help2Pay:     one row per (channel x currency) — two rows may share a currency.
  * - Pay247:       one row per (currency x pay_method) — bank selection deferred to the hosted page.
  */
-const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE, PAY247_TYPE] as const;
+const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE, PAY247_TYPE,RDDPAY_TYPE] as const;
 
 interface DepositModalProps {
   open: boolean;
@@ -223,7 +224,9 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   useEffect(() => {
     if (open && account) {
       setIsLoadingGroups(true);
-      execute(getDepositGroups, account.uid)
+      execute(async () =>
+        fetchAction<DepositGroup[]>('getDepositGroups', account.uid)
+      )
         .then((result) => {
           if (result.success && result.data) {
             setGroups(result.data);
@@ -262,11 +265,13 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     if (selectedGroup.isActive === false) return;
     setIsLoadingInfo(true);
     try {
-      const result = await execute(
-        getDepositGroupInfo,
-        account.uid,
-        selectedGroup.group,
-        selectedGroup.type
+      const result = await execute(async () =>
+        fetchAction<DepositGroupInfo>(
+          'getDepositGroupInfo',
+          account.uid,
+          selectedGroup.group,
+          selectedGroup.type,
+        )
       );
       if (!result.success || !result.data) return;
 
@@ -1099,6 +1104,13 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                           />
                         ) : (
                           <>
+                            <div className="rounded bg-white p-1.5">
+                              <QRCodeSVG
+                                value={depositResponse.textForQrCode}
+                                size={132}
+                                level="M"
+                              />
+                            </div>
                             <p className="text-sm text-text-secondary">{t('guide.walletAddress')}</p>
                             <code className="rounded bg-input-bg px-3 py-2 text-xs text-text-primary break-all">
                               {depositResponse.textForQrCode}
