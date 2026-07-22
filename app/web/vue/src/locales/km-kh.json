@@ -619,6 +619,7 @@
     "japaneseOnly": "ជប៉ុនផ្តាច់មុខ"
   },
   "fields": {
+    "searchType": "ប្រភេទស្វែងរក",
     "isPrimary": "វាគឺជាកាបូបចម្បងឬទេ",
     "totalDeposits": "ចំនួនប្រាក់បញ្ចូលសរុប",
     "Withdrawals": "ចំនួនប្រាក់ដកចេញសរុប",
@@ -2448,7 +2449,8 @@
   },
   "placeholder": {
     "enterCategoryName": "បញ្ចូលឈ្មោះប្រភេទ",
-    "enterCategoryCode": "បញ្ចូលកូដប្រភេទ"
+    "enterCategoryCode": "បញ្ចូលកូដប្រភេទ",
+    "leaveBlankExportAllUsers": "ទុកទទេដើម្បីនាំចេញអ្នកប្រើប្រាស់ទាំងអស់"
   },
   "type": {
     "eventShopCategory": {

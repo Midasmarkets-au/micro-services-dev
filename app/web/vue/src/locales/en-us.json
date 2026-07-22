@@ -655,6 +655,7 @@
     "totalPercentageExceed": "Total percentage exceed 100%"
   },
   "fields": {
+    "searchType": "Search Type",
     "categoryName": "Category Name",
     "categoryCode": "Category Code",
     "products": "Products",
@@ -2526,7 +2527,8 @@
   },
   "placeholder": {
     "enterCategoryName": "Enter category name",
-    "enterCategoryCode": "Enter category code"
+    "enterCategoryCode": "Enter category code",
+    "leaveBlankExportAllUsers": "Leave blank to export all users"
   },
   "rebate": {
     "customerBaseRebateTable": "Customer Base Rebate Table",
