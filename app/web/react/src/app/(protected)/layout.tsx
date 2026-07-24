@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Script from 'next/script';
 import { DashboardHeader } from '@/components/layout';
 import { getAuthCookie, getAuthMode } from '@/lib/auth/cookies';
 import { UserDataProvider, RouteGuard } from '@/components/providers';
@@ -36,6 +37,12 @@ export default async function ProtectedLayout({
           </RouteGuard>
         </UserDataProvider>
       </main>
+
+      <Script
+        id="ze-snippet"
+        src="https://static.zdassets.com/ekr/snippet.js?key=0425796b-d13f-4800-94cc-5735e9da01c9"
+        strategy="afterInteractive"
+      />
 
       {/* 固定定位的联系客服按钮 */}
       {/* <button className="fixed bottom-8 right-8 z-50 flex size-17 flex-col items-center justify-center gap-1 rounded-lg bg-primary shadow-lg hover:bg-primary-hover">
