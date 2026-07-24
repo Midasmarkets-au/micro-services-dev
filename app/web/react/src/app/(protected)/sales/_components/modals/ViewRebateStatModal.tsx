@@ -72,6 +72,7 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       fetchChildStat={fetchChildStat}
       fetchRebateStat={fetchRebateStat}
       rebateStatFormat={rebateStatFormat}
+      truncateTotalsToTwoDecimals
     />
   );
 }
