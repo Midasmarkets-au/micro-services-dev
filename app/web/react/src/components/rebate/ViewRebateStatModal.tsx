@@ -67,6 +67,8 @@ export interface ViewRebateStatModalProps {
   ) => Promise<FetchActionResult<unknown>>;
   /** How to parse rebate-by-symbol API response. Default `'ib'`. */
   rebateStatFormat?: RebateStatFormat;
+  /** 分类金额和返佣合计截取到两位小数（不四舍五入）。 */
+  truncateTotalsToTwoDecimals?: boolean;
 }
 
 interface RebateSymbolRow {
@@ -120,6 +122,23 @@ const CATEGORY_USD_TOTAL_FIELD: Partial<Record<AmountCategory, keyof RebateChild
   withdrawal: 'totalWithdrawalAmountUsd',
   accountTransferOut: 'totalAccountTransferOutAmountUsd',
 };
+
+function truncateToDecimals(value: number, fractionDigits: number): number {
+  const factor = 10 ** fractionDigits;
+  return Math.trunc(value * factor) / factor;
+}
+
+function formatTruncated(value: number, fractionDigits: number): string {
+  return truncateToDecimals(value, fractionDigits).toFixed(fractionDigits);
+}
+
+/**
+ * BalanceShow 接收的金额会再除以 100。要让最终显示值截取到两位小数，
+ * 需要先按显示口径截取，再转换回 BalanceShow 的输入单位。
+ */
+function truncateBalanceToTwoDisplayDecimals(balance: number): number {
+  return truncateToDecimals(balance / 100, 2) * 100;
+}
 
 interface RebateStatItem {
   symbol?: string;
@@ -198,6 +217,7 @@ export function ViewRebateStatModal({
   fetchChildStat,
   fetchRebateStat,
   rebateStatFormat = 'ib',
+  truncateTotalsToTwoDecimals = false,
 }: ViewRebateStatModalProps) {
   const t = useTranslations(translationNamespace);
 
@@ -285,13 +305,16 @@ export function ViewRebateStatModal({
       align: 'right',
       render: (row) => (
         <BalanceShow
-          balance={row.amount}
+          balance={truncateTotalsToTwoDecimals
+            ? truncateBalanceToTwoDisplayDecimals(row.amount)
+            : row.amount}
           currencyId={840}
+          fractionDigits={truncateTotalsToTwoDecimals ? 2 : undefined}
           className={row.amount <= 0 ? 'error-text' : ''}
         />
       ),
     },
-  ], [t]);
+  ], [t, truncateTotalsToTwoDecimals]);
 
   const footerRow = rebateTotals.length > 0 ? (
     <>
@@ -299,11 +322,18 @@ export function ViewRebateStatModal({
         <tr key={total.currencyId} className="border-t-2 border-border font-bold text-(--color-success)">
           <td className="px-5 py-4 uppercase">{t('trade.total')}</td>
           <td className="px-5 py-4">{CurrencyCodeMap[total.currencyId] || 'USD'}</td>
-          <td className="px-5 py-4 text-right">{total.volume.toFixed(2)}</td>
+          <td className="px-5 py-4 text-right">
+            {truncateTotalsToTwoDecimals
+              ? formatTruncated(total.volume, 2)
+              : total.volume.toFixed(2)}
+          </td>
           <td className="px-5 py-4 text-right">
             <BalanceShow
-              balance={total.amount}
+              balance={truncateTotalsToTwoDecimals
+                ? truncateBalanceToTwoDisplayDecimals(total.amount)
+                : total.amount}
               currencyId={total.currencyId}
+              fractionDigits={truncateTotalsToTwoDecimals ? 2 : undefined}
               className={total.amount <= 0 ? 'error-text' : ''}
             />
           </td>
@@ -414,13 +444,16 @@ export function ViewRebateStatModal({
       align: 'right',
       render: (row) => (
         <BalanceShow
-          balance={row.amount}
+          balance={truncateTotalsToTwoDecimals
+            ? truncateBalanceToTwoDisplayDecimals(row.amount)
+            : row.amount}
           currencyId={row.isUsdSummary ? 840 : row.currencyId}
+          fractionDigits={truncateTotalsToTwoDecimals ? 2 : undefined}
           className={row.isUsdSummary ? 'text-sm font-semibold text-text-primary' : undefined}
         />
       ),
     },
-  ], [t]);
+  ], [t, truncateTotalsToTwoDecimals]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
