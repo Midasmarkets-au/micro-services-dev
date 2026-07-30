@@ -186,7 +186,7 @@ export function DatePicker(props: DatePickerProps) {
       <Popover.Portal>
         <Popover.Content
           className={cn(
-            'z-50 rounded-xl border border-border p-0 overflow-hidden',
+            'z-50 rounded-xl border border-border p-0 overflow-visible',
             'bg-surface',
             'shadow-dropdown',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
@@ -196,6 +196,15 @@ export function DatePicker(props: DatePickerProps) {
           )}
           sideOffset={4}
           align="start"
+          onInteractOutside={(event) => {
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest('[data-radix-select-content]')
+            ) {
+              event.preventDefault();
+            }
+          }}
         >
           {mode === 'single' ? (
             <Calendar

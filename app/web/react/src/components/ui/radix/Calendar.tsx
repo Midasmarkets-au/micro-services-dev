@@ -10,17 +10,66 @@ import {
   DayPicker,
   getDefaultClassNames,
   type DayButton,
+  type DropdownProps,
   type Locale,
   type MonthCaptionProps,
 } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from './Button';
+import { SearchableSelect } from '../SearchableSelect';
 
 type DrillView = 'days' | 'months' | 'years';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: 'ghost' | 'outline' | 'secondary';
 };
+
+/**
+ * 使用 Radix Select 替代 react-day-picker 默认的原生 select。
+ * 原生 option 弹层由操作系统绘制，在不同浏览器和深色模式下无法保证样式一致。
+ */
+function CalendarDropdown({
+  options = [],
+  value,
+  onChange,
+  disabled,
+  'aria-label': ariaLabel,
+}: DropdownProps) {
+  const selectOptions = options.map((option) => ({
+    value: String(option.value),
+    label: option.label,
+    disabled: option.disabled,
+  }));
+  const selectedOption =
+    selectOptions.find((option) => option.value === String(value)) ?? null;
+  const isYearDropdown = options.length > 12;
+
+  return (
+    <SearchableSelect
+      value={selectedOption}
+      onChange={(option) => {
+        const nextValue = (option as { value?: string } | null)?.value;
+        if (nextValue == null) return;
+        onChange?.({
+          target: { value: nextValue },
+        } as React.ChangeEvent<HTMLSelectElement>);
+      }}
+      options={selectOptions}
+      isOptionDisabled={(option) =>
+        Boolean((option as { disabled?: boolean }).disabled)
+      }
+      isDisabled={disabled}
+      isSearchable
+      compact
+      containerClassName={cn(
+        'relative z-20 shrink-0',
+        isYearDropdown ? 'w-32!' : 'w-24!'
+      )}
+      placeholder={ariaLabel}
+      aria-label={ariaLabel}
+    />
+  );
+}
 
 function Calendar({
   className,
@@ -196,6 +245,7 @@ function Calendar({
         Root: ({ className: rootCn, rootRef, ...rootProps }) => (
           <div data-slot="calendar" ref={rootRef} className={cn(rootCn)} {...rootProps} />
         ),
+        Dropdown: CalendarDropdown,
         Chevron: ({ className: chevCn, orientation, ...chevProps }) => {
           if (orientation === 'left')
             return <ChevronLeftIcon className={cn('size-4', chevCn)} {...chevProps} />;
@@ -471,7 +521,7 @@ function CalendarDayButton({
         // range middle
         'data-[range-middle=true]:bg-(--color-primary-light) data-[range-middle=true]:text-(--color-primary) data-[range-middle=true]:rounded-none',
         // today — border highlight
-        'data-[today=true]:relative data-[today=true]:z-[1] data-[today=true]:ring-1 data-[today=true]:ring-(--color-primary) data-[today=true]:font-semibold',
+        'data-[today=true]:relative data-[today=true]:z-1 data-[today=true]:ring-1 data-[today=true]:ring-(--color-primary) data-[today=true]:font-semibold',
         // outside days — transparent, no bg
         'data-[outside=true]:bg-transparent data-[outside=true]:text-(--color-text-placeholder) data-[outside=true]:opacity-40 data-[outside=true]:hover:bg-transparent',
         // disabled
