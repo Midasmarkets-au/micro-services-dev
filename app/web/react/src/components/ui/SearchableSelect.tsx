@@ -3,12 +3,15 @@
 import { forwardRef, useId } from 'react';
 import Image from 'next/image';
 import ReactSelect, { Props as ReactSelectProps, StylesConfig, components } from 'react-select';
+import { cn } from '@/lib/utils';
 
 interface SearchableSelectProps extends Omit<ReactSelectProps, 'styles'> {
   label?: string;
   labelClassName?: string;
   error?: string;
   errorPosition?: 'top' | 'bottom';
+  compact?: boolean;
+  containerClassName?: string;
 }
 
 // 自定义下拉箭头组件
@@ -26,7 +29,15 @@ const DropdownIndicator = (props: any) => {
 };
 
 export const SearchableSelect = forwardRef<any, SearchableSelectProps>(
-  ({ label, labelClassName, error, errorPosition = 'top', ...props }, ref) => {
+  ({
+    label,
+    labelClassName,
+    error,
+    errorPosition = 'top',
+    compact = false,
+    containerClassName,
+    ...props
+  }, ref) => {
     // 使用 useId 生成稳定的 ID 以避免 SSR 水合错误
     const instanceId = useId();
     
@@ -34,13 +45,15 @@ export const SearchableSelect = forwardRef<any, SearchableSelectProps>(
     const customStyles: StylesConfig = {
       control: (base, state) => ({
         ...base,
-        minHeight: '48px',
+        minHeight: compact ? '32px' : '48px',
+        height: compact ? '32px' : undefined,
         backgroundColor: 'var(--color-input-bg)',
         borderColor: error ? 'var(--color-error-border)' : (state.isFocused ? 'var(--color-primary)' : 'transparent'),
         borderRadius: '4px',
         boxShadow: 'none',
         outline: 'none',
         fontSize: '14px',
+        cursor: 'pointer',
         transition: 'border-color 0.2s, box-shadow 0.2s',
         '&:hover': {
           borderColor: error ? 'var(--color-error-border)' : (state.isFocused ? 'var(--color-primary)' : 'var(--color-border)'),
@@ -74,6 +87,7 @@ export const SearchableSelect = forwardRef<any, SearchableSelectProps>(
       input: (base) => ({
         ...base,
         color: 'var(--color-text-primary)',
+        ...(compact ? { margin: 0, padding: 0 } : {}),
       }),
       placeholder: (base) => ({
         ...base,
@@ -81,7 +95,15 @@ export const SearchableSelect = forwardRef<any, SearchableSelectProps>(
       }),
       dropdownIndicator: (base) => ({
         ...base,
-        padding: '8px',
+        padding: compact ? '4px' : '8px',
+      }),
+      valueContainer: (base) => ({
+        ...base,
+        ...(compact ? { padding: '0 8px' } : {}),
+      }),
+      menuList: (base) => ({
+        ...base,
+        maxHeight: compact ? '240px' : base.maxHeight,
       }),
       indicatorSeparator: () => ({
         display: 'none',
@@ -89,7 +111,7 @@ export const SearchableSelect = forwardRef<any, SearchableSelectProps>(
     };
 
     return (
-      <div className="w-full">
+      <div className={cn('w-full', containerClassName)}>
         {/* Label 和错误提示 */}
         {(label || (error && errorPosition === 'top')) && (
           <div className={`mb-2 flex items-center justify-between ${labelClassName || 'text-sm font-normal  text-text-secondary'}`}>
