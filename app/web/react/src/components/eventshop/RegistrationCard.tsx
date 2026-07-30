@@ -42,15 +42,15 @@ export function RegistrationCard({ eventDetail, onRegistered }: RegistrationCard
   };
 
   return (
-    <div className="flex flex-col gap-5 w-full">
+    <div className="flex h-[calc(100dvh-6.5rem)] min-h-0 w-full flex-col gap-3 overflow-hidden sm:h-[calc(100dvh-7.5rem)] md:gap-5">
       {eventDetail.title && (
-        <h2 className="text-xl font-semibold text-text-primary">
+        <h2 className="shrink-0 text-xl font-semibold text-text-primary">
           {eventDetail.title}
         </h2>
       )}
 
       {eventDetail.term && (
-        <div className="bg-surface rounded border border-border p-5 md:p-8">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded border border-border bg-surface p-4 md:p-8">
           <div
             className="max-w-none text-text-primary text-sm leading-relaxed [&_a]:text-primary [&_a]:underline [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:mb-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-medium [&_h3]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mb-1 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-surface-secondary"
             dangerouslySetInnerHTML={{ __html: eventDetail.term }}
@@ -58,7 +58,7 @@ export function RegistrationCard({ eventDetail, onRegistered }: RegistrationCard
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface rounded border border-border p-5">
+      <div className="flex shrink-0 flex-col items-start justify-between gap-4 rounded border border-border bg-surface p-4 sm:flex-row sm:items-center md:p-5">
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <Checkbox
             checked={agreed}
