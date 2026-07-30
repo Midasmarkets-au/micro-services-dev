@@ -241,20 +241,26 @@ export async function getReferralInfoByReferralCode(code: string): Promise<Actio
       data: result,
     };
   } catch (error) {
-    logger.error('[getReferralInfoByReferralCode] Error:', error);
-
     if (error instanceof ApiError) {
+      // 推荐码补充信息用于可选的开户类型限制。不存在时页面会回退到默认选项，
+      // 不应向用户弹出全局错误提示。
+      if (error.statusCode !== 404) {
+        logger.error('[getReferralInfoByReferralCode] Error:', error);
+      }
       return {
         success: false,
         error: error.message,
         errorCode: error.errorCode,
         statusCode: error.statusCode,
+        skipToast: true,
       };
     }
 
+    logger.error('[getReferralInfoByReferralCode] Error:', error);
     return {
       success: false,
       error: 'Internal server error',
+      skipToast: true,
     };
   }
 }

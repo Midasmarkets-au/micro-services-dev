@@ -13,8 +13,9 @@ import { getRegionCodes } from '@/core/data/phonesData';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { useTheme } from '@/hooks/useTheme';
-import { login, register as registerAction, resendConfirmation } from '@/actions';
+import { login, register as registerAction, resendConfirmation, updateUserLanguage } from '@/actions';
 import { fetchAction } from '@/lib/api/browser-client';
+import { reverseLocaleMap } from '@/i18n/config';
 import {
   TenantTypes,
   Tenancies,
@@ -382,12 +383,6 @@ export default function SignUpPage() {
       tenantId: formConfig.tenantId || undefined,
     });
 
-    if (loginResult.success) {
-      router.push('/verification');
-      router.refresh();
-      return true;
-    }
-
     if (loginResult.twoFactorRequired) {
       showSuccess(t('pleaseLoginWith2FA'));
       router.push('/sign-in');
@@ -400,9 +395,27 @@ export default function SignUpPage() {
       return false;
     }
 
+    if (loginResult.success) {
+      // 登录成功后才能调用需要认证的用户语言接口。
+      // 直接读取当前 locale，避免使用页面初始化时缓存的旧语言。
+      const selectedLanguage =
+        reverseLocaleMap[locale] ||
+        reverseLocaleMap[formConfig.language] ||
+        formConfig.language ||
+        'en-us';
+      try {
+        await updateUserLanguage(selectedLanguage);
+      } catch {
+        // 更新语言失败不应阻止注册后的身份验证流程。
+      }
+
+      router.push('/verification');
+      return true;
+    }
+
     router.push('/sign-in?registered=true');
     return false;
-  }, [execute, formConfig.tenantId, router, showSuccess, t]);
+  }, [execute, formConfig.language, formConfig.tenantId, locale, router, showSuccess, t]);
 
   // 第二步提交 - 注册
   const onStepTwoSubmit = async (data: StepTwoFormData) => {
