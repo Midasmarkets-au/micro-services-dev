@@ -63,6 +63,7 @@ export async function fetchApiRoute<T>(
         error: result.error || 'Request failed',
         errorCode: result.errorCode,
         statusCode: result.statusCode ?? response.status,
+        skipToast: result.skipToast,
       };
     }
 
@@ -135,6 +136,7 @@ export async function fetchAction<T>(
         error: result.error || 'Request failed',
         errorCode: result.errorCode,
         statusCode: result.statusCode ?? response.status,
+        skipToast: result.skipToast,
       };
     }
 

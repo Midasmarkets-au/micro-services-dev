@@ -92,6 +92,7 @@ const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
+      data-radix-select-content
       className={cn(
         'relative z-50 min-w-32 overflow-hidden rounded border',
         // popper 模式下跟随 Radix 提供的可用高度 CSS 变量，避免在视口底部被裁剪；
@@ -202,6 +203,8 @@ interface SimpleSelectProps {
   className?: string;
   /** 应用到下拉面板的 className */
   contentClassName?: string;
+  /** 应用到选择器外层容器的 className */
+  containerClassName?: string;
 }
 
 function SimpleSelect({
@@ -215,8 +218,9 @@ function SimpleSelect({
   triggerSize,
   className,
   contentClassName,
+  containerClassName,
 }: SimpleSelectProps) {
-  return (
+  const select = (
     <SelectPrimitive.Root
       value={value}
       onValueChange={onChange}
@@ -235,6 +239,10 @@ function SimpleSelect({
       </SelectContent>
     </SelectPrimitive.Root>
   );
+
+  return containerClassName ? (
+    <div className={containerClassName}>{select}</div>
+  ) : select;
 }
 
 export {

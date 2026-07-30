@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Input, Button } from '@/components/ui';
 import { AuthIllustration } from '@/components/layout';
 import { useServerAction } from '@/hooks/useServerAction';
-import { login, forgotPassword, resendConfirmation } from '@/actions';
+import { login, forgotPassword, resendConfirmation, updateUserLanguage } from '@/actions';
+import { reverseLocaleMap } from '@/i18n/config';
 
 // 页面状态类型
 type PageState = 'LoginPage' | 'ForgetPasswordPage' | 'EmailVerifyPage' | 'SelectTenantPage';
@@ -35,6 +36,7 @@ const tenantFlagMap: Record<number, string> = {
 
 export default function SignInPage() {
   const t = useTranslations('auth');
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -158,10 +160,19 @@ export default function SignInPage() {
       return;
     }
 
+    // 登录成功后，将当前登录页语言同步到用户资料。
+    // 更新失败不阻止正常登录跳转。
+    const selectedLanguage = reverseLocaleMap[locale] || 'en-us';
+    try {
+      await updateUserLanguage(selectedLanguage);
+    } catch {
+      // 保持登录跳转流程可用。
+    }
+
     // 登录成功，优先回跳 callbackUrl
     const callbackUrl = searchParams.get('callbackUrl');
     router.push(callbackUrl || '/dashboard');
-  }, [clearErrors, execute, router, searchParams, t]);
+  }, [clearErrors, execute, locale, router, searchParams, t]);
 
   // 表单提交
   const onSubmit = async (data: LoginFormData) => {
