@@ -285,6 +285,7 @@ const openConfirmPanel = (
       [ActionType.Reject]: () => PaymentService.rejectDepositById(id),
       [ActionType.Cancel]: () => PaymentService.cancelDepositById(id),
       [ActionType.CompletePayment]: () =>
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- paymentID is only omitted for actions that don't reach this branch
         PaymentService.completePaymentById(paymentID!).then(() =>
           PaymentService.completeDepositByPaymentId(id)
         ),

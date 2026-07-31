@@ -7,8 +7,6 @@ import { CurrencyTypes } from "@/core/types/CurrencyTypes";
 import { FundTypes } from "@/core/types/FundTypes";
 import { Criteria } from "@/core/types/Criteria";
 
-export interface Account {}
-
 export interface AccountCriteria extends Criteria {
   uid: number | null;
   uids: number[] | null;

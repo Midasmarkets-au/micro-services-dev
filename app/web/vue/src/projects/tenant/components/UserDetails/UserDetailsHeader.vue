@@ -203,7 +203,8 @@ const requestUserToken = async () => {
   try {
     const res = await UserService.requestUserToken(partyId.value);
     const godModeKey = res?.data?.token ?? res?.token;
-    const godModeUrl = process.env.VUE_APP_BASE_CDN_URL + "/set-token?key=" + godModeKey;
+    const godModeUrl =
+      process.env.VUE_APP_BASE_CDN_URL + "/set-token?key=" + godModeKey;
     console.log("[god-mode] res=", JSON.stringify(res));
     console.log("[god-mode] godModeKey=", godModeKey);
     console.log("[god-mode] url=", godModeUrl);
