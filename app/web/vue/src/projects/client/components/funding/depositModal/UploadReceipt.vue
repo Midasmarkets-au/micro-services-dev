@@ -172,6 +172,7 @@ function startCountdown() {
     if (countDown.value > 0) {
       countDown.value--;
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- timer is always assigned before this callback can run
       clearInterval(timer!); // Clear the timer when countdown reaches 0
     }
   }, 60000); // 60000 milliseconds = 1 minute
