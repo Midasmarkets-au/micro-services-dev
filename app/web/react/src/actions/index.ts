@@ -64,6 +64,7 @@ export {
   deletePaymentInfo,
   createPaymentInfo,
   updatePaymentInfo,
+  validateUsdtWalletAddress,
   type PaymentInfo,
 } from './payment';
 

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/radix/Button';
 import { Input } from '@/components/ui/radix/Input';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { getRegionCodes } from '@/core/data/phonesData';
+import { validateUsdtWalletAddress } from '@/actions';
 import type { PaymentInfo } from '@/actions/payment';
 
 interface BankAccountModalProps {
@@ -150,7 +151,35 @@ export function BankAccountModal({
 
     setLoading(true);
     try {
-      const formData = paymentPlatform === 100 ? bankFormData : usdtFormData;
+      if (paymentPlatform === 240) {
+        const validation = await validateUsdtWalletAddress(
+          usdtFormData.walletAddress
+        );
+
+        if (!validation.success) {
+          setErrors((previous) => ({
+            ...previous,
+            walletAddress: t('errors.walletValidationFailed'),
+          }));
+          return;
+        }
+
+        if (!validation.data?.valid) {
+          setErrors((previous) => ({
+            ...previous,
+            walletAddress: t('errors.walletAddressInvalid'),
+          }));
+          return;
+        }
+      }
+
+      const formData =
+        paymentPlatform === 100
+          ? bankFormData
+          : {
+              ...usdtFormData,
+              walletAddress: usdtFormData.walletAddress.trim(),
+            };
       await onSubmit(formData);
       handleClose();
     } finally {

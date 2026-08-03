@@ -937,7 +937,9 @@
         "accountNoRequired": "Por favor ingrese el número de cuenta",
         "confirmAccountNoRequired": "Por favor confirme el número de cuenta",
         "accountNoMismatch": "Los números de cuenta no coinciden",
-        "walletAddressRequired": "Por favor ingrese la dirección de cartera USDT"
+        "walletAddressRequired": "Por favor ingrese la dirección de cartera USDT",
+        "walletAddressInvalid": "Ingrese una dirección de cartera USDT TRC20 válida",
+        "walletValidationFailed": "No se pudo validar la dirección de cartera. Inténtelo de nuevo más tarde"
       }
     },
     "address": {

@@ -939,7 +939,9 @@
         "accountNoRequired": "กรุณาป้อนหมายเลขบัญชี",
         "confirmAccountNoRequired": "กรุณายืนยันหมายเลขบัญชี",
         "accountNoMismatch": "หมายเลขบัญชีไม่ตรงกัน",
-        "walletAddressRequired": "กรุณาป้อนที่อยู่กระเป๋า USDT"
+        "walletAddressRequired": "กรุณาป้อนที่อยู่กระเป๋า USDT",
+        "walletAddressInvalid": "กรุณาป้อนที่อยู่กระเป๋า USDT TRC20 ที่ถูกต้อง",
+        "walletValidationFailed": "ไม่สามารถตรวจสอบที่อยู่กระเป๋าได้ โปรดลองอีกครั้งในภายหลัง"
       }
     },
     "address": {

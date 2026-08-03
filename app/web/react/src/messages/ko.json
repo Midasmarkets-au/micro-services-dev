@@ -939,7 +939,9 @@
         "accountNoRequired": "계좌번호를 입력해 주세요",
         "confirmAccountNoRequired": "계좌번호를 확인해 주세요",
         "accountNoMismatch": "계좌번호가 일치하지 않습니다",
-        "walletAddressRequired": "USDT 지갑 주소를 입력해 주세요"
+        "walletAddressRequired": "USDT 지갑 주소를 입력해 주세요",
+        "walletAddressInvalid": "유효한 USDT TRC20 지갑 주소를 입력해 주세요",
+        "walletValidationFailed": "지갑 주소를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요"
       }
     },
     "address": {

@@ -942,7 +942,9 @@
         "accountNoRequired": "请输入账号",
         "confirmAccountNoRequired": "请确认账号",
         "accountNoMismatch": "两次输入的账号不一致",
-        "walletAddressRequired": "请输入USDT钱包地址"
+        "walletAddressRequired": "请输入USDT钱包地址",
+        "walletAddressInvalid": "请输入有效的 USDT TRC20 钱包地址",
+        "walletValidationFailed": "无法验证钱包地址，请稍后重试"
       }
     },
     "address": {
