@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { useServerAction } from '@/hooks/useServerAction';
-import { getSalesLinks } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { useUserStore } from '@/stores/userStore';
 import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
-import type { SalesLink } from '@/types/sales';
+import type { SalesLink, SalesLinkListResponse } from '@/types/sales';
 import { getLanguageLabel } from '@/core/types/LanguageTypes';
 import { SalesRebateSettingsDialog } from '../_components/modals/SalesRebateSettingsDialog';
 import { EditSalesLinkDialog } from '../_components/modals/EditSalesLinkDialog';
@@ -53,9 +52,6 @@ function CopyLinkCell({
 export default function SalesLinkPage() {
   const t = useTranslations('sales');
   const tAccount = useTranslations('accounts');
-  const { execute } = useServerAction({ showErrorToast: true });
-  const executeRef = useRef(execute);
-  executeRef.current = execute;
 
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const salesStoreInitialized = useSalesStore((s) => s.isInitialized);
@@ -81,11 +77,15 @@ export default function SalesLinkPage() {
     if (!salesAccount) return;
     setIsLoading(true);
     try {
-      const result = await executeRef.current(getSalesLinks, salesAccount.uid, {
-        page: 1,
-        size: 100,
-        status: 0,
-      });
+      const result = await fetchAction<SalesLinkListResponse>(
+        'getSalesLinks',
+        salesAccount.uid,
+        {
+          page: 1,
+          size: 100,
+          status: 0,
+        }
+      );
       if (result.success && result.data) {
         let links = Array.isArray(result.data.data) ? result.data.data : [];
         if (rebateEnabled) {

@@ -392,8 +392,8 @@
     "accountManagement": "Pengurusan akaun",
     "personalInfo": "Maklumat peribadi",
     "userGuide": "Panduan pengguna",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Kedai Apple",
+    "androidApk": "Pakej pemasangan Android",
     "logout": "Log keluar",
     "loggingOut": "Sedang log keluar...",
     "verifyYourAccount": "Sahkan akaun anda",
@@ -692,6 +692,7 @@
     "networkError": "Ralat rangkaian berlaku. Sila semak sambungan anda",
     "unknownError": "Ralat tidak diketahui berlaku",
     "Wallet address already exists": "Alamat dompet sudah wujud",
+    "WALLET_ADDRESS_EXIST": "Alamat dompet sudah wujud",
     "Request failed": "Ralat tidak dijangka berlaku. Sila cuba lagi kemudian atau hubungi perkhidmatan pelanggan.",
     "__ALREADY_PARTICIPATED__": "Anda telah pun menyertai aktiviti ini",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Tidak boleh memindahkan ke akaun sendiri",
@@ -774,7 +775,7 @@
     "tabs": {
       "basicInfo": "Maklumat asas",
       "security": "Kata laluan log masuk",
-      "bankInfos": "Maklumat bank",
+      "bankInfos": "Maklumat Deposit & Pengeluaran",
       "files": "Muat naik fail",
       "address": "Pengurusan alamat"
     },
@@ -885,12 +886,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "Akaun yang dipautkan",
-      "addBankAccount": "Tambah akaun",
-      "addUSDTWallet": "Alamat dompet USD",
+      "addBankAccount": "Akaun Bank",
+      "addUSDTWallet": "Alamat Dompet USDT",
       "addAccount": "Tambah akaun pembayaran",
       "editAccount": "Edit akaun pembayaran",
       "noAccounts": "Tiada maklumat akaun",
-      "accountName": "Nama akaun pembayaran",
+      "accountName": "Nama Panggilan Akaun Pembayaran",
       "accountHolder": "Pemilik akaun",
       "bankCountry": "Negara bank",
       "selectCountry": "Sila pilih negara",
@@ -905,8 +906,8 @@
       "city": "Bandar",
       "accountNumber": "Nombor akaun",
       "confirmAccountNumber": "Sahkan nombor akaun",
-      "usdtWalletAddress": "Alamat dompet USDT",
-      "walletPlaceholder": "Masukkan pemilik akaun",
+      "usdtWalletAddress": "Alamat Dompet USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "Bank:",
       "walletLabel": "Jenis dompet:",
       "usdtWallet": "Dompet USDT",
@@ -1319,8 +1320,8 @@
     "title": "Dompet",
     "balance": "Baki",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "Kuasai Pasaran dengan Keajaiban Midas",
+      "tagline": "Dagangkan 300+ CFD bagi FX, Komoditi,\nindeks dan banyak lagi | MT5 | Spread ultra ketat"
     },
     "action": {
       "withdraw": "Keluarkan",

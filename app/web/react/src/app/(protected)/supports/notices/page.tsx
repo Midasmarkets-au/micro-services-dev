@@ -7,6 +7,8 @@ import DOMPurify from 'dompurify';
 import { useServerAction } from '@/hooks/useServerAction';
 import { Skeleton } from '@/components/ui';
 import { fetchAction } from '@/lib/api/browser-client';
+import { formatLocalizedDate } from '@/lib/formatLocalizedDate';
+import { resolveNoticeLocalizedContent } from '@/lib/noticeLocalization';
 import { useNoticesStore } from '@/stores';
 
 // 单个语言版本的公告内容
@@ -43,88 +45,34 @@ interface NoticeItem {
   updatedOn?: string;
 }
 
-// 语言代码映射：项目语言 -> 后端语言
-const localeMapping: Record<string, string[]> = {
-  'en': ['en-us', 'en'],
-  'zh': ['zh-cn', 'zh'],
-  'zh-tw': ['zh-tw', 'zh-hk'],
-  'vi': ['vi', 'vi-vn'],
-  'th': ['th', 'th-th'],
-  'jp': ['ja', 'ja-jp', 'jp'],
-  'id': ['id', 'id-id'],
-  'ms': ['ms', 'ms-my'],
-  'ko': ['ko', 'ko-kr'],
-  'km': ['km', 'km-kh'],
-  'es': ['es', 'es-es'],
-};
-
-// 从多语言公告中提取当前语言内容
+// 当前语言 → en-us → 任意语言；title/content 不完整则继续回退
 function extractLocalizedContent(
   notice: ApiNotice,
   locale: string
 ): NoticeItem | null {
-  const contents = notice.contents;
-  if (!contents) return null;
-  
-  // 获取当前语言对应的后端语言代码列表
-  const possibleLocales = localeMapping[locale] || [locale];
-  
-  // 尝试按优先级查找
-  for (const lang of possibleLocales) {
-    if (contents[lang]) {
-      const content = contents[lang];
-      return {
-        id: notice.id,
-        title: content.title,
-        content: content.content,
-        createdOn: notice.createdOn,
-        updatedOn: notice.updatedOn,
-      };
-    }
-  }
-  
-  // 回退到 en-us
-  if (contents['en-us']) {
-    const content = contents['en-us'];
-    return {
-      id: notice.id,
-      title: content.title,
-      content: content.content,
-      createdOn: notice.createdOn,
-      updatedOn: notice.updatedOn,
-    };
-  }
-  
-  // 回退到任意可用语言
-  const availableLanguages = Object.keys(contents);
-  if (availableLanguages.length > 0) {
-    const content = contents[availableLanguages[0]];
-    return {
-      id: notice.id,
-      title: content.title,
-      content: content.content,
-      createdOn: notice.createdOn,
-      updatedOn: notice.updatedOn,
-    };
-  }
-  
-  return null;
-}
+  const localized = resolveNoticeLocalizedContent(
+    notice.contents,
+    locale,
+    notice.title
+  );
+  if (!localized) return null;
 
-// 格式化日期
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
-  const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
-  const monthYear = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  return { dayOfWeek, monthYear };
+  return {
+    id: notice.id,
+    title: localized.title,
+    content: localized.content,
+    createdOn: notice.createdOn,
+    updatedOn: notice.updatedOn,
+  };
 }
 
 // 公告项组件
 // 设计稿: 水平布局（左侧内容+右侧按钮），左边有竖线，卡片之间有分割线
 function NoticeCard({ notice }: { notice: NoticeItem }) {
   const t = useTranslations('supports');
-  const { dayOfWeek, monthYear } = formatDate(notice.createdOn);
-  
+  const locale = useLocale();
+  const { time: monthYear } = formatLocalizedDate(notice.createdOn, locale);
+
   return (
     <div className="relative flex gap-5 items-center py-5 pl-5 pr-0 overflow-hidden border-b border-[#EEE] dark:border-[#333]">
       {/* 左侧竖线 - 设计稿: 宽2px, 高16px, top:20px, 日间#800020, 夜间#004eff */}
@@ -133,13 +81,8 @@ function NoticeCard({ notice }: { notice: NoticeItem }) {
       {/* 内容区域 - flex-1, 垂直排列, gap:20px */}
       <div className="flex-1 flex flex-col gap-5 min-w-0">
         {/* 日期区域 - 设计稿: w:60px, gap:10px */}
-        <div className="flex flex-col gap-2.5 w-[60px]">
-          <span 
-            className="text-sm font-bold leading-normal text-[#333] dark:text-white"
-            style={{ fontFamily: 'DIN, sans-serif' }}
-          >
-            {dayOfWeek}
-          </span>
+        <div className="flex flex-col gap-2.5 w-[90px]">
+          {/* weekday: formatLocalizedDate(...).date */}
           <span 
             className="text-xs text-text-secondary leading-normal"
             style={{ fontFamily: 'DIN, sans-serif' }}
@@ -183,7 +126,7 @@ function NoticesSkeleton() {
           {/* 内容区域 - flex-1, 垂直排列, gap:20px */}
           <div className="flex-1 flex flex-col gap-5 min-w-0">
             {/* 日期区域 - w:60px, gap:10px */}
-            <div className="flex flex-col gap-2.5 w-[60px]">
+            <div className="flex flex-col gap-2.5 w-[90px]">
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-3 w-12" />
             </div>

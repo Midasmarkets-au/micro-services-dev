@@ -7,6 +7,11 @@ import Image from 'next/image';
 import { useRouteScope } from '@/hooks/useRouteScope';
 import { useServerAction } from '@/hooks/useServerAction';
 import { fetchAction } from '@/lib/api/browser-client';
+import { formatLocalizedDate } from '@/lib/formatLocalizedDate';
+import {
+  resolveNoticeLocalizedContent,
+  stripNoticeHtml,
+} from '@/lib/noticeLocalization';
 import { NotificationsSkeleton } from '@/components/ui';
 
 // 后端返回的通知内容结构
@@ -32,32 +37,6 @@ interface NoticeItem {
   createdOn: string;
 }
 
-// 格式化日期
-function formatDate(dateString: string): { date: string; time: string } {
-  const date = new Date(dateString);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                  'July', 'August', 'September', 'October', 'November', 'December'];
-  
-  return {
-    date: days[date.getDay()],
-    time: `${months[date.getMonth()]} ${date.getFullYear()}`,
-  };
-}
-
-// 语言代码映射（前端 locale -> 后端 language key）
-const localeToLanguageKey: Record<string, string> = {
-  'en': 'en-us',
-  'zh': 'zh-cn',
-  'es': 'es-es',
-  'id': 'id-id',
-  'ja': 'jp-jp',
-  'ko': 'ko-kr',
-  'ms': 'ms-my',
-  'th': 'th-th',
-  'vi': 'vi-vn',
-};
-
 export function DashboardNotifications() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
@@ -67,8 +46,17 @@ export function DashboardNotifications() {
   const [notifications, setNotifications] = useState<NoticeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 获取当前语言对应的后端语言 key
-  const languageKey = localeToLanguageKey[locale] || 'en-us';
+  const resolveNotice = (notice: NoticeItem) =>
+    resolveNoticeLocalizedContent(notice.contents, locale, notice.title);
+
+  const getNoticeTitle = (notice: NoticeItem): string =>
+    resolveNotice(notice)?.title || '';
+
+  const getNoticeContent = (notice: NoticeItem): string =>
+    stripNoticeHtml(resolveNotice(notice)?.content || '');
+
+  const isNoticeComplete = (notice: NoticeItem): boolean =>
+    resolveNotice(notice) !== null;
 
   // begin/execute 都是稳定引用，effect 正常只跑一次；StrictMode 双跑由 begin()
   // 的 token 机制去重，不需要额外 ref 守卫。
@@ -84,26 +72,16 @@ export function DashboardNotifications() {
 
       if (result.success && items.length > 0) {
         setNotifications(items);
-        setSelectedNotification(items[0].id);
+        const firstVisible = items.find(isNoticeComplete);
+        setSelectedNotification(firstVisible?.id ?? null);
       }
 
       setIsLoading(false);
     })();
   }, [begin, execute]);
 
-  // 获取通知的标题（根据当前语言）
-  const getNoticeTitle = (notice: NoticeItem): string => {
-    const content = notice.contents[languageKey] || notice.contents['en-us'];
-    return content?.title || notice.title;
-  };
-
-  // 获取通知的内容（根据当前语言，去除 HTML 标签）
-  const getNoticeContent = (notice: NoticeItem): string => {
-    const content = notice.contents[languageKey] || notice.contents['en-us'];
-    const rawContent = content?.content || '';
-    // 去除 HTML 标签
-    return rawContent.replace(/<[^>]*>/g, '');
-  };
+  // title / content 任一为空则不展示（含语言回退后仍不完整）
+  const visibleNotifications = notifications.filter(isNoticeComplete);
 
   // 加载状态 - 复用 NotificationsSkeleton 保持一致
   if (isLoading) {
@@ -111,7 +89,7 @@ export function DashboardNotifications() {
   }
 
   // 无数据状态
-  if (notifications.length === 0) {
+  if (visibleNotifications.length === 0) {
     return (
       <aside className="sidebar-responsive">
         <div className="rounded bg-surface p-5">
@@ -152,12 +130,11 @@ export function DashboardNotifications() {
 
         {/* 通知列表 */}
         <div className="flex flex-col gap-3">
-          {notifications.map((notification) => {
-            const { date, time } = formatDate(notification.createdOn);
+          {visibleNotifications.map((notification) => {
+            const { time } = formatLocalizedDate(notification.createdOn, locale);
             const isSelected = selectedNotification === notification.id;
             const title = getNoticeTitle(notification);
             const content = getNoticeContent(notification);
-            
             return (
               <button
                 key={notification.id}
@@ -168,7 +145,7 @@ export function DashboardNotifications() {
                     : 'border border-border hover:bg-surface-secondary'
                 }`}
               >
-                <div className="flex items-start justify-between">
+                {/* <div className="flex items-start justify-between">
                   <span
                     className={`text-sm font-medium ${
                       isSelected ? 'text-white' : 'text-text-primary'
@@ -176,7 +153,7 @@ export function DashboardNotifications() {
                   >
                     {date}
                   </span>
-                </div>
+                </div> */}
                 <p
                   className={`text-sm ${
                     isSelected ? 'text-white/90' : 'text-text-secondary'

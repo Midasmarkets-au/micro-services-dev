@@ -12,19 +12,15 @@ import {
   Button,
   Input,
 } from '@/components/ui';
-import { useServerAction } from '@/hooks/useServerAction';
-import {
-  getReferralLinkDetail,
-  getSalesSymbolCategory,
-  getSalesAccountDefaultLevel,
-  getSalesIBRebateRuleDetail,
-} from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import type {
   SalesLinkDetail,
   SalesLinkSchema,
   SalesDefaultLevelSettingMap,
   SalesDefaultLevelSettingOption,
+  SalesRebateRuleDetail,
+  SymbolCategory,
 } from '@/types/sales';
 
 interface SalesRebateSettingsDialogProps {
@@ -54,9 +50,6 @@ export function SalesRebateSettingsDialog({
   const t = useTranslations('sales');
   const tType = useTranslations('type');
   const tAccount = useTranslations('accounts');
-  const { execute } = useServerAction({ showErrorToast: true });
-  const executeRef = useRef(execute);
-  executeRef.current = execute;
   const salesAccount = useSalesStore((s) => s.salesAccount);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -75,8 +68,16 @@ export function SalesRebateSettingsDialog({
     setExtraLoading(true);
     try {
       const [ruleRes, defaultRes] = await Promise.all([
-        executeRef.current(getSalesIBRebateRuleDetail, salesAccount.uid, agentUid),
-        executeRef.current(getSalesAccountDefaultLevel, salesAccount.uid, agentUid),
+        fetchAction<SalesRebateRuleDetail>(
+          'getSalesIBRebateRuleDetail',
+          salesAccount.uid,
+          agentUid
+        ),
+        fetchAction<SalesDefaultLevelSettingMap>(
+          'getSalesAccountDefaultLevel',
+          salesAccount.uid,
+          agentUid
+        ),
       ]);
 
       if (ruleRes.success && ruleRes.data) {
@@ -124,8 +125,8 @@ export function SalesRebateSettingsDialog({
     (async () => {
       try {
         const [detailRes, categoryRes] = await Promise.all([
-          execute(getReferralLinkDetail, code),
-          execute(getSalesSymbolCategory),
+          fetchAction<SalesLinkDetail>('getReferralLinkDetail', code),
+          fetchAction<SymbolCategory[]>('getSalesSymbolCategory'),
         ]);
 
         if (cancelled) return;
@@ -168,7 +169,7 @@ export function SalesRebateSettingsDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, code, salesAccount, execute]);
+  }, [open, code, salesAccount]);
 
   // 当 detail 加载完且是 300 类型时，拉取额外数据
   useEffect(() => {

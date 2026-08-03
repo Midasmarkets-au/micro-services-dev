@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/radix/Input';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { SelectInput } from '@/components/ui/SelectInput';
 import { getRegionCodes } from '@/core/data/phonesData';
+import { useUserStore } from '@/stores/userStore';
 import type { AddressInfo, AddressContent } from '@/actions/address';
 
 interface AddressModalProps {
@@ -42,6 +43,9 @@ export function AddressModal({
 }: AddressModalProps) {
   const t = useTranslations('profile.address');
   const tCommon = useTranslations('common');
+  const user = useUserStore((state) => state.user);
+  const defaultCcc = user?.ccc?.replace('+', '') || '86';
+  const defaultCountry = user?.countryCode?.toLowerCase() || 'cn';
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -49,14 +53,14 @@ export function AddressModal({
   // Form state
   const [formData, setFormData] = useState<AddressFormData>({
     name: '',
-    ccc: '61',
+    ccc: defaultCcc,
     phone: '',
-    country: 'au',
+    country: defaultCountry,
     content: {
       address: '',
       city: '',
       postalCode: '',
-      socialMediaType: 'whatsApp',
+      socialMediaType: 'wechat',
       socialMediaAccount: '',
       state: '',
     },
@@ -77,14 +81,14 @@ export function AddressModal({
         // Reset form for add mode
         setFormData({
           name: '',
-          ccc: '61',
+          ccc: defaultCcc,
           phone: '',
-          country: 'au',
+          country: defaultCountry,
           content: {
             address: '',
             city: '',
             postalCode: '',
-            socialMediaType: 'whatsApp',
+            socialMediaType: 'wechat',
             socialMediaAccount: '',
             state: '',
           },
@@ -92,7 +96,7 @@ export function AddressModal({
       }
       setErrors({});
     }
-  }, [isOpen, mode, initialData]);
+  }, [isOpen, mode, initialData, defaultCcc, defaultCountry]);
 
   // Get country options for SearchableSelect
   const countryOptions = Object.entries(getRegionCodes()).map(([code, data]) => ({
