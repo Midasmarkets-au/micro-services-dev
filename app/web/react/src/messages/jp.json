@@ -939,7 +939,9 @@
         "accountNoRequired": "口座番号を入力してください",
         "confirmAccountNoRequired": "口座番号を確認してください",
         "accountNoMismatch": "口座番号が一致しません",
-        "walletAddressRequired": "USDTウォレットアドレスを入力してください"
+        "walletAddressRequired": "USDTウォレットアドレスを入力してください",
+        "walletAddressInvalid": "有効なUSDT TRC20ウォレットアドレスを入力してください",
+        "walletValidationFailed": "ウォレットアドレスを検証できません。後でもう一度お試しください"
       }
     },
     "address": {

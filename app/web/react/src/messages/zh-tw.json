@@ -939,7 +939,9 @@
         "accountNoRequired": "請輸入帳號",
         "confirmAccountNoRequired": "請確認帳號",
         "accountNoMismatch": "兩次輸入的帳號不一致",
-        "walletAddressRequired": "請輸入USDT錢包地址"
+        "walletAddressRequired": "請輸入USDT錢包地址",
+        "walletAddressInvalid": "請輸入有效的 USDT TRC20 錢包地址",
+        "walletValidationFailed": "無法驗證錢包地址，請稍後再試"
       }
     },
     "address": {
