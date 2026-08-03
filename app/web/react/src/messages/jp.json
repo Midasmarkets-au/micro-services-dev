@@ -392,8 +392,8 @@
     "accountManagement": "アカウント管理",
     "personalInfo": "個人情報",
     "userGuide": "ユーザーガイド",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Appleストア",
+    "androidApk": "Androidインストールパッケージ",
     "logout": "ログアウト",
     "loggingOut": "ログアウト中...",
     "verifyYourAccount": "アカウントを確認",
@@ -692,6 +692,7 @@
     "networkError": "ネットワークエラーが発生しました。接続を確認してください",
     "unknownError": "不明なエラーが発生しました",
     "Wallet address already exists": "ウォレットアドレスはすでに登録されています",
+    "WALLET_ADDRESS_EXIST": "ウォレットアドレスはすでに登録されています",
     "Request failed": "予期しないエラーが発生しました。後でもう一度お試しいただくか、カスタマーサービスにお問い合わせください。",
     "__ALREADY_PARTICIPATED__": "すでにこのイベントに参加しています",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "自分のアカウントへの送金はできません",
@@ -774,7 +775,7 @@
     "tabs": {
       "basicInfo": "基本情報",
       "security": "ログインパスワード",
-      "bankInfos": "銀行情報",
+      "bankInfos": "入出金情報",
       "files": "ファイルアップロード",
       "address": "住所管理"
     },
@@ -885,12 +886,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "連携済みアカウント",
-      "addBankAccount": "アカウントを追加",
-      "addUSDTWallet": "USDウォレットアドレス",
+      "addBankAccount": "銀行口座",
+      "addUSDTWallet": "USDTウォレットアドレス",
       "addAccount": "支払いアカウントを追加",
       "editAccount": "支払いアカウントを編集",
       "noAccounts": "アカウント情報なし",
-      "accountName": "支払いアカウント名",
+      "accountName": "支払いアカウントのニックネーム",
       "accountHolder": "口座名義人",
       "bankCountry": "銀行の所在国",
       "selectCountry": "国を選択してください",
@@ -905,8 +906,8 @@
       "city": "市区町村",
       "accountNumber": "口座番号",
       "confirmAccountNumber": "口座番号を確認",
-      "usdtWalletAddress": "USDTウォレットアドレス",
-      "walletPlaceholder": "口座名義人を入力してください",
+      "usdtWalletAddress": "USDTウォレットアドレス（TRX-TRC20）",
+      "walletPlaceholder": "",
       "bankNameLabel": "銀行名：",
       "walletLabel": "ウォレット種類：",
       "usdtWallet": "USDTウォレット",
@@ -1319,8 +1320,8 @@
     "title": "ウォレット",
     "balance": "残高",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "Midasの魔法で市場を制覇",
+      "tagline": "FX、コモディティ、指数など\n300以上のCFDを取引 | MT5 | 極狭スプレッド"
     },
     "action": {
       "withdraw": "出金",

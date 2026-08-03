@@ -282,6 +282,9 @@ async function request<T>(
     },
   };
 
+  const method = config.method?.toUpperCase() ?? 'GET';
+  logger.info('[API Client] 发起后端请求:', { method, url });
+
   const response = await fetch(url, config);
   await syncAuthCookies({ response });
 
@@ -296,6 +299,7 @@ async function request<T>(
     try {
       const errorData = await response.json();
       logger.error('[API Client] 请求失败:', {
+        method,
         url,
         status: response.status,
         statusText: response.statusText,
@@ -320,6 +324,7 @@ async function request<T>(
       }
     } catch {
       logger.error('[API Client] 请求失败 (无法解析错误):', {
+        method,
         url,
         status: response.status,
         statusText: response.statusText,
@@ -344,12 +349,23 @@ async function request<T>(
     const responseClone = response.clone();
     try {
       const responseBody = await responseClone.json();
-      logger.info('[API Client] 请求后端API:', { url, status: response.status, body: responseBody });
+      logger.info('[API Client] 后端响应:', {
+        method,
+        url,
+        status: response.status,
+        body: responseBody,
+      });
     } catch {
-      logger.info('[API Client] 请求后端API:', { url, status: response.status, body: '(JSON 解析失败)' });
+      logger.info('[API Client] 后端响应:', {
+        method,
+        url,
+        status: response.status,
+        body: '(JSON 解析失败)',
+      });
     }
   } else {
-    logger.info('[API Client] 请求后端API:', {
+    logger.info('[API Client] 后端响应:', {
+      method,
       url,
       status: response.status,
       body: response.status === 204 ? '(No Content)' : '(非 JSON 响应)',

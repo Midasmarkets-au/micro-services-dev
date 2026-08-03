@@ -392,8 +392,8 @@
     "accountManagement": "Gestión de cuentas",
     "personalInfo": "Información personal",
     "userGuide": "Guía del usuario",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Tienda de Apple",
+    "androidApk": "Paquete de instalación de Android",
     "logout": "Cerrar sesión",
     "loggingOut": "Cerrando sesión...",
     "verifyYourAccount": "Verificar su cuenta",
@@ -692,6 +692,7 @@
     "networkError": "Error de red, por favor verifique su conexión",
     "unknownError": "Se produjo un error desconocido",
     "Wallet address already exists": "La dirección de cartera ya existe",
+    "WALLET_ADDRESS_EXIST": "La dirección de cartera ya existe",
     "Request failed": "Se produjo un error inesperado. Por favor intente más tarde o contacte al servicio al cliente.",
     "__ALREADY_PARTICIPATED__": "Ya ha participado en esta actividad",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "No puede transferir a su propia cuenta",
@@ -774,7 +775,7 @@
     "tabs": {
       "basicInfo": "Información básica",
       "security": "Contraseña de acceso",
-      "bankInfos": "Información bancaria",
+      "bankInfos": "Información de depósitos y retiros",
       "files": "Subida de archivos",
       "address": "Gestión de direcciones"
     },
@@ -885,12 +886,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "Cuentas vinculadas",
-      "addBankAccount": "Agregar cuenta",
-      "addUSDTWallet": "Dirección de cartera USD",
+      "addBankAccount": "Cuenta bancaria",
+      "addUSDTWallet": "Dirección de cartera USDT",
       "addAccount": "Agregar cuenta de pago",
       "editAccount": "Editar cuenta de pago",
       "noAccounts": "Sin información de cuenta",
-      "accountName": "Nombre de cuenta de pago",
+      "accountName": "Alias de la cuenta de pago",
       "accountHolder": "Titular de la cuenta",
       "bankCountry": "País donde se encuentra su banco",
       "selectCountry": "Por favor seleccione el país",
@@ -903,8 +904,8 @@
       "branchName": "Nombre de la sucursal",
       "accountNumber": "Número de cuenta",
       "confirmAccountNumber": "Confirmar número de cuenta",
-      "usdtWalletAddress": "Dirección de cartera USDT",
-      "walletPlaceholder": "Por favor ingrese el titular de la cuenta",
+      "usdtWalletAddress": "Dirección de cartera USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "Nombre del banco:",
       "walletLabel": "Tipo de cartera:",
       "usdtWallet": "Cartera USDT",
@@ -1317,8 +1318,8 @@
     "title": "Cartera",
     "balance": "Saldo",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "Domina los mercados con la magia de Midas",
+      "tagline": "Opera con más de 300 CFD sobre divisas, materias primas,\níndices y más | MT5 | Spreads ultrajustados"
     },
     "action": {
       "withdraw": "Retirar",

@@ -33,9 +33,18 @@
         <tr v-for="(item, index) in walletDetail" :key="index">
           <td>{{ item.id }}</td>
           <td>{{ item.matterId }}</td>
-          <td><BalanceShow :currency-id="currencyId" :balance="item.prevBalance" /></td>
-          <td><BalanceShow :currency-id="currencyId" :balance="item.amount" /></td>
-          <td><TimeShow :date-iso-string="item.createdOn" type="inFields" /></td>
+          <td>
+            <BalanceShow
+              :currency-id="currencyId"
+              :balance="item.prevBalance"
+            />
+          </td>
+          <td>
+            <BalanceShow :currency-id="currencyId" :balance="item.amount" />
+          </td>
+          <td>
+            <TimeShow :date-iso-string="item.createdOn" type="inFields" />
+          </td>
         </tr>
       </tbody>
       <TableFooter @page-change="fetchData" :criteria="criteria" />
@@ -85,8 +94,11 @@ const fetchData = async (_page: number) => {
   isLoading.value = false;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 const submit = () => {};
-const close = () => { walletDetailShowRef.value?.hide(); };
+const close = () => {
+  walletDetailShowRef.value?.hide();
+};
 
 defineExpose({ show });
 </script>

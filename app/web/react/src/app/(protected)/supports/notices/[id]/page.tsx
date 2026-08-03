@@ -8,6 +8,7 @@ import DOMPurify from 'dompurify';
 import { useServerAction } from '@/hooks/useServerAction';
 import { Skeleton } from '@/components/ui';
 import { fetchAction } from '@/lib/api/browser-client';
+import { resolveNoticeLocalizedContent } from '@/lib/noticeLocalization';
 
 // 单个语言版本的公告内容
 interface NoticeContent {
@@ -43,70 +44,25 @@ interface NoticeDetail {
   updatedOn: string;
 }
 
-// 语言代码映射：项目语言 -> 后端语言
-const localeMapping: Record<string, string[]> = {
-  'en': ['en-us', 'en'],
-  'zh': ['zh-cn', 'zh'],
-  'zh-tw': ['zh-tw', 'zh-hk'],
-  'vi': ['vi', 'vi-vn'],
-  'th': ['th', 'th-th'],
-  'jp': ['ja', 'ja-jp', 'jp'],
-  'id': ['id', 'id-id'],
-  'ms': ['ms', 'ms-my'],
-  'ko': ['ko', 'ko-kr'],
-  'km': ['km', 'km-kh'],
-  'es': ['es', 'es-es'],
-};
-
-// 从多语言公告中提取当前语言内容
+// 当前语言 → en-us → 任意语言；title/content 不完整则继续回退
 function extractLocalizedContent(
   notice: ApiNotice,
   locale: string
 ): NoticeDetail | null {
-  const contents = notice.contents;
-  if (!contents) return null;
-  
-  const possibleLocales = localeMapping[locale] || [locale];
-  
-  for (const lang of possibleLocales) {
-    if (contents[lang]) {
-      const content = contents[lang];
-      return {
-        id: notice.id,
-        title: content.title,
-        content: content.content,
-        createdOn: notice.createdOn,
-        updatedOn: notice.updatedOn,
-      };
-    }
-  }
-  
-  // 回退到 en-us
-  if (contents['en-us']) {
-    const content = contents['en-us'];
-    return {
-      id: notice.id,
-      title: content.title,
-      content: content.content,
-      createdOn: notice.createdOn,
-      updatedOn: notice.updatedOn,
-    };
-  }
-  
-  // 回退到任意可用语言
-  const availableLanguages = Object.keys(contents);
-  if (availableLanguages.length > 0) {
-    const content = contents[availableLanguages[0]];
-    return {
-      id: notice.id,
-      title: content.title,
-      content: content.content,
-      createdOn: notice.createdOn,
-      updatedOn: notice.updatedOn,
-    };
-  }
-  
-  return null;
+  const localized = resolveNoticeLocalizedContent(
+    notice.contents,
+    locale,
+    notice.title
+  );
+  if (!localized) return null;
+
+  return {
+    id: notice.id,
+    title: localized.title,
+    content: localized.content,
+    createdOn: notice.createdOn,
+    updatedOn: notice.updatedOn,
+  };
 }
 
 // 格式化日期

@@ -685,15 +685,17 @@ export const showWebTrader = (serviceId: number): boolean => {
 // 获取 WebTrader 链接
 export const getWebTraderLink = (
   serviceId: number,
-  accountNumber: number
+  accountNumber?: number
 ): string => {
   if (
     serviceId === ServiceTypes.MetaTrader5 ||
     serviceId === ServiceTypes.MetaTrader5Demo
   ) {
-    return `/webTrader5/${accountNumber}`;
+    return accountNumber ? `/webTrader5/${accountNumber}` : '/webTrader5';
   }
-  return `/webTrader/${accountNumber}/${serviceId}`;
+  return accountNumber
+    ? `/webTrader/${accountNumber}/${serviceId}`
+    : '/webTrader';
 };
 
 

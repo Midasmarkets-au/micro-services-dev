@@ -392,8 +392,8 @@
     "accountManagement": "จัดการบัญชี",
     "personalInfo": "ข้อมูลส่วนตัว",
     "userGuide": "คู่มือผู้ใช้",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "ร้านค้า Apple",
+    "androidApk": "แพ็กเกจติดตั้ง Android",
     "logout": "ออกจากระบบ",
     "loggingOut": "กำลังออกจากระบบ...",
     "verifyYourAccount": "ยืนยันบัญชีของคุณ",
@@ -692,6 +692,7 @@
     "networkError": "เกิดข้อผิดพลาดของเครือข่าย กรุณาตรวจสอบการเชื่อมต่อ",
     "unknownError": "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ",
     "Wallet address already exists": "ที่อยู่กระเป๋าเงินมีอยู่แล้ว",
+    "WALLET_ADDRESS_EXIST": "ที่อยู่กระเป๋าเงินมีอยู่แล้ว",
     "Request failed": "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่ภายหลังหรือติดต่อฝ่ายบริการลูกค้า",
     "__ALREADY_PARTICIPATED__": "คุณได้เข้าร่วมกิจกรรมนี้แล้ว",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "ไม่สามารถโอนไปยังบัญชีตัวเองได้",
@@ -774,7 +775,7 @@
     "tabs": {
       "basicInfo": "ข้อมูลพื้นฐาน",
       "security": "รหัสผ่านเข้าสู่ระบบ",
-      "bankInfos": "ข้อมูลธนาคาร",
+      "bankInfos": "ข้อมูลฝากและถอนเงิน",
       "files": "อัพโหลดไฟล์",
       "address": "จัดการที่อยู่"
     },
@@ -885,12 +886,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "บัญชีที่เชื่อมโยง",
-      "addBankAccount": "เพิ่มบัญชี",
-      "addUSDTWallet": "ที่อยู่กระเป๋า USD",
+      "addBankAccount": "บัญชีธนาคาร",
+      "addUSDTWallet": "ที่อยู่กระเป๋า USDT",
       "addAccount": "เพิ่มบัญชีชำระเงิน",
       "editAccount": "แก้ไขบัญชีชำระเงิน",
       "noAccounts": "ไม่มีข้อมูลบัญชี",
-      "accountName": "ชื่อบัญชีชำระเงิน",
+      "accountName": "ชื่อเล่นบัญชีชำระเงิน",
       "accountHolder": "เจ้าของบัญชี",
       "bankCountry": "ประเทศธนาคาร",
       "selectCountry": "กรุณาเลือกประเทศ",
@@ -905,8 +906,8 @@
       "city": "เมือง",
       "accountNumber": "หมายเลขบัญชี",
       "confirmAccountNumber": "ยืนยันหมายเลขบัญชี",
-      "usdtWalletAddress": "ที่อยู่กระเป๋า USDT",
-      "walletPlaceholder": "ป้อนเจ้าของบัญชี",
+      "usdtWalletAddress": "ที่อยู่กระเป๋า USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "ธนาคาร:",
       "walletLabel": "ประเภทกระเป๋า:",
       "usdtWallet": "กระเป๋า USDT",
@@ -1319,8 +1320,8 @@
     "title": "กระเป๋าเงิน",
     "balance": "ยอดคงเหลือ",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "พิชิตตลาดด้วยมนตร์แห่ง Midas",
+      "tagline": "เทรด CFD กว่า 300 รายการใน FX สินค้าโภคภัณฑ์\nดัชนี และอื่น ๆ | MT5 | สเปรดต่ำเป็นพิเศษ"
     },
     "action": {
       "withdraw": "ถอนเงิน",

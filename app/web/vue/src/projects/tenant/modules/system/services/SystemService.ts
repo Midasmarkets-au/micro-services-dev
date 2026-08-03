@@ -45,7 +45,9 @@ export default {
 
   queryOnlineAdmin: async (criteria?: any) => {
     const res = (
-      await axios.get(prefixV2 + "statistic/online-admins", { params: criteria })
+      await axios.get(prefixV2 + "statistic/online-admins", {
+        params: criteria,
+      })
     ).data;
     // Proto returns { count, users: [{ partyId, email, since, tenantId }] }
     // Component expects array of [{ tenantId, users: [...] }] grouped by tenant

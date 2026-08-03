@@ -1,7 +1,9 @@
 <template>
   <el-dialog
     v-model="visible"
-    :title="`Sales Rebate Details — ${formatDate(summary?.periodStart)} ~ ${formatDate(summary?.periodEnd)}`"
+    :title="`Sales Rebate Details — ${formatDate(
+      summary?.periodStart
+    )} ~ ${formatDate(summary?.periodEnd)}`"
     width="90%"
     destroy-on-close
   >
@@ -11,16 +13,28 @@
     <template v-else>
       <!-- Summary bar (stats are server-side over the full item set) -->
       <div class="d-flex align-items-center gap-4 mb-4 fs-7 fw-semibold">
-        <span class="text-muted">Total records: <span class="text-dark">{{ totalCount }}</span></span>
-        <el-tag type="success" effect="light">Included: {{ includedCount }}</el-tag>
-        <el-tag type="danger" effect="light">Excluded: {{ excludedCount }}</el-tag>
-        <span class="text-muted ms-auto">Rebate Amount:
+        <span class="text-muted"
+          >Total records: <span class="text-dark">{{ totalCount }}</span></span
+        >
+        <el-tag type="success" effect="light"
+          >Included: {{ includedCount }}</el-tag
+        >
+        <el-tag type="danger" effect="light"
+          >Excluded: {{ excludedCount }}</el-tag
+        >
+        <span class="text-muted ms-auto"
+          >Rebate Amount:
           <span class="text-dark fw-bold">{{ includedAmount.toFixed(4) }}</span>
         </span>
       </div>
 
       <!-- Filter tabs -->
-      <el-radio-group v-model="filter" size="small" class="mb-3" @change="onFilterChange">
+      <el-radio-group
+        v-model="filter"
+        size="small"
+        class="mb-3"
+        @change="onFilterChange"
+      >
         <el-radio-button value="all">All</el-radio-button>
         <el-radio-button value="included">Included</el-radio-button>
         <el-radio-button value="excluded">Excluded</el-radio-button>
@@ -51,10 +65,26 @@
               :style="item.excluded ? 'opacity: 0.7' : ''"
             >
               <td>
-                <el-tag v-if="item.excluded" type="danger" effect="light" size="small">Excluded</el-tag>
-                <el-tag v-else type="success" effect="light" size="small">Included</el-tag>
+                <el-tag
+                  v-if="item.excluded"
+                  type="danger"
+                  effect="light"
+                  size="small"
+                  >Excluded</el-tag
+                >
+                <el-tag v-else type="success" effect="light" size="small"
+                  >Included</el-tag
+                >
               </td>
-              <td :style="item.excluded ? 'text-decoration: line-through; color: #999' : ''">{{ item.ticket }}</td>
+              <td
+                :style="
+                  item.excluded
+                    ? 'text-decoration: line-through; color: #999'
+                    : ''
+                "
+              >
+                {{ item.ticket }}
+              </td>
               <td>{{ item.tradeAccountNumber }}</td>
               <td><CurrencyBadge :currency="item.tradeAccountCurrencyId" /></td>
               <td>{{ item.symbol }}</td>
