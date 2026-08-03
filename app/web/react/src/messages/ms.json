@@ -939,7 +939,9 @@
         "accountNoRequired": "Sila masukkan nombor akaun",
         "confirmAccountNoRequired": "Sila sahkan nombor akaun",
         "accountNoMismatch": "Nombor akaun tidak sepadan",
-        "walletAddressRequired": "Sila masukkan alamat dompet USDT"
+        "walletAddressRequired": "Sila masukkan alamat dompet USDT",
+        "walletAddressInvalid": "Sila masukkan alamat dompet USDT TRC20 yang sah",
+        "walletValidationFailed": "Alamat dompet tidak dapat disahkan. Sila cuba lagi kemudian"
       }
     },
     "address": {

@@ -939,7 +939,9 @@
         "accountNoRequired": "សូមបញ្ចូលលេខគណនី",
         "confirmAccountNoRequired": "សូមបញ្ជាក់លេខគណនី",
         "accountNoMismatch": "លេខគណនីមិនត្រូវគ្នា",
-        "walletAddressRequired": "សូមបញ្ចូលអាសយដ្ឋានកាបូប USDT"
+        "walletAddressRequired": "សូមបញ្ចូលអាសយដ្ឋានកាបូប USDT",
+        "walletAddressInvalid": "សូមបញ្ចូលអាសយដ្ឋានកាបូប USDT TRC20 ដែលត្រឹមត្រូវ",
+        "walletValidationFailed": "មិនអាចផ្ទៀងផ្ទាត់អាសយដ្ឋានកាបូបបានទេ។ សូមព្យាយាមម្តងទៀតនៅពេលក្រោយ"
       }
     },
     "address": {

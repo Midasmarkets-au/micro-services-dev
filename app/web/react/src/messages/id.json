@@ -939,7 +939,9 @@
         "accountNoRequired": "Harap masukkan nomor akun",
         "confirmAccountNoRequired": "Harap konfirmasi nomor akun",
         "accountNoMismatch": "Nomor akun tidak cocok",
-        "walletAddressRequired": "Harap masukkan alamat dompet USDT"
+        "walletAddressRequired": "Harap masukkan alamat dompet USDT",
+        "walletAddressInvalid": "Masukkan alamat dompet USDT TRC20 yang valid",
+        "walletValidationFailed": "Alamat dompet tidak dapat divalidasi. Silakan coba lagi nanti"
       }
     },
     "address": {
