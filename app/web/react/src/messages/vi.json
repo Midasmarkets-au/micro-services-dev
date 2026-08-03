@@ -939,7 +939,9 @@
         "accountNoRequired": "Vui lòng nhập số tài khoản",
         "confirmAccountNoRequired": "Vui lòng xác nhận số tài khoản",
         "accountNoMismatch": "Số tài khoản không khớp",
-        "walletAddressRequired": "Vui lòng nhập địa chỉ ví USDT"
+        "walletAddressRequired": "Vui lòng nhập địa chỉ ví USDT",
+        "walletAddressInvalid": "Vui lòng nhập địa chỉ ví USDT TRC20 hợp lệ",
+        "walletValidationFailed": "Không thể xác thực địa chỉ ví. Vui lòng thử lại sau"
       }
     },
     "address": {

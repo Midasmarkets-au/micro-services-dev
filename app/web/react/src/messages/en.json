@@ -942,7 +942,9 @@
         "accountNoRequired": "Please enter account number",
         "confirmAccountNoRequired": "Please confirm account number",
         "accountNoMismatch": "Account numbers do not match",
-        "walletAddressRequired": "Please enter USDT wallet address"
+        "walletAddressRequired": "Please enter USDT wallet address",
+        "walletAddressInvalid": "Please enter a valid USDT TRC20 wallet address",
+        "walletValidationFailed": "Unable to validate the wallet address. Please try again later"
       }
     },
     "address": {
