@@ -392,8 +392,8 @@
     "accountManagement": "Quản lý tài khoản",
     "personalInfo": "Thông tin cá nhân",
     "userGuide": "Hướng dẫn người dùng",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Cửa hàng Apple",
+    "androidApk": "Gói cài đặt Android",
     "logout": "Đăng xuất",
     "loggingOut": "Đang đăng xuất...",
     "verifyYourAccount": "Xác minh tài khoản của bạn",
@@ -692,6 +692,7 @@
     "networkError": "Lỗi mạng, vui lòng kiểm tra kết nối",
     "unknownError": "Đã xảy ra lỗi không xác định",
     "Wallet address already exists": "Địa chỉ ví đã tồn tại",
+    "WALLET_ADDRESS_EXIST": "Địa chỉ ví đã tồn tại",
     "Request failed": "Đã xảy ra lỗi không mong muốn, vui lòng thử lại sau hoặc liên hệ dịch vụ khách hàng",
     "__ALREADY_PARTICIPATED__": "Bạn đã tham gia hoạt động này rồi",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Không thể chuyển đến tài khoản của chính mình",
@@ -774,7 +775,7 @@
     "tabs": {
       "basicInfo": "Thông tin cơ bản",
       "security": "Mật khẩu đăng nhập",
-      "bankInfos": "Thông tin ngân hàng",
+      "bankInfos": "Thông tin nạp và rút tiền",
       "files": "Tải lên tệp",
       "address": "Quản lý địa chỉ"
     },
@@ -885,12 +886,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "Tài khoản được liên kết",
-      "addBankAccount": "Thêm tài khoản",
-      "addUSDTWallet": "Địa chỉ ví USD",
+      "addBankAccount": "Tài khoản ngân hàng",
+      "addUSDTWallet": "Địa chỉ ví USDT",
       "addAccount": "Thêm tài khoản thanh toán",
       "editAccount": "Chỉnh sửa tài khoản thanh toán",
       "noAccounts": "Không có thông tin tài khoản",
-      "accountName": "Tên tài khoản thanh toán",
+      "accountName": "Biệt danh tài khoản thanh toán",
       "accountHolder": "Chủ tài khoản",
       "bankCountry": "Quốc gia ngân hàng",
       "selectCountry": "Vui lòng chọn quốc gia",
@@ -905,8 +906,8 @@
       "city": "Thành phố",
       "accountNumber": "Số tài khoản",
       "confirmAccountNumber": "Xác nhận số tài khoản",
-      "usdtWalletAddress": "Địa chỉ ví USDT",
-      "walletPlaceholder": "Nhập chủ tài khoản",
+      "usdtWalletAddress": "Địa chỉ ví USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "Ngân hàng:",
       "walletLabel": "Loại ví:",
       "usdtWallet": "Ví USDT",
@@ -1319,8 +1320,8 @@
     "title": "Ví",
     "balance": "Số dư",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "Làm chủ thị trường với phép màu Midas",
+      "tagline": "Giao dịch hơn 300 CFD về ngoại hối, hàng hóa,\nchỉ số và nhiều hơn nữa | MT5 | Chênh lệch siêu thấp"
     },
     "action": {
       "withdraw": "Rút tiền",

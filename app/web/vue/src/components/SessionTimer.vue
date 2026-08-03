@@ -1,3 +1,4 @@
+<!-- eslint-disable-next-line vue/valid-template-root -->
 <template>
   <!-- SessionTimer disabled: session expiry managed by auth service (cookie Max-Age / JWT exp) -->
 </template>

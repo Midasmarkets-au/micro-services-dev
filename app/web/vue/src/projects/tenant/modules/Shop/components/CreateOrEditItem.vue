@@ -217,6 +217,7 @@ const handleAvatarSuccess: UploadProps["onSuccess"] = (
   response,
   uploadFile
 ) => {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- onSuccess only fires for a just-uploaded local file, so raw is always set
   formData.value.image = URL.createObjectURL(uploadFile.raw!);
 };
 

@@ -392,8 +392,8 @@
     "accountManagement": "账户管理",
     "personalInfo": "个人资料",
     "userGuide": "用户指南",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "苹果商店",
+    "androidApk": "安卓安装包",
     "logout": "退出",
     "loggingOut": "退出中...",
     "verifyYourAccount": "验证您的账户",
@@ -695,6 +695,7 @@
     "networkError": "网络错误，请检查网络连接",
     "unknownError": "发生未知错误",
     "Wallet address already exists": "钱包地址已存在",
+    "WALLET_ADDRESS_EXIST": "钱包地址已存在",
     "Request failed": "发生意外错误。请稍后重试或联系客户服务寻求帮助。",
     "__ALREADY_PARTICIPATED__": "您已参与该活动",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能转账给自己",
@@ -777,7 +778,7 @@
     "tabs": {
       "basicInfo": "基本信息",
       "security": "登录密码",
-      "bankInfos": "银行信息",
+      "bankInfos": "出入金信息",
       "files": "文件上传",
       "address": "地址管理"
     },
@@ -888,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "已关联账户",
-      "addBankAccount": "添加账户",
-      "addUSDTWallet": "USD钱包地址",
+      "addBankAccount": "银行账户",
+      "addUSDTWallet": "USDT钱包地址",
       "addAccount": "添加支付账户",
       "editAccount": "编辑支付账户",
       "noAccounts": "暂无账户信息",
-      "accountName": "支付账户名称",
+      "accountName": "支付账户昵称",
       "accountHolder": "账户持有人",
       "bankCountry": "您的银行所在国家",
       "selectCountry": "请选择国家",
@@ -908,8 +909,8 @@
       "city": "城市",
       "accountNumber": "账号",
       "confirmAccountNumber": "确认账号",
-      "usdtWalletAddress": "USDT钱包地址",
-      "walletPlaceholder": "请输入账户持有人",
+      "usdtWalletAddress": "USDT钱包地址（TRX-TRC20）",
+      "walletPlaceholder": "",
       "bankNameLabel": "银行名称：",
       "walletLabel": "钱包类型：",
       "usdtWallet": "USDT钱包",
@@ -1322,8 +1323,8 @@
     "title": "钱包",
     "balance": "余额",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "迈达斯点金，掌控市场",
+      "tagline": "交易 300+ 外汇、大宗商品、\n指数等 CFD | MT5 | 超低点差"
     },
     "action": {
       "withdraw": "出金",

@@ -1,0 +1,8 @@
+/src/assets
+/src/assets-backend
+
+build
+coverage
+.gitlab
+.vscode
+node_modules

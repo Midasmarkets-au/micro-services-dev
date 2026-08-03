@@ -205,7 +205,9 @@ const fetchCategories = async (type: number) => {
     const response = await rebateService.getProductsListByType(type);
     // gRPC 返回 { categories: [...] }，旧 HTTP 返回数组
     const rawData = response.categories ?? response.data ?? response;
-    const transformedData = transformApiData(Array.isArray(rawData) ? rawData : []);
+    const transformedData = transformApiData(
+      Array.isArray(rawData) ? rawData : []
+    );
 
     if (type === 300) {
       rebateCategories.splice(0, rebateCategories.length, ...transformedData);

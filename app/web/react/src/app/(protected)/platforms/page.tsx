@@ -9,10 +9,14 @@ import { PageLoading } from '@/components/ui';
 import {
   getAvailablePlatforms,
   getPlatformLinks,
-  getWebTraderLink,
   type PlatformType,
   type RegionType,
 } from '@/core/data/platformDownloads';
+import {
+  getWebTraderLink,
+  ServiceTypes,
+  showWebTrader,
+} from '@/types/accounts';
 
 // 设备图标映射
 const deviceIcons: Record<string, string> = {
@@ -102,7 +106,17 @@ function PlatformCard({
 }) {
   const t = useTranslations('platforms');
   const links = getPlatformLinks(region, platform);
-  const webTraderUrl = getWebTraderLink(region, platform);
+  const serviceId =
+    platform === 'mt4'
+      ? ServiceTypes.MetaTrader4
+      : platform === 'mt5'
+        ? ServiceTypes.MetaTrader5
+        : null;
+  const webTraderUrl =
+    serviceId !== null && showWebTrader(serviceId)
+      ? getWebTraderLink(serviceId)
+      : '';
+    console.log('webTraderUrl', webTraderUrl);
 
   const platformName = platform === 'mt4' ? 'MetaTrader 4' : platform === 'mm' ? 'MDM' : 'MetaTrader 5';
   const hasMobileLinks = links.ios || links.android;
@@ -162,8 +176,8 @@ function PlatformCard({
         <div className="h-px bg-border" />
       </div>
 
-      {/* WebTrader - 始终显示 */}
-      <div className="flex flex-col gap-5">
+      {/* WebTrader - 无链接时保留相同高度，但隐藏全部内容 */}
+      <div className={`flex flex-col gap-5 ${webTraderUrl ? '' : 'invisible'}`}>
         <h4 className="text-xl font-semibold text-text-primary">WebTrader</h4>
         <div className="relative border border-border dark:border-[#333] rounded-[10px] px-5 py-2.5 flex items-center justify-between overflow-hidden dark:bg-[#222]">
           {/* 左侧高亮条 */}
@@ -173,9 +187,9 @@ function PlatformCard({
             alt="WebTrader"
             width={88}
             height={20}
-            className={`object-contain ${!webTraderUrl ? 'grayscale opacity-50' : ''}`}
+            className={`object-contain ${webTraderUrl ? '' : 'grayscale opacity-50'}`}
           />
-          {/* {webTraderUrl ? (
+          {webTraderUrl ? (
             <a
               href={webTraderUrl}
               target="_blank"
@@ -188,7 +202,7 @@ function PlatformCard({
             <span className="bg-text-secondary text-white text-sm font-medium px-2.5 py-1 rounded w-20 text-center cursor-not-allowed">
               {t('visit')}
             </span>
-          )} */}
+          )}
         </div>
 
         {/* 分隔线 */}

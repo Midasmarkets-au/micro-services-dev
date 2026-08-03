@@ -69,7 +69,10 @@ export function CreateDemoAccountModal({
               setCurrency(String(result.data.currencyAvailable[0]));
             }
             if (result.data.leverageAvailable?.length > 0) {
-              setLeverage(String(result.data.leverageAvailable[0]));
+              const defaultLeverage = result.data.leverageAvailable.includes(1000)
+                ? 1000
+                : result.data.leverageAvailable[0];
+              setLeverage(String(defaultLeverage));
             }
           }
         } finally {

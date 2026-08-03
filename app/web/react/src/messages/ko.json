@@ -392,8 +392,8 @@
     "accountManagement": "계정 관리",
     "personalInfo": "개인 정보",
     "userGuide": "사용자 가이드",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "애플 스토어",
+    "androidApk": "안드로이드 설치 패키지",
     "logout": "로그아웃",
     "loggingOut": "로그아웃 중...",
     "verifyYourAccount": "계정 인증",
@@ -692,6 +692,7 @@
     "networkError": "네트워크 오류가 발생했습니다. 연결을 확인해 주세요",
     "unknownError": "알 수 없는 오류가 발생했습니다",
     "Wallet address already exists": "지갑 주소가 이미 존재합니다",
+    "WALLET_ADDRESS_EXIST": "지갑 주소가 이미 존재합니다",
     "Request failed": "예기치 않은 오류가 발생했습니다. 나중에 다시 시도하거나 고객 서비스에 문의해 주세요.",
     "__ALREADY_PARTICIPATED__": "이미 이 활동에 참여했습니다",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "자신의 계정으로 이체할 수 없습니다",
@@ -774,7 +775,7 @@
     "tabs": {
       "basicInfo": "기본 정보",
       "security": "로그인 비밀번호",
-      "bankInfos": "은행 정보",
+      "bankInfos": "입출금 정보",
       "files": "파일 업로드",
       "address": "주소 관리"
     },
@@ -885,12 +886,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "연결된 계정",
-      "addBankAccount": "계정 추가",
-      "addUSDTWallet": "USD 지갑 주소",
+      "addBankAccount": "은행 계좌",
+      "addUSDTWallet": "USDT 지갑 주소",
       "addAccount": "결제 계정 추가",
       "editAccount": "결제 계정 편집",
       "noAccounts": "계정 정보 없음",
-      "accountName": "결제 계정명",
+      "accountName": "결제 계정 별칭",
       "accountHolder": "계좌 소유자",
       "bankCountry": "은행 소재 국가",
       "selectCountry": "국가를 선택해 주세요",
@@ -905,8 +906,8 @@
       "city": "도시",
       "accountNumber": "계좌번호",
       "confirmAccountNumber": "계좌번호 확인",
-      "usdtWalletAddress": "USDT 지갑 주소",
-      "walletPlaceholder": "계좌 소유자를 입력하세요",
+      "usdtWalletAddress": "USDT 지갑 주소 (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "은행명:",
       "walletLabel": "지갑 유형:",
       "usdtWallet": "USDT 지갑",
@@ -1319,8 +1320,8 @@
     "title": "지갑",
     "balance": "잔액",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "미다스의 마법으로 시장을 정복하세요",
+      "tagline": "외환, 원자재, 지수 등 300개 이상의\nCFD 거래 | MT5 | 초저스프레드"
     },
     "action": {
       "withdraw": "출금",
