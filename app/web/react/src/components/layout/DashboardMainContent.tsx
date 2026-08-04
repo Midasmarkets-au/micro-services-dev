@@ -48,7 +48,7 @@ export function DashboardMainContent() {
   const isGuest = isGuestOnly(user?.roles ?? []);
 
   // EventShop 显示条件：tenancy 为 bvi 或 sea 且角色包含 Client
-  const showEventShop =
+  const showEventShop =  
     (user?.tenancy === 'bvi' || user?.tenancy === 'sea') &&
     (user?.roles ?? []).includes('Client');
 
