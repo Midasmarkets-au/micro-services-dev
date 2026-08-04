@@ -720,7 +720,8 @@
     "tabs": {
       "contact": "Hubungi Kami",
       "announcements": "Pengumuman",
-      "documents": "Dokumen"
+      "documents": "Dokumen",
+      "materials": "Materi"
     },
     "banner": {
       "latestNews": "Berita Industri Terbaru",
@@ -768,6 +769,33 @@
       "spread": "Semua spread CFD dapat berfluktuasi selama liburan karena volatilitas pasar",
       "scheduleChange": "Jam perdagangan liburan di atas dapat berubah",
       "translation": "Jika ada perbedaan antara versi Indonesia dan asli bahasa Inggris, versi bahasa Inggris yang berlaku"
+    },
+    "materials": {
+      "newRequest": "Permintaan Materi Baru",
+      "materialType": "Jenis Materi",
+      "materialTypePlaceholder": "Pilih jenis materi",
+      "typeBanner": "Banner Promosi",
+      "typeBrochure": "Brosur",
+      "typeEbook": "E-book",
+      "typeOther": "Lainnya",
+      "quantity": "Jumlah",
+      "quantityPlaceholder": "Masukkan jumlah",
+      "description": "Tujuan / Catatan",
+      "descriptionPlaceholder": "Jelaskan kebutuhan Anda dan bagaimana akan digunakan",
+      "attachments": "File Referensi / Desain",
+      "attachmentsHint": "Mendukung JPG / PNG / PDF",
+      "addFile": "Tambah file",
+      "submitSuccess": "Permintaan materi Anda telah dikirim. Kami akan segera meninjaunya.",
+      "myRequests": "Permintaan Saya",
+      "noRequests": "Belum ada permintaan",
+      "statusPending": "Menunggu",
+      "statusApproved": "Disetujui",
+      "statusRejected": "Ditolak",
+      "reason": "Alasan",
+      "errors": {
+        "materialTypeRequired": "Pilih jenis materi",
+        "descriptionRequired": "Jelaskan permintaan Anda"
+      }
     }
   },
   "profile": {

@@ -30,6 +30,12 @@ const menuItems: Array<MenuItem> = [
         svgIcon: "/images/icons/communication/com013.svg",
         permissions: ["SuperAdmin"],
       },
+      {
+        heading: "title.materialRequest",
+        route: "/topic/material-request",
+        svgIcon: "/images/icons/communication/com014.svg",
+        permissions: ["TenantAdmin", "SuperAdmin"],
+      },
     ],
   },
 ];

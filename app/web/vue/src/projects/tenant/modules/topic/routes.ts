@@ -3,6 +3,7 @@ import EmailTemplate from "./views/EmailTemplate.vue";
 import NoticeTopic from "./views/NoticeTopic.vue";
 import SendEmailBatch from "./views/SendEmailBatch.vue";
 import PromotionIndex from "./views/PromotionIndex.vue";
+import MaterialRequestIndex from "./views/MaterialRequestIndex.vue";
 
 export default (router) => {
   router.addRoute({
@@ -39,6 +40,16 @@ export default (router) => {
           pageTitle: "title.promotion",
           breadcrumbs: ["title.promotion"],
           permissions: ["SuperAdmin"],
+        },
+      },
+      {
+        path: "/topic/material-request",
+        name: "MaterialRequest",
+        component: MaterialRequestIndex,
+        meta: {
+          pageTitle: "title.materialRequest",
+          breadcrumbs: ["title.materialRequest"],
+          permissions: ["TenantAdmin", "SuperAdmin"],
         },
       },
       {

@@ -1454,7 +1454,9 @@
     "testAccount": "Test account",
     "dailyReport": "Daily Report",
     "hasComments": "There are comments.",
-    "showClosedAccount": "Account closed."
+    "showClosedAccount": "Account closed.",
+    "materialType": "Material Type",
+    "attachments": "Attachments"
   },
   "status": {
     "unassigned": "Unassigned",
@@ -2523,7 +2525,8 @@
     "productNameAlreadyExists": "Product name already exists",
     "selectAll": "Select All",
     "categoryUpdatedSuccess": "Category updated successfully",
-    "categoryUpdateFailed": "Failed to update category"
+    "categoryUpdateFailed": "Failed to update category",
+    "materialRequest": "Materials Request"
   },
   "placeholder": {
     "enterCategoryName": "Enter category name",

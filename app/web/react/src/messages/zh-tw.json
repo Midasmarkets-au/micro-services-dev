@@ -720,7 +720,8 @@
     "tabs": {
       "contact": "聯絡我們",
       "announcements": "公告",
-      "documents": "文件"
+      "documents": "文件",
+      "materials": "物料申請"
     },
     "banner": {
       "latestNews": "行業最新消息",
@@ -768,6 +769,33 @@
       "spread": "所有差價合約的點差可能會在假期期間因市場異動而產生波動",
       "scheduleChange": "以上假期交易時間可能會發生變動",
       "translation": "如果上述中文版本內容與英文原始版本之間存在差異，則以英文版本為準"
+    },
+    "materials": {
+      "newRequest": "新增物料申請",
+      "materialType": "物料類型",
+      "materialTypePlaceholder": "請選擇物料類型",
+      "typeBanner": "推廣橫幅",
+      "typeBrochure": "宣傳冊",
+      "typeEbook": "電子書",
+      "typeOther": "其他",
+      "quantity": "數量",
+      "quantityPlaceholder": "請輸入數量",
+      "description": "用途說明",
+      "descriptionPlaceholder": "請描述您的需求及用途",
+      "attachments": "參考圖 / 設計稿",
+      "attachmentsHint": "支援 JPG / PNG / PDF",
+      "addFile": "新增檔案",
+      "submitSuccess": "您的物料申請已提交，我們會盡快審核。",
+      "myRequests": "我的申請",
+      "noRequests": "暫無申請紀錄",
+      "statusPending": "待審核",
+      "statusApproved": "已通過",
+      "statusRejected": "已拒絕",
+      "reason": "拒絕原因",
+      "errors": {
+        "materialTypeRequired": "請選擇物料類型",
+        "descriptionRequired": "請填寫用途說明"
+      }
     }
   },
   "profile": {

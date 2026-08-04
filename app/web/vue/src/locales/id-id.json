@@ -1409,7 +1409,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "Jenis Materi",
+    "attachments": "Lampiran"
   },
   "status": {
     "default": "Default",
@@ -2455,7 +2457,8 @@
     "productNameAlreadyExists": "Nama produk sudah ada",
     "selectAll": "Pilih Semua",
     "categoryUpdatedSuccess": "Kategori berhasil diperbarui",
-    "categoryUpdateFailed": "Gagal memperbarui kategori"
+    "categoryUpdateFailed": "Gagal memperbarui kategori",
+    "materialRequest": "Permintaan Materi"
   },
   "placeholder": {
     "enterCategoryName": "Masukkan nama kategori",

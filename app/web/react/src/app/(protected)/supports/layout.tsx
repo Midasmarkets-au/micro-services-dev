@@ -15,6 +15,7 @@ const navItems = [
   { key: 'contact', path: '/supports', label: 'tabs.contact' },
   { key: 'announcements', path: '/supports/notices', label: 'tabs.announcements' },
   { key: 'documents', path: '/supports/documents', label: 'tabs.documents' },
+  { key: 'materials', path: '/supports/materials', label: 'tabs.materials' },
 ];
 
 // 横幅内容组件 - 默认（联系我们）

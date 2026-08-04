@@ -720,7 +720,8 @@
     "tabs": {
       "contact": "ទំនាក់ទំនង",
       "announcements": "សេចក្ដីប្រកាស",
-      "documents": "ឯកសារ"
+      "documents": "ឯកសារ",
+      "materials": "សម្ភារៈ"
     },
     "banner": {
       "latestNews": "ព័ត៌មានថ្មីៗក្នុងឧស្សាហកម្ម",
@@ -768,6 +769,33 @@
       "spread": "Spread CFD ទាំងអស់អាចប្រែប្រួលក្នុងអំឡុងថ្ងៃឈប់សម្រាក ដោយសារការប្រែប្រួលទីផ្សារ",
       "scheduleChange": "ពេលវេលាជួញដូរថ្ងៃឈប់សម្រាកខាងលើអាចផ្លាស់ប្ដូរ",
       "translation": "ប្រសិនបើមានភាពខុសគ្នារវាងភាសាចិន និងប្រភពភាសាអង់គ្លេស ភាសាអង់គ្លេសនឹងមានអំណាចជាង"
+    },
+    "materials": {
+      "newRequest": "សំណើសម្ភារៈថ្មី",
+      "materialType": "ប្រភេទសម្ភារៈ",
+      "materialTypePlaceholder": "ជ្រើសរើសប្រភេទសម្ភារៈ",
+      "typeBanner": "បដាផ្សព្វផ្សាយ",
+      "typeBrochure": "សៀវភៅណែនាំ",
+      "typeEbook": "សៀវភៅអេឡិចត្រូនិក",
+      "typeOther": "ផ្សេងទៀត",
+      "quantity": "បរិមាណ",
+      "quantityPlaceholder": "បញ្ចូលបរិមាណ",
+      "description": "គោលបំណង / ចំណាំ",
+      "descriptionPlaceholder": "សូមពិពណ៌នាអំពីតម្រូវការនិងការប្រើប្រាស់របស់អ្នក",
+      "attachments": "ឯកសារយោង / ការរចនា",
+      "attachmentsHint": "គាំទ្រ JPG / PNG / PDF",
+      "addFile": "បន្ថែមឯកសារ",
+      "submitSuccess": "សំណើសម្ភារៈរបស់អ្នកត្រូវបានដាក់ស្នើ។ យើងនឹងពិនិត្យវាឆាប់ៗនេះ។",
+      "myRequests": "សំណើរបស់ខ្ញុំ",
+      "noRequests": "មិនទាន់មានសំណើនៅឡើយទេ",
+      "statusPending": "កំពុងរង់ចាំ",
+      "statusApproved": "បានអនុម័ត",
+      "statusRejected": "បានបដិសេធ",
+      "reason": "មូលហេតុ",
+      "errors": {
+        "materialTypeRequired": "សូមជ្រើសរើសប្រភេទសម្ភារៈ",
+        "descriptionRequired": "សូមពិពណ៌នាសំណើរបស់អ្នក"
+      }
     }
   },
   "profile": {

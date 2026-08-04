@@ -1407,7 +1407,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "ប្រភេទសម្ភារៈ",
+    "attachments": "ឯកសារភ្ជាប់"
   },
   "status": {
     "default": "លំនាំដើម",
@@ -2445,7 +2447,8 @@
     "productNameAlreadyExists": "ឈ្មោះផលិតផលមានរួចហើយ",
     "selectAll": "ជ្រើសរើសទាំងអស់",
     "categoryUpdatedSuccess": "បានធ្វើបច្ចុប្បន្នភាពប្រភេទដោយជោគជ័យ",
-    "categoryUpdateFailed": "បានបរាជ័យក្នុងការធ្វើបច្ចុប្បន្នភាពប្រភេទ"
+    "categoryUpdateFailed": "បានបរាជ័យក្នុងការធ្វើបច្ចុប្បន្នភាពប្រភេទ",
+    "materialRequest": "សំណើសម្ភារៈ"
   },
   "placeholder": {
     "enterCategoryName": "បញ្ចូលឈ្មោះប្រភេទ",

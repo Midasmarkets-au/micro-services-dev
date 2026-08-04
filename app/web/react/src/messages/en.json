@@ -723,7 +723,8 @@
     "tabs": {
       "contact": "Contact Us",
       "announcements": "Announcements",
-      "documents": "Documents"
+      "documents": "Documents",
+      "materials": "Materials"
     },
     "banner": {
       "latestNews": "Latest Industry News",
@@ -771,6 +772,33 @@
       "spread": "All CFD spreads may fluctuate during holidays due to market volatility",
       "scheduleChange": "The above holiday trading hours may be subject to change",
       "translation": "If there is any discrepancy between the Chinese version and the English original, the English version shall prevail"
+    },
+    "materials": {
+      "newRequest": "New Materials Request",
+      "materialType": "Material Type",
+      "materialTypePlaceholder": "Select material type",
+      "typeBanner": "Promo Banner",
+      "typeBrochure": "Brochure",
+      "typeEbook": "E-book",
+      "typeOther": "Other",
+      "quantity": "Quantity",
+      "quantityPlaceholder": "Enter quantity",
+      "description": "Purpose / Notes",
+      "descriptionPlaceholder": "Describe what you need and how it will be used",
+      "attachments": "Reference Files / Artwork",
+      "attachmentsHint": "JPG / PNG / PDF supported",
+      "addFile": "Add file",
+      "submitSuccess": "Your materials request has been submitted. We'll review it shortly.",
+      "myRequests": "My Requests",
+      "noRequests": "No requests yet",
+      "statusPending": "Pending",
+      "statusApproved": "Approved",
+      "statusRejected": "Rejected",
+      "reason": "Reason",
+      "errors": {
+        "materialTypeRequired": "Please select a material type",
+        "descriptionRequired": "Please describe your request"
+      }
     }
   },
   "profile": {

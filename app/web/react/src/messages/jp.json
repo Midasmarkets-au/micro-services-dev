@@ -720,7 +720,8 @@
     "tabs": {
       "contact": "お問い合わせ",
       "announcements": "お知らせ",
-      "documents": "書類"
+      "documents": "書類",
+      "materials": "資料申請"
     },
     "banner": {
       "latestNews": "業界最新ニュース",
@@ -768,6 +769,33 @@
       "spread": "すべてのCFDのスプレッドは、市場の変動により祝日期間中に変動する場合があります",
       "scheduleChange": "上記の祝日取引時間は変更される場合があります",
       "translation": "中国語版と英語原文の間に相違がある場合は、英語版が優先されます"
+    },
+    "materials": {
+      "newRequest": "新規資料申請",
+      "materialType": "資料タイプ",
+      "materialTypePlaceholder": "資料タイプを選択してください",
+      "typeBanner": "プロモーションバナー",
+      "typeBrochure": "パンフレット",
+      "typeEbook": "電子書籍",
+      "typeOther": "その他",
+      "quantity": "数量",
+      "quantityPlaceholder": "数量を入力してください",
+      "description": "用途 / 備考",
+      "descriptionPlaceholder": "必要な内容と用途をご記入ください",
+      "attachments": "参考画像 / デザイン案",
+      "attachmentsHint": "JPG / PNG / PDF に対応",
+      "addFile": "ファイルを追加",
+      "submitSuccess": "資料申請を送信しました。まもなく確認いたします。",
+      "myRequests": "申請履歴",
+      "noRequests": "申請はまだありません",
+      "statusPending": "審査中",
+      "statusApproved": "承認済み",
+      "statusRejected": "却下",
+      "reason": "却下理由",
+      "errors": {
+        "materialTypeRequired": "資料タイプを選択してください",
+        "descriptionRequired": "用途をご記入ください"
+      }
     }
   },
   "profile": {

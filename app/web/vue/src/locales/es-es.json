@@ -1407,7 +1407,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "Tipo de Material",
+    "attachments": "Archivos Adjuntos"
   },
   "status": {
     "default": "Predeterminado",
@@ -2453,7 +2455,8 @@
     "productNameAlreadyExists": "El nombre del producto ya existe",
     "selectAll": "Seleccionar todo",
     "categoryUpdatedSuccess": "Categoría actualizada con éxito",
-    "categoryUpdateFailed": "Error al actualizar la categoría"
+    "categoryUpdateFailed": "Error al actualizar la categoría",
+    "materialRequest": "Solicitud de Materiales"
   },
   "placeholder": {
     "enterCategoryName": "Ingrese el nombre de la categoría",

@@ -10,7 +10,7 @@ import { syncAuthCookies } from '@/lib/auth/cookies';
 
 // 后端 API 基础 URL - 优先读取环境变量
 export const API_BASE_URL =
-  process.env.API_BASE_URL || 'http://mono:80';
+  process.env.API_BASE_URL || 'http://mono:9005';
 
 // API 版本定义 - 支持 v1 和 v2 同时存在
 export type ApiVersion = 'v1' | 'v2';

@@ -1434,7 +1434,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "物料類型",
+    "attachments": "附件"
   },
   "status": {
     "default": "默認",
@@ -2459,7 +2461,8 @@
     "HedgingPolicy": "對沖政策",
     "PrivacyPolicy": "隱私政策",
     "RiskWarningNotice": "風險警告通知",
-    "TermsAndConditions": "條款和條件"
+    "TermsAndConditions": "條款和條件",
+    "materialRequest": "物料申請"
   },
   "placeholder": {
     "enterCategoryName": "請輸入分類名稱",

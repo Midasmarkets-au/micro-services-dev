@@ -720,7 +720,8 @@
     "tabs": {
       "contact": "ติดต่อเรา",
       "announcements": "ประกาศ",
-      "documents": "เอกสาร"
+      "documents": "เอกสาร",
+      "materials": "วัสดุ"
     },
     "banner": {
       "latestNews": "ข่าวล่าสุดในอุตสาหกรรม",
@@ -768,6 +769,33 @@
       "spread": "Spread ของ CFD ทั้งหมดอาจเปลี่ยนแปลงในช่วงวันหยุดเนื่องจากความผันผวนของตลาด",
       "scheduleChange": "เวลาซื้อขายวันหยุดข้างต้นอาจมีการเปลี่ยนแปลง",
       "translation": "หากมีความแตกต่างระหว่างเวอร์ชันภาษาจีนและต้นฉบับภาษาอังกฤษ เวอร์ชันภาษาอังกฤษจะมีผลบังคับ"
+    },
+    "materials": {
+      "newRequest": "คำขอวัสดุใหม่",
+      "materialType": "ประเภทวัสดุ",
+      "materialTypePlaceholder": "เลือกประเภทวัสดุ",
+      "typeBanner": "แบนเนอร์โปรโมชัน",
+      "typeBrochure": "โบรชัวร์",
+      "typeEbook": "อีบุ๊ก",
+      "typeOther": "อื่นๆ",
+      "quantity": "จำนวน",
+      "quantityPlaceholder": "กรอกจำนวน",
+      "description": "วัตถุประสงค์ / หมายเหตุ",
+      "descriptionPlaceholder": "อธิบายสิ่งที่คุณต้องการและวิธีการใช้งาน",
+      "attachments": "ไฟล์อ้างอิง / งานออกแบบ",
+      "attachmentsHint": "รองรับ JPG / PNG / PDF",
+      "addFile": "เพิ่มไฟล์",
+      "submitSuccess": "คำขอวัสดุของคุณถูกส่งแล้ว เราจะตรวจสอบในเร็วๆ นี้",
+      "myRequests": "คำขอของฉัน",
+      "noRequests": "ยังไม่มีคำขอ",
+      "statusPending": "รอตรวจสอบ",
+      "statusApproved": "อนุมัติแล้ว",
+      "statusRejected": "ถูกปฏิเสธ",
+      "reason": "เหตุผล",
+      "errors": {
+        "materialTypeRequired": "กรุณาเลือกประเภทวัสดุ",
+        "descriptionRequired": "กรุณาอธิบายคำขอของคุณ"
+      }
     }
   },
   "profile": {
