@@ -146,11 +146,11 @@ export function EventShopBanner() {
               <DialogTitle className="text-xl font-semibold">
                 {eventName}
               </DialogTitle>
-              {!!(eventData as Record<string, unknown>).updatedOn && (
+              {!!(eventData as Record<string, unknown>).startOn && (
                 <div className="flex items-center gap-1 pt-2 text-sm text-text-secondary">
                   <span>{t('eventNotice.postedOn')}:</span>
                
-                  <TimeShow dateIsoString={(eventData as Record<string, unknown>).updatedOn as string} className="text-sm font-semibold text-text-primary" type="eventShop" />
+                  <TimeShow dateIsoString={(eventData as Record<string, unknown>).startOn as string} className="text-sm font-semibold text-text-primary" type="eventShop" />
                 </div>
               )}
             </DialogHeader>

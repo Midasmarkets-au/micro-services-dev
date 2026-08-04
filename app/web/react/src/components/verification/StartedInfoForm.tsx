@@ -9,6 +9,7 @@ import { SimpleSelect } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { VerificationFormLayout, SingleStepNav } from './VerificationFormLayout';
 import { type StartedData } from '@/types/verification';
+import { AccountTypes, CurrencyTypes } from '@/types/accounts';
 const startedSchema = z.object({
   currency: z.string().min(1, 'required'),
   accountType: z.string().min(1, 'required'),
@@ -104,6 +105,7 @@ export function StartedInfoForm({
   isLoading,
 }: StartedInfoFormProps) {
   const t = useTranslations('verification');
+  const mt5Option = platformOptions.find((option) => option.label.toLowerCase().includes('mt5'));
   const {
     control,
     handleSubmit,
@@ -113,10 +115,10 @@ export function StartedInfoForm({
   } = useForm<StartedFormData>({
     resolver: zodResolver(startedSchema),
     defaultValues: {
-      currency: initialData?.currency ? String(initialData.currency) : '',
-      accountType: initialData?.accountType ? String(initialData.accountType) : '',
-      serviceId: initialData?.serviceId ? String(initialData.serviceId) : '',
-      leverage: initialData?.leverage ? String(initialData.leverage) : '',
+      currency: initialData?.currency ? String(initialData.currency) : String(CurrencyTypes.USD),
+      accountType: initialData?.accountType ? String(initialData.accountType) : String(AccountTypes.Standard),
+      serviceId: mt5Option?.value ?? '',
+      leverage: initialData?.leverage ? String(initialData.leverage) : '1000',
       questions: {
         q1: initialData?.questions?.q1 ?? true,
         q2: initialData?.questions?.q2 ?? true,
@@ -139,13 +141,14 @@ export function StartedInfoForm({
 
     ensureDefaultValue('currency', currencyOptions);
     ensureDefaultValue('accountType', accountTypeOptions);
-    ensureDefaultValue('serviceId', platformOptions);
+    ensureDefaultValue('serviceId', mt5Option ? [mt5Option] : platformOptions);
     ensureDefaultValue('leverage', leverageOptions);
   }, [
     accountTypeOptions,
     currencyOptions,
     leverageOptions,
     platformOptions,
+    mt5Option,
     getValues,
     setValue,
   ]);
