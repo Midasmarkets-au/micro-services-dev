@@ -1407,7 +1407,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "Loại Vật Phẩm",
+    "attachments": "Tệp Đính Kèm"
   },
   "status": {
     "default": "Mặc định",
@@ -2429,7 +2431,8 @@
     "HedgingPolicy": "Chính sách Phòng ngừa Rủi ro",
     "PrivacyPolicy": "Chính sách Bảo mật",
     "RiskWarningNotice": "Thông báo Cảnh báo Rủi ro",
-    "TermsAndConditions": "Điều khoản và Điều kiện"
+    "TermsAndConditions": "Điều khoản và Điều kiện",
+    "materialRequest": "Yêu Cầu Vật Phẩm"
   },
   "placeholder": {
     "leaveBlankExportAllUsers": "Để trống để xuất tất cả người dùng"

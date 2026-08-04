@@ -1439,7 +1439,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "物料類型",
+    "attachments": "附件"
   },
   "status": {
     "default": "默認",
@@ -2461,7 +2463,8 @@
     "bcrAppDownload": "MDM 應用程式下載",
     "autoCreateAccountPermission": "自動創建帳戶許可權",
     "shopCategory": "店鋪類別",
-    "profitLoss": "損益"
+    "profitLoss": "損益",
+    "materialRequest": "物料申請"
   },
   "placeholder": {
     "enterCategoryName": "請輸入分類名稱",

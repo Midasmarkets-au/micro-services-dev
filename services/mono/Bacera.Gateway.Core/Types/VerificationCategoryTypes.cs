@@ -14,6 +14,7 @@ public class VerificationCategoryTypes
     public const string Agreement = "agreement";
     public const string Document = "document";
     public const string KycForm = "kyc";
+    public const string MaterialRequest = "material_request";
 
     public static readonly string[] All = {
         Started,

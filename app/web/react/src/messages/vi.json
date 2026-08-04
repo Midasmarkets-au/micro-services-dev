@@ -721,7 +721,8 @@
     "tabs": {
       "contact": "Liên hệ chúng tôi",
       "announcements": "Thông báo",
-      "documents": "Tài liệu"
+      "documents": "Tài liệu",
+      "materials": "Vật Phẩm"
     },
     "banner": {
       "latestNews": "Tin tức mới nhất trong ngành",
@@ -769,6 +770,33 @@
       "spread": "Spread của tất cả CFD có thể thay đổi trong ngày lễ do biến động thị trường",
       "scheduleChange": "Thời gian giao dịch ngày lễ trên có thể thay đổi",
       "translation": "Nếu có sự khác biệt giữa phiên bản tiếng Trung và bản gốc tiếng Anh, phiên bản tiếng Anh sẽ có hiệu lực"
+    },
+    "materials": {
+      "newRequest": "Yêu Cầu Vật Phẩm Mới",
+      "materialType": "Loại Vật Phẩm",
+      "materialTypePlaceholder": "Chọn loại vật phẩm",
+      "typeBanner": "Banner Quảng Cáo",
+      "typeBrochure": "Tờ Rơi",
+      "typeEbook": "Sách Điện Tử",
+      "typeOther": "Khác",
+      "quantity": "Số Lượng",
+      "quantityPlaceholder": "Nhập số lượng",
+      "description": "Mục Đích / Ghi Chú",
+      "descriptionPlaceholder": "Mô tả nhu cầu của bạn và cách sử dụng",
+      "attachments": "Tệp Tham Khảo / Thiết Kế",
+      "attachmentsHint": "Hỗ trợ JPG / PNG / PDF",
+      "addFile": "Thêm tệp",
+      "submitSuccess": "Yêu cầu vật phẩm của bạn đã được gửi. Chúng tôi sẽ xem xét sớm.",
+      "myRequests": "Yêu Cầu Của Tôi",
+      "noRequests": "Chưa có yêu cầu nào",
+      "statusPending": "Đang Chờ",
+      "statusApproved": "Đã Duyệt",
+      "statusRejected": "Đã Từ Chối",
+      "reason": "Lý Do",
+      "errors": {
+        "materialTypeRequired": "Vui lòng chọn loại vật phẩm",
+        "descriptionRequired": "Vui lòng mô tả yêu cầu của bạn"
+      }
     }
   },
   "profile": {

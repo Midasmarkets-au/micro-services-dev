@@ -212,6 +212,8 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
 
     public virtual DbSet<Transition> Transitions { get; set; }
 
+    public virtual DbSet<MaterialRequest> MaterialRequests { get; set; }
+
     public virtual DbSet<Verification> Verifications { get; set; }
 
     public virtual DbSet<VerificationItem> VerificationItems { get; set; }
@@ -3521,6 +3523,27 @@ public partial class TenantDbContext(DbContextOptions<TenantDbContext> options) 
                 .HasForeignKey(d => d.ToStateId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("core_transitions_to_state_id_foreign");
+        });
+
+        modelBuilder.Entity<MaterialRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("_MaterialRequest_pk");
+
+            entity.ToTable("_MaterialRequest", "core");
+
+            entity.HasIndex(e => e.PartyId, "_MaterialRequest_PartyId_index");
+
+            entity.HasIndex(e => e.Status, "_MaterialRequest_Status_index");
+
+            entity.Property(e => e.Attachments).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb");
+            entity.Property(e => e.CreatedOn).HasDefaultValueSql("now()");
+            entity.Property(e => e.Note).HasDefaultValueSql("''::text");
+            entity.Property(e => e.UpdatedOn).HasDefaultValueSql("now()");
+
+            entity.HasOne(d => d.Party).WithMany()
+                .HasForeignKey(d => d.PartyId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("_MaterialRequest__Party_Id_fk");
         });
 
         modelBuilder.Entity<Verification>(entity =>

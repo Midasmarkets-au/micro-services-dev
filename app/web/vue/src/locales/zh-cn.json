@@ -1452,7 +1452,9 @@
     "devices": "设备",
     "mainSwitch": "主开关",
     "siteSwitch": "站点切换",
-    "enterYourWalletAddress": "输入您的钱包地址"
+    "enterYourWalletAddress": "输入您的钱包地址",
+    "materialType": "物料类型",
+    "attachments": "附件"
   },
   "status": {
     "default": "默认",
@@ -2521,7 +2523,8 @@
     "productNameAlreadyExists": "产品名称已存在",
     "selectAll": "全选",
     "categoryUpdatedSuccess": "分类更新成功",
-    "categoryUpdateFailed": "更新分类失败"
+    "categoryUpdateFailed": "更新分类失败",
+    "materialRequest": "物料申请"
   },
   "placeholder": {
     "enterCategoryName": "请输入分类名称",

@@ -970,7 +970,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "Материалын төрөл",
+    "attachments": "Хавсралт"
   },
   "status": {
     "applied": "Хэрэгжүүлсэн",
@@ -1908,7 +1910,8 @@
     "productNameAlreadyExists": "Бүтээгдэхүүний нэр аль хэдийн байна",
     "selectAll": "Бүгдийг сонгох",
     "categoryUpdatedSuccess": "Ангилал амжилттай шинэчлэгдлээ",
-    "categoryUpdateFailed": "Ангилал шинэчлэхэд алдаа гарлаа"
+    "categoryUpdateFailed": "Ангилал шинэчлэхэд алдаа гарлаа",
+    "materialRequest": "Материалын хүсэлт"
   },
   "placeholder": {
     "enterCategoryName": "Ангиллын нэр оруулах",

@@ -1407,7 +1407,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "ประเภทวัสดุ",
+    "attachments": "ไฟล์แนบ"
   },
   "status": {
     "default": "ค่าเริ่มต้น",
@@ -2420,7 +2422,8 @@
     "HedgingPolicy": "นโยบายการป้องกันความเสี่ยง",
     "PrivacyPolicy": "นโยบายความเป็นส่วนตัว",
     "RiskWarningNotice": "ประกาศคำเตือนความเสี่ยง",
-    "TermsAndConditions": "ข้อกำหนดและเงื่อนไข"
+    "TermsAndConditions": "ข้อกำหนดและเงื่อนไข",
+    "materialRequest": "คำขอวัสดุ"
   },
   "placeholder": {
     "leaveBlankExportAllUsers": "เว้นว่างเพื่อส่งออกผู้ใช้ทั้งหมด"

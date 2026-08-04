@@ -721,7 +721,8 @@
     "tabs": {
       "contact": "Hubungi kami",
       "announcements": "Pengumuman",
-      "documents": "Dokumen"
+      "documents": "Dokumen",
+      "materials": "Bahan"
     },
     "banner": {
       "latestNews": "Berita terkini industri",
@@ -769,6 +770,33 @@
       "spread": "Spread semua CFD boleh berbeza semasa cuti disebabkan turun naik pasaran",
       "scheduleChange": "Waktu dagangan cuti di atas tertakluk kepada perubahan",
       "translation": "Sekiranya terdapat percanggahan antara versi Cina dan teks asal bahasa Inggeris, versi bahasa Inggeris akan diutamakan"
+    },
+    "materials": {
+      "newRequest": "Permintaan Bahan Baharu",
+      "materialType": "Jenis Bahan",
+      "materialTypePlaceholder": "Pilih jenis bahan",
+      "typeBanner": "Sepanduk Promosi",
+      "typeBrochure": "Risalah",
+      "typeEbook": "E-buku",
+      "typeOther": "Lain-lain",
+      "quantity": "Kuantiti",
+      "quantityPlaceholder": "Masukkan kuantiti",
+      "description": "Tujuan / Catatan",
+      "descriptionPlaceholder": "Terangkan keperluan anda dan cara ia akan digunakan",
+      "attachments": "Fail Rujukan / Reka Bentuk",
+      "attachmentsHint": "Menyokong JPG / PNG / PDF",
+      "addFile": "Tambah fail",
+      "submitSuccess": "Permintaan bahan anda telah dihantar. Kami akan menyemaknya tidak lama lagi.",
+      "myRequests": "Permintaan Saya",
+      "noRequests": "Belum ada permintaan",
+      "statusPending": "Menunggu",
+      "statusApproved": "Diluluskan",
+      "statusRejected": "Ditolak",
+      "reason": "Sebab",
+      "errors": {
+        "materialTypeRequired": "Sila pilih jenis bahan",
+        "descriptionRequired": "Sila terangkan permintaan anda"
+      }
     }
   },
   "profile": {

@@ -1411,7 +1411,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "Jenis Bahan",
+    "attachments": "Lampiran"
   },
   "status": {
     "default": "Lalai",
@@ -2452,7 +2454,8 @@
     "productNameAlreadyExists": "Nama produk sudah wujud",
     "selectAll": "Pilih Semua",
     "categoryUpdatedSuccess": "Kategori berjaya dikemaskini",
-    "categoryUpdateFailed": "Gagal mengemaskini kategori"
+    "categoryUpdateFailed": "Gagal mengemaskini kategori",
+    "materialRequest": "Permintaan Bahan"
   },
   "placeholder": {
     "enterCategoryName": "Masukkan nama kategori",

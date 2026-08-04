@@ -721,7 +721,8 @@
     "tabs": {
       "contact": "Contáctenos",
       "announcements": "Anuncios",
-      "documents": "Documentos"
+      "documents": "Documentos",
+      "materials": "Materiales"
     },
     "banner": {
       "latestNews": "Últimas noticias del sector",
@@ -769,6 +770,33 @@
       "spread": "Los diferenciales de todos los CFDs pueden fluctuar durante los días festivos debido a movimientos del mercado",
       "scheduleChange": "Los horarios de trading festivos anteriores pueden cambiar",
       "translation": "En caso de discrepancia entre la versión en chino y la versión original en inglés, prevalecerá la versión en inglés"
+    },
+    "materials": {
+      "newRequest": "Nueva solicitud de materiales",
+      "materialType": "Tipo de material",
+      "materialTypePlaceholder": "Seleccione el tipo de material",
+      "typeBanner": "Banner promocional",
+      "typeBrochure": "Folleto",
+      "typeEbook": "Libro electrónico",
+      "typeOther": "Otro",
+      "quantity": "Cantidad",
+      "quantityPlaceholder": "Ingrese la cantidad",
+      "description": "Propósito / Notas",
+      "descriptionPlaceholder": "Describa lo que necesita y cómo se usará",
+      "attachments": "Archivos de referencia / Diseño",
+      "attachmentsHint": "Se admiten JPG / PNG / PDF",
+      "addFile": "Agregar archivo",
+      "submitSuccess": "Su solicitud de materiales ha sido enviada. La revisaremos pronto.",
+      "myRequests": "Mis solicitudes",
+      "noRequests": "Aún no hay solicitudes",
+      "statusPending": "Pendiente",
+      "statusApproved": "Aprobado",
+      "statusRejected": "Rechazado",
+      "reason": "Motivo",
+      "errors": {
+        "materialTypeRequired": "Seleccione un tipo de material",
+        "descriptionRequired": "Describa su solicitud"
+      }
     }
   },
   "profile": {

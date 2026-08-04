@@ -58,6 +58,16 @@ export {
 // Trade account actions
 export { changeTradeAccountPassword } from './trade-account';
 
+// Material request actions
+export {
+  submitMaterialRequest,
+  getMyMaterialRequests,
+  getMaterialRequestDetail,
+  uploadMaterialAttachment,
+  cancelMaterialRequest,
+} from './materialRequest';
+export type { MaterialRequestItem, MaterialRequestContent, MaterialAttachment } from './materialRequest';
+
 // Payment actions
 export {
   getPaymentInfoList,

@@ -16,6 +16,7 @@ export enum VerificationTypes {
   Unknown = 0,
   Verification = 1,
   KycForm = 2,
+  MaterialRequest = 3,
 }
 
 export enum VerificationDocumentTypes {

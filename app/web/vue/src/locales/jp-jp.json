@@ -1409,7 +1409,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "資料タイプ",
+    "attachments": "添付ファイル"
   },
   "status": {
     "default": "デフォルト",
@@ -2449,7 +2451,8 @@
     "productNameAlreadyExists": "商品名は既に存在します",
     "selectAll": "すべて選択",
     "categoryUpdatedSuccess": "カテゴリーが正常に更新されました",
-    "categoryUpdateFailed": "カテゴリーの更新に失敗しました"
+    "categoryUpdateFailed": "カテゴリーの更新に失敗しました",
+    "materialRequest": "資料申請"
   },
   "placeholder": {
     "enterCategoryName": "カテゴリー名を入力してください",

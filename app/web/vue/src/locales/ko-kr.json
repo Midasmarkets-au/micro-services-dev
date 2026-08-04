@@ -1407,7 +1407,9 @@
     "passwordType": "Password Type",
     "operationType": "Operation Type",
     "operatorRole": "Operator Role",
-    "changedOn": "Changed On"
+    "changedOn": "Changed On",
+    "materialType": "자료 유형",
+    "attachments": "첨부 파일"
   },
   "status": {
     "default": "기본값",
@@ -2445,7 +2447,8 @@
     "productNameAlreadyExists": "상품명이 이미 존재합니다",
     "selectAll": "전체 선택",
     "categoryUpdatedSuccess": "카테고리가 성공적으로 업데이트되었습니다",
-    "categoryUpdateFailed": "카테고리 업데이트 실패"
+    "categoryUpdateFailed": "카테고리 업데이트 실패",
+    "materialRequest": "자료 요청"
   },
   "placeholder": {
     "enterCategoryName": "카테고리명 입력",

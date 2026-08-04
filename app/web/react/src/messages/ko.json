@@ -721,7 +721,8 @@
     "tabs": {
       "contact": "문의하기",
       "announcements": "공지사항",
-      "documents": "서류"
+      "documents": "서류",
+      "materials": "자료 요청"
     },
     "banner": {
       "latestNews": "업계 최신 소식",
@@ -769,6 +770,33 @@
       "spread": "모든 CFD의 스프레드는 시장 변동으로 인해 공휴일 기간에 변동될 수 있습니다",
       "scheduleChange": "위의 공휴일 거래 시간은 변경될 수 있습니다",
       "translation": "중국어 버전과 영어 원문 사이에 차이가 있는 경우 영어 버전이 우선합니다"
+    },
+    "materials": {
+      "newRequest": "새 자료 요청",
+      "materialType": "자료 유형",
+      "materialTypePlaceholder": "자료 유형을 선택하세요",
+      "typeBanner": "프로모션 배너",
+      "typeBrochure": "브로슈어",
+      "typeEbook": "전자책",
+      "typeOther": "기타",
+      "quantity": "수량",
+      "quantityPlaceholder": "수량을 입력하세요",
+      "description": "용도 / 비고",
+      "descriptionPlaceholder": "필요한 내용과 용도를 설명해 주세요",
+      "attachments": "참고 이미지 / 디자인 시안",
+      "attachmentsHint": "JPG / PNG / PDF 지원",
+      "addFile": "파일 추가",
+      "submitSuccess": "자료 요청이 제출되었습니다. 곧 검토하겠습니다.",
+      "myRequests": "내 요청",
+      "noRequests": "아직 요청이 없습니다",
+      "statusPending": "검토 대기",
+      "statusApproved": "승인됨",
+      "statusRejected": "거절됨",
+      "reason": "거절 사유",
+      "errors": {
+        "materialTypeRequired": "자료 유형을 선택하세요",
+        "descriptionRequired": "요청 내용을 설명해 주세요"
+      }
     }
   },
   "profile": {

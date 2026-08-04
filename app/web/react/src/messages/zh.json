@@ -724,7 +724,8 @@
     "tabs": {
       "contact": "联系我们",
       "announcements": "公告",
-      "documents": "文件"
+      "documents": "文件",
+      "materials": "物料申请"
     },
     "banner": {
       "latestNews": "行业最新消息",
@@ -772,6 +773,33 @@
       "spread": "所有差价合约的点差可能会在假期期间因市场异动而产生波动",
       "scheduleChange": "以上假期交易时间可能会发生变动",
       "translation": "如果上述中文版本内容与英文原始版本之间存在差异，则以英文版本为准"
+    },
+    "materials": {
+      "newRequest": "新建物料申请",
+      "materialType": "物料类型",
+      "materialTypePlaceholder": "请选择物料类型",
+      "typeBanner": "推广横幅",
+      "typeBrochure": "宣传册",
+      "typeEbook": "电子书",
+      "typeOther": "其他",
+      "quantity": "数量",
+      "quantityPlaceholder": "请输入数量",
+      "description": "用途说明",
+      "descriptionPlaceholder": "请描述您的需求及用途",
+      "attachments": "参考图 / 设计稿",
+      "attachmentsHint": "支持 JPG / PNG / PDF",
+      "addFile": "添加文件",
+      "submitSuccess": "您的物料申请已提交，我们会尽快审核。",
+      "myRequests": "我的申请",
+      "noRequests": "暂无申请记录",
+      "statusPending": "待审核",
+      "statusApproved": "已通过",
+      "statusRejected": "已拒绝",
+      "reason": "拒绝原因",
+      "errors": {
+        "materialTypeRequired": "请选择物料类型",
+        "descriptionRequired": "请填写用途说明"
+      }
     }
   },
   "profile": {

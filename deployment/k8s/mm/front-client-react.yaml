@@ -35,6 +35,8 @@ spec:
               value: "3000"
             - name: HOSTNAME
               value: "0.0.0.0"
+            - name: API_BASE_URL
+              value: "https://midasmarkets.net.au"
           # envFrom:
           #   - secretRef:
           #       name: front-portal-secret
