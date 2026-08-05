@@ -277,8 +277,8 @@ const updatePayment = async () => {
       if (serviceDetail.value.logo !== uploadImageRef.value.imageUrl) {
         await uploadImageRef.value.uploadImage().then(() => {
           const res = uploadImageRef.value.imageUrl;
-          if (res[0] != undefined) {
-            serviceDetail.value.logo = res[0];
+          if (res != undefined) {
+            serviceDetail.value.logo = res;
           }
         });
       }

@@ -247,52 +247,59 @@ public class MediumController(AuthDbContext authDbContext, IStorageService stora
     }
 
     /// <summary>
-    /// Tenant upload a public file
+    /// Tenant upload one or more public files
     /// </summary>
     /// <param name="type"></param>
-    /// <param name="file"></param>
+    /// <param name="files"></param>
     /// <returns></returns>
     [RequestSizeLimit(100_000_000)]
     [SwaggerOperation(Tags = new[] { "Tenant/Upload" })]
     [HttpPost(RoutePrefix + "/tenant/upload/public")]
-    [Authorize(Roles = UserRoleTypesString.TenantAdmin + ", EventAdmin")]
-    [ProducesResponseType(typeof(Medium), 200)]
+    [Authorize(Roles = UserRoleTypesString.TenantAdmin + ", EventAdmin, SuperAdmin")]
+    [ProducesResponseType(typeof(List<string>), 200)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UploadPublicFileForTenant([FromQuery] string type, IFormFile file)
+    public async Task<IActionResult> UploadPublicFileForTenant([FromQuery] string type, List<IFormFile> files)
     {
         type = string.IsNullOrEmpty(type) ? "public" : type.Trim().ToLower();
         type = type[..Math.Min(30, type.Length)];
 
-        if (file.Length < 1) return BadRequest();
+        if (files == null || files.Count == 0 || files.Any(f => f.Length < 1)) return BadRequest();
 
         var partyId = GetPartyId();
-        using var memoryStream = new MemoryStream();
-        await file.CopyToAsync(memoryStream);
-        if (Utils.IsImage(file.ContentType))
+        var tenantId = GetTenantId();
+        var urls = new List<string>();
+
+        foreach (var file in files)
         {
-            memoryStream.Position = 0;
-            await MagickService.CompressImageAsync(memoryStream);
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            if (Utils.IsImage(file.ContentType))
+            {
+                memoryStream.Position = 0;
+                await MagickService.CompressImageAsync(memoryStream);
+            }
+            var result = await storageService.UploadPublicFileAndSaveMediaAsync(memoryStream,
+                file.FileName, Path.GetExtension(file.FileName).ToLower(),
+                type, partyId, file.ContentType,
+                tenantId, partyId);
+
+            if (result.Id == 0) return Problem("__UPLOAD_FILE_FAILED__");
+
+            using var originalStream = new MemoryStream();
+            await file.CopyToAsync(originalStream);
+            await storageService.UploadFileAsync(originalStream
+                , ""
+                , result.FileName + "_original"
+                , Path.GetExtension(file.FileName).ToLower()
+                , file.ContentType
+                , tenantId
+                , partyId
+            );
+
+            urls.Add(result.Url);
         }
-        var result = await storageService.UploadPublicFileAndSaveMediaAsync(memoryStream,
-            file.FileName, Path.GetExtension(file.FileName).ToLower(),
-            type, partyId, file.ContentType,
-            GetTenantId(), partyId);
 
-
-        using var originalStream = new MemoryStream();
-        await file.CopyToAsync(originalStream);
-        await storageService.UploadFileAsync(originalStream
-            , ""
-            , result.FileName + "_original"
-            , Path.GetExtension(file.FileName).ToLower()
-            , file.ContentType
-            , GetTenantId()
-            , partyId
-        );
-
-        return result.Id == 0
-            ? Problem("__UPLOAD_FILE_FAILED__")
-            : Ok(result);
+        return Ok(urls);
     }
 
     private async Task<IActionResult> UploadForParty(IFormFile file, string type)
