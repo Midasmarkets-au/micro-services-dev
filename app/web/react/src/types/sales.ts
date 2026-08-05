@@ -474,6 +474,7 @@ export interface SalesHierarchyNode {
   id: number;
   name?: string;
   type?: string;
+  typeName?: string;
   groupCode?: string;
   currencyId?: number;
   trades?: number;
