@@ -473,6 +473,7 @@ export interface SalesStatistics {
 export interface SalesHierarchyNode {
   id: number;
   name?: string;
+  nativeName?: string;
   type?: string;
   typeName?: string;
   groupCode?: string;
