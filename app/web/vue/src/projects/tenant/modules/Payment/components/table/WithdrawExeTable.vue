@@ -272,6 +272,7 @@ const openConfirmPanel = (
   const _handler = {
     [ActionType.CompletePayment]: () =>
       svc
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- paymentID is only omitted for actions that don't reach this branch
         .completePaymentById(paymentID!)
         .then(() => svc.completeWithdrawalByPaymentId(id)),
     [ActionType.StartExecution]: () => svc.executePaymentById(id),

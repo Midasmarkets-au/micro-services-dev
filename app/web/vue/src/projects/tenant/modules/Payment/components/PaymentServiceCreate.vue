@@ -275,8 +275,8 @@ const addPaymentService = async () => {
   try {
     await uploadImageRef.value.uploadImage().then(() => {
       const res = uploadImageRef.value.imageUrl;
-      if (res[0] != undefined) {
-        formData.value.logo = res[0];
+      if (res != undefined) {
+        formData.value.logo = res;
       }
     });
     console.log("formData.value", formData.value);

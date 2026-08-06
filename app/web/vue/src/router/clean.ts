@@ -38,14 +38,12 @@ router.beforeEach(() => {
   // reset config to initial state
   store.commit(Mutations.RESET_LAYOUT_CONFIG);
 
-  store
-    .dispatch(Actions.VERIFY_AUTH, {})
-    .then(() => {
-      // Scroll page to top on every route change
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 100);
-    });
+  store.dispatch(Actions.VERIFY_AUTH, {}).then(() => {
+    // Scroll page to top on every route change
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+    }, 100);
+  });
 });
 
 export default router;

@@ -178,7 +178,7 @@ const submit = async (e) => {
   if (!isValid) return;
 
   if (submitButton.value) {
-    submitButton.value!.disabled = true;
+    submitButton.value.disabled = true;
     submitButton.value.setAttribute("data-kt-indicator", "on");
   }
   isSubmitting.value = true;

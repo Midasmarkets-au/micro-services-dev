@@ -67,7 +67,7 @@ const beforeAvatarUpload: UploadProps["beforeUpload"] = (rawFile) => {
     return false;
   }
   file.value = rawFile;
-  imageUrl.value = URL.createObjectURL(rawFile!);
+  imageUrl.value = URL.createObjectURL(rawFile);
   return true;
 };
 

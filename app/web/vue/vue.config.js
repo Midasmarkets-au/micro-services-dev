@@ -5,7 +5,7 @@ const config = require("./config.js");
 
 module.exports = {
   ...config[projectName],
-  lintOnSave: process.env.DOCKER_BUILD ? false : "default",
+  lintOnSave: "default",
   publicPath: process.env.VUE_APP_PATH,
   devServer: {
     ...config[projectName]?.devServer,
