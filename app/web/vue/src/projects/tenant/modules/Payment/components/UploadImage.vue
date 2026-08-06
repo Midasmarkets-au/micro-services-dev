@@ -68,21 +68,11 @@ const uploadImage = async () => {
   if (file.value === undefined) {
     return;
   }
-  const fileExtension = file.value.name.split(".").pop();
 
-  // Create unique identifier using timestamp and random string
-  const uniqueId = `${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(2, 10)}`;
-
-  // Create new filename with payment-logo prefix and unique identifier
-  const newFileName = `payment-logo/${uniqueId}.${fileExtension}`;
-
-  formData.append("files[]", file.value);
-  formData.append("fileNames[]", newFileName);
+  formData.append("files", file.value);
   try {
-    const res = await ItServices.uploadPublicFiles(formData);
-    imageUrl.value = res;
+    const res = await ItServices.uploadPublicFiles(formData, "payment-logo");
+    imageUrl.value = res[0];
   } catch (error) {
     MsgPrompt.error("Upload file failed, file too large or invalid format");
   }
