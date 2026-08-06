@@ -105,7 +105,7 @@ function ChartEmptyState() {
   return <div className="flex h-[300px] items-center justify-center text-sm text-text-secondary">--</div>;
 }
 
-function HierarchyRow({ node, depth = 0 }: { node: SalesHierarcehyNode; depth?: number }) {
+function HierarchyRow({ node, depth = 0 }: { node: SalesHierarchyNode; depth?: number }) {
   const [expanded, setExpanded] = useState(depth === 0);
   const hasChildren = node.children && node.children.length > 0;
   const currencyId = node.currencyId ?? 840;
@@ -124,7 +124,7 @@ function HierarchyRow({ node, depth = 0 }: { node: SalesHierarcehyNode; depth?: 
                 {expanded ? '▼' : '►'}
               </button>
             )}
-            <span>{node.nativeName ||node.name || '--'}</span>
+            <span>{node.nativeName || node.name || '--'}</span>
             {node.typeName && (
               <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-xs text-text-secondary">{node.typeName}</span>
             )}
