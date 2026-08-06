@@ -9,9 +9,9 @@ import type { ApexOptions } from 'apexcharts';
 import type { Props as ApexChartProps } from 'react-apexcharts';
 import { useServerAction } from '@/hooks/useServerAction';
 import { fetchAction } from '@/lib/api/browser-client';
-import { useSalesStore } from '@/stores/salesStore';
-import { BalanceShow, Button, CurrencyCodeMap, DatePicker, formatDateForApi, Input, SimpleSelect } from '@/components/ui';
-import type { SalesStatistics, SalesHierarchyNode } from '@/types/sales';
+import { useIBStore } from '@/stores/ibStore';
+import { BalanceShow, Button, CurrencyCodeMap, DatePicker, Input, SimpleSelect, formatDateForApi } from '@/components/ui';
+import type { IBStatistics, IBHierarchyNode } from '@/types/ib';
 
 const ApexChart = dynamic<ApexChartProps>(
   () => import('react-apexcharts').then((mod) => mod.default as unknown as ComponentType<ApexChartProps>),
@@ -20,10 +20,9 @@ const ApexChart = dynamic<ApexChartProps>(
 
 type TimeRange = '30' | '7' | 'custom';
 type ChartType = 'area' | 'line';
-type UserType = 'sale' | 'ib' | 'client';
 
 interface SearchCriteria {
-  userType: UserType;
+  userUid: string;
   timeRange: TimeRange;
   from: string;
   to: string;
@@ -31,12 +30,6 @@ interface SearchCriteria {
 
 function formatDate(date: Date): string {
   return date.toISOString().split('T')[0];
-}
-
-function parseDateString(value: string): Date | undefined {
-  if (!value) return undefined;
-  const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function buildRange(days: number) {
@@ -48,10 +41,16 @@ function buildRange(days: number) {
 
 function createDefaultCriteria(): SearchCriteria {
   return {
-    userType: 'sale',
+    userUid: '',
     timeRange: '30',
     ...buildRange(30),
   };
+}
+
+function parseDateString(value: string): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function chartMoneyFormatter(value: number): string {
@@ -105,8 +104,8 @@ function ChartEmptyState() {
   return <div className="flex h-[300px] items-center justify-center text-sm text-text-secondary">--</div>;
 }
 
-function HierarchyRow({ node, depth = 0 }: { node: SalesHierarcehyNode; depth?: number }) {
-  const [expanded, setExpanded] = useState(depth === 0);
+function HierarchyRow({ node, depth = 0 }: { node: IBHierarchyNode; depth?: number }) {
+  const [expanded, setExpanded] = useState(false);
   const hasChildren = node.children && node.children.length > 0;
   const currencyId = node.currencyId ?? 840;
 
@@ -124,9 +123,9 @@ function HierarchyRow({ node, depth = 0 }: { node: SalesHierarcehyNode; depth?: 
                 {expanded ? '▼' : '►'}
               </button>
             )}
-            <span>{node.nativeName ||node.name || '--'}</span>
-            {node.typeName && (
-              <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-xs text-text-secondary">{node.typeName}</span>
+            <span>{node.name || '--'}</span>
+            {node.type && (
+              <span className="rounded-full bg-surface-secondary px-2 py-0.5 text-xs text-text-secondary">{node.type}</span>
             )}
           </div>
         </td>
@@ -154,19 +153,18 @@ function HierarchyRow({ node, depth = 0 }: { node: SalesHierarcehyNode; depth?: 
   );
 }
 
-export default function SalesStatisticsPage() {
-  const t = useTranslations('sales.statistics');
-  const tSales = useTranslations('sales');
+export default function IBStatisticsPage() {
+  const t = useTranslations('ib.statistics');
+  const tIb = useTranslations('ib');
   const tCommon = useTranslations('common');
   const { execute } = useServerAction({ showErrorToast: true });
-  const salesAccount = useSalesStore((s) => s.salesAccount);
-  const isSalesInitialized = useSalesStore((s) => s.isInitialized);
+  const agentAccount = useIBStore((s) => s.agentAccount);
+  const isIBInitialized = useIBStore((s) => s.isInitialized);
   const didLoadRef = useRef(false);
 
-  const [statistics, setStatistics] = useState<SalesStatistics | null>(null);
+  const [statistics, setStatistics] = useState<IBStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [criteria, setCriteria] = useState<SearchCriteria>(() => createDefaultCriteria());
-  const [hierarchyKeyword, setHierarchyKeyword] = useState('');
   const [chartType, setChartType] = useState<ChartType>('area');
 
   const timeRangeError = useMemo(() => {
@@ -175,23 +173,24 @@ export default function SalesStatisticsPage() {
     const from = new Date(criteria.from);
     const to = new Date(criteria.to);
     if (to < from) return t('endTimeBeforeStart');
-    const maxTo = new Date(from);
-    maxTo.setMonth(maxTo.getMonth() + 3);
-    if (to > maxTo) return t('timeRangeExceeds30Days');
+    const daysDiff = Math.floor((to.getTime() - from.getTime()) / 86400000);
+    if (daysDiff > 30) return t('timeRangeExceeds30Days');
     return '';
   }, [criteria.from, criteria.timeRange, criteria.to, t]);
 
+  const agentUid = agentAccount?.uid;
+
   const loadStatistics = useCallback(
     async (nextCriteria: SearchCriteria) => {
+      if (!agentUid) return;
       setIsLoading(true);
       try {
         const params = {
-          userType: nextCriteria.userType,
-          timeRange: nextCriteria.timeRange,
+          userUid: nextCriteria.userUid || undefined,
           from: nextCriteria.from || undefined,
           to: nextCriteria.to || undefined,
         };
-        const result = await execute(async () => fetchAction<SalesStatistics>('getSalesStatistics', params));
+        const result = await execute(async () => fetchAction<IBStatistics>('getIBStatistics', agentUid, params));
         if (result.success && result.data) {
           setStatistics(result.data);
         }
@@ -199,18 +198,18 @@ export default function SalesStatisticsPage() {
         setIsLoading(false);
       }
     },
-    [execute]
+    [agentUid, execute]
   );
 
   useEffect(() => {
-    if (!isSalesInitialized || !salesAccount) return;
+    if (!isIBInitialized || !agentUid) return;
     if (didLoadRef.current) return;
     const timer = window.setTimeout(() => {
       didLoadRef.current = true;
       void loadStatistics(criteria);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [criteria, isSalesInitialized, loadStatistics, salesAccount]);
+  }, [criteria, isIBInitialized, loadStatistics, agentUid]);
 
   const handleTimeRangeChange = (value: string) => {
     const timeRange = value as TimeRange;
@@ -235,40 +234,9 @@ export default function SalesStatisticsPage() {
   const handleReset = () => {
     const nextCriteria = createDefaultCriteria();
     setCriteria(nextCriteria);
-    setHierarchyKeyword('');
     setChartType('area');
     void loadStatistics(nextCriteria);
   };
-
-  const filteredHierarchyData = useMemo(() => {
-    const keyword = hierarchyKeyword.trim().toLowerCase();
-    const nodes = statistics?.hierarchyData ?? [];
-    if (!keyword) return nodes;
-
-    const filterNodes = (items: SalesHierarchyNode[]): SalesHierarchyNode[] => {
-      return items.reduce<SalesHierarchyNode[]>((acc, node) => {
-        const children = node.children?.length ? filterNodes(node.children) : [];
-        const uidText = String(node.id ?? '').toLowerCase();
-        const nameText = (node.name ?? '').toLowerCase();
-        const emailText = String((node as SalesHierarchyNode & { email?: string }).email ?? '').toLowerCase();
-
-        const isMatch =
-          uidText.includes(keyword) ||
-          nameText.includes(keyword) ||
-          emailText.includes(keyword);
-
-        if (isMatch || children.length) {
-          acc.push({
-            ...node,
-            children,
-          });
-        }
-        return acc;
-      }, []);
-    };
-
-    return filterNodes(nodes);
-  }, [hierarchyKeyword, statistics?.hierarchyData]);
 
   const commonTimeSeriesOptions = useCallback(
     (colors: string[], moneyAxis = false): ApexOptions => ({
@@ -395,30 +363,28 @@ export default function SalesStatisticsPage() {
 
   return (
     <div className="flex w-full flex-col gap-3">
-      {!isSalesInitialized ? (
+      {!isIBInitialized ? (
         <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-text-secondary">
           {tCommon('loading')}
         </div>
-      ) : !salesAccount ? (
+      ) : !agentAccount ? (
         <div className="rounded-xl border border-border bg-surface p-8 text-center text-sm text-text-secondary">
-          {tSales('noSalesAccount')}
+          {tIb('noIBAccount')}
         </div>
       ) : (
         <>
           <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
             <div className="grid grid-cols-1 items-end gap-3 lg:grid-cols-12">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 lg:col-span-12">
-                <SimpleSelect
-                  value={criteria.userType}
-                  onChange={(value) => setCriteria((prev) => ({ ...prev, userType: value as UserType }))}
-                  placeholder={t('selectIdentity')}
-                  triggerSize="sm"
-                  options={[
-                    { value: 'sale', label: t('roleSale') },
-                    { value: 'ib', label: t('roleIb') },
-                    { value: 'client', label: t('roleClient') },
-                  ]}
+              <div className="lg:col-span-6">
+                <Input
+                  inputSize="sm"
+                  value={criteria.userUid}
+                  placeholder={t('searchUserUid')}
+                  onChange={(event) => setCriteria((prev) => ({ ...prev, userUid: event.target.value }))}
+                  onClear={() => setCriteria((prev) => ({ ...prev, userUid: '' }))}
                 />
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:col-span-6">
                 <SimpleSelect
                   value={criteria.timeRange}
                   onChange={handleTimeRangeChange}
@@ -465,7 +431,7 @@ export default function SalesStatisticsPage() {
                   onChange={(value) =>
                     setCriteria((prev) => ({ ...prev, from: formatDateForApi(value) ?? '' }))
                   }
-                  placeholder={tSales('fields.startDate')}
+                  placeholder={tIb('fields.startDate')}
                 />
                 <DatePicker
                   size="sm"
@@ -473,7 +439,7 @@ export default function SalesStatisticsPage() {
                   onChange={(value) =>
                     setCriteria((prev) => ({ ...prev, to: formatDateForApi(value) ?? '' }))
                   }
-                  placeholder={tSales('fields.endDate')}
+                  placeholder={tIb('fields.endDate')}
                 />
                 {timeRangeError && <p className="text-sm text-error sm:col-span-2">{timeRangeError}</p>}
               </div>
@@ -569,17 +535,8 @@ export default function SalesStatisticsPage() {
           </div>
 
           <div className="rounded-xl border border-border bg-surface shadow-sm">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+            <div className="border-b border-border px-5 py-4">
               <h3 className="text-base font-semibold text-text-primary">{t('hierarchyData')}</h3>
-              <div className="w-full max-w-72">
-                <Input
-                  inputSize="sm"
-                  value={hierarchyKeyword}
-                  placeholder={t('searchUserUid')}
-                  onChange={(event) => setHierarchyKeyword(event.target.value)}
-                  onClear={() => setHierarchyKeyword('')}
-                />
-              </div>
             </div>
             <div className="overflow-x-auto p-4">
               <table className="w-full whitespace-nowrap text-left text-sm">
@@ -587,7 +544,7 @@ export default function SalesStatisticsPage() {
                   <tr className="border-b border-border text-xs text-text-secondary">
                     <th className="px-4 py-3">{t('name')}</th>
                     <th className="px-4 py-3">{t('groupCode')}</th>
-                    <th className="px-4 py-3">{tSales('deposit.currency')}</th>
+                    <th className="px-4 py-3">{tIb('deposit.currency')}</th>
                     <th className="px-4 py-3 text-right">{t('tradesCount')}</th>
                     <th className="px-4 py-3 text-right">{t('netDeposit')}</th>
                     <th className="px-4 py-3 text-right">{t('deposit')}</th>
@@ -597,8 +554,8 @@ export default function SalesStatisticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHierarchyData.length ? (
-                    filteredHierarchyData.map((node) => <HierarchyRow key={node.id} node={node} />)
+                  {statistics?.hierarchyData?.length ? (
+                    statistics.hierarchyData.map((node) => <HierarchyRow key={node.id} node={node} />)
                   ) : (
                     <tr>
                       <td colSpan={9} className="px-4 py-12 text-center text-text-secondary">
