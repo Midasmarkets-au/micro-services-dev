@@ -2117,7 +2117,7 @@
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
       "lots": "Lot",
-      "searchUserUid": "Cari UID pengguna"
+      "searchUserUid": "Masukkan ID/nama pengguna"
     }
   },
   "sales": {
@@ -2569,7 +2569,7 @@
       "days7": "7 Hari",
       "area": "Grafik Area",
       "line": "Grafik Garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Masukkan ID/nama pengguna",
       "selectIdentity": "Pilih Identitas",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2592,7 +2592,9 @@
       "deposit": "Setoran",
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebate pribadi",
+      "teamRebateTotal": "Total rebate semua level agen"
     },
     "lead": {
       "title": "Prospek",

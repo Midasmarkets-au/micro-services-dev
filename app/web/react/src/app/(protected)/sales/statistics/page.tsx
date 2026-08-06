@@ -143,7 +143,10 @@ function HierarchyRow({ node, depth = 0 }: { node: SalesHierarchyNode; depth?: n
           <BalanceShow balance={Number(node.withdrawal ?? 0)} currencyId={currencyId} />
         </td>
         <td className="px-4 py-3 text-right text-text-primary">
-          <BalanceShow balance={Number(node.rebate ?? 0)} currencyId={currencyId} />
+          {node.rebate == 0 ? '-' : <BalanceShow balance={Number(node.rebate)} currencyId={currencyId} />}
+        </td>
+        <td className="px-4 py-3 text-right text-text-primary">
+          {node.teamRebate == 0 ? '-' : <BalanceShow balance={Number(node.teamRebate)} currencyId={currencyId} />}
         </td>
         <td className="px-4 py-3 text-right text-text-primary">{Number(node.lots ?? 0).toFixed(2)}</td>
       </tr>
@@ -245,9 +248,15 @@ export default function SalesStatisticsPage() {
     const nodes = statistics?.hierarchyData ?? [];
     if (!keyword) return nodes;
 
+    const isIbOrSalesNode = (node: SalesHierarchyNode) => {
+      const role = String(node.typeName ?? node.type ?? '').toLowerCase();
+      return role.includes('ib') || role.includes('agent') || role.includes('sales');
+    };
+
     const filterNodes = (items: SalesHierarchyNode[]): SalesHierarchyNode[] => {
       return items.reduce<SalesHierarchyNode[]>((acc, node) => {
-        const children = node.children?.length ? filterNodes(node.children) : [];
+        const originalChildren = node.children ?? [];
+        const filteredChildren = originalChildren.length ? filterNodes(originalChildren) : [];
         const uidText = String(node.id ?? '').toLowerCase();
         const nameText = (node.name ?? '').toLowerCase();
         const emailText = String((node as SalesHierarchyNode & { email?: string }).email ?? '').toLowerCase();
@@ -257,10 +266,18 @@ export default function SalesStatisticsPage() {
           nameText.includes(keyword) ||
           emailText.includes(keyword);
 
-        if (isMatch || children.length) {
+        if (isMatch && isIbOrSalesNode(node)) {
           acc.push({
             ...node,
-            children,
+            children: originalChildren,
+          });
+          return acc;
+        }
+
+        if (isMatch || filteredChildren.length) {
+          acc.push({
+            ...node,
+            children: filteredChildren,
           });
         }
         return acc;
@@ -592,7 +609,8 @@ export default function SalesStatisticsPage() {
                     <th className="px-4 py-3 text-right">{t('netDeposit')}</th>
                     <th className="px-4 py-3 text-right">{t('deposit')}</th>
                     <th className="px-4 py-3 text-right">{t('withdrawal')}</th>
-                    <th className="px-4 py-3 text-right">{t('rebate')}</th>
+                    <th className="px-4 py-3 text-right">{t('personalRebate')}</th>
+                    <th className="px-4 py-3 text-right">{t('teamRebateTotal')}</th>
                     <th className="px-4 py-3 text-right">{t('lots')}</th>
                   </tr>
                 </thead>
@@ -601,7 +619,7 @@ export default function SalesStatisticsPage() {
                     filteredHierarchyData.map((node) => <HierarchyRow key={node.id} node={node} />)
                   ) : (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-text-secondary">
+                      <td colSpan={10} className="px-4 py-12 text-center text-text-secondary">
                         --
                       </td>
                     </tr>
