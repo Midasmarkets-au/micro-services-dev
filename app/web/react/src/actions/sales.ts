@@ -648,7 +648,7 @@ function normalizeSalesStatisticsHierarchy(nodes?: SalesHierarchyNode[]): SalesH
   return nodes.map((node) => {
     const normalized = normalizeAmountList<SalesHierarchyNode>(
       node,
-      ['netDeposit', 'deposit', 'withdrawal', 'rebate']
+      ['netDeposit', 'deposit', 'withdrawal', 'rebate', 'teamRebate']
     ) as SalesHierarchyNode;
 
     if (normalized.children?.length) {

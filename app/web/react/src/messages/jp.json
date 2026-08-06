@@ -2109,7 +2109,7 @@
       "endTimeBeforeStart": "終了日は開始日より前にできません",
       "timeRangeExceeds30Days": "期間は30日を超えることはできません",
       "hierarchyData": "階層データ",
-      "name": "名前",
+      "name": "名称",
       "groupCode": "グループコード",
       "tradesCount": "取引数",
       "netDeposit": "純入金",
@@ -2117,7 +2117,7 @@
       "withdrawal": "出金",
       "rebate": "リベート",
       "lots": "ロット",
-      "searchUserUid": "ユーザー UID を検索"
+      "searchUserUid": "ユーザーID/名称を入力してください"
     }
   },
   "sales": {
@@ -2546,7 +2546,7 @@
       "days7": "7日間",
       "area": "エリアチャート",
       "line": "ラインチャート",
-      "searchUserUid": "ユーザー UID を検索",
+      "searchUserUid": "ユーザーID/名称を入力してください",
       "selectIdentity": "身分を選択",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2562,14 +2562,16 @@
       "endTimeBeforeStart": "終了日は開始日より前にできません",
       "timeRangeExceeds30Days": "期間は30日を超えることはできません",
       "hierarchyData": "階層データ",
-      "name": "名前",
+      "name": "名称",
       "groupCode": "グループコード",
       "tradesCount": "取引数",
       "netDeposit": "純入金",
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "リベート",
-      "lots": "ロット"
+      "lots": "ロット",
+      "personalRebate": "個人リベート",
+      "teamRebateTotal": "各代理レベルのリベート総額"
     },
     "lead": {
       "title": "リード",

@@ -2117,7 +2117,7 @@
       "withdrawal": "ถอนเงิน",
       "rebate": "รีเบต",
       "lots": "Lot",
-      "searchUserUid": "ค้นหา UID ผู้ใช้"
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้"
     }
   },
   "sales": {
@@ -2546,7 +2546,7 @@
       "days7": "7 วัน",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "ค้นหา UID ผู้ใช้",
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้",
       "selectIdentity": "เลือกตัวตน",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2569,7 +2569,9 @@
       "deposit": "ฝากเงิน",
       "withdrawal": "ถอนเงิน",
       "rebate": "รีเบต",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "รีเบตส่วนบุคคล",
+      "teamRebateTotal": "ยอดรวมรีเบตทุกระดับเอเจนต์"
     },
     "lead": {
       "title": "Lead",

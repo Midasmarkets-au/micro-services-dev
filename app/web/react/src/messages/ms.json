@@ -2117,7 +2117,7 @@
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
       "lots": "Lot",
-      "searchUserUid": "Cari UID pengguna"
+      "searchUserUid": "Sila masukkan ID/nama pengguna"
     }
   },
   "sales": {
@@ -2546,7 +2546,7 @@
       "days7": "7 hari",
       "area": "Carta kawasan",
       "line": "Carta garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Sila masukkan ID/nama pengguna",
       "selectIdentity": "Pilih identiti",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2569,7 +2569,9 @@
       "deposit": "Deposit",
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebat peribadi",
+      "teamRebateTotal": "Jumlah rebat semua peringkat ejen"
     },
     "lead": {
       "title": "Lead",

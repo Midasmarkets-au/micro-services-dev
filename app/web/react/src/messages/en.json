@@ -2120,7 +2120,7 @@
       "withdrawal": "Withdrawal",
       "rebate": "Rebate",
       "lots": "Lots",
-      "searchUserUid": "Search user UID"
+      "searchUserUid": "Please enter user ID/name"
     }
   },
   "sales": {
@@ -2572,7 +2572,7 @@
       "days7": "7 Days",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "Search user UID",
+      "searchUserUid": "Please enter user ID/name",
       "selectIdentity": "Select Identity",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2595,7 +2595,9 @@
       "deposit": "Deposit",
       "withdrawal": "Withdrawal",
       "rebate": "Rebate",
-      "lots": "Lots"
+      "lots": "Lots",
+      "personalRebate": "Personal Rebate",
+      "teamRebateTotal": "Total Rebate Across Agent Levels"
     },
     "lead": {
       "title": "Lead",
