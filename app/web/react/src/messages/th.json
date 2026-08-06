@@ -1712,6 +1712,7 @@
     "title": "ศูนย์ตัวแทน",
     "menu": {
       "dashboard": "ภาพรวม",
+      "statistics": "สถิติ",
       "newCustomers": "ลูกค้าใหม่",
       "customers": "ลูกค้า",
       "trade": "ซื้อขาย",
@@ -2112,6 +2113,39 @@
       "editRule5": "ประเภทที่มีอยู่: [A] ห้ามลบประเภทบัญชี [B] ลดรีเบตส่วนตัวได้เท่านั้น",
       "setPercentageTooltip": "ตั้งค่าเปอร์เซ็นต์เพื่อกรอกค่ารีเบตอัตโนมัติ",
       "updateSuccess": "อัปเดตเรียบร้อยแล้ว"
+    },
+    "statistics": {
+      "title": "สถิติ",
+      "tradeTrend": "แนวโน้มการซื้อขาย",
+      "fundFlow": "กระแสเงินทุน",
+      "rebateTrend": "แนวโน้มรีเบต",
+      "productDistribution": "การกระจายสัญลักษณ์",
+      "totalTrades": "การซื้อขายทั้งหมด",
+      "totalNetDeposit": "เงินฝากสุทธิทั้งหมด",
+      "totalRebate": "รีเบตทั้งหมด",
+      "totalDeposit": "เงินฝากทั้งหมด",
+      "totalWithdrawal": "เงินถอนทั้งหมด",
+      "totalLots": "Lot ทั้งหมด",
+      "selectTimeRange": "เลือกช่วงเวลา",
+      "last30Days": "30 วันที่ผ่านมา",
+      "last7Days": "7 วันที่ผ่านมา",
+      "customTime": "กำหนดเวลาเอง",
+      "selectChartType": "เลือกประเภทกราฟ",
+      "areaChart": "Area Chart",
+      "lineChart": "Line Chart",
+      "pleaseSelectTime": "กรุณาเลือกเวลา",
+      "endTimeBeforeStart": "เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่มต้น",
+      "timeRangeExceeds30Days": "ช่วงเวลาต้องไม่เกิน 30 วัน",
+      "hierarchyData": "ข้อมูลลำดับขั้น",
+      "name": "ชื่อ",
+      "groupCode": "รหัสกลุ่ม",
+      "tradesCount": "จำนวนการซื้อขาย",
+      "netDeposit": "เงินฝากสุทธิ",
+      "deposit": "ฝากเงิน",
+      "withdrawal": "ถอนเงิน",
+      "rebate": "รีเบต",
+      "lots": "Lot",
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้"
     }
   },
   "sales": {
@@ -2540,7 +2574,7 @@
       "days7": "7 วัน",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "ค้นหา UID ผู้ใช้",
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้",
       "selectIdentity": "เลือกตัวตน",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2563,7 +2597,9 @@
       "deposit": "ฝากเงิน",
       "withdrawal": "ถอนเงิน",
       "rebate": "รีเบต",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "รีเบตส่วนบุคคล",
+      "teamRebateTotal": "ยอดรวมรีเบตทุกระดับเอเจนต์"
     },
     "lead": {
       "title": "Lead",

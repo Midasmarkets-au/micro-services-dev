@@ -1715,6 +1715,7 @@
     "title": "IB Center",
     "menu": {
       "dashboard": "Dashboard",
+      "statistics": "Statistics",
       "newCustomers": "New Customers",
       "customers": "Customers",
       "trade": "Trade",
@@ -2115,6 +2116,39 @@
       "editRule5": "Existing types: [A] Cannot delete account types [B] Can only reduce personal rebate",
       "setPercentageTooltip": "Set percentage to auto-fill rebate values",
       "updateSuccess": "Updated successfully"
+    },
+    "statistics": {
+      "title": "Statistics",
+      "tradeTrend": "Trade Trend",
+      "fundFlow": "Fund Flow",
+      "rebateTrend": "Rebate Trend",
+      "productDistribution": "Product Distribution",
+      "totalTrades": "Total Trades",
+      "totalNetDeposit": "Total Net Deposit",
+      "totalRebate": "Total Rebate",
+      "totalDeposit": "Total Deposit",
+      "totalWithdrawal": "Total Withdrawal",
+      "totalLots": "Total Lots",
+      "selectTimeRange": "Select Time Range",
+      "last30Days": "Last 30 Days",
+      "last7Days": "Last 7 Days",
+      "customTime": "Custom Time",
+      "selectChartType": "Select Chart Type",
+      "areaChart": "Area Chart",
+      "lineChart": "Line Chart",
+      "pleaseSelectTime": "Please select time",
+      "endTimeBeforeStart": "End time cannot be before start time",
+      "timeRangeExceeds30Days": "Time range cannot exceed 30 days",
+      "hierarchyData": "Hierarchy Data",
+      "name": "Name",
+      "groupCode": "Group Code",
+      "tradesCount": "Trades Count",
+      "netDeposit": "Net Deposit",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal",
+      "rebate": "Rebate",
+      "lots": "Lots",
+      "searchUserUid": "Please enter user ID/name"
     }
   },
   "sales": {
@@ -2566,7 +2600,7 @@
       "days7": "7 Days",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "Search user UID",
+      "searchUserUid": "Please enter user ID/name",
       "selectIdentity": "Select Identity",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2589,7 +2623,9 @@
       "deposit": "Deposit",
       "withdrawal": "Withdrawal",
       "rebate": "Rebate",
-      "lots": "Lots"
+      "lots": "Lots",
+      "personalRebate": "Personal Rebate",
+      "teamRebateTotal": "Total Rebate Across Agent Levels"
     },
     "lead": {
       "title": "Lead",

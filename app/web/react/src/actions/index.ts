@@ -164,6 +164,7 @@ export {
   getIBAccountDefaultLevel,
   getIBRebateDistribution,
   getIBChildStat,
+  getIBStatistics,
   getIBRebateStatBySymbol,
   getIBLinks,
   getIBLinkDetail,

@@ -1712,6 +1712,7 @@
     "title": "Pusat ejen",
     "menu": {
       "dashboard": "Gambaran keseluruhan",
+      "statistics": "Statistik",
       "newCustomers": "Pelanggan baharu",
       "customers": "Pelanggan",
       "trade": "Dagangan",
@@ -2112,6 +2113,39 @@
       "editRule5": "Jenis sedia ada: [A] Tidak boleh padam jenis akaun [B] Hanya boleh kurangkan rebat peribadi",
       "setPercentageTooltip": "Tetapkan peratusan untuk mengisi nilai rebat secara automatik",
       "updateSuccess": "Berjaya dikemas kini"
+    },
+    "statistics": {
+      "title": "Statistik",
+      "tradeTrend": "Trend dagangan",
+      "fundFlow": "Aliran dana",
+      "rebateTrend": "Trend rebat",
+      "productDistribution": "Pengedaran simbol",
+      "totalTrades": "Jumlah dagangan",
+      "totalNetDeposit": "Jumlah deposit bersih",
+      "totalRebate": "Jumlah rebat",
+      "totalDeposit": "Jumlah deposit",
+      "totalWithdrawal": "Jumlah pengeluaran",
+      "totalLots": "Jumlah lot",
+      "selectTimeRange": "Pilih julat masa",
+      "last30Days": "30 hari lepas",
+      "last7Days": "7 hari lepas",
+      "customTime": "Masa tersuai",
+      "selectChartType": "Pilih jenis carta",
+      "areaChart": "Carta kawasan",
+      "lineChart": "Carta garis",
+      "pleaseSelectTime": "Sila pilih masa",
+      "endTimeBeforeStart": "Masa tamat tidak boleh sebelum masa mula",
+      "timeRangeExceeds30Days": "Julat masa tidak boleh melebihi 30 hari",
+      "hierarchyData": "Data hierarki",
+      "name": "Nama",
+      "groupCode": "Kod kumpulan",
+      "tradesCount": "Bilangan dagangan",
+      "netDeposit": "Deposit bersih",
+      "deposit": "Deposit",
+      "withdrawal": "Pengeluaran",
+      "rebate": "Rebat",
+      "lots": "Lot",
+      "searchUserUid": "Sila masukkan ID/nama pengguna"
     }
   },
   "sales": {
@@ -2540,7 +2574,7 @@
       "days7": "7 hari",
       "area": "Carta kawasan",
       "line": "Carta garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Sila masukkan ID/nama pengguna",
       "selectIdentity": "Pilih identiti",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2563,7 +2597,9 @@
       "deposit": "Deposit",
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebat peribadi",
+      "teamRebateTotal": "Jumlah rebat semua peringkat ejen"
     },
     "lead": {
       "title": "Lead",

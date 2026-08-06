@@ -1710,6 +1710,7 @@
     "title": "Centro de agentes",
     "menu": {
       "dashboard": "Resumen",
+      "statistics": "Estadísticas",
       "newCustomers": "Nuevos clientes",
       "customers": "Clientes",
       "trade": "Trading",
@@ -2110,6 +2111,39 @@
       "editRule5": "Tipos existentes: [A] No se puede eliminar el tipo de cuenta [B] Solo se puede reducir el rebate personal",
       "setPercentageTooltip": "Establecer porcentaje para rellenar automáticamente el valor de reembolso",
       "updateSuccess": "Actualizado exitosamente"
+    },
+    "statistics": {
+      "title": "Estadísticas",
+      "tradeTrend": "Tendencia de trading",
+      "fundFlow": "Flujo de fondos",
+      "rebateTrend": "Tendencia de reembolso",
+      "productDistribution": "Distribución de productos",
+      "totalTrades": "Total de operaciones",
+      "totalNetDeposit": "Depósito neto total",
+      "totalRebate": "Reembolso total",
+      "totalDeposit": "Depósito total",
+      "totalWithdrawal": "Retiro total",
+      "totalLots": "Lotes totales",
+      "selectTimeRange": "Seleccionar rango de tiempo",
+      "last30Days": "Últimos 30 días",
+      "last7Days": "Últimos 7 días",
+      "customTime": "Tiempo personalizado",
+      "selectChartType": "Seleccionar tipo de gráfico",
+      "areaChart": "Gráfico de área",
+      "lineChart": "Gráfico de líneas",
+      "pleaseSelectTime": "Seleccione el tiempo",
+      "endTimeBeforeStart": "La hora de fin no puede ser anterior a la hora de inicio",
+      "timeRangeExceeds30Days": "El rango de tiempo no puede superar 30 días",
+      "hierarchyData": "Datos de jerarquía",
+      "name": "Nombre",
+      "groupCode": "Código de grupo",
+      "tradesCount": "Cantidad de operaciones",
+      "netDeposit": "Depósito neto",
+      "deposit": "Depósito",
+      "withdrawal": "Retiro",
+      "rebate": "Reembolso",
+      "lots": "Lotes",
+      "searchUserUid": "Ingrese ID/nombre de usuario"
     }
   },
   "sales": {
@@ -2538,7 +2572,7 @@
       "days7": "7 días",
       "area": "Gráfico de área",
       "line": "Gráfico de líneas",
-      "searchUserUid": "Buscar UID de usuario",
+      "searchUserUid": "Ingrese ID/nombre de usuario",
       "selectIdentity": "Seleccionar identidad",
       "roleSale": "Ventas",
       "roleIb": "IB",
@@ -2561,7 +2595,9 @@
       "deposit": "Depósito",
       "withdrawal": "Retiro",
       "rebate": "Reembolso",
-      "lots": "Lotes"
+      "lots": "Lotes",
+      "personalRebate": "Rebate personal",
+      "teamRebateTotal": "Rebate total de todos los niveles de agentes"
     },
     "lead": {
       "title": "Prospectos",

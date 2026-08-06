@@ -1712,6 +1712,7 @@
     "title": "Pusat IB",
     "menu": {
       "dashboard": "Dasbor",
+      "statistics": "Statistik",
       "newCustomers": "Pelanggan Baru",
       "customers": "Pelanggan",
       "trade": "Trading",
@@ -2112,6 +2113,39 @@
       "editRule5": "Tipe yang ada: [A] Tidak boleh menghapus tipe akun [B] Hanya boleh menurunkan rebat pribadi",
       "setPercentageTooltip": "Atur persentase untuk mengisi otomatis nilai rabat",
       "updateSuccess": "Berhasil diperbarui"
+    },
+    "statistics": {
+      "title": "Statistik",
+      "tradeTrend": "Tren Trading",
+      "fundFlow": "Arus Dana",
+      "rebateTrend": "Tren Rabat",
+      "productDistribution": "Distribusi Produk",
+      "totalTrades": "Total Trading",
+      "totalNetDeposit": "Total Setoran Bersih",
+      "totalRebate": "Total Rabat",
+      "totalDeposit": "Total Setoran",
+      "totalWithdrawal": "Total Penarikan",
+      "totalLots": "Total Lot",
+      "selectTimeRange": "Pilih Rentang Waktu",
+      "last30Days": "30 Hari Terakhir",
+      "last7Days": "7 Hari Terakhir",
+      "customTime": "Waktu Kustom",
+      "selectChartType": "Pilih Jenis Grafik",
+      "areaChart": "Grafik Area",
+      "lineChart": "Grafik Garis",
+      "pleaseSelectTime": "Silakan pilih waktu",
+      "endTimeBeforeStart": "Waktu akhir tidak boleh sebelum waktu mulai",
+      "timeRangeExceeds30Days": "Rentang waktu tidak boleh lebih dari 30 hari",
+      "hierarchyData": "Data Hierarki",
+      "name": "Nama",
+      "groupCode": "Kode Grup",
+      "tradesCount": "Jumlah Trading",
+      "netDeposit": "Setoran Bersih",
+      "deposit": "Setoran",
+      "withdrawal": "Penarikan",
+      "rebate": "Rabat",
+      "lots": "Lot",
+      "searchUserUid": "Masukkan ID/nama pengguna"
     }
   },
   "sales": {
@@ -2563,7 +2597,7 @@
       "days7": "7 Hari",
       "area": "Grafik Area",
       "line": "Grafik Garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Masukkan ID/nama pengguna",
       "selectIdentity": "Pilih Identitas",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2586,7 +2620,9 @@
       "deposit": "Setoran",
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebate pribadi",
+      "teamRebateTotal": "Total rebate semua level agen"
     },
     "lead": {
       "title": "Prospek",
