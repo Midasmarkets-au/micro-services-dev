@@ -1264,7 +1264,8 @@
       "amountInteger": "금액은 정수여야 합니다",
       "selectChannel": "결제 방법을 선택해 주세요",
       "requiredField": "필수 입력 항목입니다",
-      "maxLength": "최대 {max}자"
+      "maxLength": "최대 {max}자",
+      "nativeNameChinese": "이름은 중국어여야 합니다"
     },
     "creditCard": {
       "title": "신용카드",
@@ -2117,7 +2118,7 @@
       "withdrawal": "출금",
       "rebate": "리베이트",
       "lots": "로트",
-      "searchUserUid": "사용자 UID 검색"
+      "searchUserUid": "사용자 ID/이름을 입력하세요"
     }
   },
   "sales": {
@@ -2546,7 +2547,7 @@
       "days7": "7일",
       "area": "영역 차트",
       "line": "선 차트",
-      "searchUserUid": "사용자 UID 검색",
+      "searchUserUid": "사용자 ID/이름을 입력하세요",
       "selectIdentity": "신분 선택",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2569,7 +2570,9 @@
       "deposit": "입금",
       "withdrawal": "출금",
       "rebate": "리베이트",
-      "lots": "로트"
+      "lots": "로트",
+      "personalRebate": "개인 리베이트",
+      "teamRebateTotal": "각 레벨 에이전트 리베이트 총액"
     },
     "lead": {
       "title": "리드",

@@ -1264,7 +1264,8 @@
       "amountInteger": "Jumlah harus berupa bilangan bulat",
       "selectChannel": "Harap pilih metode pembayaran",
       "requiredField": "Kolom ini wajib diisi",
-      "maxLength": "Maksimum {max} karakter"
+      "maxLength": "Maksimum {max} karakter",
+      "nativeNameChinese": "Nama harus dalam bahasa Tionghoa"
     },
     "creditCard": {
       "title": "Kartu Kredit",
@@ -2117,7 +2118,7 @@
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
       "lots": "Lot",
-      "searchUserUid": "Cari UID pengguna"
+      "searchUserUid": "Masukkan ID/nama pengguna"
     }
   },
   "sales": {
@@ -2569,7 +2570,7 @@
       "days7": "7 Hari",
       "area": "Grafik Area",
       "line": "Grafik Garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Masukkan ID/nama pengguna",
       "selectIdentity": "Pilih Identitas",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2592,7 +2593,9 @@
       "deposit": "Setoran",
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebate pribadi",
+      "teamRebateTotal": "Total rebate semua level agen"
     },
     "lead": {
       "title": "Prospek",

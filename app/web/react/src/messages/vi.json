@@ -1264,7 +1264,8 @@
       "amountInteger": "Số tiền phải là số nguyên",
       "selectChannel": "Vui lòng chọn phương thức thanh toán",
       "requiredField": "Trường này là bắt buộc",
-      "maxLength": "Tối đa {max} ký tự"
+      "maxLength": "Tối đa {max} ký tự",
+      "nativeNameChinese": "Tên phải bằng tiếng Trung"
     },
     "creditCard": {
       "title": "Thẻ tín dụng",
@@ -2117,7 +2118,7 @@
       "withdrawal": "Rút tiền",
       "rebate": "Hoàn phí",
       "lots": "Lot",
-      "searchUserUid": "Tìm UID người dùng"
+      "searchUserUid": "Vui lòng nhập ID/tên người dùng"
     }
   },
   "sales": {
@@ -2546,7 +2547,7 @@
       "days7": "7 ngày",
       "area": "Biểu đồ vùng",
       "line": "Biểu đồ đường",
-      "searchUserUid": "Tìm UID người dùng",
+      "searchUserUid": "Vui lòng nhập ID/tên người dùng",
       "selectIdentity": "Chọn danh tính",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2569,7 +2570,9 @@
       "deposit": "Nạp tiền",
       "withdrawal": "Rút tiền",
       "rebate": "Hoàn phí",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Hoàn phí cá nhân",
+      "teamRebateTotal": "Tổng hoàn phí các cấp đại lý"
     },
     "lead": {
       "title": "Lead",

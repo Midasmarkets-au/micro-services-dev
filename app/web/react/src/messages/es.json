@@ -1262,7 +1262,8 @@
       "amountInteger": "El monto debe ser un número entero",
       "selectChannel": "Por favor seleccione el método de pago",
       "requiredField": "Este campo es obligatorio",
-      "maxLength": "Máximo {max} caracteres"
+      "maxLength": "Máximo {max} caracteres",
+      "nativeNameChinese": "El nombre debe estar en chino"
     },
     "creditCard": {
       "title": "Tarjeta de Crédito",
@@ -2115,7 +2116,7 @@
       "withdrawal": "Retiro",
       "rebate": "Reembolso",
       "lots": "Lotes",
-      "searchUserUid": "Buscar UID de usuario"
+      "searchUserUid": "Ingrese ID/nombre de usuario"
     }
   },
   "sales": {
@@ -2544,7 +2545,7 @@
       "days7": "7 días",
       "area": "Gráfico de área",
       "line": "Gráfico de líneas",
-      "searchUserUid": "Buscar UID de usuario",
+      "searchUserUid": "Ingrese ID/nombre de usuario",
       "selectIdentity": "Seleccionar identidad",
       "roleSale": "Ventas",
       "roleIb": "IB",
@@ -2567,7 +2568,9 @@
       "deposit": "Depósito",
       "withdrawal": "Retiro",
       "rebate": "Reembolso",
-      "lots": "Lotes"
+      "lots": "Lotes",
+      "personalRebate": "Rebate personal",
+      "teamRebateTotal": "Rebate total de todos los niveles de agentes"
     },
     "lead": {
       "title": "Prospectos",

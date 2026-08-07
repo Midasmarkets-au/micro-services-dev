@@ -1264,7 +1264,8 @@
       "amountInteger": "ចំនួនត្រូវតែជាចំនួនគត់",
       "selectChannel": "សូមជ្រើសរើសវិធីទូទាត់",
       "requiredField": "វាលនេះត្រូវការ",
-      "maxLength": "អតិបរមា {max} តួអក្សរ"
+      "maxLength": "អតិបរមា {max} តួអក្សរ",
+      "nativeNameChinese": "ឈ្មោះត្រូវតែជាភាសាចិន"
     },
     "creditCard": {
       "title": "ប័ណ្ណឥណទាន",
@@ -2117,7 +2118,7 @@
       "withdrawal": "ការដកប្រាក់",
       "rebate": "Rebate",
       "lots": "Lot",
-      "searchUserUid": "ស្វែងរក UID អ្នកប្រើ"
+      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ"
     }
   },
   "sales": {
@@ -2546,7 +2547,7 @@
       "days7": "៧ ថ្ងៃ",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "ស្វែងរក UID អ្នកប្រើ",
+      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ",
       "selectIdentity": "ជ្រើសអត្តសញ្ញាណ",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2569,7 +2570,9 @@
       "deposit": "ការដាក់ប្រាក់",
       "withdrawal": "ការដកប្រាក់",
       "rebate": "Rebate",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebate ផ្ទាល់ខ្លួន",
+      "teamRebateTotal": "សរុប Rebate គ្រប់កម្រិតភ្នាក់ងារ"
     },
     "lead": {
       "title": "Lead",

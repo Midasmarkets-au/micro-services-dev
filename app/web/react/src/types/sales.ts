@@ -483,6 +483,7 @@ export interface SalesHierarchyNode {
   deposit?: number;
   withdrawal?: number;
   rebate?: number;
+  teamRebate?: number;
   lots?: number;
   products?: string;
   children?: SalesHierarchyNode[];
