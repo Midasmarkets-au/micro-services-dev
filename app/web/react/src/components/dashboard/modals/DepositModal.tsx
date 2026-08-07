@@ -46,6 +46,7 @@ const HELP2PAY_TYPE = 'Help2Pay';
 const PAY247_TYPE = 'Pay247';
 const RDDPAY_TYPE ='RDDPay';
 const NPay_TYPE ='NPay';
+const CHINESE_NATIVE_NAME_REGEX = /^[\u3400-\u9FFF\uF900-\uFAFF\s·]+$/;
 /**
  * Groups that fan out into multiple PaymentMethod rows on the backend
  * and render a step-3 dropdown driven by `groupInfo.paymentMethods`.
@@ -493,6 +494,15 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     );
   }, [groupInfo]);
 
+  const requiresChineseNativeName = selectedGroup?.type === NPay_TYPE && visibleRequestKeys.includes('nativeName');
+
+  const nativeNameChineseError = useMemo(() => {
+    if (!requiresChineseNativeName) return false;
+    const nativeName = dynamicFields.nativeName?.trim();
+    if (!nativeName) return false;
+    return !CHINESE_NATIVE_NAME_REGEX.test(nativeName);
+  }, [requiresChineseNativeName, dynamicFields.nativeName]);
+
   const validateJpyBeforeProceed = useCallback((): boolean => {
     if (!isExLinkJpy) return true;
     if (wirePaymentInfos.length === 0) {
@@ -521,6 +531,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
         if (!dynamicFields[key]?.trim()) return false;
       }
     }
+    if (nativeNameChineseError) return false;
     return true;
   }, [
     amount,
@@ -530,6 +541,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     wirePaymentInfos.length,
     visibleRequestKeys,
     dynamicFields,
+    nativeNameChineseError,
   ]);
 
   const qrCodeImageSrc = useMemo(
@@ -1024,6 +1036,12 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                           onChange={(e) =>
                             setDynamicFields((prev) => ({ ...prev, [key]: e.target.value }))
                           }
+                          error={
+                            requiresChineseNativeName && key === 'nativeName' && nativeNameChineseError
+                              ? t('error.nativeNameChinese')
+                              : undefined
+                          }
+                          errorPosition="bottom"
                         />
                       );
                     })}

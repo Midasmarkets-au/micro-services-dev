@@ -1262,7 +1262,8 @@
       "amountInteger": "El monto debe ser un número entero",
       "selectChannel": "Por favor seleccione el método de pago",
       "requiredField": "Este campo es obligatorio",
-      "maxLength": "Máximo {max} caracteres"
+      "maxLength": "Máximo {max} caracteres",
+      "nativeNameChinese": "El nombre debe estar en chino"
     },
     "creditCard": {
       "title": "Tarjeta de Crédito",

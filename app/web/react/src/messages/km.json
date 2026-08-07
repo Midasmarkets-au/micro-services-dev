@@ -1264,7 +1264,8 @@
       "amountInteger": "ចំនួនត្រូវតែជាចំនួនគត់",
       "selectChannel": "សូមជ្រើសរើសវិធីទូទាត់",
       "requiredField": "វាលនេះត្រូវការ",
-      "maxLength": "អតិបរមា {max} តួអក្សរ"
+      "maxLength": "អតិបរមា {max} តួអក្សរ",
+      "nativeNameChinese": "ឈ្មោះត្រូវតែជាភាសាចិន"
     },
     "creditCard": {
       "title": "ប័ណ្ណឥណទាន",
