@@ -1292,7 +1292,8 @@
       "amountInteger": "Jumlah mestilah integer",
       "selectChannel": "Sila pilih kaedah pembayaran",
       "requiredField": "Medan ini diperlukan",
-      "maxLength": "Maksimum {max} aksara"
+      "maxLength": "Maksimum {max} aksara",
+      "nativeNameChinese": "Nama mesti dalam bahasa Cina"
     },
     "creditCard": {
       "title": "Kad Kredit",

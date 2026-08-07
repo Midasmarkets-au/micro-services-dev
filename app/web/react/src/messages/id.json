@@ -1292,7 +1292,8 @@
       "amountInteger": "Jumlah harus berupa bilangan bulat",
       "selectChannel": "Harap pilih metode pembayaran",
       "requiredField": "Kolom ini wajib diisi",
-      "maxLength": "Maksimum {max} karakter"
+      "maxLength": "Maksimum {max} karakter",
+      "nativeNameChinese": "Nama harus dalam bahasa Tionghoa"
     },
     "creditCard": {
       "title": "Kartu Kredit",

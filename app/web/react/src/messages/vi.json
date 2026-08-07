@@ -1292,7 +1292,8 @@
       "amountInteger": "Số tiền phải là số nguyên",
       "selectChannel": "Vui lòng chọn phương thức thanh toán",
       "requiredField": "Trường này là bắt buộc",
-      "maxLength": "Tối đa {max} ký tự"
+      "maxLength": "Tối đa {max} ký tự",
+      "nativeNameChinese": "Tên phải bằng tiếng Trung"
     },
     "creditCard": {
       "title": "Thẻ tín dụng",
