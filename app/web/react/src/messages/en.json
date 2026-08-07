@@ -1267,7 +1267,8 @@
       "amountInteger": "Amount must be an integer",
       "selectChannel": "Please select a payment method",
       "requiredField": "This field is required",
-      "maxLength": "Max {max} characters"
+      "maxLength": "Max {max} characters",
+      "nativeNameChinese": "Name must be in Chinese"
     },
     "creditCard": {
       "title": "Credit Card",

@@ -1267,7 +1267,8 @@
       "amountInteger": "金额必须为整数",
       "selectChannel": "请选择支付方式",
       "requiredField": "此项为必填",
-      "maxLength": "最多 {max} 个字符"
+      "maxLength": "最多 {max} 个字符",
+      "nativeNameChinese": "姓名需为中文"
     },
     "creditCard": {
       "title": "信用卡",

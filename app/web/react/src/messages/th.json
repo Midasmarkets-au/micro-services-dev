@@ -1264,7 +1264,8 @@
       "amountInteger": "จำนวนต้องเป็นจำนวนเต็ม",
       "selectChannel": "กรุณาเลือกวิธีชำระเงิน",
       "requiredField": "จำเป็นต้องกรอกข้อมูลนี้",
-      "maxLength": "สูงสุด {max} ตัวอักษร"
+      "maxLength": "สูงสุด {max} ตัวอักษร",
+      "nativeNameChinese": "ชื่อต้องเป็นภาษาจีน"
     },
     "creditCard": {
       "title": "บัตรเครดิต",
