@@ -2121,7 +2121,9 @@
       "withdrawal": "Withdrawal",
       "rebate": "Rebate",
       "lots": "Lots",
-      "searchUserUid": "Please enter user ID/name"
+      "searchUserUid": "Please enter user ID/name",
+      "personalRebate": "Personal Rebate",
+      "teamRebateTotal": "Total Rebate Across Agent Levels"
     }
   },
   "sales": {

@@ -2118,7 +2118,9 @@
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
       "lots": "Lot",
-      "searchUserUid": "Masukkan ID/nama pengguna"
+      "searchUserUid": "Masukkan ID/nama pengguna",
+      "personalRebate": "Rebate pribadi",
+      "teamRebateTotal": "Total rebate semua level agen"
     }
   },
   "sales": {

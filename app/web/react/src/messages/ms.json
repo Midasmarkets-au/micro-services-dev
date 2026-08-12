@@ -2118,7 +2118,9 @@
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
       "lots": "Lot",
-      "searchUserUid": "Sila masukkan ID/nama pengguna"
+      "searchUserUid": "Sila masukkan ID/nama pengguna",
+      "personalRebate": "Rebat peribadi",
+      "teamRebateTotal": "Jumlah rebat semua peringkat ejen"
     }
   },
   "sales": {

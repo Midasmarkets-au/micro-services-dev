@@ -2118,7 +2118,9 @@
       "withdrawal": "出金",
       "rebate": "返佣",
       "lots": "手數",
-      "searchUserUid": "請輸入用戶ID/名稱"
+      "searchUserUid": "請輸入用戶ID/名稱",
+      "personalRebate": "個人返傭",
+      "teamRebateTotal": "各級代理返傭總額"
     }
   },
   "sales": {

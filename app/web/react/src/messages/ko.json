@@ -2118,7 +2118,9 @@
       "withdrawal": "출금",
       "rebate": "리베이트",
       "lots": "로트",
-      "searchUserUid": "사용자 ID/이름을 입력하세요"
+      "searchUserUid": "사용자 ID/이름을 입력하세요",
+      "personalRebate": "개인 리베이트",
+      "teamRebateTotal": "각 레벨 에이전트 리베이트 총액"
     }
   },
   "sales": {
