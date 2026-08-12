@@ -2146,7 +2146,9 @@
       "withdrawal": "Rút tiền",
       "rebate": "Hoàn phí",
       "lots": "Lot",
-      "searchUserUid": "Vui lòng nhập ID/tên người dùng"
+      "searchUserUid": "Vui lòng nhập ID/tên người dùng",
+      "personalRebate": "Hoàn phí cá nhân",
+      "teamRebateTotal": "Tổng hoàn phí các cấp đại lý"
     }
   },
   "sales": {

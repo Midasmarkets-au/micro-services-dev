@@ -501,6 +501,7 @@ export interface IBHierarchyNode {
   deposit?: number;
   withdrawal?: number;
   rebate?: number;
+  teamRebate?: number;
   lots?: number;
   products?: string;
   children?: IBHierarchyNode[];

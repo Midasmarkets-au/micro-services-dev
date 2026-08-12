@@ -2149,7 +2149,9 @@
       "withdrawal": "出金",
       "rebate": "返佣",
       "lots": "手数",
-      "searchUserUid": "请输入用户ID/名称"
+      "searchUserUid": "请输入用户ID/名称",
+      "personalRebate": "个人返佣",
+      "teamRebateTotal": "各级代理返佣总额"
     }
   },
   "sales": {

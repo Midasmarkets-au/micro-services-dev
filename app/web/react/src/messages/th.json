@@ -2146,7 +2146,9 @@
       "withdrawal": "ถอนเงิน",
       "rebate": "รีเบต",
       "lots": "Lot",
-      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้"
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้",
+      "personalRebate": "รีเบตส่วนบุคคล",
+      "teamRebateTotal": "ยอดรวมรีเบตทุกระดับเอเจนต์"
     }
   },
   "sales": {

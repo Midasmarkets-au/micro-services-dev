@@ -487,7 +487,7 @@ function normalizeIBStatisticsHierarchy(nodes?: IBHierarchyNode[]): IBHierarchyN
   return nodes.map((node) => {
     const normalized = normalizeAmountList<IBHierarchyNode>(
       node,
-      ['netDeposit', 'deposit', 'withdrawal', 'rebate']
+      ['netDeposit', 'deposit', 'withdrawal', 'rebate', 'teamRebate']
     ) as IBHierarchyNode;
 
     if (normalized.children?.length) {

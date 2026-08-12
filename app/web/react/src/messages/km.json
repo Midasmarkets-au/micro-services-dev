@@ -2146,7 +2146,9 @@
       "withdrawal": "ការដកប្រាក់",
       "rebate": "Rebate",
       "lots": "Lot",
-      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ"
+      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ",
+      "personalRebate": "Rebate ផ្ទាល់ខ្លួន",
+      "teamRebateTotal": "សរុប Rebate គ្រប់កម្រិតភ្នាក់ងារ"
     }
   },
   "sales": {

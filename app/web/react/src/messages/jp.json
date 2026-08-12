@@ -2146,7 +2146,9 @@
       "withdrawal": "出金",
       "rebate": "リベート",
       "lots": "ロット",
-      "searchUserUid": "ユーザーID/名称を入力してください"
+      "searchUserUid": "ユーザーID/名称を入力してください",
+      "personalRebate": "個人リベート",
+      "teamRebateTotal": "各代理レベルのリベート総額"
     }
   },
   "sales": {

@@ -2144,7 +2144,9 @@
       "withdrawal": "Retiro",
       "rebate": "Reembolso",
       "lots": "Lotes",
-      "searchUserUid": "Ingrese ID/nombre de usuario"
+      "searchUserUid": "Ingrese ID/nombre de usuario",
+      "personalRebate": "Rebate personal",
+      "teamRebateTotal": "Rebate total de todos los niveles de agentes"
     }
   },
   "sales": {
