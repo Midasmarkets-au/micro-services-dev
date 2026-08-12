@@ -54,6 +54,12 @@ export async function proxy(request: NextRequest) {
     
     const expired = request.nextUrl.searchParams.get('expired');
     if (expired === 'true') {
+      // Server Action 会 POST 到当前登录页。此时可能已经写入了新的 token，
+      // 必须直接放行，避免把刚登录生成的新认证信息再次清除。
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return NextResponse.next();
+      }
+
       // Token 已失效，清除所有认证 cookie 并允许访问登录页
       const response = NextResponse.next();
       response.cookies.delete('auth-token');
