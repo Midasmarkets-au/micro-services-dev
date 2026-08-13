@@ -687,6 +687,8 @@
     "__CANCEL_FAILED__": "取消失败",
     "__APPROVE_FAILED__": "审批失败",
     "__PAYMENT_EXECUTE_FAILED__": "支付执行失败，请稍后重试或联系客服",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "暂无可用收款码，请稍后重试",
+    "No available payment codes": "暂无可用收款码，请稍后重试",
     "Payment_method_not_enabled": "未开通此支付通道",
     "__ACCOUNT_CREATE_FAILED__": "账户创建失败",
     "__CHANGE_PASSWORD_FAIL__": "修改密码失败",
@@ -2121,7 +2123,9 @@
       "withdrawal": "出金",
       "rebate": "返佣",
       "lots": "手数",
-      "searchUserUid": "请输入用户ID/名称"
+      "searchUserUid": "请输入用户ID/名称",
+      "personalRebate": "个人返佣",
+      "teamRebateTotal": "各级代理返佣总额"
     }
   },
   "sales": {
