@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "Pembatalan gagal",
     "__APPROVE_FAILED__": "Kelulusan gagal",
     "__PAYMENT_EXECUTE_FAILED__": "Pelaksanaan pembayaran gagal. Sila cuba lagi kemudian atau hubungi perkhidmatan pelanggan",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "Tiada kod pembayaran tersedia. Sila cuba lagi kemudian.",
+    "No available payment codes": "Tiada kod pembayaran tersedia. Sila cuba lagi kemudian.",
     "Payment_method_not_enabled": "Kaedah pembayaran ini tidak diaktifkan",
     "__ACCOUNT_CREATE_FAILED__": "Penciptaan akaun gagal",
     "__CHANGE_PASSWORD_FAIL__": "Pertukaran kata laluan gagal",
@@ -2118,7 +2120,9 @@
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
       "lots": "Lot",
-      "searchUserUid": "Sila masukkan ID/nama pengguna"
+      "searchUserUid": "Sila masukkan ID/nama pengguna",
+      "personalRebate": "Rebat peribadi",
+      "teamRebateTotal": "Jumlah rebat semua peringkat ejen"
     }
   },
   "sales": {

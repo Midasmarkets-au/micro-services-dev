@@ -142,7 +142,10 @@ function HierarchyRow({ node, depth = 0 }: { node: IBHierarchyNode; depth?: numb
           <BalanceShow balance={Number(node.withdrawal ?? 0)} currencyId={currencyId} />
         </td>
         <td className="px-4 py-3 text-right text-text-primary">
-          <BalanceShow balance={Number(node.rebate ?? 0)} currencyId={currencyId} />
+          {node.rebate == 0 ? '-' : <BalanceShow balance={Number(node.rebate)} currencyId={currencyId} />}
+        </td>
+        <td className="px-4 py-3 text-right text-text-primary">
+          {node.teamRebate == 0 ? '-' : <BalanceShow balance={Number(node.teamRebate)} currencyId={currencyId} />}
         </td>
         <td className="px-4 py-3 text-right text-text-primary">{Number(node.lots ?? 0).toFixed(2)}</td>
       </tr>
@@ -173,8 +176,10 @@ export default function IBStatisticsPage() {
     const from = new Date(criteria.from);
     const to = new Date(criteria.to);
     if (to < from) return t('endTimeBeforeStart');
-    const daysDiff = Math.floor((to.getTime() - from.getTime()) / 86400000);
-    if (daysDiff > 30) return t('timeRangeExceeds30Days');
+    // 按起止日期区间计算，最长三个月（与 sales/statistics 一致）
+    const maxTo = new Date(from);
+    maxTo.setMonth(maxTo.getMonth() + 3);
+    if (to > maxTo) return t('timeRangeExceeds30Days');
     return '';
   }, [criteria.from, criteria.timeRange, criteria.to, t]);
 
@@ -549,7 +554,8 @@ export default function IBStatisticsPage() {
                     <th className="px-4 py-3 text-right">{t('netDeposit')}</th>
                     <th className="px-4 py-3 text-right">{t('deposit')}</th>
                     <th className="px-4 py-3 text-right">{t('withdrawal')}</th>
-                    <th className="px-4 py-3 text-right">{t('rebate')}</th>
+                    <th className="px-4 py-3 text-right">{t('personalRebate')}</th>
+                    <th className="px-4 py-3 text-right">{t('teamRebateTotal')}</th>
                     <th className="px-4 py-3 text-right">{t('lots')}</th>
                   </tr>
                 </thead>
@@ -558,7 +564,7 @@ export default function IBStatisticsPage() {
                     statistics.hierarchyData.map((node) => <HierarchyRow key={node.id} node={node} />)
                   ) : (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-text-secondary">
+                      <td colSpan={10} className="px-4 py-12 text-center text-text-secondary">
                         --
                       </td>
                     </tr>

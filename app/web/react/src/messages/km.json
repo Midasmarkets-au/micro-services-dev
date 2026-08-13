@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "ការបោះបង់បរាជ័យ",
     "__APPROVE_FAILED__": "ការអនុម័តបរាជ័យ",
     "__PAYMENT_EXECUTE_FAILED__": "ការដំណើរការការទូទាត់បរាជ័យ សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ ឬទំនាក់ទំនងសេវាអតិថិជន",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "មិនមានលេខកូដទូទាត់ដែលអាចប្រើបានទេ សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ",
+    "No available payment codes": "មិនមានលេខកូដទូទាត់ដែលអាចប្រើបានទេ សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ",
     "Payment_method_not_enabled": "វិធីទូទាត់នេះមិនបានបើកដំណើរការទេ",
     "__ACCOUNT_CREATE_FAILED__": "ការបង្កើតគណនីបរាជ័យ",
     "__CHANGE_PASSWORD_FAIL__": "ការផ្លាស់ប្ដូរពាក្យសម្ងាត់បរាជ័យ",
@@ -2118,7 +2120,9 @@
       "withdrawal": "ការដកប្រាក់",
       "rebate": "Rebate",
       "lots": "Lot",
-      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ"
+      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ",
+      "personalRebate": "Rebate ផ្ទាល់ខ្លួន",
+      "teamRebateTotal": "សរុប Rebate គ្រប់កម្រិតភ្នាក់ងារ"
     }
   },
   "sales": {
