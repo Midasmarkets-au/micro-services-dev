@@ -687,6 +687,8 @@
     "__CANCEL_FAILED__": "Cancel failed",
     "__APPROVE_FAILED__": "Approve failed",
     "__PAYMENT_EXECUTE_FAILED__": "Payment execute failed, please try again later or contact customer service for assistance.",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "No available payment codes. Please try again later.",
+    "No available payment codes": "No available payment codes. Please try again later.",
     "Payment_method_not_enabled": "This payment method is not enabled",
     "__ACCOUNT_CREATE_FAILED__": "Account create failed",
     "__CHANGE_PASSWORD_FAIL__": "Change password failed",

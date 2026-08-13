@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "Hủy thất bại",
     "__APPROVE_FAILED__": "Phê duyệt thất bại",
     "__PAYMENT_EXECUTE_FAILED__": "Thực hiện thanh toán thất bại, vui lòng thử lại sau hoặc liên hệ dịch vụ khách hàng",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "Hiện không có mã thanh toán khả dụng, vui lòng thử lại sau",
+    "No available payment codes": "Hiện không có mã thanh toán khả dụng, vui lòng thử lại sau",
     "Payment_method_not_enabled": "Phương thức thanh toán này chưa được kích hoạt",
     "__ACCOUNT_CREATE_FAILED__": "Tạo tài khoản thất bại",
     "__CHANGE_PASSWORD_FAIL__": "Đổi mật khẩu thất bại",

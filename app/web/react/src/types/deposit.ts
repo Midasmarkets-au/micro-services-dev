@@ -44,7 +44,7 @@ export interface DepositGroupInfo {
   requestValues: Record<string, any>;
   hashId: string;
   instruction: string;
-  /** 仅 ExLinkGlobal 等按币种独立配置的渠道返回 */
+  /** 仅 ExLinkGlobal / Help2Pay / NPay / AliPay2 等按子渠道独立配置的渠道返回 */
   paymentMethods?: PaymentMethodConfig[];
 }
 
