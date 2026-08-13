@@ -46,6 +46,7 @@ const HELP2PAY_TYPE = 'Help2Pay';
 const PAY247_TYPE = 'Pay247';
 const RDDPAY_TYPE ='RDDPay';
 const NPay_TYPE ='NPay';
+const AliPay2_TYPE ='AliPay2';
 const CHINESE_NATIVE_NAME_REGEX = /^[\u3400-\u9FFF\uF900-\uFAFF\s·]+$/;
 /**
  * Groups that fan out into multiple PaymentMethod rows on the backend
@@ -53,8 +54,9 @@ const CHINESE_NATIVE_NAME_REGEX = /^[\u3400-\u9FFF\uF900-\uFAFF\s·]+$/;
  * - ExLinkGlobal: one row per primary currency.
  * - Help2Pay:     one row per (channel x currency) — two rows may share a currency.
  * - Pay247:       one row per (currency x pay_method) — bank selection deferred to the hosted page.
+ * - AliPay2:      one row per payment method (WeChat / Alipay), QR allocated by payment-tunnel.
  */
-const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE, PAY247_TYPE,RDDPAY_TYPE, NPay_TYPE] as const;
+const MULTI_METHOD_TYPES = [EXLINK_GLOBAL_TYPE, HELP2PAY_TYPE, PAY247_TYPE,RDDPAY_TYPE, NPay_TYPE, AliPay2_TYPE] as const;
 
 interface DepositModalProps {
   open: boolean;
@@ -214,8 +216,10 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
   const depositErrorMessage = useMemo(() => {
     const err = depositResponse?.error;
     if (!err) return t('guide.error');
-    if (err.startsWith('__')) {
-      const translated = tErrors(err);
+    const lookup =
+      err === 'No available payment codes' ? '__NO_AVAILABLE_PAYMENT_CODES__' : err;
+    if (lookup.startsWith('__')) {
+      const translated = tErrors(lookup);
       if (translated && !translated.startsWith('errorCodes.')) return translated;
     }
     return err;
@@ -494,7 +498,9 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     );
   }, [groupInfo]);
 
-  const requiresChineseNativeName = selectedGroup?.type === NPay_TYPE && visibleRequestKeys.includes('nativeName');
+  const requiresChineseNativeName =
+    selectedGroup?.type === NPay_TYPE &&
+    visibleRequestKeys.includes('nativeName');
 
   const nativeNameChineseError = useMemo(() => {
     if (!requiresChineseNativeName) return false;
