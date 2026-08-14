@@ -130,6 +130,9 @@ function extractQrTransactionId(response: DepositResponse): string {
   const direct = getStringField(response as unknown as Record<string, unknown>, ['transactionId', 'transactionID']);
   if (direct) return direct;
 
+  const fromInfo = getStringField(response.info as unknown as Record<string, unknown>, ['transactionId', 'transactionID']);
+  if (fromInfo) return fromInfo;
+
   const fromText = tryParse(response.textForQrCode);
   if (fromText) return fromText;
 
@@ -560,6 +563,17 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     [depositResponse]
   );
 
+  const bankTransferInfo = useMemo(() => {
+    const info = depositResponse?.info;
+    if (!info) return null;
+    const bankName = info.bankName?.trim() || '';
+    const bankBranch = info.bankBranch?.trim() || '';
+    const accountName = info.accountName?.trim() || '';
+    const accountNo = info.accountNo?.trim() || '';
+    if (!bankName && !bankBranch && !accountName && !accountNo) return null;
+    return { bankName, bankBranch, accountName, accountNo };
+  }, [depositResponse?.info]);
+
   const notifyPaid = useCallback(async () => {
     if (isPaidConfirmed || !qrTransactionId) return;
     setIsPaidSubmitting(true);
@@ -584,7 +598,11 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
     setCountDown(0);
 
     const raw: unknown = depositResponse?.message;
-    if (!raw || depositResponse?.action !== DepositActions.QrCode) return;
+    if (
+      !raw ||
+      (depositResponse?.action !== DepositActions.QrCode &&
+        depositResponse?.action !== DepositActions.BankTransfer)
+    ) return;
 
     // 解析 message：数字（分钟数）、数字字符串，或 UTC 绝对时间戳字符串
     let expiresAt: Date | null = null;
@@ -668,7 +686,7 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
 
       // Post / Redirect：不显示 instruction，显示 MethodCard + 跳转链接
       const isRedirectAction = action === DepositActions.Post || action === DepositActions.Redirect;
-      setShowInstruction(!isRedirectAction);
+      setShowInstruction(!isRedirectAction && action !== DepositActions.BankTransfer);
 
       if (action === DepositActions.Redirect && redirectUrl) {
         window.open(redirectUrl, '_blank');
@@ -1151,6 +1169,65 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                             </Button>
                           </>
                         )}
+
+                        {depositResponse.message && (
+                          <p className="text-xs text-text-secondary">
+                            {t('guide.paymentExpireTime')}：{' '}
+                            <span className={`font-bold ${isExpired ? 'text-error' : 'text-danger'}`}>
+                              {isExpired ? t('guide.expired') : countDownText}
+                            </span>
+                          </p>
+                        )}
+
+                        {qrTransactionId && (
+                          <Button
+                            variant="primary"
+                            disabled={isPaidSubmitting || isPaidConfirmed || isExpired}
+                            loading={isPaidSubmitting}
+                            onClick={notifyPaid}
+                          >
+                            {isPaidConfirmed ? t('guide.paidConfirmed') : t('guide.completePayment')}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {depositResponse.action === DepositActions.BankTransfer && bankTransferInfo && (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-sm text-text-secondary">{t('guide.bankTransferNotice')}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(
+                            [
+                              ['bankName', bankTransferInfo.bankName],
+                              ['bankBranch', bankTransferInfo.bankBranch],
+                              ['accountName', bankTransferInfo.accountName],
+                              ['accountNo', bankTransferInfo.accountNo],
+                            ] as const
+                          )
+                            .filter(([, value]) => value)
+                            .map(([key, value]) => (
+                              <div
+                                key={key}
+                                className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-surface-secondary px-3 py-3"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-xs text-text-secondary">{t(`guide.${key}`)}</p>
+                                  <p className="text-sm font-medium text-text-primary break-all">{value}</p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(value);
+                                    showSuccess(t('guide.copied'));
+                                  }}
+                                >
+                                  {t('guide.copy')}
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
 
                         {depositResponse.message && (
                           <p className="text-xs text-text-secondary">

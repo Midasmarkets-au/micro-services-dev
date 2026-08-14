@@ -1256,6 +1256,12 @@
       "redirect": "Klik untuk diarahkan",
       "error": "Pembayaran gagal, silakan coba lagi",
       "qrCodeNotice": "Harap pindai kode QR untuk menyelesaikan pembayaran",
+      "bankTransferNotice": "Silakan transfer ke rekening di bawah, lalu ketuk “Saya telah menyelesaikan pembayaran”",
+      "bankName": "Nama Bank",
+      "bankBranch": "Cabang Bank",
+      "accountName": "Nama Rekening",
+      "accountNo": "Nomor Rekening",
+      "copy": "Salin",
       "completePayment": "Saya telah menyelesaikan pembayaran",
       "paidConfirmed": "Pembayaran dikonfirmasi",
       "paidSuccess": "Konfirmasi pembayaran diajukan"

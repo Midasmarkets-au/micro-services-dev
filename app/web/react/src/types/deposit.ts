@@ -78,7 +78,20 @@ export enum DepositActions {
   Redirect = 'Redirect',
   Post = 'Post',
   QrCode = 'QrCode',
+  BankTransfer = 'BankTransfer',
   PayPal = 'PayPal',
+}
+
+export interface DepositBankInfo {
+  transactionId?: string;
+  payeeName?: string;
+  accountType?: string;
+  bankName?: string;
+  bankBranch?: string;
+  accountName?: string;
+  accountNo?: string;
+  amount?: number;
+  expiresAt?: string;
 }
 
 export interface DepositResponse {
@@ -89,8 +102,10 @@ export interface DepositResponse {
   form?: Record<string, string>;
   instruction?: string;
   textForQrCode?: string;
-  message?: number;
+  message?: number | string;
   error?: string;
+  transactionId?: string;
+  info?: DepositBankInfo;
 }
 
 // 贯穿全流程的数据容器
