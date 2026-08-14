@@ -1284,6 +1284,12 @@
       "redirect": "點擊跳轉",
       "error": "支付失敗，請重試",
       "qrCodeNotice": "請掃描二維碼完成支付",
+      "bankTransferNotice": "請向以下帳戶轉帳，完成後點擊「我已完成支付」",
+      "bankName": "收款銀行",
+      "bankBranch": "開戶行",
+      "accountName": "收款帳戶名",
+      "accountNo": "收款帳戶",
+      "copy": "複製",
       "completePayment": "我已完成支付",
       "paidConfirmed": "已確認支付",
       "paidSuccess": "支付確認已提交"

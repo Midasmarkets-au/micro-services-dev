@@ -1284,6 +1284,12 @@
       "redirect": "클릭하여 이동",
       "error": "결제에 실패했습니다. 다시 시도해 주세요",
       "qrCodeNotice": "QR 코드를 스캔하여 결제를 완료해 주세요",
+      "bankTransferNotice": "아래 계좌로 이체한 뒤 “결제를 완료했습니다”를 눌러 주세요",
+      "bankName": "은행명",
+      "bankBranch": "지점명",
+      "accountName": "예금주",
+      "accountNo": "계좌번호",
+      "copy": "복사",
       "completePayment": "결제를 완료했습니다",
       "paidConfirmed": "결제 확인됨",
       "paidSuccess": "결제 확인이 제출되었습니다"

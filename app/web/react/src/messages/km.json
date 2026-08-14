@@ -1284,6 +1284,12 @@
       "redirect": "ចុចដើម្បីទៅ",
       "error": "ការទូទាត់បរាជ័យ សូមព្យាយាមម្ដងទៀត",
       "qrCodeNotice": "ស្កេន QR Code ដើម្បីបញ្ចប់ការទូទាត់",
+      "bankTransferNotice": "Please transfer to the account below, then tap “I have completed payment”",
+      "bankName": "Bank Name",
+      "bankBranch": "Bank Branch",
+      "accountName": "Account Name",
+      "accountNo": "Account Number",
+      "copy": "Copy",
       "completePayment": "ការទូទាត់ត្រូវបានបញ្ចប់",
       "paidConfirmed": "ការទូទាត់ត្រូវបានបញ្ជាក់",
       "paidSuccess": "ការបញ្ជាក់ការទូទាត់ត្រូវបានដាក់ស្នើ"

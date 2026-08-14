@@ -1287,6 +1287,12 @@
       "redirect": "点击跳转",
       "error": "支付失败，请重试",
       "qrCodeNotice": "请扫描二维码完成支付",
+      "bankTransferNotice": "请向以下账户转账，完成后点击“我已完成支付”",
+      "bankName": "收款银行",
+      "bankBranch": "开户行",
+      "accountName": "收款帐户名",
+      "accountNo": "收款帐户",
+      "copy": "复制",
       "completePayment": "我已完成支付",
       "paidConfirmed": "已确认支付",
       "paidSuccess": "支付确认已提交"
