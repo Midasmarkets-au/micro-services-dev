@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "เปิดใช้งานการยืนยันตัวตนสองขั้นตอนแล้ว",
         "twoFactorDisabled": "ปิดใช้งานการยืนยันตัวตนสองขั้นตอนแล้ว",
-        "codeSent": "ส่งรหัสยืนยันไปยังอีเมลแล้ว"
+        "codeSent": "ส่งรหัสยืนยันไปยังอีเมลแล้ว",
+        "passwordChanged": "เปลี่ยนรหัสผ่านแล้ว"
       }
     },
     "files": {
@@ -1256,6 +1257,12 @@
       "redirect": "คลิกเพื่อไปยัง",
       "error": "การชำระเงินล้มเหลว กรุณาลองใหม่",
       "qrCodeNotice": "สแกน QR Code เพื่อชำระเงิน",
+      "bankTransferNotice": "โอนเงินไปยังบัญชีด้านล่าง แล้วแตะ “การชำระเงินเสร็จสิ้น”",
+      "bankName": "ธนาคาร",
+      "bankBranch": "สาขา",
+      "accountName": "ชื่อบัญชี",
+      "accountNo": "เลขบัญชี",
+      "copy": "คัดลอก",
       "completePayment": "การชำระเงินเสร็จสิ้น",
       "paidConfirmed": "ยืนยันการชำระเงินแล้ว",
       "paidSuccess": "ส่งการยืนยันการชำระเงินแล้ว"
@@ -1750,7 +1757,10 @@
       "linkName": "ชื่อลิงก์",
       "linkType": "ประเภทลิงก์",
       "default": "ค่าเริ่มต้น",
-      "referralUrl": "ลิงก์อ้างอิง"
+      "referralUrl": "ลิงก์อ้างอิง",
+      "transactionType": "ประเภทธุรกรรม",
+      "transactionStatus": "สถานะธุรกรรม",
+      "orderType": "ประเภทคำสั่ง"
     },
     "action": {
       "search": "ค้นหา",

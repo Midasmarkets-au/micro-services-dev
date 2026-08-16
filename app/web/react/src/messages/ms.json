@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Pengesahan dua faktor telah diaktifkan",
         "twoFactorDisabled": "Pengesahan dua faktor telah dinyahdayakan",
-        "codeSent": "Kod pengesahan telah dihantar ke e-mel"
+        "codeSent": "Kod pengesahan telah dihantar ke e-mel",
+        "passwordChanged": "Kata laluan telah ditukar"
       }
     },
     "files": {
@@ -1256,6 +1257,12 @@
       "redirect": "Klik untuk redirect",
       "error": "Pembayaran gagal. Sila cuba lagi",
       "qrCodeNotice": "Imbas kod QR untuk melengkapkan pembayaran",
+      "bankTransferNotice": "Sila pindahkan ke akaun di bawah, kemudian ketik “Pembayaran selesai”",
+      "bankName": "Nama Bank",
+      "bankBranch": "Cawangan Bank",
+      "accountName": "Nama Akaun",
+      "accountNo": "Nombor Akaun",
+      "copy": "Salin",
       "completePayment": "Pembayaran selesai",
       "paidConfirmed": "Pembayaran disahkan",
       "paidSuccess": "Pengesahan pembayaran telah dihantar"
@@ -1750,7 +1757,10 @@
       "linkName": "Nama pautan",
       "linkType": "Jenis pautan",
       "default": "Lalai",
-      "referralUrl": "Pautan rujukan"
+      "referralUrl": "Pautan rujukan",
+      "transactionType": "Jenis transaksi",
+      "transactionStatus": "Status transaksi",
+      "orderType": "Jenis pesanan"
     },
     "action": {
       "search": "Cari",

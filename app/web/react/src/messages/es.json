@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Autenticación de dos factores habilitada",
         "twoFactorDisabled": "Autenticación de dos factores deshabilitada",
-        "codeSent": "Código de verificación enviado a su correo electrónico"
+        "codeSent": "Código de verificación enviado a su correo electrónico",
+        "passwordChanged": "Contraseña cambiada exitosamente"
       }
     },
     "files": {
@@ -1254,6 +1255,12 @@
       "redirect": "Hacer clic para redirigir",
       "error": "Pago fallido, por favor intente de nuevo",
       "qrCodeNotice": "Por favor escanee el código QR para completar el pago",
+      "bankTransferNotice": "Transfiera a la cuenta siguiente y pulse “He completado el pago”",
+      "bankName": "Banco",
+      "bankBranch": "Sucursal",
+      "accountName": "Nombre de la cuenta",
+      "accountNo": "Número de cuenta",
+      "copy": "Copiar",
       "completePayment": "He completado el pago",
       "paidConfirmed": "Pago confirmado",
       "paidSuccess": "Confirmación de pago enviada"
@@ -1748,7 +1755,10 @@
       "linkName": "Nombre del enlace",
       "linkType": "Tipo de enlace",
       "default": "Predeterminado",
-      "referralUrl": "Enlace de referido"
+      "referralUrl": "Enlace de referido",
+      "transactionType": "Tipo de transacción",
+      "transactionStatus": "Estado de transacción",
+      "orderType": "Tipo de orden"
     },
     "action": {
       "search": "Buscar",

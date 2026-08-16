@@ -861,7 +861,8 @@
       "messages": {
         "twoFactorEnabled": "Two-factor authentication enabled",
         "twoFactorDisabled": "Two-factor authentication disabled",
-        "codeSent": "Verification code sent to your email"
+        "codeSent": "Verification code sent to your email",
+        "passwordChanged": "Password changed successfully"
       }
     },
     "files": {
@@ -1259,6 +1260,12 @@
       "redirect": "Click to redirect",
       "error": "Payment failed, please try again",
       "qrCodeNotice": "Please scan the QR code to complete payment",
+      "bankTransferNotice": "Please transfer to the account below, then tap “I have completed payment”",
+      "bankName": "Bank Name",
+      "bankBranch": "Bank Branch",
+      "accountName": "Account Name",
+      "accountNo": "Account Number",
+      "copy": "Copy",
       "completePayment": "I have completed payment",
       "paidConfirmed": "Payment confirmed",
       "paidSuccess": "Payment confirmation submitted"
@@ -1753,7 +1760,10 @@
       "linkName": "Link Name",
       "linkType": "Link Type",
       "default": "Default",
-      "referralUrl": "Referral URL"
+      "referralUrl": "Referral URL",
+      "transactionType": "Transaction Type",
+      "transactionStatus": "Transaction Status",
+      "orderType": "Order Type"
     },
     "action": {
       "search": "Search",

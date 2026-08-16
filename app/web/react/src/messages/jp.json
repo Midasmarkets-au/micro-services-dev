@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "二要素認証が有効になりました",
         "twoFactorDisabled": "二要素認証が無効になりました",
-        "codeSent": "認証コードをメールアドレスに送信しました"
+        "codeSent": "認証コードをメールアドレスに送信しました",
+        "passwordChanged": "パスワードを変更しました"
       }
     },
     "files": {
@@ -1256,6 +1257,12 @@
       "redirect": "クリックしてリダイレクト",
       "error": "支払いに失敗しました。もう一度お試しください",
       "qrCodeNotice": "QRコードをスキャンして支払いを完了してください",
+      "bankTransferNotice": "以下の口座へお振込み後、「支払いを完了しました」をタップしてください",
+      "bankName": "銀行名",
+      "bankBranch": "支店名",
+      "accountName": "口座名義",
+      "accountNo": "口座番号",
+      "copy": "コピー",
       "completePayment": "支払いを完了しました",
       "paidConfirmed": "支払いが確認されました",
       "paidSuccess": "支払い確認を送信しました"
@@ -1750,7 +1757,10 @@
       "linkName": "リンク名",
       "linkType": "リンク種類",
       "default": "デフォルト",
-      "referralUrl": "紹介リンク"
+      "referralUrl": "紹介リンク",
+      "transactionType": "取引タイプ",
+      "transactionStatus": "取引ステータス",
+      "orderType": "注文タイプ"
     },
     "action": {
       "search": "検索",

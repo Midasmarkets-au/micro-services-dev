@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Đã bật xác thực hai bước",
         "twoFactorDisabled": "Đã tắt xác thực hai bước",
-        "codeSent": "Đã gửi mã xác minh đến email"
+        "codeSent": "Đã gửi mã xác minh đến email",
+        "passwordChanged": "Đã đổi mật khẩu"
       }
     },
     "files": {
@@ -1256,6 +1257,12 @@
       "redirect": "Nhấp để đến",
       "error": "Thanh toán thất bại, vui lòng thử lại",
       "qrCodeNotice": "Quét mã QR để thanh toán",
+      "bankTransferNotice": "Vui lòng chuyển khoản vào tài khoản bên dưới, rồi nhấn “Thanh toán hoàn thành”",
+      "bankName": "Ngân hàng",
+      "bankBranch": "Chi nhánh",
+      "accountName": "Tên tài khoản",
+      "accountNo": "Số tài khoản",
+      "copy": "Sao chép",
       "completePayment": "Thanh toán hoàn thành",
       "paidConfirmed": "Đã xác nhận thanh toán",
       "paidSuccess": "Đã gửi xác nhận thanh toán"
@@ -1750,7 +1757,10 @@
       "linkName": "Tên liên kết",
       "linkType": "Loại liên kết",
       "default": "Mặc định",
-      "referralUrl": "Liên kết giới thiệu"
+      "referralUrl": "Liên kết giới thiệu",
+      "transactionType": "Loại giao dịch",
+      "transactionStatus": "Trạng thái giao dịch",
+      "orderType": "Loại lệnh"
     },
     "action": {
       "search": "Tìm kiếm",

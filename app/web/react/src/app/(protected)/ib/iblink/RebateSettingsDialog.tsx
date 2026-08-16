@@ -44,6 +44,7 @@ export function RebateSettingsDialog({
 }: RebateSettingsDialogProps) {
   const t = useTranslations('ib');
   const tAccount = useTranslations('accounts');
+  const tCommon = useTranslations('common');
   const { execute } = useServerAction({ showErrorToast: true });
   const executeRef = useRef(execute);
   executeRef.current = execute;
@@ -198,6 +199,7 @@ export function RebateSettingsDialog({
                     isRoot={isRoot}
                     tAccount={tAccount}
                     t={t}
+                    tCommon={tCommon}
                     calculate={calculate}
                   />
                 )}
@@ -290,6 +292,7 @@ function AgentView({
   isRoot,
   tAccount,
   t,
+  tCommon,
   calculate,
 }: {
   data: IBReferralSupplement;
@@ -299,6 +302,7 @@ function AgentView({
   isRoot: boolean;
   tAccount: ReturnType<typeof useTranslations>;
   t: ReturnType<typeof useTranslations>;
+  tCommon: ReturnType<typeof useTranslations>;
   calculate: (a: number, b: number) => string;
 }) {
   const schemas = data.summary?.schema ?? [];
@@ -311,7 +315,7 @@ function AgentView({
   })();
 
   if (schemas.length === 0) {
-    return <div className="py-8 text-center text-sm text-text-secondary">{t('common.noData')}</div>;
+    return <div className="py-8 text-center text-sm text-text-secondary">{tCommon('noData')}</div>;
   }
 
   return (

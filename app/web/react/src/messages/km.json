@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "ការផ្ទៀងផ្ទាត់ ២ ជំហានត្រូវបានបើក",
         "twoFactorDisabled": "ការផ្ទៀងផ្ទាត់ ២ ជំហានត្រូវបានបិទ",
-        "codeSent": "លេខកូដត្រូវបានផ្ញើទៅអ៊ីមែល"
+        "codeSent": "លេខកូដត្រូវបានផ្ញើទៅអ៊ីមែល",
+        "passwordChanged": "ពាក្យសម្ងាត់ត្រូវបានផ្លាស់ប្ដូរ"
       }
     },
     "files": {
@@ -1256,6 +1257,12 @@
       "redirect": "ចុចដើម្បីទៅ",
       "error": "ការទូទាត់បរាជ័យ សូមព្យាយាមម្ដងទៀត",
       "qrCodeNotice": "ស្កេន QR Code ដើម្បីបញ្ចប់ការទូទាត់",
+      "bankTransferNotice": "Please transfer to the account below, then tap “I have completed payment”",
+      "bankName": "Bank Name",
+      "bankBranch": "Bank Branch",
+      "accountName": "Account Name",
+      "accountNo": "Account Number",
+      "copy": "Copy",
       "completePayment": "ការទូទាត់ត្រូវបានបញ្ចប់",
       "paidConfirmed": "ការទូទាត់ត្រូវបានបញ្ជាក់",
       "paidSuccess": "ការបញ្ជាក់ការទូទាត់ត្រូវបានដាក់ស្នើ"
@@ -1750,7 +1757,10 @@
       "linkName": "ឈ្មោះតំណ",
       "linkType": "ប្រភេទតំណ",
       "default": "លំនាំដើម",
-      "referralUrl": "តំណបញ្ជូន"
+      "referralUrl": "តំណបញ្ជូន",
+      "transactionType": "ប្រភេទប្រតិបត្តិការ",
+      "transactionStatus": "ស្ថានភាពប្រតិបត្តិការ",
+      "orderType": "ប្រភេទការបញ្ជាទិញ"
     },
     "action": {
       "search": "ស្វែងរក",
