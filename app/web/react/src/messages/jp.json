@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "二要素認証が有効になりました",
         "twoFactorDisabled": "二要素認証が無効になりました",
-        "codeSent": "認証コードをメールアドレスに送信しました"
+        "codeSent": "認証コードをメールアドレスに送信しました",
+        "passwordChanged": "パスワードを変更しました"
       }
     },
     "files": {
@@ -1756,7 +1757,10 @@
       "linkName": "リンク名",
       "linkType": "リンク種類",
       "default": "デフォルト",
-      "referralUrl": "紹介リンク"
+      "referralUrl": "紹介リンク",
+      "transactionType": "取引タイプ",
+      "transactionStatus": "取引ステータス",
+      "orderType": "注文タイプ"
     },
     "action": {
       "search": "検索",

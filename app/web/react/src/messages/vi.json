@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Đã bật xác thực hai bước",
         "twoFactorDisabled": "Đã tắt xác thực hai bước",
-        "codeSent": "Đã gửi mã xác minh đến email"
+        "codeSent": "Đã gửi mã xác minh đến email",
+        "passwordChanged": "Đã đổi mật khẩu"
       }
     },
     "files": {
@@ -1756,7 +1757,10 @@
       "linkName": "Tên liên kết",
       "linkType": "Loại liên kết",
       "default": "Mặc định",
-      "referralUrl": "Liên kết giới thiệu"
+      "referralUrl": "Liên kết giới thiệu",
+      "transactionType": "Loại giao dịch",
+      "transactionStatus": "Trạng thái giao dịch",
+      "orderType": "Loại lệnh"
     },
     "action": {
       "search": "Tìm kiếm",

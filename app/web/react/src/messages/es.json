@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Autenticación de dos factores habilitada",
         "twoFactorDisabled": "Autenticación de dos factores deshabilitada",
-        "codeSent": "Código de verificación enviado a su correo electrónico"
+        "codeSent": "Código de verificación enviado a su correo electrónico",
+        "passwordChanged": "Contraseña cambiada exitosamente"
       }
     },
     "files": {
@@ -1754,7 +1755,10 @@
       "linkName": "Nombre del enlace",
       "linkType": "Tipo de enlace",
       "default": "Predeterminado",
-      "referralUrl": "Enlace de referido"
+      "referralUrl": "Enlace de referido",
+      "transactionType": "Tipo de transacción",
+      "transactionStatus": "Estado de transacción",
+      "orderType": "Tipo de orden"
     },
     "action": {
       "search": "Buscar",

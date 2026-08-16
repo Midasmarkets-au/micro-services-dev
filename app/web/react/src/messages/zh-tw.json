@@ -858,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "雙重認證已啟用",
         "twoFactorDisabled": "雙重認證已停用",
-        "codeSent": "驗證碼已發送到您的電子郵件"
+        "codeSent": "驗證碼已發送到您的電子郵件",
+        "passwordChanged": "密碼修改成功"
       }
     },
     "files": {
@@ -1756,7 +1757,10 @@
       "linkName": "連結名稱",
       "linkType": "連結類型",
       "default": "預設",
-      "referralUrl": "推薦連結"
+      "referralUrl": "推薦連結",
+      "transactionType": "交易類型",
+      "transactionStatus": "交易狀態",
+      "orderType": "訂單類型"
     },
     "action": {
       "search": "搜尋",
