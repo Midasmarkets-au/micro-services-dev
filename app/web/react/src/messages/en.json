@@ -861,7 +861,8 @@
       "messages": {
         "twoFactorEnabled": "Two-factor authentication enabled",
         "twoFactorDisabled": "Two-factor authentication disabled",
-        "codeSent": "Verification code sent to your email"
+        "codeSent": "Verification code sent to your email",
+        "passwordChanged": "Password changed successfully"
       }
     },
     "files": {
@@ -1759,7 +1760,10 @@
       "linkName": "Link Name",
       "linkType": "Link Type",
       "default": "Default",
-      "referralUrl": "Referral URL"
+      "referralUrl": "Referral URL",
+      "transactionType": "Transaction Type",
+      "transactionStatus": "Transaction Status",
+      "orderType": "Order Type"
     },
     "action": {
       "search": "Search",
