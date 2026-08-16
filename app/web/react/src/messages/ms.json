@@ -886,7 +886,8 @@
       "messages": {
         "twoFactorEnabled": "Pengesahan dua faktor telah diaktifkan",
         "twoFactorDisabled": "Pengesahan dua faktor telah dinyahdayakan",
-        "codeSent": "Kod pengesahan telah dihantar ke e-mel"
+        "codeSent": "Kod pengesahan telah dihantar ke e-mel",
+        "passwordChanged": "Kata laluan telah ditukar"
       }
     },
     "files": {
@@ -1784,7 +1785,10 @@
       "linkName": "Nama pautan",
       "linkType": "Jenis pautan",
       "default": "Lalai",
-      "referralUrl": "Pautan rujukan"
+      "referralUrl": "Pautan rujukan",
+      "transactionType": "Jenis transaksi",
+      "transactionStatus": "Status transaksi",
+      "orderType": "Jenis pesanan"
     },
     "action": {
       "search": "Cari",

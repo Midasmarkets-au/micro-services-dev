@@ -886,7 +886,8 @@
       "messages": {
         "twoFactorEnabled": "ការផ្ទៀងផ្ទាត់ ២ ជំហានត្រូវបានបើក",
         "twoFactorDisabled": "ការផ្ទៀងផ្ទាត់ ២ ជំហានត្រូវបានបិទ",
-        "codeSent": "លេខកូដត្រូវបានផ្ញើទៅអ៊ីមែល"
+        "codeSent": "លេខកូដត្រូវបានផ្ញើទៅអ៊ីមែល",
+        "passwordChanged": "ពាក្យសម្ងាត់ត្រូវបានផ្លាស់ប្ដូរ"
       }
     },
     "files": {
@@ -1784,7 +1785,10 @@
       "linkName": "ឈ្មោះតំណ",
       "linkType": "ប្រភេទតំណ",
       "default": "លំនាំដើម",
-      "referralUrl": "តំណបញ្ជូន"
+      "referralUrl": "តំណបញ្ជូន",
+      "transactionType": "ប្រភេទប្រតិបត្តិការ",
+      "transactionStatus": "ស្ថានភាពប្រតិបត្តិការ",
+      "orderType": "ប្រភេទការបញ្ជាទិញ"
     },
     "action": {
       "search": "ស្វែងរក",

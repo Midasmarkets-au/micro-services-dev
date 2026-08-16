@@ -886,7 +886,8 @@
       "messages": {
         "twoFactorEnabled": "Autentikasi dua faktor diaktifkan",
         "twoFactorDisabled": "Autentikasi dua faktor dinonaktifkan",
-        "codeSent": "Kode verifikasi dikirim ke email Anda"
+        "codeSent": "Kode verifikasi dikirim ke email Anda",
+        "passwordChanged": "Kata sandi berhasil diubah"
       }
     },
     "files": {
@@ -1784,7 +1785,10 @@
       "linkName": "Nama Tautan",
       "linkType": "Jenis Tautan",
       "default": "Default",
-      "referralUrl": "URL Referral"
+      "referralUrl": "URL Referral",
+      "transactionType": "Jenis Transaksi",
+      "transactionStatus": "Status Transaksi",
+      "orderType": "Jenis Order"
     },
     "action": {
       "search": "Cari",

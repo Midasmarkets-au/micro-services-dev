@@ -889,7 +889,8 @@
       "messages": {
         "twoFactorEnabled": "双重认证已启用",
         "twoFactorDisabled": "双重认证已禁用",
-        "codeSent": "验证码已发送到您的邮箱"
+        "codeSent": "验证码已发送到您的邮箱",
+        "passwordChanged": "密码修改成功"
       }
     },
     "files": {
@@ -1787,7 +1788,10 @@
       "linkName": "链接名称",
       "linkType": "链接类型",
       "default": "默认",
-      "referralUrl": "推荐链接"
+      "referralUrl": "推荐链接",
+      "transactionType": "交易类型",
+      "transactionStatus": "交易状态",
+      "orderType": "订单类型"
     },
     "action": {
       "search": "搜索",

@@ -886,7 +886,8 @@
       "messages": {
         "twoFactorEnabled": "เปิดใช้งานการยืนยันตัวตนสองขั้นตอนแล้ว",
         "twoFactorDisabled": "ปิดใช้งานการยืนยันตัวตนสองขั้นตอนแล้ว",
-        "codeSent": "ส่งรหัสยืนยันไปยังอีเมลแล้ว"
+        "codeSent": "ส่งรหัสยืนยันไปยังอีเมลแล้ว",
+        "passwordChanged": "เปลี่ยนรหัสผ่านแล้ว"
       }
     },
     "files": {
@@ -1784,7 +1785,10 @@
       "linkName": "ชื่อลิงก์",
       "linkType": "ประเภทลิงก์",
       "default": "ค่าเริ่มต้น",
-      "referralUrl": "ลิงก์อ้างอิง"
+      "referralUrl": "ลิงก์อ้างอิง",
+      "transactionType": "ประเภทธุรกรรม",
+      "transactionStatus": "สถานะธุรกรรม",
+      "orderType": "ประเภทคำสั่ง"
     },
     "action": {
       "search": "ค้นหา",

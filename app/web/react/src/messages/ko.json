@@ -886,7 +886,8 @@
       "messages": {
         "twoFactorEnabled": "2단계 인증이 활성화되었습니다",
         "twoFactorDisabled": "2단계 인증이 비활성화되었습니다",
-        "codeSent": "인증 코드가 이메일로 발송되었습니다"
+        "codeSent": "인증 코드가 이메일로 발송되었습니다",
+        "passwordChanged": "비밀번호가 변경되었습니다"
       }
     },
     "files": {
@@ -1784,7 +1785,10 @@
       "linkName": "링크명",
       "linkType": "링크 유형",
       "default": "기본값",
-      "referralUrl": "추천 링크"
+      "referralUrl": "추천 링크",
+      "transactionType": "거래 유형",
+      "transactionStatus": "거래 상태",
+      "orderType": "주문 유형"
     },
     "action": {
       "search": "검색",
