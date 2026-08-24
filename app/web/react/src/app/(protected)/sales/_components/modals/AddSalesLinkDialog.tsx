@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Dialog,
@@ -16,12 +16,10 @@ import {
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
 import {
-  getSalesSymbolCategory,
-  getSalesDefaultLevelSetting,
-  getSalesAvailableAccountTypes,
   createSalesLinkForIB,
   createSalesLinkForClient,
 } from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { LINK_LANGUAGE_OPTIONS } from '@/core/types/LanguageTypes';
 const SERVICE_TYPE_IB = 300;
@@ -78,8 +76,6 @@ export function AddSalesLinkDialog({
   const t = useTranslations('sales');
   const tAccount = useTranslations('accounts');
   const { execute } = useServerAction({ showErrorToast: true });
-  const executeRef = useRef(execute);
-  executeRef.current = execute;
   const salesAccount = useSalesStore((s) => s.salesAccount);
   const effectiveSalesUid = salesUidProp ?? salesAccount?.uid;
 
@@ -117,9 +113,15 @@ export function AddSalesLinkDialog({
     setInitLoading(true);
     try {
       const [catRes, defaultRes, accountsRes] = await Promise.all([
-        executeRef.current(getSalesSymbolCategory),
-        executeRef.current(getSalesDefaultLevelSetting, effectiveSalesUid),
-        executeRef.current(getSalesAvailableAccountTypes, effectiveSalesUid),
+        fetchAction<ProductCategory[]>('getSalesSymbolCategory'),
+        fetchAction<Record<string, DefaultLevelOption[]>>(
+          'getSalesDefaultLevelSetting',
+          effectiveSalesUid
+        ),
+        fetchAction<unknown[]>(
+          'getSalesAvailableAccountTypes',
+          effectiveSalesUid
+        ),
       ]);
 
       let categories: ProductCategory[] = [];

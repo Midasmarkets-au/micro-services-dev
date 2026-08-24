@@ -392,8 +392,8 @@
     "accountManagement": "Manajemen Akun",
     "personalInfo": "Info Pribadi",
     "userGuide": "Panduan Pengguna",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Toko Apple",
+    "androidApk": "Paket instalasi Android",
     "logout": "Keluar",
     "loggingOut": "Keluar...",
     "verifyYourAccount": "Verifikasi Akun Anda",
@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "Gagal membatalkan",
     "__APPROVE_FAILED__": "Gagal menyetujui",
     "__PAYMENT_EXECUTE_FAILED__": "Gagal melakukan pembayaran. Silakan coba lagi nanti atau hubungi layanan pelanggan",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "Tidak ada kode pembayaran yang tersedia. Silakan coba lagi nanti.",
+    "No available payment codes": "Tidak ada kode pembayaran yang tersedia. Silakan coba lagi nanti.",
     "Payment_method_not_enabled": "Metode pembayaran ini belum diaktifkan",
     "__ACCOUNT_CREATE_FAILED__": "Gagal membuat akun",
     "__CHANGE_PASSWORD_FAIL__": "Gagal mengubah kata sandi",
@@ -692,6 +694,7 @@
     "networkError": "Kesalahan jaringan, silakan periksa koneksi Anda",
     "unknownError": "Terjadi kesalahan yang tidak diketahui",
     "Wallet address already exists": "Alamat dompet sudah ada",
+    "WALLET_ADDRESS_EXIST": "Alamat dompet sudah ada",
     "Request failed": "Terjadi kesalahan yang tidak terduga. Silakan coba lagi nanti atau hubungi layanan pelanggan.",
     "__ALREADY_PARTICIPATED__": "Anda sudah berpartisipasi dalam acara ini",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Anda tidak dapat mentransfer ke akun sendiri",
@@ -774,7 +777,7 @@
     "tabs": {
       "basicInfo": "Informasi Dasar",
       "security": "Kata Sandi",
-      "bankInfos": "Info Bank",
+      "bankInfos": "Informasi Deposit & Penarikan",
       "files": "Unggah File",
       "address": "Alamat"
     },
@@ -855,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Autentikasi dua faktor diaktifkan",
         "twoFactorDisabled": "Autentikasi dua faktor dinonaktifkan",
-        "codeSent": "Kode verifikasi dikirim ke email Anda"
+        "codeSent": "Kode verifikasi dikirim ke email Anda",
+        "passwordChanged": "Kata sandi berhasil diubah"
       }
     },
     "files": {
@@ -885,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "Akun Terhubung",
-      "addBankAccount": "Tambah Akun",
-      "addUSDTWallet": "Alamat Dompet USD",
+      "addBankAccount": "Rekening Bank",
+      "addUSDTWallet": "Alamat Dompet USDT",
       "addAccount": "Tambah Akun Pembayaran",
       "editAccount": "Ubah Akun Pembayaran",
       "noAccounts": "Tidak ada akun",
-      "accountName": "Nama Akun Pembayaran",
+      "accountName": "Nama Panggilan Akun Pembayaran",
       "accountHolder": "Pemegang Rekening",
       "bankCountry": "Negara Bank Anda",
       "selectCountry": "Harap pilih negara",
@@ -905,8 +909,8 @@
       "city": "Kota",
       "accountNumber": "Nomor Rekening",
       "confirmAccountNumber": "Konfirmasi Nomor Akun",
-      "usdtWalletAddress": "Alamat Dompet USDT",
-      "walletPlaceholder": "Harap masukkan pemegang akun",
+      "usdtWalletAddress": "Alamat Dompet USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "Nama Bank:",
       "walletLabel": "Jenis Dompet:",
       "usdtWallet": "Dompet USDT",
@@ -938,7 +942,9 @@
         "accountNoRequired": "Harap masukkan nomor akun",
         "confirmAccountNoRequired": "Harap konfirmasi nomor akun",
         "accountNoMismatch": "Nomor akun tidak cocok",
-        "walletAddressRequired": "Harap masukkan alamat dompet USDT"
+        "walletAddressRequired": "Harap masukkan alamat dompet USDT",
+        "walletAddressInvalid": "Masukkan alamat dompet USDT TRC20 yang valid",
+        "walletValidationFailed": "Alamat dompet tidak dapat divalidasi. Silakan coba lagi nanti"
       }
     },
     "address": {
@@ -1251,6 +1257,12 @@
       "redirect": "Klik untuk diarahkan",
       "error": "Pembayaran gagal, silakan coba lagi",
       "qrCodeNotice": "Harap pindai kode QR untuk menyelesaikan pembayaran",
+      "bankTransferNotice": "Silakan transfer ke rekening di bawah, lalu ketuk “Saya telah menyelesaikan pembayaran”",
+      "bankName": "Nama Bank",
+      "bankBranch": "Cabang Bank",
+      "accountName": "Nama Rekening",
+      "accountNo": "Nomor Rekening",
+      "copy": "Salin",
       "completePayment": "Saya telah menyelesaikan pembayaran",
       "paidConfirmed": "Pembayaran dikonfirmasi",
       "paidSuccess": "Konfirmasi pembayaran diajukan"
@@ -1261,7 +1273,8 @@
       "amountInteger": "Jumlah harus berupa bilangan bulat",
       "selectChannel": "Harap pilih metode pembayaran",
       "requiredField": "Kolom ini wajib diisi",
-      "maxLength": "Maksimum {max} karakter"
+      "maxLength": "Maksimum {max} karakter",
+      "nativeNameChinese": "Nama harus dalam bahasa Tionghoa"
     },
     "creditCard": {
       "title": "Kartu Kredit",
@@ -1681,6 +1694,7 @@
     "title": "Pusat IB",
     "menu": {
       "dashboard": "Dasbor",
+      "statistics": "Statistik",
       "newCustomers": "Pelanggan Baru",
       "customers": "Pelanggan",
       "trade": "Trading",
@@ -1743,7 +1757,10 @@
       "linkName": "Nama Tautan",
       "linkType": "Jenis Tautan",
       "default": "Default",
-      "referralUrl": "URL Referral"
+      "referralUrl": "URL Referral",
+      "transactionType": "Jenis Transaksi",
+      "transactionStatus": "Status Transaksi",
+      "orderType": "Jenis Order"
     },
     "action": {
       "search": "Cari",
@@ -2081,6 +2098,41 @@
       "editRule5": "Tipe yang ada: [A] Tidak boleh menghapus tipe akun [B] Hanya boleh menurunkan rebat pribadi",
       "setPercentageTooltip": "Atur persentase untuk mengisi otomatis nilai rabat",
       "updateSuccess": "Berhasil diperbarui"
+    },
+    "statistics": {
+      "title": "Statistik",
+      "tradeTrend": "Tren Trading",
+      "fundFlow": "Arus Dana",
+      "rebateTrend": "Tren Rabat",
+      "productDistribution": "Distribusi Produk",
+      "totalTrades": "Total Trading",
+      "totalNetDeposit": "Total Setoran Bersih",
+      "totalRebate": "Total Rabat",
+      "totalDeposit": "Total Setoran",
+      "totalWithdrawal": "Total Penarikan",
+      "totalLots": "Total Lot",
+      "selectTimeRange": "Pilih Rentang Waktu",
+      "last30Days": "30 Hari Terakhir",
+      "last7Days": "7 Hari Terakhir",
+      "customTime": "Waktu Kustom",
+      "selectChartType": "Pilih Jenis Grafik",
+      "areaChart": "Grafik Area",
+      "lineChart": "Grafik Garis",
+      "pleaseSelectTime": "Silakan pilih waktu",
+      "endTimeBeforeStart": "Waktu akhir tidak boleh sebelum waktu mulai",
+      "timeRangeExceeds30Days": "Rentang waktu tidak boleh lebih dari 30 hari",
+      "hierarchyData": "Data Hierarki",
+      "name": "Nama",
+      "groupCode": "Kode Grup",
+      "tradesCount": "Jumlah Trading",
+      "netDeposit": "Setoran Bersih",
+      "deposit": "Setoran",
+      "withdrawal": "Penarikan",
+      "rebate": "Rabat",
+      "lots": "Lot",
+      "searchUserUid": "Masukkan ID/nama pengguna",
+      "personalRebate": "Rebate pribadi",
+      "teamRebateTotal": "Total rebate semua level agen"
     }
   },
   "sales": {
@@ -2532,7 +2584,7 @@
       "days7": "7 Hari",
       "area": "Grafik Area",
       "line": "Grafik Garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Masukkan ID/nama pengguna",
       "selectIdentity": "Pilih Identitas",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2555,7 +2607,9 @@
       "deposit": "Setoran",
       "withdrawal": "Penarikan",
       "rebate": "Rabat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebate pribadi",
+      "teamRebateTotal": "Total rebate semua level agen"
     },
     "lead": {
       "title": "Prospek",

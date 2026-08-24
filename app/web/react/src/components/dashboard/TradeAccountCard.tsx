@@ -219,7 +219,7 @@ export function TradeAccountCard({
                   <SettingsIcon />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[160px]"> 
+              <DropdownMenuContent align="end" className="min-w-40">
                 <DropdownMenuItem onClick={onResetPassword}>
                   {t('action.changePassword')}
                 </DropdownMenuItem>

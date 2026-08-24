@@ -1,5 +1,4 @@
 'use server';
-import logger from '@/lib/logger';
 
 import { apiClient, ApiError } from '@/lib/api/client';
 import { normalizeAmountList, buildQuery } from '@/lib/utils';
@@ -339,13 +338,9 @@ export async function createSalesLinkForIB(
   salesUid: number,
   formData: Record<string, unknown>
 ): Promise<ActionResponse<unknown>> {
-  logger.info('createSalesLinkForIB-formData', formData);
+  const url = `/sales/${salesUid}/referral/top-agent`;
   try {
-    const response = await apiClient.v1.post<unknown>(
-      `/sales/${salesUid}/referral/top-agent`,
-      formData
-    );
-    logger.info('createSalesLinkForIB-response', response);
+    const response = await apiClient.v1.post<unknown>(url, formData);
     return { success: true, data: response };
   } catch (error) {
     return handleApiError(error, 'Failed to create sales link for IB');
@@ -653,7 +648,7 @@ function normalizeSalesStatisticsHierarchy(nodes?: SalesHierarchyNode[]): SalesH
   return nodes.map((node) => {
     const normalized = normalizeAmountList<SalesHierarchyNode>(
       node,
-      ['netDeposit', 'deposit', 'withdrawal', 'rebate']
+      ['netDeposit', 'deposit', 'withdrawal', 'rebate', 'teamRebate']
     ) as SalesHierarchyNode;
 
     if (normalized.children?.length) {

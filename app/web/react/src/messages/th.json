@@ -392,8 +392,8 @@
     "accountManagement": "จัดการบัญชี",
     "personalInfo": "ข้อมูลส่วนตัว",
     "userGuide": "คู่มือผู้ใช้",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "ร้านค้า Apple",
+    "androidApk": "แพ็กเกจติดตั้ง Android",
     "logout": "ออกจากระบบ",
     "loggingOut": "กำลังออกจากระบบ...",
     "verifyYourAccount": "ยืนยันบัญชีของคุณ",
@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "การยกเลิกล้มเหลว",
     "__APPROVE_FAILED__": "การอนุมัติล้มเหลว",
     "__PAYMENT_EXECUTE_FAILED__": "การดำเนินการชำระเงินล้มเหลว กรุณาลองใหม่ภายหลังหรือติดต่อฝ่ายบริการลูกค้า",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "ไม่มีรหัสการชำระเงินที่ใช้ได้ในขณะนี้ กรุณาลองใหม่ภายหลัง",
+    "No available payment codes": "ไม่มีรหัสการชำระเงินที่ใช้ได้ในขณะนี้ กรุณาลองใหม่ภายหลัง",
     "Payment_method_not_enabled": "ช่องทางการชำระเงินนี้ยังไม่เปิดใช้งาน",
     "__ACCOUNT_CREATE_FAILED__": "การสร้างบัญชีล้มเหลว",
     "__CHANGE_PASSWORD_FAIL__": "การเปลี่ยนรหัสผ่านล้มเหลว",
@@ -692,6 +694,7 @@
     "networkError": "เกิดข้อผิดพลาดของเครือข่าย กรุณาตรวจสอบการเชื่อมต่อ",
     "unknownError": "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ",
     "Wallet address already exists": "ที่อยู่กระเป๋าเงินมีอยู่แล้ว",
+    "WALLET_ADDRESS_EXIST": "ที่อยู่กระเป๋าเงินมีอยู่แล้ว",
     "Request failed": "เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองใหม่ภายหลังหรือติดต่อฝ่ายบริการลูกค้า",
     "__ALREADY_PARTICIPATED__": "คุณได้เข้าร่วมกิจกรรมนี้แล้ว",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "ไม่สามารถโอนไปยังบัญชีตัวเองได้",
@@ -774,7 +777,7 @@
     "tabs": {
       "basicInfo": "ข้อมูลพื้นฐาน",
       "security": "รหัสผ่านเข้าสู่ระบบ",
-      "bankInfos": "ข้อมูลธนาคาร",
+      "bankInfos": "ข้อมูลฝากและถอนเงิน",
       "files": "อัพโหลดไฟล์",
       "address": "จัดการที่อยู่"
     },
@@ -855,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "เปิดใช้งานการยืนยันตัวตนสองขั้นตอนแล้ว",
         "twoFactorDisabled": "ปิดใช้งานการยืนยันตัวตนสองขั้นตอนแล้ว",
-        "codeSent": "ส่งรหัสยืนยันไปยังอีเมลแล้ว"
+        "codeSent": "ส่งรหัสยืนยันไปยังอีเมลแล้ว",
+        "passwordChanged": "เปลี่ยนรหัสผ่านแล้ว"
       }
     },
     "files": {
@@ -885,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "บัญชีที่เชื่อมโยง",
-      "addBankAccount": "เพิ่มบัญชี",
-      "addUSDTWallet": "ที่อยู่กระเป๋า USD",
+      "addBankAccount": "บัญชีธนาคาร",
+      "addUSDTWallet": "ที่อยู่กระเป๋า USDT",
       "addAccount": "เพิ่มบัญชีชำระเงิน",
       "editAccount": "แก้ไขบัญชีชำระเงิน",
       "noAccounts": "ไม่มีข้อมูลบัญชี",
-      "accountName": "ชื่อบัญชีชำระเงิน",
+      "accountName": "ชื่อเล่นบัญชีชำระเงิน",
       "accountHolder": "เจ้าของบัญชี",
       "bankCountry": "ประเทศธนาคาร",
       "selectCountry": "กรุณาเลือกประเทศ",
@@ -905,8 +909,8 @@
       "city": "เมือง",
       "accountNumber": "หมายเลขบัญชี",
       "confirmAccountNumber": "ยืนยันหมายเลขบัญชี",
-      "usdtWalletAddress": "ที่อยู่กระเป๋า USDT",
-      "walletPlaceholder": "ป้อนเจ้าของบัญชี",
+      "usdtWalletAddress": "ที่อยู่กระเป๋า USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "ธนาคาร:",
       "walletLabel": "ประเภทกระเป๋า:",
       "usdtWallet": "กระเป๋า USDT",
@@ -938,7 +942,9 @@
         "accountNoRequired": "กรุณาป้อนหมายเลขบัญชี",
         "confirmAccountNoRequired": "กรุณายืนยันหมายเลขบัญชี",
         "accountNoMismatch": "หมายเลขบัญชีไม่ตรงกัน",
-        "walletAddressRequired": "กรุณาป้อนที่อยู่กระเป๋า USDT"
+        "walletAddressRequired": "กรุณาป้อนที่อยู่กระเป๋า USDT",
+        "walletAddressInvalid": "กรุณาป้อนที่อยู่กระเป๋า USDT TRC20 ที่ถูกต้อง",
+        "walletValidationFailed": "ไม่สามารถตรวจสอบที่อยู่กระเป๋าได้ โปรดลองอีกครั้งในภายหลัง"
       }
     },
     "address": {
@@ -1251,6 +1257,12 @@
       "redirect": "คลิกเพื่อไปยัง",
       "error": "การชำระเงินล้มเหลว กรุณาลองใหม่",
       "qrCodeNotice": "สแกน QR Code เพื่อชำระเงิน",
+      "bankTransferNotice": "โอนเงินไปยังบัญชีด้านล่าง แล้วแตะ “การชำระเงินเสร็จสิ้น”",
+      "bankName": "ธนาคาร",
+      "bankBranch": "สาขา",
+      "accountName": "ชื่อบัญชี",
+      "accountNo": "เลขบัญชี",
+      "copy": "คัดลอก",
       "completePayment": "การชำระเงินเสร็จสิ้น",
       "paidConfirmed": "ยืนยันการชำระเงินแล้ว",
       "paidSuccess": "ส่งการยืนยันการชำระเงินแล้ว"
@@ -1261,7 +1273,8 @@
       "amountInteger": "จำนวนต้องเป็นจำนวนเต็ม",
       "selectChannel": "กรุณาเลือกวิธีชำระเงิน",
       "requiredField": "จำเป็นต้องกรอกข้อมูลนี้",
-      "maxLength": "สูงสุด {max} ตัวอักษร"
+      "maxLength": "สูงสุด {max} ตัวอักษร",
+      "nativeNameChinese": "ชื่อต้องเป็นภาษาจีน"
     },
     "creditCard": {
       "title": "บัตรเครดิต",
@@ -1319,8 +1332,8 @@
     "title": "กระเป๋าเงิน",
     "balance": "ยอดคงเหลือ",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "พิชิตตลาดด้วยมนตร์แห่ง Midas",
+      "tagline": "เทรด CFD กว่า 300 รายการใน FX สินค้าโภคภัณฑ์\nดัชนี และอื่น ๆ | MT5 | สเปรดต่ำเป็นพิเศษ"
     },
     "action": {
       "withdraw": "ถอนเงิน",
@@ -1681,6 +1694,7 @@
     "title": "ศูนย์ตัวแทน",
     "menu": {
       "dashboard": "ภาพรวม",
+      "statistics": "สถิติ",
       "newCustomers": "ลูกค้าใหม่",
       "customers": "ลูกค้า",
       "trade": "ซื้อขาย",
@@ -1743,7 +1757,10 @@
       "linkName": "ชื่อลิงก์",
       "linkType": "ประเภทลิงก์",
       "default": "ค่าเริ่มต้น",
-      "referralUrl": "ลิงก์อ้างอิง"
+      "referralUrl": "ลิงก์อ้างอิง",
+      "transactionType": "ประเภทธุรกรรม",
+      "transactionStatus": "สถานะธุรกรรม",
+      "orderType": "ประเภทคำสั่ง"
     },
     "action": {
       "search": "ค้นหา",
@@ -2081,6 +2098,41 @@
       "editRule5": "ประเภทที่มีอยู่: [A] ห้ามลบประเภทบัญชี [B] ลดรีเบตส่วนตัวได้เท่านั้น",
       "setPercentageTooltip": "ตั้งค่าเปอร์เซ็นต์เพื่อกรอกค่ารีเบตอัตโนมัติ",
       "updateSuccess": "อัปเดตเรียบร้อยแล้ว"
+    },
+    "statistics": {
+      "title": "สถิติ",
+      "tradeTrend": "แนวโน้มการซื้อขาย",
+      "fundFlow": "กระแสเงินทุน",
+      "rebateTrend": "แนวโน้มรีเบต",
+      "productDistribution": "การกระจายสัญลักษณ์",
+      "totalTrades": "การซื้อขายทั้งหมด",
+      "totalNetDeposit": "เงินฝากสุทธิทั้งหมด",
+      "totalRebate": "รีเบตทั้งหมด",
+      "totalDeposit": "เงินฝากทั้งหมด",
+      "totalWithdrawal": "เงินถอนทั้งหมด",
+      "totalLots": "Lot ทั้งหมด",
+      "selectTimeRange": "เลือกช่วงเวลา",
+      "last30Days": "30 วันที่ผ่านมา",
+      "last7Days": "7 วันที่ผ่านมา",
+      "customTime": "กำหนดเวลาเอง",
+      "selectChartType": "เลือกประเภทกราฟ",
+      "areaChart": "Area Chart",
+      "lineChart": "Line Chart",
+      "pleaseSelectTime": "กรุณาเลือกเวลา",
+      "endTimeBeforeStart": "เวลาสิ้นสุดต้องไม่ก่อนเวลาเริ่มต้น",
+      "timeRangeExceeds30Days": "ช่วงเวลาต้องไม่เกิน 30 วัน",
+      "hierarchyData": "ข้อมูลลำดับขั้น",
+      "name": "ชื่อ",
+      "groupCode": "รหัสกลุ่ม",
+      "tradesCount": "จำนวนการซื้อขาย",
+      "netDeposit": "เงินฝากสุทธิ",
+      "deposit": "ฝากเงิน",
+      "withdrawal": "ถอนเงิน",
+      "rebate": "รีเบต",
+      "lots": "Lot",
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้",
+      "personalRebate": "รีเบตส่วนบุคคล",
+      "teamRebateTotal": "ยอดรวมรีเบตทุกระดับเอเจนต์"
     }
   },
   "sales": {
@@ -2509,7 +2561,7 @@
       "days7": "7 วัน",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "ค้นหา UID ผู้ใช้",
+      "searchUserUid": "กรุณากรอก ID/ชื่อผู้ใช้",
       "selectIdentity": "เลือกตัวตน",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2532,7 +2584,9 @@
       "deposit": "ฝากเงิน",
       "withdrawal": "ถอนเงิน",
       "rebate": "รีเบต",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "รีเบตส่วนบุคคล",
+      "teamRebateTotal": "ยอดรวมรีเบตทุกระดับเอเจนต์"
     },
     "lead": {
       "title": "Lead",

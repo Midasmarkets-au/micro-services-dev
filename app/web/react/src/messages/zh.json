@@ -392,8 +392,8 @@
     "accountManagement": "账户管理",
     "personalInfo": "个人资料",
     "userGuide": "用户指南",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "苹果商店",
+    "androidApk": "安卓安装包",
     "logout": "退出",
     "loggingOut": "退出中...",
     "verifyYourAccount": "验证您的账户",
@@ -687,6 +687,8 @@
     "__CANCEL_FAILED__": "取消失败",
     "__APPROVE_FAILED__": "审批失败",
     "__PAYMENT_EXECUTE_FAILED__": "支付执行失败，请稍后重试或联系客服",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "暂无可用收款码，请稍后重试",
+    "No available payment codes": "暂无可用收款码，请稍后重试",
     "Payment_method_not_enabled": "未开通此支付通道",
     "__ACCOUNT_CREATE_FAILED__": "账户创建失败",
     "__CHANGE_PASSWORD_FAIL__": "修改密码失败",
@@ -695,6 +697,7 @@
     "networkError": "网络错误，请检查网络连接",
     "unknownError": "发生未知错误",
     "Wallet address already exists": "钱包地址已存在",
+    "WALLET_ADDRESS_EXIST": "钱包地址已存在",
     "Request failed": "发生意外错误。请稍后重试或联系客户服务寻求帮助。",
     "__ALREADY_PARTICIPATED__": "您已参与该活动",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能转账给自己",
@@ -777,7 +780,7 @@
     "tabs": {
       "basicInfo": "基本信息",
       "security": "登录密码",
-      "bankInfos": "银行信息",
+      "bankInfos": "出入金信息",
       "files": "文件上传",
       "address": "地址管理"
     },
@@ -858,7 +861,8 @@
       "messages": {
         "twoFactorEnabled": "双重认证已启用",
         "twoFactorDisabled": "双重认证已禁用",
-        "codeSent": "验证码已发送到您的邮箱"
+        "codeSent": "验证码已发送到您的邮箱",
+        "passwordChanged": "密码修改成功"
       }
     },
     "files": {
@@ -888,12 +892,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "已关联账户",
-      "addBankAccount": "添加账户",
-      "addUSDTWallet": "USD钱包地址",
+      "addBankAccount": "银行账户",
+      "addUSDTWallet": "USDT钱包地址",
       "addAccount": "添加支付账户",
       "editAccount": "编辑支付账户",
       "noAccounts": "暂无账户信息",
-      "accountName": "支付账户名称",
+      "accountName": "支付账户昵称",
       "accountHolder": "账户持有人",
       "bankCountry": "您的银行所在国家",
       "selectCountry": "请选择国家",
@@ -908,8 +912,8 @@
       "city": "城市",
       "accountNumber": "账号",
       "confirmAccountNumber": "确认账号",
-      "usdtWalletAddress": "USDT钱包地址",
-      "walletPlaceholder": "请输入账户持有人",
+      "usdtWalletAddress": "USDT钱包地址（TRX-TRC20）",
+      "walletPlaceholder": "",
       "bankNameLabel": "银行名称：",
       "walletLabel": "钱包类型：",
       "usdtWallet": "USDT钱包",
@@ -941,7 +945,9 @@
         "accountNoRequired": "请输入账号",
         "confirmAccountNoRequired": "请确认账号",
         "accountNoMismatch": "两次输入的账号不一致",
-        "walletAddressRequired": "请输入USDT钱包地址"
+        "walletAddressRequired": "请输入USDT钱包地址",
+        "walletAddressInvalid": "请输入有效的 USDT TRC20 钱包地址",
+        "walletValidationFailed": "无法验证钱包地址，请稍后重试"
       }
     },
     "address": {
@@ -1254,6 +1260,12 @@
       "redirect": "点击跳转",
       "error": "支付失败，请重试",
       "qrCodeNotice": "请扫描二维码完成支付",
+      "bankTransferNotice": "请向以下账户转账，完成后点击“我已完成支付”",
+      "bankName": "收款银行",
+      "bankBranch": "开户行",
+      "accountName": "收款帐户名",
+      "accountNo": "收款帐户",
+      "copy": "复制",
       "completePayment": "我已完成支付",
       "paidConfirmed": "已确认支付",
       "paidSuccess": "支付确认已提交"
@@ -1264,7 +1276,8 @@
       "amountInteger": "金额必须为整数",
       "selectChannel": "请选择支付方式",
       "requiredField": "此项为必填",
-      "maxLength": "最多 {max} 个字符"
+      "maxLength": "最多 {max} 个字符",
+      "nativeNameChinese": "姓名需为中文"
     },
     "creditCard": {
       "title": "信用卡",
@@ -1322,8 +1335,8 @@
     "title": "钱包",
     "balance": "余额",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "迈达斯点金，掌控市场",
+      "tagline": "交易 300+ 外汇、大宗商品、\n指数等 CFD | MT5 | 超低点差"
     },
     "action": {
       "withdraw": "出金",
@@ -1684,6 +1697,7 @@
     "title": "代理中心",
     "menu": {
       "dashboard": "概览",
+      "statistics": "统计",
       "newCustomers": "新客户",
       "customers": "客户",
       "trade": "交易",
@@ -1746,7 +1760,10 @@
       "linkName": "链接名称",
       "linkType": "链接类型",
       "default": "默认",
-      "referralUrl": "推荐链接"
+      "referralUrl": "推荐链接",
+      "transactionType": "交易类型",
+      "transactionStatus": "交易状态",
+      "orderType": "订单类型"
     },
     "action": {
       "search": "搜索",
@@ -2084,6 +2101,41 @@
       "editRule5": "已有类型：[A] 不允许删除账户类型 [B] 只允许降低个人返佣",
       "setPercentageTooltip": "设置百分比自动填充返佣值",
       "updateSuccess": "更新成功"
+    },
+    "statistics": {
+      "title": "统计",
+      "tradeTrend": "交易趋势",
+      "fundFlow": "资金流向",
+      "rebateTrend": "返佣趋势",
+      "productDistribution": "品种分布",
+      "totalTrades": "总交易量",
+      "totalNetDeposit": "总净入金",
+      "totalRebate": "总返佣",
+      "totalDeposit": "总入金",
+      "totalWithdrawal": "总出金",
+      "totalLots": "总手数",
+      "selectTimeRange": "选择时间范围",
+      "last30Days": "最近 30 天",
+      "last7Days": "最近 7 天",
+      "customTime": "自定义时间",
+      "selectChartType": "选择图表类型",
+      "areaChart": "面积图",
+      "lineChart": "折线图",
+      "pleaseSelectTime": "请选择时间",
+      "endTimeBeforeStart": "结束时间不能早于开始时间",
+      "timeRangeExceeds30Days": "时间范围不能超过三个月",
+      "hierarchyData": "层级数据",
+      "name": "名称",
+      "groupCode": "组别代码",
+      "tradesCount": "交易笔数",
+      "netDeposit": "净入金",
+      "deposit": "入金",
+      "withdrawal": "出金",
+      "rebate": "返佣",
+      "lots": "手数",
+      "searchUserUid": "请输入用户ID/名称",
+      "personalRebate": "个人返佣",
+      "teamRebateTotal": "各级代理返佣总额"
     }
   },
   "sales": {
@@ -2512,7 +2564,7 @@
       "days7": "7 天",
       "area": "面积图",
       "line": "折线图",
-      "searchUserUid": "搜索用户 UID",
+      "searchUserUid": "请输入用户ID/名称",
       "selectIdentity": "选择身份",
       "roleSale": "销售",
       "roleIb": "IB",
@@ -2526,16 +2578,18 @@
       "lineChart": "折线图",
       "pleaseSelectTime": "请选择时间",
       "endTimeBeforeStart": "结束时间不能早于开始时间",
-      "timeRangeExceeds30Days": "时间范围不能超过 30 天",
+      "timeRangeExceeds30Days": "时间范围不能超过三个月",
       "hierarchyData": "层级数据",
-      "name": "姓名",
+      "name": "名称",
       "groupCode": "组别代码",
       "tradesCount": "交易笔数",
       "netDeposit": "净入金",
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "返佣",
-      "lots": "手数"
+      "lots": "手数",
+      "personalRebate": "个人返佣",
+      "teamRebateTotal": "各级代理返佣总额"
     },
     "lead": {
       "title": "线索",

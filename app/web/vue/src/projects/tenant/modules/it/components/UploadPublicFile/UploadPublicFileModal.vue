@@ -70,7 +70,6 @@
 </template>
 <script setup lang="ts">
 import { ref } from "vue";
-import { useStore } from "@/store";
 import type { UploadUserFile } from "element-plus";
 import { UploadFilled } from "@element-plus/icons-vue";
 import { Delete } from "@element-plus/icons-vue";
@@ -79,24 +78,15 @@ import notification from "@/core/plugins/notification";
 
 const isLoading = ref(false);
 const fileList = ref<UploadUserFile[]>([]);
-const store = useStore();
-const user = store.state.AuthModule.user;
 const uploadedLinks = ref<string[]>([]);
-const operatorInfo = ref<any>({
-  name: user.nativeName,
-  email: user.email,
-  updatedAt: new Date().toISOString(),
-});
 
 const submitUpload = async () => {
   isLoading.value = true;
   try {
     const formData = new FormData();
     fileList.value.forEach((file) => {
-      formData.append("files[]", file.raw);
-      formData.append("fileNames[]", file.name);
+      formData.append("files", file.raw as File);
     });
-    formData.append("operatorInfo", JSON.stringify(operatorInfo.value));
     const res = await ItServices.uploadPublicFiles(formData);
     if (res) {
       notification.success();

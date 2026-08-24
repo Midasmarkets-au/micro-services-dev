@@ -64,6 +64,7 @@ export {
   deletePaymentInfo,
   createPaymentInfo,
   updatePaymentInfo,
+  validateUsdtWalletAddress,
   type PaymentInfo,
 } from './payment';
 
@@ -153,6 +154,7 @@ export {
   getIBAccountDefaultLevel,
   getIBRebateDistribution,
   getIBChildStat,
+  getIBStatistics,
   getIBRebateStatBySymbol,
   getIBLinks,
   getIBLinkDetail,

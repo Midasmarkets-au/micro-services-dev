@@ -462,6 +462,52 @@ export interface IBChildStat {
 }
 
 // ============================================
+// IB Statistics
+// ============================================
+
+export interface IBStatistics {
+  summaryStats?: {
+    totalTrades?: number;
+    totalNetDeposit?: number;
+    totalRebate?: number;
+    totalDeposit?: number;
+    totalWithdrawal?: number;
+    totalLots?: number;
+  };
+  timeSeriesData?: Array<{
+    date: string;
+    trades: number;
+    deposit: number;
+    withdrawal: number;
+    netDeposit: number;
+    rebate: number;
+  }>;
+  productDistribution?: Array<{
+    symbol: string;
+    count: number;
+    percentage: number;
+  }>;
+  hierarchyData?: IBHierarchyNode[];
+}
+
+export interface IBHierarchyNode {
+  id: number;
+  name?: string;
+  type?: string;
+  groupCode?: string;
+  currencyId?: number;
+  trades?: number;
+  netDeposit?: number;
+  deposit?: number;
+  withdrawal?: number;
+  rebate?: number;
+  teamRebate?: number;
+  lots?: number;
+  products?: string;
+  children?: IBHierarchyNode[];
+}
+
+// ============================================
 // IB Report 请求相关
 // ============================================
 

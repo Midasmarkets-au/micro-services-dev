@@ -392,8 +392,8 @@
     "accountManagement": "គ្រប់គ្រងគណនី",
     "personalInfo": "ព័ត៌មានផ្ទាល់ខ្លួន",
     "userGuide": "មគ្គុទ្ទេសក៍អ្នកប្រើ",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "ហាង Apple",
+    "androidApk": "កញ្ចប់ដំឡើង Android",
     "logout": "ចេញ",
     "loggingOut": "កំពុងចេញ...",
     "verifyYourAccount": "ផ្ទៀងផ្ទាត់គណនី",
@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "ការបោះបង់បរាជ័យ",
     "__APPROVE_FAILED__": "ការអនុម័តបរាជ័យ",
     "__PAYMENT_EXECUTE_FAILED__": "ការដំណើរការការទូទាត់បរាជ័យ សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ ឬទំនាក់ទំនងសេវាអតិថិជន",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "មិនមានលេខកូដទូទាត់ដែលអាចប្រើបានទេ សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ",
+    "No available payment codes": "មិនមានលេខកូដទូទាត់ដែលអាចប្រើបានទេ សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ",
     "Payment_method_not_enabled": "វិធីទូទាត់នេះមិនបានបើកដំណើរការទេ",
     "__ACCOUNT_CREATE_FAILED__": "ការបង្កើតគណនីបរាជ័យ",
     "__CHANGE_PASSWORD_FAIL__": "ការផ្លាស់ប្ដូរពាក្យសម្ងាត់បរាជ័យ",
@@ -692,6 +694,7 @@
     "networkError": "កំហុសបណ្តាញ សូមពិនិត្យការតភ្ជាប់",
     "unknownError": "មានកំហុសមិនស្គាល់",
     "Wallet address already exists": "អាសយដ្ឋានកាបូបមានហើយ",
+    "WALLET_ADDRESS_EXIST": "អាសយដ្ឋានកាបូបមានហើយ",
     "Request failed": "មានកំហុសដែលមិនបានរំពឹង សូមព្យាយាមម្ដងទៀតនៅពេលក្រោយ ឬទំនាក់ទំនងសេវាអតិថិជន",
     "__ALREADY_PARTICIPATED__": "អ្នកបានចូលរួមសកម្មភាពនេះហើយ",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "មិនអាចផ្ទេរទៅគណនីខ្លួនឯង",
@@ -774,7 +777,7 @@
     "tabs": {
       "basicInfo": "ព័ត៌មានមូលដ្ឋាន",
       "security": "ពាក្យសម្ងាត់ចូល",
-      "bankInfos": "ព័ត៌មានធនាគារ",
+      "bankInfos": "ព័ត៌មានដាក់ប្រាក់ និងដកប្រាក់",
       "files": "ផ្ទុកឯកសារ",
       "address": "គ្រប់គ្រងអាសយដ្ឋាន"
     },
@@ -855,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "ការផ្ទៀងផ្ទាត់ ២ ជំហានត្រូវបានបើក",
         "twoFactorDisabled": "ការផ្ទៀងផ្ទាត់ ២ ជំហានត្រូវបានបិទ",
-        "codeSent": "លេខកូដត្រូវបានផ្ញើទៅអ៊ីមែល"
+        "codeSent": "លេខកូដត្រូវបានផ្ញើទៅអ៊ីមែល",
+        "passwordChanged": "ពាក្យសម្ងាត់ត្រូវបានផ្លាស់ប្ដូរ"
       }
     },
     "files": {
@@ -885,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "គណនីដែលបានភ្ជាប់",
-      "addBankAccount": "បន្ថែមគណនី",
-      "addUSDTWallet": "អាសយដ្ឋានកាបូប USD",
+      "addBankAccount": "គណនីធនាគារ",
+      "addUSDTWallet": "អាសយដ្ឋានកាបូប USDT",
       "addAccount": "បន្ថែមគណនីទូទាត់",
       "editAccount": "កែប្រែគណនីទូទាត់",
       "noAccounts": "គ្មានព័ត៌មានគណនី",
-      "accountName": "ឈ្មោះគណនីទូទាត់",
+      "accountName": "ឈ្មោះហៅក្រៅគណនីទូទាត់",
       "accountHolder": "ម្ចាស់គណនី",
       "bankCountry": "ប្រទេសសាខាធនាគារ",
       "selectCountry": "ជ្រើសរើសប្រទេស",
@@ -905,8 +909,8 @@
       "city": "ទីក្រុង",
       "accountNumber": "លេខគណនី",
       "confirmAccountNumber": "បញ្ជាក់លេខគណនី",
-      "usdtWalletAddress": "អាសយដ្ឋានកាបូប USDT",
-      "walletPlaceholder": "បញ្ចូលម្ចាស់គណនី",
+      "usdtWalletAddress": "អាសយដ្ឋានកាបូប USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "ធនាគារ:",
       "walletLabel": "ប្រភេទកាបូប:",
       "usdtWallet": "កាបូប USDT",
@@ -938,7 +942,9 @@
         "accountNoRequired": "សូមបញ្ចូលលេខគណនី",
         "confirmAccountNoRequired": "សូមបញ្ជាក់លេខគណនី",
         "accountNoMismatch": "លេខគណនីមិនត្រូវគ្នា",
-        "walletAddressRequired": "សូមបញ្ចូលអាសយដ្ឋានកាបូប USDT"
+        "walletAddressRequired": "សូមបញ្ចូលអាសយដ្ឋានកាបូប USDT",
+        "walletAddressInvalid": "សូមបញ្ចូលអាសយដ្ឋានកាបូប USDT TRC20 ដែលត្រឹមត្រូវ",
+        "walletValidationFailed": "មិនអាចផ្ទៀងផ្ទាត់អាសយដ្ឋានកាបូបបានទេ។ សូមព្យាយាមម្តងទៀតនៅពេលក្រោយ"
       }
     },
     "address": {
@@ -1251,6 +1257,12 @@
       "redirect": "ចុចដើម្បីទៅ",
       "error": "ការទូទាត់បរាជ័យ សូមព្យាយាមម្ដងទៀត",
       "qrCodeNotice": "ស្កេន QR Code ដើម្បីបញ្ចប់ការទូទាត់",
+      "bankTransferNotice": "Please transfer to the account below, then tap “I have completed payment”",
+      "bankName": "Bank Name",
+      "bankBranch": "Bank Branch",
+      "accountName": "Account Name",
+      "accountNo": "Account Number",
+      "copy": "Copy",
       "completePayment": "ការទូទាត់ត្រូវបានបញ្ចប់",
       "paidConfirmed": "ការទូទាត់ត្រូវបានបញ្ជាក់",
       "paidSuccess": "ការបញ្ជាក់ការទូទាត់ត្រូវបានដាក់ស្នើ"
@@ -1261,7 +1273,8 @@
       "amountInteger": "ចំនួនត្រូវតែជាចំនួនគត់",
       "selectChannel": "សូមជ្រើសរើសវិធីទូទាត់",
       "requiredField": "វាលនេះត្រូវការ",
-      "maxLength": "អតិបរមា {max} តួអក្សរ"
+      "maxLength": "អតិបរមា {max} តួអក្សរ",
+      "nativeNameChinese": "ឈ្មោះត្រូវតែជាភាសាចិន"
     },
     "creditCard": {
       "title": "ប័ណ្ណឥណទាន",
@@ -1319,8 +1332,8 @@
     "title": "កាបូប",
     "balance": "សមតុល្យ",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "គ្រប់គ្រងទីផ្សារដោយថាមពលវេទមន្ត Midas",
+      "tagline": "ជួញដូរ CFD ជាង 300 លើរូបិយប័ណ្ណ ទំនិញ\nសន្ទស្សន៍ និងច្រើនទៀត | MT5 | ស្ព្រេដទាបបំផុត"
     },
     "action": {
       "withdraw": "ដកប្រាក់",
@@ -1681,6 +1694,7 @@
     "title": "មជ្ឈមណ្ឌលភ្នាក់ងារ",
     "menu": {
       "dashboard": "ទិដ្ឋភាពទូទៅ",
+      "statistics": "ស្ថិតិ",
       "newCustomers": "អតិថិជនថ្មី",
       "customers": "អតិថិជន",
       "trade": "ជួញដូរ",
@@ -1743,7 +1757,10 @@
       "linkName": "ឈ្មោះតំណ",
       "linkType": "ប្រភេទតំណ",
       "default": "លំនាំដើម",
-      "referralUrl": "តំណបញ្ជូន"
+      "referralUrl": "តំណបញ្ជូន",
+      "transactionType": "ប្រភេទប្រតិបត្តិការ",
+      "transactionStatus": "ស្ថានភាពប្រតិបត្តិការ",
+      "orderType": "ប្រភេទការបញ្ជាទិញ"
     },
     "action": {
       "search": "ស្វែងរក",
@@ -2081,6 +2098,41 @@
       "editRule5": "ប្រភេទដែលមានស្រាប់: [A] មិនអាចលុបប្រភេទគណនី [B] អាចកាត់បន្ថយ Rebate ផ្ទាល់ខ្លួនប៉ុណ្ណោះ",
       "setPercentageTooltip": "កំណត់ភាគរយ ដើម្បីបំពេញ Rebate ស្វ័យប្រវត្តិ",
       "updateSuccess": "បានធ្វើបច្ចុប្បន្នភាពដោយជោគជ័យ"
+    },
+    "statistics": {
+      "title": "ស្ថិតិ",
+      "tradeTrend": "និន្នាការជួញដូរ",
+      "fundFlow": "លំហូរមូលនិធិ",
+      "rebateTrend": "និន្នាការ Rebate",
+      "productDistribution": "ការចែកចាយទីផ្សារ",
+      "totalTrades": "ជួញដូរសរុប",
+      "totalNetDeposit": "ការដាក់ប្រាក់សុទ្ធ",
+      "totalRebate": "Rebate សរុប",
+      "totalDeposit": "ការដាក់ប្រាក់សរុប",
+      "totalWithdrawal": "ការដកប្រាក់សរុប",
+      "totalLots": "Lot សរុប",
+      "selectTimeRange": "ជ្រើសរយៈពេល",
+      "last30Days": "៣០ ថ្ងៃចុងក្រោយ",
+      "last7Days": "៧ ថ្ងៃចុងក្រោយ",
+      "customTime": "ពេលវេលាផ្ទាល់ខ្លួន",
+      "selectChartType": "ជ្រើសប្រភេទក្រាហ្វ",
+      "areaChart": "Area Chart",
+      "lineChart": "Line Chart",
+      "pleaseSelectTime": "សូមជ្រើសពេលវេលា",
+      "endTimeBeforeStart": "ពេលបញ្ចប់មិនអាចមុនពេលចាប់ផ្តើម",
+      "timeRangeExceeds30Days": "រយៈពេលមិនអាចលើស ៣០ ថ្ងៃ",
+      "hierarchyData": "ទិន្នន័យរចនាសម្ព័ន្ធ",
+      "name": "ឈ្មោះ",
+      "groupCode": "កូដក្រុម",
+      "tradesCount": "ចំនួនជួញដូរ",
+      "netDeposit": "ការដាក់ប្រាក់សុទ្ធ",
+      "deposit": "ការដាក់ប្រាក់",
+      "withdrawal": "ការដកប្រាក់",
+      "rebate": "Rebate",
+      "lots": "Lot",
+      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ",
+      "personalRebate": "Rebate ផ្ទាល់ខ្លួន",
+      "teamRebateTotal": "សរុប Rebate គ្រប់កម្រិតភ្នាក់ងារ"
     }
   },
   "sales": {
@@ -2509,7 +2561,7 @@
       "days7": "៧ ថ្ងៃ",
       "area": "Area Chart",
       "line": "Line Chart",
-      "searchUserUid": "ស្វែងរក UID អ្នកប្រើ",
+      "searchUserUid": "សូមបញ្ចូល ID/ឈ្មោះអ្នកប្រើ",
       "selectIdentity": "ជ្រើសអត្តសញ្ញាណ",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2532,7 +2584,9 @@
       "deposit": "ការដាក់ប្រាក់",
       "withdrawal": "ការដកប្រាក់",
       "rebate": "Rebate",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebate ផ្ទាល់ខ្លួន",
+      "teamRebateTotal": "សរុប Rebate គ្រប់កម្រិតភ្នាក់ងារ"
     },
     "lead": {
       "title": "Lead",

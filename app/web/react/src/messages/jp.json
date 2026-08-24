@@ -392,8 +392,8 @@
     "accountManagement": "アカウント管理",
     "personalInfo": "個人情報",
     "userGuide": "ユーザーガイド",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Appleストア",
+    "androidApk": "Androidインストールパッケージ",
     "logout": "ログアウト",
     "loggingOut": "ログアウト中...",
     "verifyYourAccount": "アカウントを確認",
@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "キャンセルに失敗しました",
     "__APPROVE_FAILED__": "承認に失敗しました",
     "__PAYMENT_EXECUTE_FAILED__": "決済の実行に失敗しました。後でもう一度お試しいただくか、カスタマーサービスにお問い合わせください",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "利用可能な決済コードがありません。後でもう一度お試しください。",
+    "No available payment codes": "利用可能な決済コードがありません。後でもう一度お試しください。",
     "Payment_method_not_enabled": "この支払い方法は有効になっていません",
     "__ACCOUNT_CREATE_FAILED__": "アカウントの作成に失敗しました",
     "__CHANGE_PASSWORD_FAIL__": "パスワードの変更に失敗しました",
@@ -692,6 +694,7 @@
     "networkError": "ネットワークエラーが発生しました。接続を確認してください",
     "unknownError": "不明なエラーが発生しました",
     "Wallet address already exists": "ウォレットアドレスはすでに登録されています",
+    "WALLET_ADDRESS_EXIST": "ウォレットアドレスはすでに登録されています",
     "Request failed": "予期しないエラーが発生しました。後でもう一度お試しいただくか、カスタマーサービスにお問い合わせください。",
     "__ALREADY_PARTICIPATED__": "すでにこのイベントに参加しています",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "自分のアカウントへの送金はできません",
@@ -774,7 +777,7 @@
     "tabs": {
       "basicInfo": "基本情報",
       "security": "ログインパスワード",
-      "bankInfos": "銀行情報",
+      "bankInfos": "入出金情報",
       "files": "ファイルアップロード",
       "address": "住所管理"
     },
@@ -855,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "二要素認証が有効になりました",
         "twoFactorDisabled": "二要素認証が無効になりました",
-        "codeSent": "認証コードをメールアドレスに送信しました"
+        "codeSent": "認証コードをメールアドレスに送信しました",
+        "passwordChanged": "パスワードを変更しました"
       }
     },
     "files": {
@@ -885,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "連携済みアカウント",
-      "addBankAccount": "アカウントを追加",
-      "addUSDTWallet": "USDウォレットアドレス",
+      "addBankAccount": "銀行口座",
+      "addUSDTWallet": "USDTウォレットアドレス",
       "addAccount": "支払いアカウントを追加",
       "editAccount": "支払いアカウントを編集",
       "noAccounts": "アカウント情報なし",
-      "accountName": "支払いアカウント名",
+      "accountName": "支払いアカウントのニックネーム",
       "accountHolder": "口座名義人",
       "bankCountry": "銀行の所在国",
       "selectCountry": "国を選択してください",
@@ -905,8 +909,8 @@
       "city": "市区町村",
       "accountNumber": "口座番号",
       "confirmAccountNumber": "口座番号を確認",
-      "usdtWalletAddress": "USDTウォレットアドレス",
-      "walletPlaceholder": "口座名義人を入力してください",
+      "usdtWalletAddress": "USDTウォレットアドレス（TRX-TRC20）",
+      "walletPlaceholder": "",
       "bankNameLabel": "銀行名：",
       "walletLabel": "ウォレット種類：",
       "usdtWallet": "USDTウォレット",
@@ -938,7 +942,9 @@
         "accountNoRequired": "口座番号を入力してください",
         "confirmAccountNoRequired": "口座番号を確認してください",
         "accountNoMismatch": "口座番号が一致しません",
-        "walletAddressRequired": "USDTウォレットアドレスを入力してください"
+        "walletAddressRequired": "USDTウォレットアドレスを入力してください",
+        "walletAddressInvalid": "有効なUSDT TRC20ウォレットアドレスを入力してください",
+        "walletValidationFailed": "ウォレットアドレスを検証できません。後でもう一度お試しください"
       }
     },
     "address": {
@@ -1251,6 +1257,12 @@
       "redirect": "クリックしてリダイレクト",
       "error": "支払いに失敗しました。もう一度お試しください",
       "qrCodeNotice": "QRコードをスキャンして支払いを完了してください",
+      "bankTransferNotice": "以下の口座へお振込み後、「支払いを完了しました」をタップしてください",
+      "bankName": "銀行名",
+      "bankBranch": "支店名",
+      "accountName": "口座名義",
+      "accountNo": "口座番号",
+      "copy": "コピー",
       "completePayment": "支払いを完了しました",
       "paidConfirmed": "支払いが確認されました",
       "paidSuccess": "支払い確認を送信しました"
@@ -1261,7 +1273,8 @@
       "amountInteger": "金額は整数でなければなりません",
       "selectChannel": "支払い方法を選択してください",
       "requiredField": "この項目は必須です",
-      "maxLength": "最大{max}文字"
+      "maxLength": "最大{max}文字",
+      "nativeNameChinese": "氏名は中国語で入力してください"
     },
     "creditCard": {
       "title": "クレジットカード",
@@ -1319,8 +1332,8 @@
     "title": "ウォレット",
     "balance": "残高",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "Midasの魔法で市場を制覇",
+      "tagline": "FX、コモディティ、指数など\n300以上のCFDを取引 | MT5 | 極狭スプレッド"
     },
     "action": {
       "withdraw": "出金",
@@ -1681,6 +1694,7 @@
     "title": "エージェントセンター",
     "menu": {
       "dashboard": "概要",
+      "statistics": "統計",
       "newCustomers": "新規顧客",
       "customers": "顧客",
       "trade": "取引",
@@ -1743,7 +1757,10 @@
       "linkName": "リンク名",
       "linkType": "リンク種類",
       "default": "デフォルト",
-      "referralUrl": "紹介リンク"
+      "referralUrl": "紹介リンク",
+      "transactionType": "取引タイプ",
+      "transactionStatus": "取引ステータス",
+      "orderType": "注文タイプ"
     },
     "action": {
       "search": "検索",
@@ -2081,6 +2098,41 @@
       "editRule5": "既存タイプ：[A] アカウントタイプの削除不可 [B] 個人リベートの引き下げのみ可",
       "setPercentageTooltip": "パーセンテージを設定してリベート値を自動入力",
       "updateSuccess": "更新しました"
+    },
+    "statistics": {
+      "title": "統計",
+      "tradeTrend": "取引トレンド",
+      "fundFlow": "資金フロー",
+      "rebateTrend": "リベートトレンド",
+      "productDistribution": "銘柄分布",
+      "totalTrades": "総取引量",
+      "totalNetDeposit": "総純入金",
+      "totalRebate": "合計リベート",
+      "totalDeposit": "総入金",
+      "totalWithdrawal": "総出金",
+      "totalLots": "総ロット数",
+      "selectTimeRange": "期間を選択",
+      "last30Days": "過去30日",
+      "last7Days": "過去7日",
+      "customTime": "カスタム期間",
+      "selectChartType": "チャートタイプを選択",
+      "areaChart": "エリアチャート",
+      "lineChart": "ラインチャート",
+      "pleaseSelectTime": "期間を選択してください",
+      "endTimeBeforeStart": "終了日は開始日より前にできません",
+      "timeRangeExceeds30Days": "期間は30日を超えることはできません",
+      "hierarchyData": "階層データ",
+      "name": "名称",
+      "groupCode": "グループコード",
+      "tradesCount": "取引数",
+      "netDeposit": "純入金",
+      "deposit": "入金",
+      "withdrawal": "出金",
+      "rebate": "リベート",
+      "lots": "ロット",
+      "searchUserUid": "ユーザーID/名称を入力してください",
+      "personalRebate": "個人リベート",
+      "teamRebateTotal": "各代理レベルのリベート総額"
     }
   },
   "sales": {
@@ -2509,7 +2561,7 @@
       "days7": "7日間",
       "area": "エリアチャート",
       "line": "ラインチャート",
-      "searchUserUid": "ユーザー UID を検索",
+      "searchUserUid": "ユーザーID/名称を入力してください",
       "selectIdentity": "身分を選択",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2525,14 +2577,16 @@
       "endTimeBeforeStart": "終了日は開始日より前にできません",
       "timeRangeExceeds30Days": "期間は30日を超えることはできません",
       "hierarchyData": "階層データ",
-      "name": "名前",
+      "name": "名称",
       "groupCode": "グループコード",
       "tradesCount": "取引数",
       "netDeposit": "純入金",
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "リベート",
-      "lots": "ロット"
+      "lots": "ロット",
+      "personalRebate": "個人リベート",
+      "teamRebateTotal": "各代理レベルのリベート総額"
     },
     "lead": {
       "title": "リード",

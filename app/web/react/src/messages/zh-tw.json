@@ -392,8 +392,8 @@
     "accountManagement": "帳戶管理",
     "personalInfo": "個人資料",
     "userGuide": "用戶指南",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "蘋果商店",
+    "androidApk": "安卓安裝包",
     "logout": "登出",
     "loggingOut": "登出中...",
     "verifyYourAccount": "驗證您的帳戶",
@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "取消失敗",
     "__APPROVE_FAILED__": "審批失敗",
     "__PAYMENT_EXECUTE_FAILED__": "支付執行失敗，請稍後重試或聯絡客服",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "暫無可用收款碼，請稍後再試",
+    "No available payment codes": "暫無可用收款碼，請稍後再試",
     "Payment_method_not_enabled": "未開通此支付通道",
     "__ACCOUNT_CREATE_FAILED__": "帳戶建立失敗",
     "__CHANGE_PASSWORD_FAIL__": "修改密碼失敗",
@@ -692,6 +694,7 @@
     "networkError": "網路錯誤，請檢查網路連線",
     "unknownError": "發生未知錯誤",
     "Wallet address already exists": "錢包地址已存在",
+    "WALLET_ADDRESS_EXIST": "錢包地址已存在",
     "Request failed": "發生意外錯誤。請稍後重試或聯絡客戶服務尋求協助。",
     "__ALREADY_PARTICIPATED__": "您已參與該活動",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "不能轉帳給自己",
@@ -774,7 +777,7 @@
     "tabs": {
       "basicInfo": "基本資訊",
       "security": "登入密碼",
-      "bankInfos": "銀行資訊",
+      "bankInfos": "出入金資訊",
       "files": "文件上傳",
       "address": "地址管理"
     },
@@ -855,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "雙重認證已啟用",
         "twoFactorDisabled": "雙重認證已停用",
-        "codeSent": "驗證碼已發送到您的電子郵件"
+        "codeSent": "驗證碼已發送到您的電子郵件",
+        "passwordChanged": "密碼修改成功"
       }
     },
     "files": {
@@ -885,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "已關聯帳戶",
-      "addBankAccount": "新增帳戶",
-      "addUSDTWallet": "USD錢包地址",
+      "addBankAccount": "銀行帳戶",
+      "addUSDTWallet": "USDT錢包地址",
       "addAccount": "新增支付帳戶",
       "editAccount": "編輯支付帳戶",
       "noAccounts": "暫無帳戶資訊",
-      "accountName": "支付帳戶名稱",
+      "accountName": "支付帳戶暱稱",
       "accountHolder": "帳戶持有人",
       "bankCountry": "您的銀行所在國家",
       "selectCountry": "請選擇國家",
@@ -905,8 +909,8 @@
       "city": "城市",
       "accountNumber": "帳號",
       "confirmAccountNumber": "確認帳號",
-      "usdtWalletAddress": "USDT錢包地址",
-      "walletPlaceholder": "請輸入帳戶持有人",
+      "usdtWalletAddress": "USDT錢包地址（TRX-TRC20）",
+      "walletPlaceholder": "",
       "bankNameLabel": "銀行名稱：",
       "walletLabel": "錢包類型：",
       "usdtWallet": "USDT錢包",
@@ -938,7 +942,9 @@
         "accountNoRequired": "請輸入帳號",
         "confirmAccountNoRequired": "請確認帳號",
         "accountNoMismatch": "兩次輸入的帳號不一致",
-        "walletAddressRequired": "請輸入USDT錢包地址"
+        "walletAddressRequired": "請輸入USDT錢包地址",
+        "walletAddressInvalid": "請輸入有效的 USDT TRC20 錢包地址",
+        "walletValidationFailed": "無法驗證錢包地址，請稍後再試"
       }
     },
     "address": {
@@ -1251,6 +1257,12 @@
       "redirect": "點擊跳轉",
       "error": "支付失敗，請重試",
       "qrCodeNotice": "請掃描二維碼完成支付",
+      "bankTransferNotice": "請向以下帳戶轉帳，完成後點擊「我已完成支付」",
+      "bankName": "收款銀行",
+      "bankBranch": "開戶行",
+      "accountName": "收款帳戶名",
+      "accountNo": "收款帳戶",
+      "copy": "複製",
       "completePayment": "我已完成支付",
       "paidConfirmed": "已確認支付",
       "paidSuccess": "支付確認已提交"
@@ -1261,7 +1273,8 @@
       "amountInteger": "金額必須為整數",
       "selectChannel": "請選擇支付方式",
       "requiredField": "此項為必填",
-      "maxLength": "最多 {max} 個字元"
+      "maxLength": "最多 {max} 個字元",
+      "nativeNameChinese": "姓名需為中文"
     },
     "creditCard": {
       "title": "信用卡",
@@ -1319,8 +1332,8 @@
     "title": "錢包",
     "balance": "餘額",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "邁達斯點金，掌控市場",
+      "tagline": "交易 300+ 外匯、大宗商品\n指數等 CFD | MT5 | 超低點差"
     },
     "action": {
       "withdraw": "出金",
@@ -1681,6 +1694,7 @@
     "title": "代理中心",
     "menu": {
       "dashboard": "概覽",
+      "statistics": "統計",
       "newCustomers": "新客戶",
       "customers": "客戶",
       "trade": "交易",
@@ -1743,7 +1757,10 @@
       "linkName": "連結名稱",
       "linkType": "連結類型",
       "default": "預設",
-      "referralUrl": "推薦連結"
+      "referralUrl": "推薦連結",
+      "transactionType": "交易類型",
+      "transactionStatus": "交易狀態",
+      "orderType": "訂單類型"
     },
     "action": {
       "search": "搜尋",
@@ -2081,6 +2098,41 @@
       "editRule5": "已有類型：[A] 不允許刪除帳戶類型 [B] 只允許降低個人返佣",
       "setPercentageTooltip": "設定百分比自動填充返佣值",
       "updateSuccess": "更新成功"
+    },
+    "statistics": {
+      "title": "統計",
+      "tradeTrend": "交易趨勢",
+      "fundFlow": "資金流向",
+      "rebateTrend": "返佣趨勢",
+      "productDistribution": "品種分布",
+      "totalTrades": "總交易量",
+      "totalNetDeposit": "總淨入金",
+      "totalRebate": "總返佣",
+      "totalDeposit": "總入金",
+      "totalWithdrawal": "總出金",
+      "totalLots": "總手數",
+      "selectTimeRange": "選擇時間範圍",
+      "last30Days": "最近 30 天",
+      "last7Days": "最近 7 天",
+      "customTime": "自訂時間",
+      "selectChartType": "選擇圖表類型",
+      "areaChart": "面積圖",
+      "lineChart": "折線圖",
+      "pleaseSelectTime": "請選擇時間",
+      "endTimeBeforeStart": "結束時間不能早於開始時間",
+      "timeRangeExceeds30Days": "時間範圍不能超過 30 天",
+      "hierarchyData": "層級資料",
+      "name": "名稱",
+      "groupCode": "組別代碼",
+      "tradesCount": "交易筆數",
+      "netDeposit": "淨入金",
+      "deposit": "入金",
+      "withdrawal": "出金",
+      "rebate": "返佣",
+      "lots": "手數",
+      "searchUserUid": "請輸入用戶ID/名稱",
+      "personalRebate": "個人返傭",
+      "teamRebateTotal": "各級代理返傭總額"
     }
   },
   "sales": {
@@ -2509,7 +2561,7 @@
       "days7": "7 天",
       "area": "面積圖",
       "line": "折線圖",
-      "searchUserUid": "搜尋用戶 UID",
+      "searchUserUid": "請輸入用戶ID/名稱",
       "selectIdentity": "選擇身份",
       "roleSale": "銷售",
       "roleIb": "IB",
@@ -2525,14 +2577,16 @@
       "endTimeBeforeStart": "結束時間不能早於開始時間",
       "timeRangeExceeds30Days": "時間範圍不能超過 30 天",
       "hierarchyData": "層級資料",
-      "name": "姓名",
+      "name": "名稱",
       "groupCode": "組別代碼",
       "tradesCount": "交易筆數",
       "netDeposit": "淨入金",
       "deposit": "入金",
       "withdrawal": "出金",
       "rebate": "返佣",
-      "lots": "手數"
+      "lots": "手數",
+      "personalRebate": "個人返傭",
+      "teamRebateTotal": "各級代理返傭總額"
     },
     "lead": {
       "title": "線索",

@@ -392,8 +392,8 @@
     "accountManagement": "Pengurusan akaun",
     "personalInfo": "Maklumat peribadi",
     "userGuide": "Panduan pengguna",
-    "appStore": "APP STORE",
-    "androidApk": "Android APK",
+    "appStore": "Kedai Apple",
+    "androidApk": "Pakej pemasangan Android",
     "logout": "Log keluar",
     "loggingOut": "Sedang log keluar...",
     "verifyYourAccount": "Sahkan akaun anda",
@@ -684,6 +684,8 @@
     "__CANCEL_FAILED__": "Pembatalan gagal",
     "__APPROVE_FAILED__": "Kelulusan gagal",
     "__PAYMENT_EXECUTE_FAILED__": "Pelaksanaan pembayaran gagal. Sila cuba lagi kemudian atau hubungi perkhidmatan pelanggan",
+    "__NO_AVAILABLE_PAYMENT_CODES__": "Tiada kod pembayaran tersedia. Sila cuba lagi kemudian.",
+    "No available payment codes": "Tiada kod pembayaran tersedia. Sila cuba lagi kemudian.",
     "Payment_method_not_enabled": "Kaedah pembayaran ini tidak diaktifkan",
     "__ACCOUNT_CREATE_FAILED__": "Penciptaan akaun gagal",
     "__CHANGE_PASSWORD_FAIL__": "Pertukaran kata laluan gagal",
@@ -692,6 +694,7 @@
     "networkError": "Ralat rangkaian berlaku. Sila semak sambungan anda",
     "unknownError": "Ralat tidak diketahui berlaku",
     "Wallet address already exists": "Alamat dompet sudah wujud",
+    "WALLET_ADDRESS_EXIST": "Alamat dompet sudah wujud",
     "Request failed": "Ralat tidak dijangka berlaku. Sila cuba lagi kemudian atau hubungi perkhidmatan pelanggan.",
     "__ALREADY_PARTICIPATED__": "Anda telah pun menyertai aktiviti ini",
     "__CANNOT_TRANSFER_TO_OWN_ACCOUNT__": "Tidak boleh memindahkan ke akaun sendiri",
@@ -774,7 +777,7 @@
     "tabs": {
       "basicInfo": "Maklumat asas",
       "security": "Kata laluan log masuk",
-      "bankInfos": "Maklumat bank",
+      "bankInfos": "Maklumat Deposit & Pengeluaran",
       "files": "Muat naik fail",
       "address": "Pengurusan alamat"
     },
@@ -855,7 +858,8 @@
       "messages": {
         "twoFactorEnabled": "Pengesahan dua faktor telah diaktifkan",
         "twoFactorDisabled": "Pengesahan dua faktor telah dinyahdayakan",
-        "codeSent": "Kod pengesahan telah dihantar ke e-mel"
+        "codeSent": "Kod pengesahan telah dihantar ke e-mel",
+        "passwordChanged": "Kata laluan telah ditukar"
       }
     },
     "files": {
@@ -885,12 +889,12 @@
     },
     "bankInfos": {
       "linkedAccounts": "Akaun yang dipautkan",
-      "addBankAccount": "Tambah akaun",
-      "addUSDTWallet": "Alamat dompet USD",
+      "addBankAccount": "Akaun Bank",
+      "addUSDTWallet": "Alamat Dompet USDT",
       "addAccount": "Tambah akaun pembayaran",
       "editAccount": "Edit akaun pembayaran",
       "noAccounts": "Tiada maklumat akaun",
-      "accountName": "Nama akaun pembayaran",
+      "accountName": "Nama Panggilan Akaun Pembayaran",
       "accountHolder": "Pemilik akaun",
       "bankCountry": "Negara bank",
       "selectCountry": "Sila pilih negara",
@@ -905,8 +909,8 @@
       "city": "Bandar",
       "accountNumber": "Nombor akaun",
       "confirmAccountNumber": "Sahkan nombor akaun",
-      "usdtWalletAddress": "Alamat dompet USDT",
-      "walletPlaceholder": "Masukkan pemilik akaun",
+      "usdtWalletAddress": "Alamat Dompet USDT (TRX-TRC20)",
+      "walletPlaceholder": "",
       "bankNameLabel": "Bank:",
       "walletLabel": "Jenis dompet:",
       "usdtWallet": "Dompet USDT",
@@ -938,7 +942,9 @@
         "accountNoRequired": "Sila masukkan nombor akaun",
         "confirmAccountNoRequired": "Sila sahkan nombor akaun",
         "accountNoMismatch": "Nombor akaun tidak sepadan",
-        "walletAddressRequired": "Sila masukkan alamat dompet USDT"
+        "walletAddressRequired": "Sila masukkan alamat dompet USDT",
+        "walletAddressInvalid": "Sila masukkan alamat dompet USDT TRC20 yang sah",
+        "walletValidationFailed": "Alamat dompet tidak dapat disahkan. Sila cuba lagi kemudian"
       }
     },
     "address": {
@@ -1251,6 +1257,12 @@
       "redirect": "Klik untuk redirect",
       "error": "Pembayaran gagal. Sila cuba lagi",
       "qrCodeNotice": "Imbas kod QR untuk melengkapkan pembayaran",
+      "bankTransferNotice": "Sila pindahkan ke akaun di bawah, kemudian ketik “Pembayaran selesai”",
+      "bankName": "Nama Bank",
+      "bankBranch": "Cawangan Bank",
+      "accountName": "Nama Akaun",
+      "accountNo": "Nombor Akaun",
+      "copy": "Salin",
       "completePayment": "Pembayaran selesai",
       "paidConfirmed": "Pembayaran disahkan",
       "paidSuccess": "Pengesahan pembayaran telah dihantar"
@@ -1261,7 +1273,8 @@
       "amountInteger": "Jumlah mestilah integer",
       "selectChannel": "Sila pilih kaedah pembayaran",
       "requiredField": "Medan ini diperlukan",
-      "maxLength": "Maksimum {max} aksara"
+      "maxLength": "Maksimum {max} aksara",
+      "nativeNameChinese": "Nama mesti dalam bahasa Cina"
     },
     "creditCard": {
       "title": "Kad Kredit",
@@ -1319,8 +1332,8 @@
     "title": "Dompet",
     "balance": "Baki",
     "banner": {
-      "slogan": "Master Markets with Midas Magic",
-      "tagline": "Trade 300+ CFDs on FX, Commodities\nindices & more | MT5 | Ultra-tight spreads"
+      "slogan": "Kuasai Pasaran dengan Keajaiban Midas",
+      "tagline": "Dagangkan 300+ CFD bagi FX, Komoditi,\nindeks dan banyak lagi | MT5 | Spread ultra ketat"
     },
     "action": {
       "withdraw": "Keluarkan",
@@ -1681,6 +1694,7 @@
     "title": "Pusat ejen",
     "menu": {
       "dashboard": "Gambaran keseluruhan",
+      "statistics": "Statistik",
       "newCustomers": "Pelanggan baharu",
       "customers": "Pelanggan",
       "trade": "Dagangan",
@@ -1743,7 +1757,10 @@
       "linkName": "Nama pautan",
       "linkType": "Jenis pautan",
       "default": "Lalai",
-      "referralUrl": "Pautan rujukan"
+      "referralUrl": "Pautan rujukan",
+      "transactionType": "Jenis transaksi",
+      "transactionStatus": "Status transaksi",
+      "orderType": "Jenis pesanan"
     },
     "action": {
       "search": "Cari",
@@ -2081,6 +2098,41 @@
       "editRule5": "Jenis sedia ada: [A] Tidak boleh padam jenis akaun [B] Hanya boleh kurangkan rebat peribadi",
       "setPercentageTooltip": "Tetapkan peratusan untuk mengisi nilai rebat secara automatik",
       "updateSuccess": "Berjaya dikemas kini"
+    },
+    "statistics": {
+      "title": "Statistik",
+      "tradeTrend": "Trend dagangan",
+      "fundFlow": "Aliran dana",
+      "rebateTrend": "Trend rebat",
+      "productDistribution": "Pengedaran simbol",
+      "totalTrades": "Jumlah dagangan",
+      "totalNetDeposit": "Jumlah deposit bersih",
+      "totalRebate": "Jumlah rebat",
+      "totalDeposit": "Jumlah deposit",
+      "totalWithdrawal": "Jumlah pengeluaran",
+      "totalLots": "Jumlah lot",
+      "selectTimeRange": "Pilih julat masa",
+      "last30Days": "30 hari lepas",
+      "last7Days": "7 hari lepas",
+      "customTime": "Masa tersuai",
+      "selectChartType": "Pilih jenis carta",
+      "areaChart": "Carta kawasan",
+      "lineChart": "Carta garis",
+      "pleaseSelectTime": "Sila pilih masa",
+      "endTimeBeforeStart": "Masa tamat tidak boleh sebelum masa mula",
+      "timeRangeExceeds30Days": "Julat masa tidak boleh melebihi 30 hari",
+      "hierarchyData": "Data hierarki",
+      "name": "Nama",
+      "groupCode": "Kod kumpulan",
+      "tradesCount": "Bilangan dagangan",
+      "netDeposit": "Deposit bersih",
+      "deposit": "Deposit",
+      "withdrawal": "Pengeluaran",
+      "rebate": "Rebat",
+      "lots": "Lot",
+      "searchUserUid": "Sila masukkan ID/nama pengguna",
+      "personalRebate": "Rebat peribadi",
+      "teamRebateTotal": "Jumlah rebat semua peringkat ejen"
     }
   },
   "sales": {
@@ -2509,7 +2561,7 @@
       "days7": "7 hari",
       "area": "Carta kawasan",
       "line": "Carta garis",
-      "searchUserUid": "Cari UID pengguna",
+      "searchUserUid": "Sila masukkan ID/nama pengguna",
       "selectIdentity": "Pilih identiti",
       "roleSale": "Sales",
       "roleIb": "IB",
@@ -2532,7 +2584,9 @@
       "deposit": "Deposit",
       "withdrawal": "Pengeluaran",
       "rebate": "Rebat",
-      "lots": "Lot"
+      "lots": "Lot",
+      "personalRebate": "Rebat peribadi",
+      "teamRebateTotal": "Jumlah rebat semua peringkat ejen"
     },
     "lead": {
       "title": "Lead",

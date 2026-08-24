@@ -20,6 +20,8 @@ import type {
   IBDefaultLevelSetting,
   IBRebateDistribution,
   IBChildStat,
+  IBStatistics,
+  IBHierarchyNode,
   IBReferralSupplement,
   IBReportRequestResponse,
   SymbolCategory,
@@ -469,6 +471,63 @@ export async function getIBRebateStatBySymbol(
     return { success: true, data };
   } catch (error) {
     return handleApiError(error, 'Failed to fetch rebate stat by symbol');
+  }
+}
+
+// ============================================
+// IB Statistics API
+// ============================================
+
+type IBStatisticsSummary = NonNullable<IBStatistics['summaryStats']>;
+type IBStatisticsTimeSeriesRow = NonNullable<IBStatistics['timeSeriesData']>[number];
+
+function normalizeIBStatisticsHierarchy(nodes?: IBHierarchyNode[]): IBHierarchyNode[] | undefined {
+  if (!nodes) return nodes;
+
+  return nodes.map((node) => {
+    const normalized = normalizeAmountList<IBHierarchyNode>(
+      node,
+      ['netDeposit', 'deposit', 'withdrawal', 'rebate', 'teamRebate']
+    ) as IBHierarchyNode;
+
+    if (normalized.children?.length) {
+      normalized.children = normalizeIBStatisticsHierarchy(normalized.children);
+    }
+
+    return normalized;
+  });
+}
+
+function normalizeIBStatistics(response: IBStatistics): IBStatistics {
+  return {
+    ...response,
+    summaryStats: response.summaryStats
+      ? normalizeAmountList<IBStatisticsSummary>(
+          response.summaryStats,
+          ['totalNetDeposit', 'totalRebate', 'totalDeposit', 'totalWithdrawal']
+        ) as IBStatisticsSummary
+      : response.summaryStats,
+    timeSeriesData: response.timeSeriesData
+      ? normalizeAmountList<IBStatisticsTimeSeriesRow>(
+          response.timeSeriesData,
+          ['deposit', 'withdrawal', 'netDeposit', 'rebate']
+        ) as IBStatisticsTimeSeriesRow[]
+      : response.timeSeriesData,
+    hierarchyData: normalizeIBStatisticsHierarchy(response.hierarchyData),
+  };
+}
+
+export async function getIBStatistics(
+  agentUid: number,
+  params?: IBListParams
+): Promise<ActionResponse<IBStatistics>> {
+  try {
+    const response = await apiClient.v1.get<IBStatistics>(
+      `/ib/${agentUid}/statistics${buildQuery(params)}`
+    );
+    return { success: true, data: normalizeIBStatistics(unwrapData<IBStatistics>(response)) };
+  } catch (error) {
+    return handleApiError(error, 'Failed to fetch IB statistics');
   }
 }
 

@@ -473,7 +473,9 @@ export interface SalesStatistics {
 export interface SalesHierarchyNode {
   id: number;
   name?: string;
+  nativeName?: string;
   type?: string;
+  typeName?: string;
   groupCode?: string;
   currencyId?: number;
   trades?: number;
@@ -481,6 +483,7 @@ export interface SalesHierarchyNode {
   deposit?: number;
   withdrawal?: number;
   rebate?: number;
+  teamRebate?: number;
   lots?: number;
   products?: string;
   children?: SalesHierarchyNode[];
