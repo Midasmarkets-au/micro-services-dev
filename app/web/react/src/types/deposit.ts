@@ -2,6 +2,13 @@
 // 入金（Deposit）相关类型定义
 // ============================================
 
+/** 渠道卡片展示文案（按用户当前语言解析后的字符串） */
+export interface DepositGroupNotes {
+  arrival?: string;
+  fee?: string;
+  processing?: string;
+}
+
 // Step 1: 支付渠道
 export interface DepositGroup {
   group: string;
@@ -11,6 +18,7 @@ export interface DepositGroup {
   range?: [number, number];
   /** 渠道类型标识，例如 "ExLinkGlobal"。后端按类型驱动差异化逻辑 */
   type?: string;
+  notes?: DepositGroupNotes;
 }
 
 // Step 2: 支付渠道详情
