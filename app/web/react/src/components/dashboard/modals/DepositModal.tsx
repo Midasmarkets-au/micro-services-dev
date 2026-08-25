@@ -48,6 +48,12 @@ const RDDPAY_TYPE ='RDDPay';
 const NPay_TYPE ='NPay';
 const AliPay2_TYPE ='AliPay2';
 const CHINESE_NATIVE_NAME_REGEX = /^[\u3400-\u9FFF\uF900-\uFAFF\s·]+$/;
+
+function displayNote(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : fallback;
+}
+
 /**
  * Groups that fan out into multiple PaymentMethod rows on the backend
  * and render a step-3 dropdown driven by `groupInfo.paymentMethods`.
@@ -802,13 +808,13 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                               {group.type ? group.group : group.paymentMethodName}
                             </span>
                             <span className="text-xs text-text-secondary">
-                              {t('channel.arrival')}：{t('channel.instant')}
+                              {t('channel.arrival')}：{displayNote(group.notes?.arrival, t('channel.instant'))}
                             </span>
                             <span className="text-xs text-text-secondary">
-                              {t('channel.fee')}：{t('channel.noFee')}
+                              {t('channel.fee')}：{displayNote(group.notes?.fee, t('channel.noFee'))}
                             </span>
                             <span className="text-xs text-text-secondary">
-                              {t('channel.processing')}：{'< 1'}{t('channel.hour')}
+                              {t('channel.processing')}：{displayNote(group.notes?.processing, `< 1${t('channel.hour')}`)}
                             </span>
                             {groupRange && account && (
                               <>
@@ -1273,8 +1279,8 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                         {selectedGroup && (
                           <div className="w-[200px] min-h-[160px] rounded-lg border border-border bg-surface-secondary p-5 flex flex-col gap-0">
                             <div className="flex items-center justify-between text-xs text-text-secondary">
-                              <span>{t('channel.noFee')}</span>
-                              <span>{'< 1'} {t('channel.hour')}</span>
+                              <span>{displayNote(selectedGroup.notes?.fee, t('channel.noFee'))}</span>
+                              <span>{displayNote(selectedGroup.notes?.processing, `< 1 ${t('channel.hour')}`)}</span>
                             </div>
                             <hr className="my-1 border-border" />
                             <div className="text-right text-xs text-text-secondary">24/5</div>
