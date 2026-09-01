@@ -4,8 +4,8 @@ metadata:
   name: production
 spec:
   limits:
-    cpu: "4"      # max 2 nodes x 4 vCPU
-    memory: 8Gi  # max 2 nodes x 16Gi
+    cpu: "8"      # max ~4 nodes x c6g.large (2 vCPU each)
+    memory: 16Gi  # max ~4 nodes x c6g.large (4 GiB each)
   template:
     metadata:
       labels:
