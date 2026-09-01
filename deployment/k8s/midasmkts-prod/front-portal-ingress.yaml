@@ -1,22 +1,14 @@
 # ============================================================================
-#  front-portal Ingress (midasmkts production) —— ⚠️ 切换时才 apply
+#  front-portal Ingress (midasmkts production)
+#  portal/vu/au/bvi/sea/jp.midasmkts.com  →  midasmkts-prod/front-portal
 #
-#  当前 portal/vu/au/bvi/sea/jp.midasmkts.com 由 mm-prod/midasmkts-ingress
-#  (同为 nginx-prod class) 指向 mm-prod/front-portal-product。
-#  同 host + 同 path(/) 的两个 Ingress 跨 namespace 共存会冲突（nginx 取更早创建者）。
+#  2026-09-01 已切换生效：删除了旧的 mm-prod/midasmkts-ingress（曾指向
+#  mm-prod/front-portal-product，该 Deployment 已一并清理），流量走本文件。
+#  SSE /api/v1/event 走 api.midasmkts.net（旧 mm-prod/midasmkts-event-ingress
+#  早已指向不存在的 boardcast svc，本就失效，已删）。
 #
-#  切换步骤：
-#    1. 确认 midasmkts-prod/front-portal Deployment 就绪：
-#         kubectl -n midasmkts-prod rollout status deploy/front-portal
-#    2. 删除旧路由（同一时刻只保留一个）：
-#         kubectl -n mm-prod delete ingress midasmkts-ingress
-#       （如需保留 SSE，另见 mm-prod/midasmkts-event-ingress，可一并迁移到本 ns）
-#    3. apply 本文件：
-#         kubectl apply -f deployment/k8s/midasmkts-prod/front-portal-ingress.yaml
-#    4. 验证 6 个域名 / 、/api、/hub、/connect 均正常后，
-#       再考虑缩容 mm-prod/front-portal-product。
-#
-#  回滚：kubectl delete -f 本文件 && kubectl apply -f <旧 midasmkts-ingress 备份>
+#  两个 Ingress 对象拆分原因：backend-protocol 是 per-ingress 注解——
+#  front-portal 走 HTTP(:3000)，front-portal-api 走 HTTPS(api.midasmkts.net)。
 # ============================================================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
