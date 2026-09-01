@@ -1,0 +1,115 @@
+# ============================================================================
+#  front-portal — Next.js 客户门户 (midasmkts production)
+#  镜像：961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal-product:latest
+#  端口：3000 (HTTP, Next.js standalone)
+#  入口：portal / vu / au / bvi / sea / jp .midasmkts.com  —— 见 front-portal-ingress.yaml
+#
+#  说明：本 namespace 无 in-cluster mono/auth，后端统一走 api.midasmkts.net
+#        （复用已存在的 api-backend ExternalName Service）。
+#        Deployment / Service / PDB 可先行 apply（无流量、空跑），
+#        Ingress 待 DNS/流量切换时再 apply（见 front-portal-ingress.yaml 顶部说明）。
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-portal
+  namespace: midasmkts-prod
+  labels:
+    app: front-portal
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: front-portal
+  template:
+    metadata:
+      labels:
+        app: front-portal
+    spec:
+      tolerations:
+        - key: workload-type
+          value: production
+          effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: workload-type
+                    operator: In
+                    values: ["production"]
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: front-portal
+      containers:
+        - name: front-portal
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal-product:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            # 说明：后端 API 基址 / JWT_SECRET / BACKEND_REQUEST_AUTH_MODE 由镜像内
+            # 打包的 .env 提供（front-portal-product 镜像 .env: API_BASE_URL=https://api.midasmkts.net，
+            # BACKEND_REQUEST_AUTH_MODE=token）。与 mm-prod/front-portal-product 现网配置完全一致，
+            # 不在此覆盖。
+          resources:
+            requests:
+              cpu: 300m
+              memory: 512Mi
+            limits:
+              cpu: 800m
+              memory: 1024Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-portal
+  namespace: midasmkts-prod
+  labels:
+    app: front-portal
+spec:
+  type: ClusterIP
+  selector:
+    app: front-portal
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: front-portal
+  namespace: midasmkts-prod
+  labels:
+    app: front-portal
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: front-portal
