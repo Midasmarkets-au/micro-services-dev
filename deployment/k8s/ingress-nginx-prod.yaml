@@ -7,7 +7,7 @@
 #    - election-id:  ingress-nginx-leader-prod
 #    - NLB Service:  ingress-nginx-controller-prod
 #
-#  应用：kubectl apply -f deployment/k8s/mm-prod/ingress-nginx-prod.yaml
+#  应用：kubectl apply -f deployment/k8s/ingress-nginx-prod.yaml
 #
 #  HA: 2 replicas, zero-downtime rolling update, PDB, pod anti-affinity
 # ============================================================================
