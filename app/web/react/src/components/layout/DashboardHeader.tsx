@@ -346,10 +346,10 @@ export function DashboardHeader() {
                 </Link>
               ))}
 
-              {/* 移动端 IB / Sales / Rep 入口 */}
-              {(hasMenuAccess(user?.roles, ['IB', 'Sales']) || hasMenuAccess(user?.roles, ['Sales']) || hasMenuAccess(user?.roles, ['Rep'])) && (
+              {/* 移动端 IB / Sales / Rep 入口（与桌面端一致：按角色分别显示） */}
+              {(hasMenuAccess(user?.roles, ['IB']) || hasMenuAccess(user?.roles, ['Sales']) || hasMenuAccess(user?.roles, ['Rep'])) && (
                 <div className="my-2 border-t border-border pt-2">
-                  {hasMenuAccess(user?.roles, ['IB', 'Sales']) && (
+                  {hasMenuAccess(user?.roles, ['IB']) && (
                     <Link
                       href="/ib"
                       onClick={closeDrawer}
