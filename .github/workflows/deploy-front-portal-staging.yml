@@ -72,4 +72,6 @@ jobs:
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
 
       - name: Rollout restart deployment
-        run: kubectl rollout restart deployment front-${{ env.PROJECT_NAME }} -n mm
+        run: |
+          kubectl rollout restart deployment front-portal -n mm
+          kubectl rollout restart deployment front-portal-staging -n midasmkts-staging
