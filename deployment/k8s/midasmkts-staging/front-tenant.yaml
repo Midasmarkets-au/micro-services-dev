@@ -1,22 +1,74 @@
 # ============================================================================
-#  old-tenant-staging —— tenant.trademdm.com 路由（旧 mm/front-tenant 迁移过来）
+#  front-tenant — Vue 3 租户门户 (tenant.trademdm.com)
+#  镜像：961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest
+#        (build-arg PROJECT_NAME=tenant, VUE_APP_API_URL = https://tenant.trademdm.com)
+#  端口：80 (nginx)
 #
-#  mm namespace 已删，tenant.trademdm.com 随之 404。这里把它接到 midasmkts-staging
-#  已有的 old-tenant-staging Deployment（Vue 租户门户，镜像 old-tenant-staging:staging，
-#  由外部 infra 管理，不在本 repo）。
+#  从原 mm/front-tenant 迁移过来（mm namespace 已删）。这个镜像的 API base 打成了
+#  tenant.trademdm.com（同源），所以必须配套 front-tenant-trademdm-api 把
+#  /connect /api /hub 转到 api-backend-staging (api.midasmkts.net)。
 #
-#  ⚠️ 独立 Ingress 对象，不改 old-tenant-staging / old-tenant-staging-api
-#     （那两个由别的流程管理，改了会被覆盖）。规则与 tenant.midasmarkets.org 一致。
-#
-#  tenant.trademdm.com/grafana 由 log/grafana-ingress 提供，路径更长优先命中，不受影响。
+#  ⚠️ 不能用 old-tenant-staging（那是给 tenant.midasmarkets.org 的构建，API base
+#     指向别的域名，在 tenant.trademdm.com 上跨域会失败）。
+#  tenant.trademdm.com/grafana 由 log/grafana-ingress 提供，路径更长优先，不受影响。
 # ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-tenant
+  namespace: midasmkts-staging
+  labels:
+    app: front-tenant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-tenant
+  template:
+    metadata:
+      labels:
+        app: front-tenant
+    spec:
+      containers:
+        - name: front-tenant
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-tenant
+  namespace: midasmkts-staging
+  labels:
+    app: front-tenant
+spec:
+  type: ClusterIP
+  selector:
+    app: front-tenant
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+# ---- 前端 (HTTP → :80) ----
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: old-tenant-staging-trademdm
+  name: front-tenant-trademdm
   namespace: midasmkts-staging
   labels:
-    app: old-tenant-staging
+    app: front-tenant
   annotations:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
@@ -36,7 +88,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: old-tenant-staging
+                name: front-tenant
                 port:
                   number: 80
 ---
@@ -44,10 +96,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: old-tenant-staging-trademdm-api
+  name: front-tenant-trademdm-api
   namespace: midasmkts-staging
   labels:
-    app: old-tenant-staging
+    app: front-tenant
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
