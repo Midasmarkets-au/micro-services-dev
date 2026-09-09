@@ -1,0 +1,96 @@
+# ============================================================================
+#  old-tenant-staging —— tenant.trademdm.com 路由（旧 mm/front-tenant 迁移过来）
+#
+#  mm namespace 已删，tenant.trademdm.com 随之 404。这里把它接到 midasmkts-staging
+#  已有的 old-tenant-staging Deployment（Vue 租户门户，镜像 old-tenant-staging:staging，
+#  由外部 infra 管理，不在本 repo）。
+#
+#  ⚠️ 独立 Ingress 对象，不改 old-tenant-staging / old-tenant-staging-api
+#     （那两个由别的流程管理，改了会被覆盖）。规则与 tenant.midasmarkets.org 一致。
+#
+#  tenant.trademdm.com/grafana 由 log/grafana-ingress 提供，路径更长优先命中，不受影响。
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: old-tenant-staging-trademdm
+  namespace: midasmkts-staging
+  labels:
+    app: old-tenant-staging
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: old-tenant-staging
+                port:
+                  number: 80
+---
+# ---- 后端 API (HTTPS → api.midasmkts.net)，复用 api-backend-staging ExternalName ----
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: old-tenant-staging-trademdm-api
+  namespace: midasmkts-staging
+  labels:
+    app: old-tenant-staging
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+    nginx.ingress.kubernetes.io/upstream-vhost: "api.midasmkts.net"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /connect
+            pathType: Prefix
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
+          - path: /hub
+            pathType: Prefix
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
+          - path: /.well-known
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
