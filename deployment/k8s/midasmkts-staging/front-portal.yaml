@@ -3,7 +3,8 @@
 #  镜像：961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-portal:latest
 #        docker build -f app/web/react/Dockerfile app/web/react
 #  端口：3000 (HTTP, Next.js standalone)
-#  入口：portal.midasmarkets.org
+#  入口：portal.midasmarkets.org、portal.trademdm.com（旧 mm/front-portal 迁移过来，
+#        原 mm namespace 已删；两个 host 指向同一套后端）
 #        /                     → front-portal-staging:80
 #        Next.js Route Handler → front-portal-staging:80
 #        /api /hub /live /connect /.well-known → api-backend-staging (api.midasmkts.net)
@@ -109,7 +110,7 @@ spec:
   ingressClassName: nginx
   rules:
     - host: portal.midasmarkets.org
-      http:
+      http: &frontPortalStagingPaths
         paths:
           # --- Next.js 自身 Route Handler，必须留在前端容器 ---
           - path: /api/user/
@@ -176,6 +177,8 @@ spec:
                 name: front-portal-staging
                 port:
                   number: 80
+    - host: portal.trademdm.com
+      http: *frontPortalStagingPaths
 ---
 # ============================================================================
 #  front-portal-staging-api Ingress — 后端 API (HTTPS → api.midasmkts.net)
@@ -204,7 +207,7 @@ spec:
   ingressClassName: nginx
   rules:
     - host: portal.midasmarkets.org
-      http:
+      http: &frontPortalStagingApiPaths
         paths:
           - path: /connect
             pathType: Prefix
@@ -241,3 +244,5 @@ spec:
                 name: api-backend-staging
                 port:
                   number: 443
+    - host: portal.trademdm.com
+      http: *frontPortalStagingApiPaths
