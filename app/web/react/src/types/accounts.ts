@@ -633,6 +633,19 @@ export const PlatformNames: Record<number, string> = {
 };
 
 
+/** Limit labels on deposit/withdraw channels: USD/USC accounts keep USD symbol; others follow account currency. */
+export function getLimitDisplayCurrencyId(accountCurrencyId?: number | null): number {
+  if (
+    accountCurrencyId === CurrencyTypes.USD ||
+    accountCurrencyId === CurrencyTypes.USC ||    
+    accountCurrencyId == null ||
+    accountCurrencyId <= 0)
+  {
+    return CurrencyTypes.USD;
+  }
+  return accountCurrencyId;
+}
+
 // 获取货币符号
 export const getCurrencySymbol = (currencyId: number, locale = 'en-US'): string => {
   const code = getCurrencyCode(currencyId);

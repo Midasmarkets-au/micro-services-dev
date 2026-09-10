@@ -34,7 +34,7 @@ import type {
   PaymentMethodConfig,
 } from '@/types/deposit';
 import { DepositActions } from '@/types/deposit';
-import { CurrencyTypes } from '@/types/accounts';
+import { CurrencyTypes, getLimitDisplayCurrencyId } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
 import { CreditCardForm, type CreditCardFormHandle } from './CreditCardForm';
 
@@ -777,10 +777,10 @@ export function DepositModal({ open, onOpenChange, account }: DepositModalProps)
                             {groupRange && account && (
                               <>
                                 <span className="text-xs text-text-secondary">
-                                  Min: <BalanceShow balance={groupRange[0]} currencyId={CurrencyTypes.USD} />
+                                  Min: <BalanceShow balance={groupRange[0]} currencyId={getLimitDisplayCurrencyId(account.currencyId)} />
                                 </span>
                                 <span className="text-xs text-text-secondary">
-                                  Max: <BalanceShow balance={groupRange[1]} currencyId={CurrencyTypes.USD} />
+                                  Max: <BalanceShow balance={groupRange[1]} currencyId={getLimitDisplayCurrencyId(account.currencyId)} />
                                 </span>
                               </>
                             )}
