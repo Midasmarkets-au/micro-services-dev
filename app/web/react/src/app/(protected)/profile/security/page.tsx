@@ -8,9 +8,9 @@ import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
 import { useToast } from '@/hooks/useToast';
 import { useUserStore } from '@/stores/userStore';
-import { changePassword, enable2FA, disable2FA, getUserInfo, getConfiguration } from '@/actions';
+import { changePassword, enable2FA, disable2FA, getUserInfo } from '@/actions';
 import { Input, Button } from '@/components/ui';
-import type { UserInfo, SiteConfiguration } from '@/types/user';
+import { readLoginCodeEnabled, type UserInfo } from '@/types/user';
 
 // 表单验证 schema
 const passwordSchema = z.object({
@@ -38,31 +38,22 @@ export default function SecurityPage() {
   const { execute, isLoading } = useServerAction();
   const { showSuccess, showError } = useToast();
   
-  const siteConfig = useUserStore((s) => s.siteConfig);
-  const { setUser, setSiteConfig } = useUserStore();
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const user = useUserStore((s) => s.user);
+  const { setUser } = useUserStore();
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(() => readLoginCodeEnabled(user));
 
   const refreshUserData = async () => {
-    const [userResult, configResult] = await Promise.all([
-      getUserInfo(),
-      getConfiguration(),
-    ]);
+    const userResult = await getUserInfo();
     if (userResult.success && userResult.data) {
-      setUser(userResult.data as UserInfo);
-    }
-    if (configResult.success && configResult.data) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setSiteConfig(configResult.data as any as SiteConfiguration);
+      const next = userResult.data as UserInfo;
+      setUser(next);
+      setTwoFactorEnabled(readLoginCodeEnabled(next));
     }
   };
 
-  // 当 siteConfig 数据加载完成后，同步 twoFactorAuth 状态
   useEffect(() => {
-    console.log('siteConfig', siteConfig);
-    if (siteConfig?.twoFactorAuth !== undefined) {
-      setTwoFactorEnabled(siteConfig.twoFactorAuth);
-    }
-  }, [siteConfig?.twoFactorAuth]);
+    setTwoFactorEnabled(readLoginCodeEnabled(user));
+  }, [user]);
   const [showTwoFactorInput, setShowTwoFactorInput] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [pendingTwoFactorAction, setPendingTwoFactorAction] = useState<'enable' | 'disable' | null>(null);
@@ -109,11 +100,14 @@ export default function SecurityPage() {
     setTwoFactorLoading(true);
 
     try {
-      // 调用 API，code 为空，让后台发送验证码邮件
       const apiAction = action === 'enable' ? enable2FA : disable2FA;
-      await execute(() => apiAction(''));
+      const result = await execute(() => apiAction(''));
 
-      // 显示验证码输入框和提示
+      if (!result.success) {
+        showError(result.error || tCommon('error'));
+        return;
+      }
+
       setShowTwoFactorInput(true);
       setTwoFactorCode('');
       setShowCodeSentMessage(true);

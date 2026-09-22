@@ -206,15 +206,17 @@ export async function updatePhoneNumber(
 }
 
 /**
- * 启用双重认证
- * PUT api/v1/user/enable-2fa
- * @param code 验证码，为空时触发发送验证码邮件
+ * 启用登录邮箱 2FA
+ * 无 code：PUT /api/v1/user/enable-2fa/code
+ * 有 code：POST /api/v1/user/enable-2fa/confirm
  */
 export async function enable2FA(code: string): Promise<ActionResponse<void>> {
   try {
-    // 如果 code 为空，发送空对象触发发送验证码邮件；否则发送验证码
-    const body = code ? { code } : {};
-    await apiClient.v1.put<void>('/user/enable-2fa', body);
+    if (!code) {
+      await apiClient.v1.put<void>('/user/enable-2fa/code', undefined);
+    } else {
+      await apiClient.v1.post<void>('/user/enable-2fa/confirm', { code });
+    }
 
     return {
       success: true,
@@ -238,15 +240,17 @@ export async function enable2FA(code: string): Promise<ActionResponse<void>> {
 }
 
 /**
- * 禁用双重认证
- * PUT api/v1/user/disable-2fa
- * @param code 验证码，为空时触发发送验证码邮件
+ * 关闭登录邮箱 2FA
+ * 无 code：PUT /api/v1/user/disable-2fa/code
+ * 有 code：POST /api/v1/user/disable-2fa/confirm
  */
 export async function disable2FA(code: string): Promise<ActionResponse<void>> {
   try {
-    // 如果 code 为空，发送空对象触发发送验证码邮件；否则发送验证码
-    const body = code ? { code } : {};
-    await apiClient.v1.put<void>('/user/disable-2fa', body);
+    if (!code) {
+      await apiClient.v1.put<void>('/user/disable-2fa/code', undefined);
+    } else {
+      await apiClient.v1.post<void>('/user/disable-2fa/confirm', { code });
+    }
 
     return {
       success: true,

@@ -1,0 +1,148 @@
+# ============================================================================
+#  front-tenant — Vue 3 租户门户 (tenant.trademdm.com)
+#  镜像：961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest
+#        (build-arg PROJECT_NAME=tenant, VUE_APP_API_URL = https://tenant.trademdm.com)
+#  端口：80 (nginx)
+#
+#  从原 mm/front-tenant 迁移过来（mm namespace 已删）。这个镜像的 API base 打成了
+#  tenant.trademdm.com（同源），所以必须配套 front-tenant-trademdm-api 把
+#  /connect /api /hub 转到 api-backend-staging (api.midasmkts.net)。
+#
+#  ⚠️ 不能用 old-tenant-staging（那是给 tenant.midasmarkets.org 的构建，API base
+#     指向别的域名，在 tenant.trademdm.com 上跨域会失败）。
+#  tenant.trademdm.com/grafana 由 log/grafana-ingress 提供，路径更长优先，不受影响。
+# ============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-tenant
+  namespace: midasmkts-staging
+  labels:
+    app: front-tenant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-tenant
+  template:
+    metadata:
+      labels:
+        app: front-tenant
+    spec:
+      containers:
+        - name: front-tenant
+          image: 961341529237.dkr.ecr.ap-southeast-2.amazonaws.com/front-tenant:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-tenant
+  namespace: midasmkts-staging
+  labels:
+    app: front-tenant
+spec:
+  type: ClusterIP
+  selector:
+    app: front-tenant
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+# ---- 前端 (HTTP → :80) ----
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: front-tenant-trademdm
+  namespace: midasmkts-staging
+  labels:
+    app: front-tenant
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: front-tenant
+                port:
+                  number: 80
+---
+# ---- 后端 API (HTTPS → api.midasmkts.net)，复用 api-backend-staging ExternalName ----
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: front-tenant-trademdm-api
+  namespace: midasmkts-staging
+  labels:
+    app: front-tenant
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+    nginx.ingress.kubernetes.io/upstream-vhost: "api.midasmkts.net"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+    nginx.ingress.kubernetes.io/proxy-buffers-number: "8"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tenant.trademdm.com
+      http:
+        paths:
+          - path: /connect
+            pathType: Prefix
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
+          - path: /hub
+            pathType: Prefix
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443
+          - path: /.well-known
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-backend-staging
+                port:
+                  number: 443

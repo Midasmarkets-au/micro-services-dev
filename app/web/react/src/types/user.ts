@@ -29,6 +29,34 @@ export interface UserInfo {
   defaultSalesAccount: string;
 }
 
+export function readLoginCodeEnabled(user: { configurations?: unknown; data?: unknown } | null | undefined): boolean {
+  if (!user) return false
+  const nested =
+    user.data && typeof user.data === 'object' && !Array.isArray(user.data)
+      ? (user.data as { configurations?: unknown })
+      : user
+  const list = nested.configurations ?? user.configurations
+  if (!Array.isArray(list)) return false
+  for (const item of list) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue
+    const row = item as Record<string, unknown>
+    const key = String(row.key ?? row.Key ?? '')
+    if (key.toLowerCase() !== 'twofactorauthsetting') continue
+    let value: unknown = row.value ?? row.Value
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value)
+      } catch {
+        continue
+      }
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+    const setting = value as Record<string, unknown>
+    return setting.loginCodeEnabled === true || setting.LoginCodeEnabled === true
+  }
+  return false
+}
+
 // 联系信息
 export interface ContactInfo {
   googleMap: string;
