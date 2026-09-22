@@ -2236,7 +2236,10 @@
       "referralCodeList": "Senarai kod rujukan",
       "newIBReferralCode": "Kod rujukan IB baharu",
       "action": "Tindakan",
-      "close": "Tutup"
+      "close": "Tutup",
+      "sendCode": "Hantar kod",
+      "oneTimeCode": "Kod sekali guna",
+      "verifySuccess": "Berjaya"
     },
     "dashboard": {
       "title": "Papan pemuka",

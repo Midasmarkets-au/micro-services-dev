@@ -2236,7 +2236,10 @@
       "referralCodeList": "紹介コードリスト",
       "newIBReferralCode": "新しいIB紹介コード",
       "action": "操作",
-      "close": "閉じる"
+      "close": "閉じる",
+      "sendCode": "コードを送信",
+      "oneTimeCode": "ワンタイムコード",
+      "verifySuccess": "成功"
     },
     "dashboard": {
       "title": "ダッシュボード",

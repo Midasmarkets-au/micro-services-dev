@@ -2236,7 +2236,10 @@
       "referralCodeList": "Danh sách mã giới thiệu",
       "newIBReferralCode": "Mã giới thiệu IB mới",
       "action": "Thao tác",
-      "close": "Đóng"
+      "close": "Đóng",
+      "sendCode": "Gửi mã",
+      "oneTimeCode": "Mã một lần",
+      "verifySuccess": "Thành công"
     },
     "dashboard": {
       "title": "Bảng điều khiển",
