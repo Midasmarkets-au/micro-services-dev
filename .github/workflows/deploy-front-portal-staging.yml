@@ -73,5 +73,4 @@ jobs:
 
       - name: Rollout restart deployment
         run: |
-          kubectl rollout restart deployment front-portal -n mm
           kubectl rollout restart deployment front-portal-staging -n midasmkts-staging
