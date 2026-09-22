@@ -21,9 +21,9 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
   const { execute } = useServerAction({ showErrorToast: true });
   const salesAccount = useSalesStore((s) => s.salesAccount);
 
-  const isIb = account?.role === AccountRoleTypes.IB;
   const isSales = account?.role === AccountRoleTypes.Sales;
-  const rebateStatFormat: RebateStatFormat = isIb ? 'ib' : 'sales';
+  // 客户与代理都走 symbol-grouped 返佣接口，对应 MM-Front ViewRebateStat 里非 Sales 的分支
+  const rebateStatFormat: RebateStatFormat = isSales ? 'sales' : 'ib';
 
   const fetchChildStat = useCallback(async (uid: number, from?: string, to?: string) => {
     if (!salesAccount) return { success: false as const, data: null };
@@ -50,18 +50,15 @@ export function ViewRebateStatModal({ open, onOpenChange, account }: ViewRebateS
       amounts?: Record<string, number>;
     };
 
-    if (isIb) {
-      return execute(() =>
-        fetchAction<RebateStatRow[]>('getSalesIbRebateStatBySymbol', salesAccount.uid, params),
-      );
-    }
     if (isSales) {
       return execute(() =>
         fetchAction<RebateStatRow[]>('getSalesRebateStatBySymbol', salesAccount.uid, params),
       );
     }
-    return { success: false as const, data: null };
-  }, [salesAccount, execute, isIb, isSales]);
+    return execute(() =>
+      fetchAction<RebateStatRow[]>('getSalesIbRebateStatBySymbol', salesAccount.uid, params),
+    );
+  }, [salesAccount, execute, isSales]);
 
   return (
     <SharedViewRebateStatModal

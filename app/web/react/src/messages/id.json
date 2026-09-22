@@ -2236,7 +2236,10 @@
       "referralCodeList": "Daftar Kode Referral",
       "newIBReferralCode": "Kode Referral IB Baru",
       "action": "Tindakan",
-      "close": "Tutup"
+      "close": "Tutup",
+      "sendCode": "Kirim Kode",
+      "oneTimeCode": "Kode sekali pakai",
+      "verifySuccess": "Berhasil"
     },
     "dashboard": {
       "title": "Dasbor",

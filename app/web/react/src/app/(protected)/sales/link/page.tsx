@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { fetchAction } from '@/lib/api/browser-client';
 import { useSalesStore } from '@/stores/salesStore';
 import { useUserStore } from '@/stores/userStore';
-import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
+import { Button, DataTable, Icon, Skeleton, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
 import type { DataTableColumn } from '@/components/ui';
 import type { SalesLink, SalesLinkListResponse } from '@/types/sales';
 import { getLanguageLabel } from '@/core/types/LanguageTypes';
@@ -18,6 +18,46 @@ const SERVICE_TYPE_LABELS: Record<number, string> = {
   300: 'IB',
   400: 'Client',
 };
+
+function CopyCodeButton({ value }: { value: string }) {
+  const t = useTranslations('sales');
+  const [copied, setCopied] = useState(false);
+
+  const handleClick = useCallback(() => {
+    const done = () => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1000);
+    };
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(value).then(done).catch(() => undefined);
+      return;
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    done();
+  }, [value]);
+
+  return (
+    <button
+      type="button"
+      className="relative inline-flex items-center text-text-secondary hover:text-text-primary"
+      aria-label={t('link.clickCopy')}
+      onClick={handleClick}
+    >
+      <Icon name="copy" size={14} className="pointer-events-none" />
+      {copied && (
+        <span className="pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-surface px-1.5 py-0.5 text-xs text-text-primary shadow-card">
+          {t('link.copied')}
+        </span>
+      )}
+    </button>
+  );
+}
 
 function CopyLinkCell({
   item,
@@ -292,12 +332,102 @@ export default function SalesLinkPage() {
           </Button>
         )}
       </div>
-      <DataTable<SalesLink>
-        columns={columns}
-        data={data}
-        rowKey={(item, idx) => item.id ?? idx}
-        loading={isLoading}
-      />
+      <div className="flex flex-col gap-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <Skeleton className="h-3 w-32" />
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </div>
+          ))
+        ) : data.length === 0 ? (
+          <div className="py-12 text-center text-sm text-text-secondary">
+            {t('link.noLinks')}
+          </div>
+        ) : (
+          data.map((item) => {
+            const lang = item.displaySummary?.language ?? item.summary?.language;
+            const autoCreate =
+              item.displaySummary?.isAutoCreatePaymentMethod ?? item.isAutoCreatePaymentMethod;
+            const roleLabel =
+              item.serviceType != null && tAccount.has(`accountRole.${item.serviceType}`)
+                ? tAccount(`accountRole.${item.serviceType}`)
+                : '-';
+
+            return (
+              <div
+                key={item.id ?? item.code}
+                className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-medium text-text-primary">
+                      {item.name || '-'}
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex shrink-0 items-center text-text-secondary hover:text-primary"
+                      aria-label={t('link.editLink')}
+                      onClick={() => handleEditLink(item)}
+                    >
+                      <Icon name="edit" size={14} />
+                    </button>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1 text-sm text-text-primary">
+                    <span>{item.code}</span>
+                    <CopyCodeButton value={item.code} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 text-sm text-text-primary">
+                  <span>{roleLabel}</span>
+                  <span>{getLanguageLabel(lang) || lang || '-'}</span>
+                </div>
+
+                <div className="text-xs text-text-secondary">
+                  {t('link.autoCreateAccount')}: {autoCreate === 1 ? t('link.yes') : t('link.no')}
+                </div>
+
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  {rebateEnabled ? (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="whitespace-nowrap"
+                      onClick={() => handleViewRebateSettings(item)}
+                    >
+                      {t('link.rebateSettings')}
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                  <CopyLinkCell item={item} onCopy={handleCopyLink} />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden md:block">
+        <DataTable<SalesLink>
+          columns={columns}
+          data={data}
+          rowKey={(item, idx) => item.id ?? idx}
+          loading={isLoading}
+        />
+      </div>
 
       {/* 返佣设置弹窗 */}
       <SalesRebateSettingsDialog
