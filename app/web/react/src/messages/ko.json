@@ -2264,7 +2264,10 @@
       "referralCodeList": "추천 코드 목록",
       "newIBReferralCode": "새 IB 추천 코드",
       "action": "작업",
-      "close": "닫기"
+      "close": "닫기",
+      "sendCode": "코드 보내기",
+      "oneTimeCode": "일회용 코드",
+      "verifySuccess": "성공"
     },
     "dashboard": {
       "title": "대시보드",

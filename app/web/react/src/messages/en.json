@@ -2267,7 +2267,10 @@
       "referralCodeList": "Referral Code List",
       "newIBReferralCode": "New IB Referral Code",
       "action": "Action",
-      "close": "Close"
+      "close": "Close",
+      "sendCode": "Send Code",
+      "oneTimeCode": "One-time code",
+      "verifySuccess": "Success"
     },
     "dashboard": {
       "title": "Dashboard",

@@ -2264,7 +2264,10 @@
       "referralCodeList": "รายการรหัสอ้างอิง",
       "newIBReferralCode": "รหัสอ้างอิง IB ใหม่",
       "action": "การดำเนินการ",
-      "close": "ปิด"
+      "close": "ปิด",
+      "sendCode": "ส่งรหัส",
+      "oneTimeCode": "รหัสครั้งเดียว",
+      "verifySuccess": "สำเร็จ"
     },
     "dashboard": {
       "title": "แดชบอร์ด",

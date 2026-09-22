@@ -2262,7 +2262,10 @@
       "referralCodeList": "Lista de códigos de referido",
       "newIBReferralCode": "Nuevo código de referido IB",
       "action": "Acción",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "sendCode": "Enviar código",
+      "oneTimeCode": "Código de un solo uso",
+      "verifySuccess": "Correcto"
     },
     "dashboard": {
       "title": "Panel de control",

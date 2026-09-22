@@ -2197,7 +2197,7 @@
       "role": "角色",
       "accountUid": "账户 UID",
       "accountNo": "账号",
-      "group": "组",
+      "group": "群组",
       "code": "代码",
       "type": "类型",
       "balance": "余额",
@@ -2267,7 +2267,10 @@
       "referralCodeList": "推荐码列表",
       "newIBReferralCode": "新建IB推荐码",
       "action": "操作",
-      "close": "关闭"
+      "close": "关闭",
+      "sendCode": "发送代码",
+      "oneTimeCode": "一次性代码",
+      "verifySuccess": "成功"
     },
     "dashboard": {
       "title": "仪表盘",

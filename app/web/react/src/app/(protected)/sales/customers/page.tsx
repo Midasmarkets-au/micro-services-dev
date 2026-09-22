@@ -35,6 +35,7 @@ import { RebateRuleEditModal } from '../_components/modals/RebateRuleEditModal';
 import { AddSalesLinkDialog } from '../_components/modals/AddSalesLinkDialog';
 import { AddIbLinkBySalesDialog } from '../_components/modals/AddIbLinkBySalesDialog';
 import { UnlockEmailAddressModal } from '@/components/user/UnlockEmailAddressModal';
+import { SalesCustomerDetailMobileModal } from '../_components/modals/SalesCustomerDetailMobileModal';
 import { TimeShow } from '@/components/TimeShow';
 type RoleTab = 'all' | 'ib' | 'client' | 'sales';
 
@@ -133,6 +134,7 @@ export default function SalesCustomersPage() {
   const [unlockEmailUid, setUnlockEmailUid] = useState<number | null>(null);
   const [unlockEmailAddress, setUnlockEmailAddress] = useState<string | undefined>(undefined);
   const [unlockKey, setUnlockKey] = useState(0);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<SalesClientAccount | null>(null);
   const [editSchemaContext, setEditSchemaContext] = useState<{
     parentRole: number;
@@ -376,6 +378,22 @@ export default function SalesCustomersPage() {
     setUnlockEmailOpen(true);
   }, []);
 
+  const showCustomerDetail = useCallback((item: SalesClientAccount) => {
+    setSelectedAccount(item);
+    setDetailOpen(true);
+  }, []);
+
+  const handleEmailRevealed = useCallback((uid: number, email: string) => {
+    setCustomers((prev) =>
+      prev.map((item) =>
+        item.uid === uid ? { ...item, user: { ...item.user, email } } : item,
+      ),
+    );
+    setSelectedAccount((prev) =>
+      prev && prev.uid === uid ? { ...prev, user: { ...prev.user, email } } : prev,
+    );
+  }, []);
+
   const showRoleColumn = activeTab === 'all';
 
   const columns = useMemo<DataTableColumn<SalesClientAccount>[]>(() => {
@@ -510,13 +528,11 @@ export default function SalesCustomersPage() {
             });
           }
 
-          if (item.role !== AccountRoleTypes.Client) {
-            dropdownItems.push({
-              key: 'viewRebateStat',
-              label: t('action.viewRebateStatistics'),
-              onClick: () => showRebateStat(item),
-            });
-          }
+          dropdownItems.push({
+            key: 'viewRebateStat',
+            label: t('action.viewRebateStatistics'),
+            onClick: () => showRebateStat(item),
+          });
 
           dropdownItems.push({
             key: 'createTradeAccount',
@@ -675,15 +691,19 @@ export default function SalesCustomersPage() {
             if (item.role === AccountRoleTypes.IB) { roleVariant = 'success'; roleLabel = t('customers.ibType'); }
             else if (item.role === AccountRoleTypes.Sales) { roleVariant = 'danger'; roleLabel = t('customers.salesType'); }
 
-            // 非 Client 的 dropdown
             const mobileDropdownItems: DropdownMenuItem[] = [];
             if (isNonClient) {
               mobileDropdownItems.push({ key: 'viewAccounts', label: t('action.viewAccounts'), onClick: () => handleIbDrillDown(item) });
             }
-            if (isNonClient) {
-              mobileDropdownItems.push({ key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) });
+            if (isClient) {
+              mobileDropdownItems.push({
+                key: 'viewDetails',
+                label: t('action.viewDetails'),
+                onClick: () => router.push(buildDetailHref(item.uid)),
+              });
             }
             mobileDropdownItems.push(
+              { key: 'viewRebateStat', label: t('action.viewRebateStatistics'), onClick: () => showRebateStat(item) },
               { key: 'createTradeAccount', label: t('action.createTradeAccount'), onClick: () => showOpenAccount(item) },
             );
             if (item.role === AccountRoleTypes.IB) {
@@ -704,7 +724,8 @@ export default function SalesCustomersPage() {
             return (
               <div
                 key={item.uid}
-                className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-(--color-surface-secondary)"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-(--color-surface-secondary)"
+                onClick={() => showCustomerDetail(item)}
               >
                 <Avatar src={item.user?.avatar} alt={name} size="sm" className="shrink-0" />
 
@@ -717,10 +738,7 @@ export default function SalesCustomersPage() {
                       </Tag>
                     )}
                   </div>
-                  <p
-                    className="cursor-pointer truncate text-xs text-text-secondary"
-                    onClick={() => showUnlockEmailAddress(item.uid, item.user?.email)}
-                  >
+                  <p className="truncate text-xs text-text-secondary">
                     {item.user?.email}
                   </p>
                 </div>
@@ -731,28 +749,18 @@ export default function SalesCustomersPage() {
                     <span className="text-xs text-text-secondary">{subInfo}</span>
                   </div>
 
-                  {isClient ? (
-                    <Link
-                      href={buildDetailHref(item.uid)}
-                      className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-                      aria-label={t('action.viewDetails')}
-                    >
-                      <Icon name="eye_open" size={18} />
-                    </Link>
-                  ) : (
-                    <DropdownMenu
-                      trigger={
-                        <button
-                          type="button"
-                          className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
-                          aria-label={t('action.action')}
-                        >
-                          <Icon name={settingIcon} size={18} />
-                        </button>
-                      }
-                      items={mobileDropdownItems}
-                    />
-                  )}
+                  <DropdownMenu
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                        aria-label={t('action.action')}
+                      >
+                        <Icon name={settingIcon} size={18} />
+                      </button>
+                    }
+                    items={mobileDropdownItems}
+                  />
                 </div>
               </div>
             );
@@ -780,6 +788,12 @@ export default function SalesCustomersPage() {
       />
 
       {/* Modals */}
+      <SalesCustomerDetailMobileModal
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        account={selectedAccount}
+        onEmailRevealed={handleEmailRevealed}
+      />
       <ViewRebateStatModal
         open={rebateStatOpen}
         onOpenChange={setRebateStatOpen}

@@ -2194,7 +2194,7 @@
       "role": "角色",
       "accountUid": "帳戶 UID",
       "accountNo": "帳號",
-      "group": "組",
+      "group": "群組",
       "code": "代碼",
       "type": "類型",
       "balance": "餘額",
@@ -2264,7 +2264,10 @@
       "referralCodeList": "推薦碼列表",
       "newIBReferralCode": "新建IB推薦碼",
       "action": "操作",
-      "close": "關閉"
+      "close": "關閉",
+      "sendCode": "發送代碼",
+      "oneTimeCode": "一次性代碼",
+      "verifySuccess": "成功"
     },
     "dashboard": {
       "title": "儀表板",

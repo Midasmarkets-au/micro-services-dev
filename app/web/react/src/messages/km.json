@@ -2264,7 +2264,10 @@
       "referralCodeList": "បញ្ជីលេខកូដបញ្ជូន",
       "newIBReferralCode": "លេខកូដបញ្ជូន IB ថ្មី",
       "action": "ប្រតិបត្តិការ",
-      "close": "បិទ"
+      "close": "បិទ",
+      "sendCode": "ផ្ញើលេខកូដ",
+      "oneTimeCode": "លេខកូដម្ដង",
+      "verifySuccess": "ជោគជ័យ"
     },
     "dashboard": {
       "title": "ផ្ទាំងគ្រប់គ្រង",

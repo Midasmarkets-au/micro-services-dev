@@ -46,6 +46,8 @@ export interface SalesClientTradeAccount {
 export interface SalesClientAccount {
   uid: number;
   agentUid?: number;
+  /** 账户自身账号。客户详情弹窗展示这个字段，与交易账号 login 不是同一个值。 */
+  accountNumber?: number;
   role: number;
   type: number;
   group?: string;
