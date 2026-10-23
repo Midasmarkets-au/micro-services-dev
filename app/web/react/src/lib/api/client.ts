@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import type { User } from '@/types/auth';
 import type { UserInfo } from '@/types/user';
 import { syncAuthCookies } from '@/lib/auth/cookies';
+import { clientIpHeaders } from '@/lib/api/forwarded';
 
 // ============================================
 // API 配置 - 统一管理（优先读取环境变量）
@@ -88,6 +89,7 @@ const PUBLIC_ENDPOINTS = [
   '/user/email/confirm',      // 邮箱确认
   '/auth/token/verify',       // 2FA 验证
   '/auth/c',                  // 获取站点配置
+  '/auth/ip-info',            // IP 归属地查询（后端 AllowAnonymous）
   '/trade-demo-account',      // 未登录创建模拟账户
   '/api/app/lead',            // Lead 创建
   '/contact',                 // 联系表单
@@ -277,6 +279,7 @@ async function request<T>(
   const config: RequestInit = {
     ...options,
     headers: {
+      ...(await clientIpHeaders()),
       ...options.headers,
       ...(authorizationHeader ? { Authorization: authorizationHeader } : {}),
     },
@@ -478,6 +481,7 @@ export const apiClient = {
       const tokenRawResponse = await fetch(TOKEN_ENDPOINT, {
         method: 'POST',
         headers: {
+          ...(await clientIpHeaders()),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: formData.toString(),
