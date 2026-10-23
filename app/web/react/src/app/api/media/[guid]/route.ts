@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/lib/api/client';
+import { clientIpHeaders } from '@/lib/api/forwarded';
 
 export async function GET(
   _request: Request,
@@ -22,7 +23,10 @@ export async function GET(
     const response = await fetch(
       `${API_BASE_URL}/api/v1/client/media/${guid}`,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          ...(await clientIpHeaders()),
+          Authorization: `Bearer ${token}`,
+        },
       }
     );
 
