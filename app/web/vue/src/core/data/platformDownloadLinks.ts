@@ -10,12 +10,12 @@ export const platformDownloadLinks = {
     },
     mt5: {
       windows:
-        "https://mm-official-web.s3.ap-southeast-1.amazonaws.com/download/mmco5setupWindows.exe",
+        "https://download.terminal.free/cdn/web/mm.co.ltd/mt5/mdm5setup.exe",
       // "https://bcrpropublic.s3.ap-southeast-1.amazonaws.com/download/windows/mt5setup.exe",
       mac: "https://mm-official-web.s3.ap-southeast-1.amazonaws.com/download/MetaTraderMac.pkg", //"https://bcrpropublic.s3.ap-southeast-1.amazonaws.com/download/mac/MetaTrader5.pkg",
-      android: "https://download.midasmkts.com/download/metatrader5.apk",
+      android: "https://download.terminal.free/cdn/mobile/mt5/android?server=MDM-Main",
       // "https://bcrpropublic.s3.ap-southeast-1.amazonaws.com/download/metatrader5.apk",
-      ios: "https://download.mql5.com/cdn/mobile/mt5/ios?server=MMCo-Main", //"https://apps.apple.com/us/app/metatrader-5-forex-stocks/id413251709?utm_campaign=install.metaquotes&utm_source=www.thebcr.com",
+      ios: "https://download.terminal.free/cdn/mobile/mt5/ios?server=MDM-Main", //"https://apps.apple.com/us/app/metatrader-5-forex-stocks/id413251709?utm_campaign=install.metaquotes&utm_source=www.thebcr.com",
     },
   },
   ba: {
