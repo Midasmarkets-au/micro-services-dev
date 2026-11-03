@@ -36,10 +36,10 @@ export const platformDownloadLinks: Record<RegionType, Record<PlatformType, Plat
     },
     mt5: {
       windows:
-        'https://mm-official-web.s3.ap-southeast-1.amazonaws.com/download/mmco5setupWindows.exe',
+        'https://download.terminal.free/cdn/web/mm.co.ltd/mt5/mdm5setup.exe',
       mac: 'https://mm-official-web.s3.ap-southeast-1.amazonaws.com/download/MetaTraderMac.pkg',
-      android: 'https://download.mql5.com/cdn/mobile/mt5/android?server=MMCo-Main',
-      ios: 'https://download.mql5.com/cdn/mobile/mt5/ios?server=MMCo-Main',
+      android: 'https://download.terminal.free/cdn/mobile/mt5/android?server=MDM-Main',
+      ios: 'https://download.terminal.free/cdn/mobile/mt5/ios?server=MDM-Main',
     },
     mm: {
       windows:'https://windows.midasmkts.com',
