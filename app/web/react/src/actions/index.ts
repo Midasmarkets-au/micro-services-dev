@@ -85,6 +85,7 @@ export {
   getDemoAccounts,
   getServiceMap,
   getLiveAccountConfig,
+  getAccountTypesByReferCode,
   getDemoAccountConfig,
   createLiveAccount,
   createDemoAccount,
