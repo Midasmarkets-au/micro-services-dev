@@ -1086,6 +1086,8 @@
       "leverageChanged": "杠杆修改申请已提交",
       "accountCreated": "提交成功"
     },
+    "referCodeValid": "推荐码有效",
+    "referCodeInvalid": "推荐码无效或校验失败",
     "placeholder": {
       "selectPlatform": "请选择交易平台",
       "selectType": "请选择账户类型",

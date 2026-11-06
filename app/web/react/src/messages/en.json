@@ -1086,6 +1086,8 @@
       "leverageChanged": "Leverage change request submitted",
       "accountCreated": "Submitted successfully"
     },
+    "referCodeValid": "Refer code is valid",
+    "referCodeInvalid": "Refer code is invalid or check failed",
     "placeholder": {
       "selectPlatform": "Select platform",
       "selectType": "Select account type",

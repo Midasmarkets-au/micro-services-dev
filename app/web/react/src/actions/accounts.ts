@@ -211,6 +211,26 @@ export async function getLiveAccountConfig(): Promise<ActionResponse<AccountConf
 }
 
 /**
+ * 按推荐码获取可用账户类型（与 BCR 一致）
+ */
+export async function getAccountTypesByReferCode(
+  code: string
+): Promise<ActionResponse<number[]>> {
+  try {
+    const response = await apiClient.v2.get<{ data: number[] }>(
+      `/client/account/type/referral?code=${encodeURIComponent(code)}`
+    );
+    const types = Array.isArray(response.data) ? response.data : [];
+    return { success: true, data: types };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return { success: false, error: error.message, errorCode: error.errorCode };
+    }
+    return { success: false, error: 'Failed to fetch account types by refer code' };
+  }
+}
+
+/**
  * 获取创建模拟账户配置
  */
 export async function getDemoAccountConfig(): Promise<ActionResponse<AccountConfig>> {
