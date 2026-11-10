@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useServerAction } from '@/hooks/useServerAction';
-import { getReferralCodeSupplement } from '@/actions';
 import { fetchAction } from '@/lib/api/browser-client';
 import { useIBStore } from '@/stores/ibStore';
 import { Button, DataTable, Icon, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui';
@@ -92,7 +91,9 @@ export default function IBLinkPage() {
     setDialogData(null);
     setDialogLoading(true);
     try {
-      const result = await executeRef.current(getReferralCodeSupplement, item.code);
+      const result = await executeRef.current(async () =>
+        fetchAction<IBReferralSupplement>('getReferralCodeSupplement', item.code)
+      );
       if (result.success && result.data) {
         setDialogData(result.data);
       }
