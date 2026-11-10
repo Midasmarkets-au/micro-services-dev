@@ -67,12 +67,25 @@ partial class Symbol
 public static class SymbolExtension
 {
     public static IQueryable<RebateSymbol> ToRebateSymbols(this IQueryable<M> q, int type) =>
-        q.Where(x => x.Type == type).Select(x => new RebateSymbol
+        q.ToRebateSymbols(type, []);
+
+    public static IQueryable<RebateSymbol> ToRebateSymbols(this IQueryable<M> q, int type, IEnumerable<string> codes)
+    {
+        var list = codes
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var query = q.Where(x => x.Type == type);
+        if (list.Length > 0)
+            query = query.Where(x => list.Contains(x.Code));
+        return query.Select(x => new RebateSymbol
         {
             Code = x.Code,
             Category = x.Category,
             CategoryId = x.CategoryId
         });
+    }
 
     public static IQueryable<KeyValuePair<int, string>> ToRebateCategories(this IQueryable<M> q, int type) =>
         q.Where(x => x.Type == type)
