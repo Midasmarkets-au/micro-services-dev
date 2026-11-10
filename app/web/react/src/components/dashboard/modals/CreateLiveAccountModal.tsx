@@ -18,7 +18,6 @@ import { createLiveAccount } from '@/actions';
 import { fetchAction } from '@/lib/api/browser-client';
 import { useToast } from '@/hooks/useToast';
 import { useUserStore } from '@/stores/userStore';
-import { SiteTypes } from '@/core/types/TenantTypes';
 import type { AccountConfig, ServiceMap, CreateLiveAccountParams } from '@/types/accounts';
 import { AccountTypes, CurrencyTypes, getPlatformName } from '@/types/accounts';
 import { useCurrencyName } from '@/i18n/useCurrencyName';
@@ -32,13 +31,6 @@ interface CreateLiveAccountModalProps {
 
 type Step = 1 | 2;
 
-function shouldPrefillAccountForm(siteId: number | undefined): boolean {
-  return (
-    siteId !== SiteTypes.Australia &&
-    siteId !== SiteTypes.BritishVirginIslands
-  );
-}
-
 export function CreateLiveAccountModal({
   open,
   onOpenChange,
@@ -49,7 +41,6 @@ export function CreateLiveAccountModal({
   const getCurrencyName = useCurrencyName();
   const { execute, isLoading } = useServerAction({ showErrorToast: true });
   const { showSuccess } = useToast();
-  const siteConfig = useUserStore((s) => s.siteConfig);
   const hasRole = useUserStore((s) => s.hasRole);
   const user = useUserStore((s) => s.user);
 
@@ -126,10 +117,7 @@ export function CreateLiveAccountModal({
         const code = data.referCode ?? '';
         setReferCode(code);
         setDefaultReferCode(code);
-
-        if (shouldPrefillAccountForm(siteConfig?.siteId)) {
-          applyPrefillFromConfig(data);
-        }
+        applyPrefillFromConfig(data);
       } finally {
         if (!cancelled) setIsLoadingConfig(false);
       }
@@ -139,7 +127,7 @@ export function CreateLiveAccountModal({
     return () => {
       cancelled = true;
     };
-  }, [open, execute, siteConfig?.siteId, resetFormState, applyPrefillFromConfig]);
+  }, [open, execute, resetFormState, applyPrefillFromConfig]);
 
   useEffect(() => {
     if (!open) return;

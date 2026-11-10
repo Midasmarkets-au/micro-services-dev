@@ -67,4 +67,19 @@ public class RebateController(AccountingService accountingService, TenantDbConte
     [ProducesResponseType(typeof(List<RebateSymbol>), StatusCodes.Status200OK)]
     public async Task<IActionResult> RebateSymbolCategory() =>
         Ok(await tenantCtx.Symbols.ToRebateCategories(300).ToListAsync());
+
+    /// <summary>
+    /// Rebate symbols of list type 300. Repeat <c>symbols</c> to limit the result to those codes.
+    /// </summary>
+    [HttpGet("symbol/query")]
+    [ProducesResponseType(typeof(List<RebateSymbol>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> QueryRebateSymbols([FromQuery] string[]? symbols)
+    {
+        var codes = (symbols ?? []).SelectMany(value =>
+            value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        var result = await tenantCtx.Symbols
+            .ToRebateSymbols(300, codes)
+            .ToListAsync();
+        return Ok(result);
+    }
 }

@@ -14,17 +14,14 @@ import {
   Checkbox,
 } from '@/components/ui';
 import { useServerAction } from '@/hooks/useServerAction';
-import {
-  getIBProductCategory,
-  getIBDefaultLevelSettingMap,
-  getIBRebateRuleDetailFull,
-} from '@/actions';
+import { fetchAction } from '@/lib/api/browser-client';
 import type {
   IBReferralSupplement,
   IBProductCategory,
   IBDefaultLevelSettingMap,
   IBDefaultLevelSettingOption,
   IBAccountLevelSetting,
+  IBRebateRuleDetailFull,
 } from '@/types/ib';
 
 interface RebateSettingsDialogProps {
@@ -65,9 +62,9 @@ export function RebateSettingsDialog({
     setExtraLoading(true);
     try {
       const [catRes, defaultRes, ruleRes] = await Promise.all([
-        executeRef.current(getIBProductCategory),
-        executeRef.current(getIBDefaultLevelSettingMap, agentUid),
-        executeRef.current(getIBRebateRuleDetailFull, agentUid),
+        executeRef.current(async () => fetchAction<IBProductCategory[]>('getIBProductCategory')),
+        executeRef.current(async () => fetchAction<IBDefaultLevelSettingMap>('getIBDefaultLevelSettingMap', agentUid)),
+        executeRef.current(async () => fetchAction<IBRebateRuleDetailFull>('getIBRebateRuleDetailFull', agentUid)),
       ]);
 
       if (catRes.success && catRes.data) setProductCategory(catRes.data);
