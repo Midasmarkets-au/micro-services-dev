@@ -15,6 +15,7 @@ use crate::models::rebate::{
     AgentAccount, BaseRebate, DirectSchemaItem, NewRebate, TradeRebateRow,
     DIST_ALLOCATION, DIST_DIRECT, DIST_LEVEL_PERCENTAGE, STATUS_COMPLETED, STATUS_HAS_NO_REBATE,
 };
+use crate::nats::client as nats_client;
 use crate::AppContext;
 
 // ── Constants (ported directly from mono RebateService) ──────────────────────
@@ -948,10 +949,35 @@ impl RebateDb for PgRebateDb<'_> {
 pub async fn generate_rebates(
     ctx: &AppContext,
     pool: &PgPool,
+    tenant_id: i64,
     trade_rebate_id: i64,
     table: &str,
 ) -> Result<()> {
-    generate_rebates_with_db(ctx, &PgRebateDb { pool, idgen: &ctx.idgen }, pool, trade_rebate_id, table).await
+    let rebate_ids = generate_rebates_with_db(
+        ctx,
+        &PgRebateDb { pool, idgen: &ctx.idgen },
+        pool,
+        trade_rebate_id,
+        table,
+    )
+    .await?;
+
+    // Hand each rebate straight to the release handler rather than letting it
+    // wait for the next release sweep. A publish failure costs only latency:
+    // the row is already persisted with matter state `RebateOnHold`, which is
+    // exactly what that sweep selects on.
+    for rebate_id in rebate_ids {
+        if let Err(e) =
+            nats_client::publish_rebate_release(&ctx.jetstream, tenant_id, rebate_id).await
+        {
+            warn!(
+                "CalculateRebate: failed to publish release for rebate_id={} tenant={}, leaving to cron: {:#}",
+                rebate_id, tenant_id, e
+            );
+        }
+    }
+
+    Ok(())
 }
 
 /// Outcome of the guard phase — either an early exit or the data needed for mode dispatch.
@@ -1009,9 +1035,9 @@ pub(crate) async fn generate_rebates_with_db(
     pool: &PgPool,
     trade_rebate_id: i64,
     table: &str,
-) -> Result<()> {
+) -> Result<Vec<i64>> {
     let (trade_rebate, dist_type) = match run_generate_guards(rdb, trade_rebate_id, table).await? {
-        GuardOutcome::EarlyExit => return Ok(()),
+        GuardOutcome::EarlyExit => return Ok(vec![]),
         GuardOutcome::Proceed { trade_rebate, dist_type } => (trade_rebate, dist_type),
     };
 
@@ -1026,19 +1052,24 @@ pub(crate) async fn generate_rebates_with_db(
 }
 
 /// Testable core of SendRebates — accepts a `RebateDb` trait object.
+///
+/// Returns the ids of the rebates written, in insertion order. Callers publish
+/// these for release; every one is created with matter state `RebateOnHold`,
+/// which is what the release sweep selects on.
 pub(crate) async fn send_rebates_with_db(
     rdb: &dyn RebateDb,
     trade_rebate: &TradeRebateRow,
     rebates: Vec<NewRebate>,
     table: &str,
-) -> Result<()> {
+) -> Result<Vec<i64>> {
     let trade_rebate_id = trade_rebate.id;
+    let mut inserted_ids = Vec::new();
 
     let existing = rdb.get_existing_rebates(trade_rebate_id).await?;
 
     if rebates.is_empty() && existing.is_empty() {
         rdb.update_trade_rebate_status(table, trade_rebate_id, STATUS_HAS_NO_REBATE).await?;
-        return Ok(());
+        return Ok(inserted_ids);
     }
 
     if !existing.is_empty() {
@@ -1070,7 +1101,7 @@ pub(crate) async fn send_rebates_with_db(
                         fund_type: target.fund_type,
                         ..compensating
                     };
-                    rdb.insert_rebate(&comp).await?;
+                    inserted_ids.push(rdb.insert_rebate(&comp).await?);
                 }
             }
         }
@@ -1087,11 +1118,11 @@ pub(crate) async fn send_rebates_with_db(
         }
 
         for rebate in to_insert {
-            rdb.insert_rebate(&rebate).await?;
+            inserted_ids.push(rdb.insert_rebate(&rebate).await?);
         }
     } else {
         for rebate in &rebates {
-            rdb.insert_rebate(rebate).await?;
+            inserted_ids.push(rdb.insert_rebate(rebate).await?);
         }
     }
 
@@ -1103,7 +1134,7 @@ pub(crate) async fn send_rebates_with_db(
         rebates.len()
     );
 
-    Ok(())
+    Ok(inserted_ids)
 }
 
 // ── Unit tests ────────────────────────────────────────────────────────────────
@@ -1716,6 +1747,85 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn send_rebates_sums_prior_rows_for_the_same_account() {
+        // 187100 original + 100 from an earlier resend = 187200 already paid, so
+        // recalculating to the same 187200 must write nothing. Treating only the
+        // last row as "existing" would pay the 187100 difference a second time.
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(187100)), (101, dec!(100))]);
+        let tr = make_trade_rebate(9, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 9, currency_id: 1, fund_type: 0, amount: dec!(187200), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
+            .await
+            .unwrap();
+
+        assert!(
+            db.inserted_rebates().is_empty(),
+            "expected no top-up, got {:?}",
+            db.inserted_rebates().iter().map(|r| r.amount).collect::<Vec<_>>()
+        );
+    }
+
+    #[tokio::test]
+    async fn send_rebates_tops_up_against_the_summed_prior_rows() {
+        // Same accumulation, but the recalculated entitlement is higher: only the
+        // shortfall against the sum (187500 - 187200) may be written.
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(187100)), (101, dec!(100))]);
+        let tr = make_trade_rebate(10, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 10, currency_id: 1, fund_type: 0, amount: dec!(187500), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
+            .await
+            .unwrap();
+
+        let inserted = db.inserted_rebates();
+        assert_eq!(inserted.len(), 1);
+        assert_eq!(inserted[0].amount, dec!(300));
+    }
+
+    #[tokio::test]
+    async fn send_rebates_returns_inserted_ids_for_release() {
+        // These ids are what the caller publishes to the release stream, so a
+        // rebate missing from the return value would silently fall back to
+        // waiting for the release sweep.
+        let db = MockRebateDb::new();
+        let tr = make_trade_rebate(7, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 7, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
+            NewRebate { party_id: 2, account_id: 102, trade_rebate_id: 7, currency_id: 1, fund_type: 0, amount: dec!(3000), information: "{}".into() },
+        ];
+
+        let ids = send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
+            .await
+            .unwrap();
+
+        assert_eq!(ids, vec![1, 2]);
+        assert_eq!(ids.len(), db.inserted_rebates().len());
+    }
+
+    #[tokio::test]
+    async fn send_rebates_returns_no_ids_when_nothing_is_written() {
+        // Unchanged amounts insert nothing, so there is nothing to release.
+        let db = MockRebateDb::new().with_existing_rebates(vec![(101, dec!(5000))]);
+        let tr = make_trade_rebate(8, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 8, currency_id: 1, fund_type: 0, amount: dec!(5000), information: "{}".into() },
+        ];
+
+        let ids = send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
+            .await
+            .unwrap();
+
+        assert!(ids.is_empty());
+    }
+
+    #[tokio::test]
     async fn send_rebates_pending_resend_inserts_diff_for_changed_amount() {
         // existing: account 101 had amount 5000; new calc gives 7000 → diff = +2000
         let db = MockRebateDb::new()
@@ -1795,49 +1905,6 @@ mod tests {
         assert_eq!(inserted.len(), 1);
         assert_eq!(inserted[0].account_id, 102);
         assert_eq!(inserted[0].amount, dec!(3000));
-    }
-
-    #[tokio::test]
-    async fn send_rebates_sums_prior_rows_for_the_same_account() {
-        // 187100 original + 100 from an earlier resend = 187200 already paid, so
-        // recalculating to the same 187200 must write nothing. Treating only the
-        // last row as "existing" would pay the 187100 difference a second time.
-        let db = MockRebateDb::new()
-            .with_existing_rebates(vec![(101, dec!(187100)), (101, dec!(100))]);
-        let tr = make_trade_rebate(9, Some(10));
-        let rebates = vec![
-            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 9, currency_id: 1, fund_type: 0, amount: dec!(187200), information: "{}".into() },
-        ];
-
-        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
-            .await
-            .unwrap();
-
-        assert!(
-            db.inserted_rebates().is_empty(),
-            "expected no top-up, got {:?}",
-            db.inserted_rebates().iter().map(|r| r.amount).collect::<Vec<_>>()
-        );
-    }
-
-    #[tokio::test]
-    async fn send_rebates_tops_up_against_the_summed_prior_rows() {
-        // Same accumulation, but the recalculated entitlement is higher: only the
-        // shortfall against the sum (187500 - 187200) may be written.
-        let db = MockRebateDb::new()
-            .with_existing_rebates(vec![(101, dec!(187100)), (101, dec!(100))]);
-        let tr = make_trade_rebate(10, Some(10));
-        let rebates = vec![
-            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 10, currency_id: 1, fund_type: 0, amount: dec!(187500), information: "{}".into() },
-        ];
-
-        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
-            .await
-            .unwrap();
-
-        let inserted = db.inserted_rebates();
-        assert_eq!(inserted.len(), 1);
-        assert_eq!(inserted[0].amount, dec!(300));
     }
 
     // ── run_generate_guards state-machine tests ───────────────────────────────

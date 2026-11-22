@@ -1,6 +1,7 @@
 use anyhow::Result;
 use tracing::{error, info};
 
+use crate::jobs::row_lock;
 use crate::{db, AppContext};
 
 pub async fn execute(ctx: AppContext) -> Result<()> {
@@ -43,8 +44,24 @@ async fn process_tenant(ctx: AppContext, tenant_id: i64) -> Result<()> {
     info!(tenant_id, count = items.len(), "ReleaseRebate: processing rebates");
 
     for rebate_id in items {
-        if let Err(e) = db::rebate::process_rebate(&pool, rebate_id).await {
-            error!(tenant_id, rebate_id, error = %e, "ReleaseRebate: failed to process rebate");
+        // Mirrors the calc sweep: the event handler drives the same rebates, and
+        // crediting a wallet twice is not recoverable from.
+        let lock_key = row_lock::release_key(tenant_id, rebate_id);
+        let outcome = row_lock::with_row_lock(
+            &ctx.cache,
+            &lock_key,
+            db::rebate::process_rebate(&pool, rebate_id),
+        )
+        .await;
+
+        match outcome {
+            Ok(Some(())) => {}
+            Ok(None) => {
+                info!(tenant_id, rebate_id, "ReleaseRebate: locked by another worker, skipping")
+            }
+            Err(e) => {
+                error!(tenant_id, rebate_id, error = %e, "ReleaseRebate: failed to process rebate")
+            }
         }
     }
 
