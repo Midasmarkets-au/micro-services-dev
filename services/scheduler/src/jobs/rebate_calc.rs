@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use rust_decimal::Decimal;
 use serde_json::json;
@@ -10,6 +10,7 @@ use tracing::{info, warn};
 
 use crate::db::rebate_calc as db;
 use crate::db::tenant;
+use crate::models::currency::{self, USC, USD};
 use crate::models::rebate::{
     AgentAccount, BaseRebate, DirectSchemaItem, NewRebate, TradeRebateRow,
     DIST_ALLOCATION, DIST_DIRECT, DIST_LEVEL_PERCENTAGE, STATUS_COMPLETED, STATUS_HAS_NO_REBATE,
@@ -157,7 +158,8 @@ pub fn get_symbol_category_name(category: &str) -> &'static str {
 // ── Exchange rate ─────────────────────────────────────────────────────────────
 
 /// Mirrors mono's GetMtExchangeRate.
-/// Queries MT5 price table: first tries FROM+TO, then TO+FROM (inverted).
+/// Queries the MT price table: first tries FROM+TO, then TO+FROM (inverted), then
+/// falls back to the tenant's `trd."_ExchangeRate"` table.
 /// USC currency is treated as USD/100.
 pub async fn get_mt_exchange_rate(
     ctx: &AppContext,
@@ -181,10 +183,6 @@ fn get_mt_exchange_rate_inner<'a>(
             return Ok(1.0);
         }
 
-        // CurrencyTypes: USD=1, USC=2
-        const USD: i32 = 1;
-        const USC: i32 = 2;
-
         if from_currency_id == USC && to_currency_id == USD {
             return Ok(0.01);
         }
@@ -200,8 +198,10 @@ fn get_mt_exchange_rate_inner<'a>(
             return Ok(x_to_usd * 100.0);
         }
 
-        let from_name = currency_id_to_name(from_currency_id);
-        let to_name = currency_id_to_name(to_currency_id);
+        let from_name = currency::id_to_name(from_currency_id)
+            .ok_or_else(|| anyhow!("unknown currency id {from_currency_id}"))?;
+        let to_name = currency::id_to_name(to_currency_id)
+            .ok_or_else(|| anyhow!("unknown currency id {to_currency_id}"))?;
 
         let mt5_pool = ctx.mt5_pool(service_id, tenant_pool).await?;
         let is_mt4 = tenant::get_platform_by_service_id(tenant_pool, service_id)
@@ -222,6 +222,16 @@ fn get_mt_exchange_rate_inner<'a>(
             }
         }
 
+        if let Some(rate) =
+            db::get_exchange_rate_fallback(tenant_pool, from_currency_id, to_currency_id).await?
+        {
+            return Ok(rate);
+        }
+
+        warn!(
+            "CalculateRebate: no exchange rate found for {} -> {} (service {}), defaulting to 1",
+            from_name, to_name, service_id
+        );
         Ok(1.0)
     })
 }
@@ -329,12 +339,12 @@ pub async fn get_pip_value(
 pub(crate) fn calculate_base_rebate_pure(
     schema_item: &DirectSchemaItem,
     volume: i32,
-    source_exchange_rate: f64,
+    source_exchange_rate: Decimal,
     pip_formula: f64,
     exchange_rate_price: f64,
 ) -> BaseRebate {
     let divided_volume = Decimal::new(volume as i64, 2); // volume / 100
-    let ser = Decimal::from_f64(source_exchange_rate).unwrap_or(Decimal::ONE);
+    let ser = source_exchange_rate;
 
     let rate = dec_round_to_zero(schema_item.rate * ser * dec(100) * divided_volume * dec(100));
 
@@ -361,9 +371,8 @@ pub async fn calculate_base_rebate(
     volume: i32,
     source_currency_id: i32,
 ) -> Result<BaseRebate> {
-    const USD: i32 = 1;
     let source_exchange_rate =
-        get_mt_exchange_rate(ctx, tenant_pool, service_id, source_currency_id, USD).await?;
+        rate_to_decimal(get_mt_exchange_rate(ctx, tenant_pool, service_id, source_currency_id, USD).await?)?;
 
     // Early-exit path: if no pips/commission, skip the MT5 price lookup entirely
     if schema_item.pips == Decimal::ZERO && schema_item.commission == Decimal::ZERO {
@@ -382,6 +391,23 @@ fn dec(n: i64) -> Decimal {
     Decimal::new(n, 0)
 }
 
+/// Converts an exchange rate to `Decimal`, refusing NaN, infinity and values too
+/// large to represent. Falling back to 1 here would be indistinguishable from a
+/// same-currency no-op and would silently mis-scale every amount derived from it.
+fn rate_to_decimal(rate: f64) -> Result<Decimal> {
+    Decimal::from_f64(rate).ok_or_else(|| anyhow!("exchange rate {rate} is not a usable Decimal"))
+}
+
+/// `FundType` of the trading account, which mono stamps onto Allocation and
+/// LevelPercentage rebates — Direct uses the receiving agent's instead.
+/// `run_generate_guards` already requires the account row to exist, so `None`
+/// means that invariant broke rather than ordinary missing data.
+fn client_fund_type(trade_rebate: &TradeRebateRow) -> Result<i32> {
+    trade_rebate
+        .account_fund_type
+        .ok_or_else(|| anyhow!("trade_rebate {} has no trading account row", trade_rebate.id))
+}
+
 /// MidpointRounding.ToZero — truncate toward zero, matching mono's explicit ToZero calls.
 fn dec_round_to_zero(v: Decimal) -> Decimal {
     v.trunc()
@@ -397,9 +423,9 @@ fn calculate_allocation_rebate(
     volume: i32,
     schema_rate: Decimal,
     take_percentage: Decimal,
-    source_exchange_rate: f64,
+    source_exchange_rate: Decimal,
 ) -> (Decimal, Decimal) {
-    let ser = Decimal::from_f64(source_exchange_rate).unwrap_or(Decimal::ONE);
+    let ser = source_exchange_rate;
     // mono: schemaItem.Rate * sourceExchangeRate * volume * 100
     let rate = dec_round_to_zero(schema_rate * ser * dec(volume as i64) * dec(100));
     let schema_rate_value = remain.rate.min(rate);
@@ -486,11 +512,10 @@ async fn generate_direct_rebates(
             continue;
         }
 
-        const USD: i32 = 1;
         let target_rate =
             get_mt_exchange_rate(ctx, pool, target.service_id, USD, target.currency_id).await?;
         // mono: (long)Math.Round(itemData.GetTotal() * targetExchangeRate, MidpointRounding.ToZero) * 100
-        let ter = Decimal::from_f64(target_rate).unwrap_or(Decimal::ONE);
+        let ter = rate_to_decimal(target_rate)?;
         let amount = dec_round_to_zero(total * ter) * dec(100);
         if amount == Decimal::ZERO {
             continue;
@@ -546,15 +571,16 @@ async fn generate_allocation_rebates(
         return Ok(vec![]);
     }
 
-    const USD: i32 = 1;
-    let source_rate = get_mt_exchange_rate(
-        ctx,
-        pool,
-        trade_rebate.trade_service_id,
-        trade_rebate.currency_id,
-        USD,
-    )
-    .await?;
+    let source_rate = rate_to_decimal(
+        get_mt_exchange_rate(
+            ctx,
+            pool,
+            trade_rebate.trade_service_id,
+            trade_rebate.currency_id,
+            USD,
+        )
+        .await?,
+    )?;
 
     let base = calculate_base_rebate(
         ctx,
@@ -606,7 +632,7 @@ async fn generate_allocation_rebates(
         }
 
         // mono: (long)Math.Round(allocationRebate.Total * targetExchangeRate, MidpointRounding.ToZero) * 100
-        let ter = Decimal::from_f64(target_rate).unwrap_or(Decimal::ONE);
+        let ter = rate_to_decimal(target_rate)?;
         let amount = dec_round_to_zero(total * ter) * dec(100);
         if amount == Decimal::ZERO {
             if is_last {
@@ -644,7 +670,7 @@ async fn generate_allocation_rebates(
             account_id: agent.id,
             trade_rebate_id: trade_rebate.id,
             currency_id: agent.currency_id,
-            fund_type: agent.fund_type,
+            fund_type: client_fund_type(trade_rebate)?,
             amount,
             information,
         });
@@ -749,7 +775,6 @@ async fn generate_level_percentage_rebates(
         return Ok(vec![]);
     }
 
-    const USD: i32 = 1;
     let source_rate = get_mt_exchange_rate(
         ctx,
         pool,
@@ -761,7 +786,7 @@ async fn generate_level_percentage_rebates(
 
     // mono uses decimal throughout for remain_amount to avoid float accumulation
     let volume_divided = Decimal::new(trade_rebate.volume as i64, 2); // volume / 100
-    let source_rate_dec = Decimal::from_f64(source_rate).unwrap_or(Decimal::ONE);
+    let source_rate_dec = rate_to_decimal(source_rate)?;
     let mut remain_amount = total_rebate;
     let mut results = vec![];
 
@@ -806,7 +831,7 @@ async fn generate_level_percentage_rebates(
             let target_rate_f64 =
                 get_mt_exchange_rate(ctx, pool, trade_rebate.trade_service_id, USD, agent.currency_id)
                     .await?;
-            let target_rate_dec = Decimal::from_f64(target_rate_f64).unwrap_or(Decimal::ONE);
+            let target_rate_dec = rate_to_decimal(target_rate_f64)?;
 
             // mono: Math.Round(volume * percentage * sourceExchangeRate * targetExchangeRate, MidpointRounding.ToZero)
             let amount = dec_round_to_zero(volume_divided * percentage * source_rate_dec * target_rate_dec);
@@ -824,7 +849,7 @@ async fn generate_level_percentage_rebates(
                 account_id: agent.id,
                 trade_rebate_id: trade_rebate.id,
                 currency_id: agent.currency_id,
-                fund_type: agent.fund_type,
+                fund_type: client_fund_type(trade_rebate)?,
                 amount: rebate_amount,
                 information: serde_json::to_string(&json!({
                     "depth": i + 1,
@@ -844,7 +869,7 @@ async fn generate_level_percentage_rebates(
         let target_rate_f64 =
             get_mt_exchange_rate(ctx, pool, trade_rebate.trade_service_id, USD, top_agent.currency_id)
                 .await?;
-        let target_rate_dec = Decimal::from_f64(target_rate_f64).unwrap_or(Decimal::ONE);
+        let target_rate_dec = rate_to_decimal(target_rate_f64)?;
         // mono: (long)Math.Round(remainRebateAmount * targetExchangeRate, MidpointRounding.ToZero) * 100
         let amount = dec_round_to_zero(remain_amount * target_rate_dec) * dec(100);
         if amount > Decimal::ZERO {
@@ -853,7 +878,7 @@ async fn generate_level_percentage_rebates(
                 account_id: top_agent.id,
                 trade_rebate_id: trade_rebate.id,
                 currency_id: top_agent.currency_id,
-                fund_type: top_agent.fund_type,
+                fund_type: client_fund_type(trade_rebate)?,
                 amount,
                 information: serde_json::to_string(&json!({
                     "depth": 1,
@@ -1017,7 +1042,14 @@ pub(crate) async fn send_rebates_with_db(
     }
 
     if !existing.is_empty() {
-        let existing_map: HashMap<i64, Decimal> = existing.into_iter().collect();
+        // An account accumulates one row per recalculation — the original plus a
+        // delta for every resend — so its current entitlement is their sum.
+        // Collecting into a map instead would keep only the last row and make
+        // each resend re-pay everything already settled by the earlier ones.
+        let mut existing_map: HashMap<i64, Decimal> = HashMap::new();
+        for (account_id, amount) in existing {
+            *existing_map.entry(account_id).or_insert(Decimal::ZERO) += amount;
+        }
         let new_map: HashMap<i64, Decimal> = rebates.iter().map(|r| (r.account_id, r.amount)).collect();
 
         for (account_id, existing_amount) in &existing_map {
@@ -1072,36 +1104,6 @@ pub(crate) async fn send_rebates_with_db(
     );
 
     Ok(())
-}
-
-// ── Currency helpers ──────────────────────────────────────────────────────────
-
-/// Maps CurrencyId to ISO currency code string.
-/// Based on mono's CurrencyTypes enum — extend as needed.
-pub(crate) fn currency_id_to_name(currency_id: i32) -> &'static str {
-    match currency_id {
-        1 => "USD",
-        2 => "USC", // cents
-        3 => "EUR",
-        4 => "GBP",
-        5 => "JPY",
-        6 => "AUD",
-        7 => "CAD",
-        8 => "CHF",
-        9 => "NZD",
-        10 => "HKD",
-        11 => "SGD",
-        12 => "CNY",
-        13 => "MXN",
-        14 => "NOK",
-        15 => "SEK",
-        16 => "PLN",
-        17 => "TRY",
-        18 => "ZAR",
-        19 => "MYR",
-        20 => "THB",
-        _ => "USD", // fallback
-    }
 }
 
 // ── Unit tests ────────────────────────────────────────────────────────────────
@@ -1227,6 +1229,54 @@ mod tests {
         assert_eq!(dec_round_to_zero(dec!(0)), dec!(0));
     }
 
+    // ── rate_to_decimal ───────────────────────────────────────────────────────
+
+    #[test]
+    fn rate_to_decimal_accepts_normal_rates() {
+        assert_eq!(rate_to_decimal(1.0).unwrap(), Decimal::ONE);
+        assert_eq!(rate_to_decimal(0.01).unwrap(), dec!(0.01));
+        assert_eq!(rate_to_decimal(100.0).unwrap(), dec!(100));
+    }
+
+    #[test]
+    fn rate_to_decimal_rejects_non_finite() {
+        // A broken quote must surface as an error — never as a 1:1 rate, which
+        // would be indistinguishable from a same-currency conversion.
+        assert!(rate_to_decimal(f64::NAN).is_err());
+        assert!(rate_to_decimal(f64::INFINITY).is_err());
+        assert!(rate_to_decimal(f64::NEG_INFINITY).is_err());
+    }
+
+    // ── client_fund_type ──────────────────────────────────────────────────────
+
+    #[test]
+    fn client_fund_type_reads_the_trading_account() {
+        let mut tr = make_trade_rebate(1, Some(10));
+        tr.account_fund_type = Some(4);
+        assert_eq!(client_fund_type(&tr).unwrap(), 4);
+    }
+
+    #[test]
+    fn client_fund_type_rejects_a_missing_account_row() {
+        // Reachable only if the guards stop requiring an active account, in which
+        // case the rebate must fail loudly rather than carry an invented FundType.
+        let mut tr = make_trade_rebate(1, Some(10));
+        tr.account_fund_type = None;
+        assert!(client_fund_type(&tr).is_err());
+    }
+
+    // ── currency ids used by the rebate pipeline ──────────────────────────────
+
+    #[test]
+    fn rebate_pipeline_uses_iso_currency_ids() {
+        // Guards against a regression to the old ordinal scheme (USD=1, USC=2),
+        // which matched no row and collapsed every exchange rate to 1.0.
+        assert_eq!(USD, 840);
+        assert_eq!(USC, 841);
+        assert_eq!(currency::id_to_name(USD), Some("USD"));
+        assert_eq!(currency::id_to_name(USC), Some("USC"));
+    }
+
     // ── calculate_last_allocation_rebate ─────────────────────────────────────
 
     #[test]
@@ -1270,7 +1320,7 @@ mod tests {
         // remain.rate=100, schema_rate would compute to 200 → capped at 100
         let mut remain = BaseRebate { rate: dec!(100), pip: dec!(0), commission: dec!(0), price: 0.0 };
         // schema_rate=2.0, ser=1.0, volume=100 → rate = trunc(2.0 * 1.0 * 100 * 100) = 20000 > 100
-        let (rate_val, _combined) = calculate_allocation_rebate(&mut remain, 100, dec!(2), Decimal::ZERO, 1.0);
+        let (rate_val, _combined) = calculate_allocation_rebate(&mut remain, 100, dec!(2), Decimal::ZERO, Decimal::ONE);
         assert_eq!(rate_val, dec!(100)); // capped at remain.rate
         assert_eq!(remain.rate, dec!(0));
     }
@@ -1280,7 +1330,7 @@ mod tests {
         // remain.rate=1000, schema computes to 500 → takes 500, leaves 500
         let mut remain = BaseRebate { rate: dec!(1000), pip: dec!(0), commission: dec!(0), price: 0.0 };
         // schema_rate=0.05, ser=1.0, volume=100 → rate = trunc(0.05 * 1.0 * 100 * 100) = 500
-        let (rate_val, _) = calculate_allocation_rebate(&mut remain, 100, dec!(0.05), Decimal::ZERO, 1.0);
+        let (rate_val, _) = calculate_allocation_rebate(&mut remain, 100, dec!(0.05), Decimal::ZERO, Decimal::ONE);
         assert_eq!(rate_val, dec!(500));
         assert_eq!(remain.rate, dec!(500));
     }
@@ -1289,7 +1339,7 @@ mod tests {
     fn allocation_rebate_pip_taken_by_percentage() {
         // remain.pip=200, take_percentage=50 → pip_value = trunc(200 * 1.0 * 50 / 100 * 100) = 10000 → capped at 200
         let mut remain = BaseRebate { rate: dec!(0), pip: dec!(200), commission: dec!(0), price: 0.0 };
-        let (_rate_val, combined) = calculate_allocation_rebate(&mut remain, 0, Decimal::ZERO, dec!(50), 1.0);
+        let (_rate_val, combined) = calculate_allocation_rebate(&mut remain, 0, Decimal::ZERO, dec!(50), Decimal::ONE);
         assert_eq!(combined, dec!(200));
         assert_eq!(remain.pip, dec!(0));
     }
@@ -1299,8 +1349,8 @@ mod tests {
         // take_percentage=-30 should behave same as +30
         let mut remain_neg = BaseRebate { rate: dec!(0), pip: dec!(100), commission: dec!(0), price: 0.0 };
         let mut remain_pos = BaseRebate { rate: dec!(0), pip: dec!(100), commission: dec!(0), price: 0.0 };
-        let (_, combined_neg) = calculate_allocation_rebate(&mut remain_neg, 0, Decimal::ZERO, dec!(-30), 1.0);
-        let (_, combined_pos) = calculate_allocation_rebate(&mut remain_pos, 0, Decimal::ZERO, dec!(30), 1.0);
+        let (_, combined_neg) = calculate_allocation_rebate(&mut remain_neg, 0, Decimal::ZERO, dec!(-30), Decimal::ONE);
+        let (_, combined_pos) = calculate_allocation_rebate(&mut remain_pos, 0, Decimal::ZERO, dec!(30), Decimal::ONE);
         assert_eq!(combined_neg, combined_pos);
     }
 
@@ -1385,7 +1435,7 @@ mod tests {
         // 1 lot = volume 100, USD account (ser=1.0), rate=0.5, no pips/commission
         // rate = trunc(0.5 * 1.0 * 100 * 1.0 * 100) = trunc(5000) = 5000
         let schema = make_schema("0.5", "0", "0");
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 0.0, 0.0);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 0.0, 0.0);
         assert_eq!(br.rate, dec!(5000));
         assert_eq!(br.pip, dec!(0));
         assert_eq!(br.commission, dec!(0));
@@ -1395,7 +1445,7 @@ mod tests {
     fn base_rebate_rate_only_early_exit_skips_pip_calc() {
         // pips=0, commission=0 → pip_formula ignored even if non-zero
         let schema = make_schema("1.0", "0", "0");
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 999.0, 1.23);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 999.0, 1.23);
         assert_eq!(br.rate, dec!(10000));
         assert_eq!(br.pip, dec!(0));
         assert_eq!(br.commission, dec!(0));
@@ -1415,7 +1465,7 @@ mod tests {
             commission: Decimal::ZERO,
             symbol_code: "EURUSD".to_string(),
         };
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 1.0, 1.08);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 1.0, 1.08);
         assert_eq!(br.pip, dec!(3000));
         assert_eq!(br.rate, dec!(0));
         assert_eq!(br.commission, dec!(0));
@@ -1433,7 +1483,7 @@ mod tests {
             commission: Decimal::from_str("0.5").unwrap(),
             symbol_code: "EURUSD".to_string(),
         };
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 0.0, 0.0);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 0.0, 0.0);
         assert_eq!(br.commission, dec!(5000));
     }
 
@@ -1442,7 +1492,7 @@ mod tests {
         // USC account: ser=0.01 (USC→USD)
         // rate=0.5, 1 lot → rate = trunc(0.5 * 0.01 * 100 * 1.0 * 100) = trunc(50) = 50
         let schema = make_schema("0.5", "0", "0");
-        let br = calculate_base_rebate_pure(&schema, 100, 0.01, 0.0, 0.0);
+        let br = calculate_base_rebate_pure(&schema, 100, dec!(0.01), 0.0, 0.0);
         assert_eq!(br.rate, dec!(50));
     }
 
@@ -1451,7 +1501,7 @@ mod tests {
         // 0.5 lot = volume 50
         // rate=1.0, ser=1.0 → rate = trunc(1.0 * 1.0 * 100 * 0.5 * 100) = trunc(5000) = 5000
         let schema = make_schema("1.0", "0", "0");
-        let br = calculate_base_rebate_pure(&schema, 50, 1.0, 0.0, 0.0);
+        let br = calculate_base_rebate_pure(&schema, 50, Decimal::ONE, 0.0, 0.0);
         assert_eq!(br.rate, dec!(5000));
     }
 
@@ -1466,7 +1516,7 @@ mod tests {
             commission: Decimal::ZERO,
             symbol_code: "EURUSD".to_string(),
         };
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 0.0, 0.0);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 0.0, 0.0);
         assert_eq!(br.rate, dec!(3330));
     }
 
@@ -1480,7 +1530,7 @@ mod tests {
             commission: Decimal::from_str("0.2").unwrap(),
             symbol_code: "EURUSD".to_string(),
         };
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 1.0, 1.08);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 1.0, 1.08);
         assert_eq!(br.rate, dec!(5000));
         assert_eq!(br.pip, dec!(3000));
         assert_eq!(br.commission, dec!(2000));
@@ -1490,28 +1540,11 @@ mod tests {
     #[test]
     fn base_rebate_zero_schema_returns_all_zero() {
         let schema = make_schema("0", "0", "0");
-        let br = calculate_base_rebate_pure(&schema, 100, 1.0, 1.0, 1.0);
+        let br = calculate_base_rebate_pure(&schema, 100, Decimal::ONE, 1.0, 1.0);
         assert_eq!(br.rate, dec!(0));
         assert_eq!(br.pip, dec!(0));
         assert_eq!(br.commission, dec!(0));
         assert_eq!(br.total(), dec!(0));
-    }
-
-    // ── currency_id_to_name ───────────────────────────────────────────────────
-
-    #[test]
-    fn currency_id_known_values() {
-        assert_eq!(currency_id_to_name(1), "USD");
-        assert_eq!(currency_id_to_name(2), "USC");
-        assert_eq!(currency_id_to_name(3), "EUR");
-        assert_eq!(currency_id_to_name(10), "HKD");
-        assert_eq!(currency_id_to_name(12), "CNY");
-    }
-
-    #[test]
-    fn currency_id_unknown_falls_back_to_usd() {
-        assert_eq!(currency_id_to_name(0), "USD");
-        assert_eq!(currency_id_to_name(999), "USD");
     }
 
     // ── Layer 3: generate_rebates_with_db / send_rebates_with_db (mock DB) ───
@@ -1635,6 +1668,7 @@ mod tests {
             closed_on: Utc::now(),
             opened_on: Utc::now(),
             status: 0,
+            account_fund_type: Some(1),
         }
     }
 
@@ -1761,6 +1795,49 @@ mod tests {
         assert_eq!(inserted.len(), 1);
         assert_eq!(inserted[0].account_id, 102);
         assert_eq!(inserted[0].amount, dec!(3000));
+    }
+
+    #[tokio::test]
+    async fn send_rebates_sums_prior_rows_for_the_same_account() {
+        // 187100 original + 100 from an earlier resend = 187200 already paid, so
+        // recalculating to the same 187200 must write nothing. Treating only the
+        // last row as "existing" would pay the 187100 difference a second time.
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(187100)), (101, dec!(100))]);
+        let tr = make_trade_rebate(9, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 9, currency_id: 1, fund_type: 0, amount: dec!(187200), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
+            .await
+            .unwrap();
+
+        assert!(
+            db.inserted_rebates().is_empty(),
+            "expected no top-up, got {:?}",
+            db.inserted_rebates().iter().map(|r| r.amount).collect::<Vec<_>>()
+        );
+    }
+
+    #[tokio::test]
+    async fn send_rebates_tops_up_against_the_summed_prior_rows() {
+        // Same accumulation, but the recalculated entitlement is higher: only the
+        // shortfall against the sum (187500 - 187200) may be written.
+        let db = MockRebateDb::new()
+            .with_existing_rebates(vec![(101, dec!(187100)), (101, dec!(100))]);
+        let tr = make_trade_rebate(10, Some(10));
+        let rebates = vec![
+            NewRebate { party_id: 1, account_id: 101, trade_rebate_id: 10, currency_id: 1, fund_type: 0, amount: dec!(187500), information: "{}".into() },
+        ];
+
+        send_rebates_with_db(&db, &tr, rebates, "trd.trade_rebate_k8s")
+            .await
+            .unwrap();
+
+        let inserted = db.inserted_rebates();
+        assert_eq!(inserted.len(), 1);
+        assert_eq!(inserted[0].amount, dec!(300));
     }
 
     // ── run_generate_guards state-machine tests ───────────────────────────────

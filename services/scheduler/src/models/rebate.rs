@@ -14,6 +14,12 @@ pub const STATUS_HAS_NO_REBATE: i32 = -2;
 #[allow(dead_code)]
 pub const STATUS_PENDING_RESEND: i32 = 5;
 
+/// `trd."_Symbol"."Type"` — mono's `RebateSymbolListTypes`. The same `Code` is
+/// listed under both the category list (300) and the schema whitelist (400), so
+/// a category lookup must filter on 300 or it may read the whitelist row, whose
+/// `Category`/`CategoryId` are unrelated.
+pub const SYMBOL_TYPE_CATEGORIES: i32 = 300;
+
 /// RebateClientRule DistributionType
 pub const DIST_DIRECT: i16 = 1;
 pub const DIST_ALLOCATION: i16 = 2;
@@ -39,6 +45,10 @@ pub struct TradeRebateRow {
     pub closed_on: DateTime<Utc>,
     pub opened_on: DateTime<Utc>,
     pub status: i32,
+    /// `FundType` of the trading (client) account, joined in to mirror mono's
+    /// eager-loaded `tradeRebate.Account`. `None` only if the account row is
+    /// missing, which the guards in `run_generate_guards` already rule out.
+    pub account_fund_type: Option<i32>,
 }
 
 /// Agent account with rebate rule info — used for Allocation and LevelPercentage modes.
