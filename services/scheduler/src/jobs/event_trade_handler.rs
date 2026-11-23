@@ -79,11 +79,13 @@ pub async fn run(ctx: AppContext) -> Result<()> {
 
     info!("EventTradeHandler: listening on NATS stream {}", STREAM_EVENT);
 
+    // See TradeHandler: `messages()` long-polls instead of returning an empty
+    // batch, which removes the idle sleep from every message's latency.
     loop {
-        let mut messages = match consumer.fetch().max_messages(10).messages().await {
+        let mut messages = match consumer.messages().await {
             Ok(m) => m,
             Err(e) => {
-                warn!("EventTradeHandler: fetch error (will retry): {:#}", e);
+                warn!("EventTradeHandler: failed to open message stream (will retry): {:#}", e);
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 continue;
             }
@@ -96,11 +98,15 @@ pub async fn run(ctx: AppContext) -> Result<()> {
                         error!("EventTradeHandler: failed to process message: {:#}", e);
                     }
                 }
-                Err(e) => error!("EventTradeHandler: message error: {:#}", e),
+                Err(e) => {
+                    error!("EventTradeHandler: message stream error: {:#}", e);
+                    break;
+                }
             }
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        warn!("EventTradeHandler: message stream ended, reconnecting");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 

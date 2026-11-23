@@ -5,7 +5,7 @@ use tracing::{error, info, warn};
 
 use crate::db::rebate_calc as db;
 use crate::db::tenant;
-use crate::jobs::rebate_calc;
+use crate::jobs::{rebate_calc, row_lock};
 use crate::AppContext;
 
 /// Calculate rebates for all tenants.
@@ -95,13 +95,26 @@ async fn run_for_tenant(
         let count = ids.len();
 
         for id in &ids {
-            if let Err(e) = rebate_calc::generate_rebates(ctx, pool, *id, table).await {
-                error!(
+            // Take the same per-row lock the event handler uses, so a sweep that
+            // overlaps an in-flight event cannot insert a second set of rebates.
+            let lock_key = row_lock::calc_key(tenant_id, *id);
+            let outcome = row_lock::with_row_lock(
+                &ctx.cache,
+                &lock_key,
+                rebate_calc::generate_rebates(ctx, pool, tenant_id, *id, table),
+            )
+            .await;
+
+            match outcome {
+                Ok(Some(())) => total_processed += 1,
+                Ok(None) => info!(
+                    "CalculateRebate: trade_rebate_id={} locked by another worker, skipping",
+                    id
+                ),
+                Err(e) => error!(
                     "CalculateRebate: failed for trade_rebate_id={} tenant={}: {:#}",
                     id, tenant_id, e
-                );
-            } else {
-                total_processed += 1;
+                ),
             }
         }
 

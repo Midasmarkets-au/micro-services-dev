@@ -8,13 +8,13 @@ use crate::db::rebate_calc as rebate_db;
 use crate::db::sales_rebate::{self as db, NewSalesRebateItem, NewSalesRebateSummary};
 use crate::db::tenant;
 use crate::jobs::rebate_calc::get_trimmed_symbol;
+use crate::models::currency::USC as USC_CURRENCY_ID;
 use crate::AppContext;
 
 const ALPHA_TYPES: &[i16] = &[6, 9, 10, 14, 18, 19, 20];
 const PRO_TYPES: &[i16] = &[5, 8, 21];
-/// USC (US-cent) account currency. Cent accounts trade cent-lots worth 1/100 of a
-/// USD lot, so their rebate is scaled down by this factor.
-const USC_CURRENCY_ID: i32 = 841;
+/// USC (US-cent) accounts trade cent-lots worth 1/100 of a USD lot, so their
+/// rebate is scaled down by this factor.
 const USC_CENT_FACTOR: i64 = 100;
 
 // ── MT5-server (EET) day/month boundaries ────────────────────────────────────

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_nats::jetstream::{self, consumer, stream};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub const STREAM_NAME: &str = "BCR_TRADE";
 pub const SUBJECT_TRADE: &str = "trade.meta";
@@ -133,6 +133,133 @@ pub async fn ensure_send_message_consumer(js: &jetstream::Context) -> Result<()>
             )
         })?;
 
+    Ok(())
+}
+
+// ── Rebate pipeline ───────────────────────────────────────────────────────────
+//
+// Separate from BCR_EVENT_TRADE because that stream is published conditionally —
+// `trade_handler` skips stop-outs, margin calls and sub-minute trades, which is
+// the loyalty-points rule. Rebates must be calculated for every closed trade, so
+// reusing it would leave those trades to the cron sweep alone. Keeping the
+// streams apart also stops a backlog in one pipeline from delaying the other.
+
+pub const STREAM_REBATE_CALC: &str = "BCR_REBATE_CALC";
+pub const SUBJECT_REBATE_CALC: &str = "rebate.calc";
+pub const REBATE_CALC_CONSUMER_NAME: &str = "rebate-calc-handler";
+
+pub const STREAM_REBATE_RELEASE: &str = "BCR_REBATE_RELEASE";
+pub const SUBJECT_REBATE_RELEASE: &str = "rebate.release";
+pub const REBATE_RELEASE_CONSUMER_NAME: &str = "rebate-release-handler";
+
+/// A trade_rebate row awaiting calculation.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct RebateCalcMsg {
+    pub tenant_id: i64,
+    pub trade_rebate_id: i64,
+}
+
+/// A calculated rebate awaiting release into the payee's wallet.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct RebateReleaseMsg {
+    pub tenant_id: i64,
+    pub rebate_id: i64,
+}
+
+/// `max_ack_pending` is higher than the trade streams' 10 because one rebate
+/// calculation walks a multi-level agent chain and queries MT prices, so it is
+/// slower than the plain insert those streams perform.
+const REBATE_MAX_ACK_PENDING: i64 = 50;
+
+async fn ensure_work_queue(
+    js: &jetstream::Context,
+    stream_name: &str,
+    subject: &str,
+    consumer_name: &str,
+) -> Result<()> {
+    let stream = js
+        .get_or_create_stream(stream::Config {
+            name: stream_name.to_string(),
+            subjects: vec![subject.to_string()],
+            retention: stream::RetentionPolicy::WorkQueue,
+            ..Default::default()
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to get/create stream {}: {}", stream_name, e))?;
+
+    stream
+        .get_or_create_consumer(
+            consumer_name,
+            consumer::pull::Config {
+                durable_name: Some(consumer_name.to_string()),
+                ack_policy: consumer::AckPolicy::Explicit,
+                max_deliver: -1,
+                max_ack_pending: REBATE_MAX_ACK_PENDING,
+                ack_wait: std::time::Duration::from_secs(300),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to get/create consumer {}: {}", consumer_name, e))?;
+
+    Ok(())
+}
+
+pub async fn ensure_rebate_calc_stream(js: &jetstream::Context) -> Result<()> {
+    ensure_work_queue(
+        js,
+        STREAM_REBATE_CALC,
+        SUBJECT_REBATE_CALC,
+        REBATE_CALC_CONSUMER_NAME,
+    )
+    .await
+}
+
+pub async fn ensure_rebate_release_stream(js: &jetstream::Context) -> Result<()> {
+    ensure_work_queue(
+        js,
+        STREAM_REBATE_RELEASE,
+        SUBJECT_REBATE_RELEASE,
+        REBATE_RELEASE_CONSUMER_NAME,
+    )
+    .await
+}
+
+pub async fn publish_rebate_calc(
+    js: &jetstream::Context,
+    tenant_id: i64,
+    trade_rebate_id: i64,
+) -> Result<()> {
+    let payload = serde_json::to_vec(&RebateCalcMsg {
+        tenant_id,
+        trade_rebate_id,
+    })?;
+    js.publish(SUBJECT_REBATE_CALC, payload.into())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to publish to {}: {}", SUBJECT_REBATE_CALC, e))?
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to ack publish to {}: {}", SUBJECT_REBATE_CALC, e))?;
+    Ok(())
+}
+
+pub async fn publish_rebate_release(
+    js: &jetstream::Context,
+    tenant_id: i64,
+    rebate_id: i64,
+) -> Result<()> {
+    let payload = serde_json::to_vec(&RebateReleaseMsg {
+        tenant_id,
+        rebate_id,
+    })?;
+    js.publish(SUBJECT_REBATE_RELEASE, payload.into())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to publish to {}: {}", SUBJECT_REBATE_RELEASE, e))?
+        .await
+        .map_err(|e| {
+            anyhow::anyhow!("Failed to ack publish to {}: {}", SUBJECT_REBATE_RELEASE, e)
+        })?;
     Ok(())
 }
 
