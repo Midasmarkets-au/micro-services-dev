@@ -28,7 +28,7 @@ export default async function ProtectedLayout({
       <DashboardHeader />
 
       {/* 主内容区域 - 使用 container-responsive */}
-      <main className="container-responsive flex grow flex-col gap-5 py-5 md:flex-row">
+      <main className="container-responsive flex w-full min-w-0 grow flex-col gap-5 py-5">
         {/* UserDataProvider 获取并缓存用户完整信息和站点配置 */}
         <UserDataProvider>
           {/* RouteGuard 统一处理路由级别的 RBAC 权限检查 */}

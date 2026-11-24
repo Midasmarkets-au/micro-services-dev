@@ -54,6 +54,60 @@ function createDefaultCriteria(): SearchCriteria {
   };
 }
 
+const EMPTY_SALES_STATISTICS: SalesStatistics = {
+  summaryStats: {
+    totalTrades: 0,
+    totalNetDeposit: 0,
+    totalRebate: 0,
+    totalDeposit: 0,
+    totalWithdrawal: 0,
+    totalLots: 0,
+  },
+  timeSeriesData: [],
+  productDistribution: [],
+  hierarchyData: [],
+};
+
+function scopeSalesStatistics(
+  data: SalesStatistics,
+  salesUid: number
+): SalesStatistics {
+  const matchingRoots = (data.hierarchyData ?? []).filter(
+    (node) => String(node.id) === String(salesUid)
+  );
+  if (matchingRoots.length === 0) {
+    return EMPTY_SALES_STATISTICS;
+  }
+  return { ...data, hierarchyData: matchingRoots };
+}
+
+type SalesTimeSeriesPoint = NonNullable<SalesStatistics['timeSeriesData']>[number];
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function buildZeroTimeSeries(from: string, to: string): SalesTimeSeriesPoint[] {
+  const start = parseDateString(from);
+  const end = parseDateString(to);
+  if (!start || !end || end < start) return [];
+
+  const rows: SalesTimeSeriesPoint[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    rows.push({
+      date: `${pad2(cursor.getMonth() + 1)}-${pad2(cursor.getDate())}`,
+      trades: 0,
+      deposit: 0,
+      withdrawal: 0,
+      netDeposit: 0,
+      rebate: 0,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return rows;
+}
+
 function chartMoneyFormatter(value: number): string {
   return `$${(Number(value || 0) / 100).toFixed(2)}`;
 }
@@ -243,9 +297,20 @@ export default function SalesStatisticsPage() {
     void loadStatistics(nextCriteria);
   };
 
+  const scopedStatistics = useMemo(() => {
+    if (!statistics || !salesAccount) return statistics;
+    return scopeSalesStatistics(statistics, salesAccount.uid);
+  }, [salesAccount, statistics]);
+
+  const chartTimeSeries = useMemo(() => {
+    const rows = scopedStatistics?.timeSeriesData;
+    if (rows?.length) return rows;
+    return buildZeroTimeSeries(criteria.from, criteria.to);
+  }, [criteria.from, criteria.to, scopedStatistics?.timeSeriesData]);
+
   const filteredHierarchyData = useMemo(() => {
     const keyword = hierarchyKeyword.trim().toLowerCase();
-    const nodes = statistics?.hierarchyData ?? [];
+    const nodes = scopedStatistics?.hierarchyData ?? [];
     if (!keyword) return nodes;
 
     const isIbOrSalesNode = (node: SalesHierarchyNode) => {
@@ -285,7 +350,7 @@ export default function SalesStatisticsPage() {
     };
 
     return filterNodes(nodes);
-  }, [hierarchyKeyword, statistics?.hierarchyData]);
+  }, [hierarchyKeyword, scopedStatistics?.hierarchyData]);
 
   const commonTimeSeriesOptions = useCallback(
     (colors: string[], moneyAxis = false): ApexOptions => ({
@@ -313,7 +378,7 @@ export default function SalesStatisticsPage() {
         strokeDashArray: 4,
       },
       xaxis: {
-        categories: statistics?.timeSeriesData?.map((item) => item.date) ?? [],
+        categories: chartTimeSeries.map((item) => item.date),
         labels: { style: { fontSize: '12px', colors: '#7E8299' } },
         axisBorder: { show: false },
         axisTicks: { show: false },
@@ -335,45 +400,45 @@ export default function SalesStatisticsPage() {
         },
       },
     }),
-    [chartType, statistics?.timeSeriesData]
+    [chartTimeSeries, chartType]
   );
 
   const tradeChartSeries = useMemo(
     () => [
       {
         name: t('tradesCount'),
-        data: statistics?.timeSeriesData?.map((item) => item.trades) ?? [],
+        data: chartTimeSeries.map((item) => item.trades),
       },
     ],
-    [statistics?.timeSeriesData, t]
+    [chartTimeSeries, t]
   );
 
   const fundFlowChartSeries = useMemo(
     () => [
       {
         name: t('deposit'),
-        data: statistics?.timeSeriesData?.map((item) => item.deposit) ?? [],
+        data: chartTimeSeries.map((item) => item.deposit),
       },
       {
         name: t('withdrawal'),
-        data: statistics?.timeSeriesData?.map((item) => item.withdrawal) ?? [],
+        data: chartTimeSeries.map((item) => item.withdrawal),
       },
       {
         name: t('netDeposit'),
-        data: statistics?.timeSeriesData?.map((item) => item.netDeposit) ?? [],
+        data: chartTimeSeries.map((item) => item.netDeposit),
       },
     ],
-    [statistics?.timeSeriesData, t]
+    [chartTimeSeries, t]
   );
 
   const rebateChartSeries = useMemo(
     () => [
       {
         name: t('rebate'),
-        data: statistics?.timeSeriesData?.map((item) => item.rebate) ?? [],
+        data: chartTimeSeries.map((item) => item.rebate),
       },
     ],
-    [statistics?.timeSeriesData, t]
+    [chartTimeSeries, t]
   );
 
   const productChartOptions = useMemo<ApexOptions>(
@@ -382,7 +447,7 @@ export default function SalesStatisticsPage() {
         type: 'pie',
         fontFamily: 'inherit',
       },
-      labels: statistics?.productDistribution?.map((item) => item.symbol) ?? [],
+      labels: scopedStatistics?.productDistribution?.map((item) => item.symbol) ?? [],
       colors: ['#0095FF', '#50CD89', '#FFC700', '#F1416C', '#7239EA'],
       legend: {
         position: 'bottom',
@@ -392,23 +457,23 @@ export default function SalesStatisticsPage() {
         y: {
           formatter: (value, opts) => {
             const seriesIndex = opts?.seriesIndex ?? -1;
-            const percentage = statistics?.productDistribution?.[seriesIndex]?.percentage ?? 0;
+            const percentage = scopedStatistics?.productDistribution?.[seriesIndex]?.percentage ?? 0;
             return `${value} (${Number(percentage).toFixed(1)}%)`;
           },
         },
       },
     }),
-    [statistics?.productDistribution]
+    [scopedStatistics?.productDistribution]
   );
 
   const productChartSeries = useMemo(
-    () => statistics?.productDistribution?.map((item) => item.count) ?? [],
-    [statistics?.productDistribution]
+    () => scopedStatistics?.productDistribution?.map((item) => item.count) ?? [],
+    [scopedStatistics?.productDistribution]
   );
 
-  const summary = statistics?.summaryStats;
-  const hasTimeSeries = Boolean(statistics?.timeSeriesData?.length);
-  const hasProductDistribution = Boolean(statistics?.productDistribution?.length);
+  const summary = scopedStatistics?.summaryStats;
+  const hasTimeSeries = chartTimeSeries.length > 0;
+  const hasProductDistribution = Boolean(scopedStatistics?.productDistribution?.length);
 
   return (
     <div className="flex w-full flex-col gap-3">
