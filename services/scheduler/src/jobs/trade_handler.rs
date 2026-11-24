@@ -24,11 +24,15 @@ pub async fn run(ctx: AppContext) -> Result<()> {
 
     info!("TradeHandler: listening on NATS stream {}", STREAM_NAME);
 
+    // `messages()` long-polls, so a trade is picked up as soon as it is
+    // published. The previous `fetch()` returned an empty batch immediately when
+    // the stream was idle, which forced a sleep between rounds and added up to
+    // that sleep to every trade's latency.
     loop {
-        let mut messages = match consumer.fetch().max_messages(10).messages().await {
+        let mut messages = match consumer.messages().await {
             Ok(m) => m,
             Err(e) => {
-                warn!("TradeHandler: fetch error (will retry): {:#}", e);
+                warn!("TradeHandler: failed to open message stream (will retry): {:#}", e);
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 continue;
             }
@@ -41,11 +45,17 @@ pub async fn run(ctx: AppContext) -> Result<()> {
                         error!("TradeHandler: failed to process message: {:#}", e);
                     }
                 }
-                Err(e) => error!("TradeHandler: message error: {:#}", e),
+                Err(e) => {
+                    // Indicates the consumer or connection is unhealthy rather
+                    // than one bad payload, so rebuild the stream.
+                    error!("TradeHandler: message stream error: {:#}", e);
+                    break;
+                }
             }
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        warn!("TradeHandler: message stream ended, reconnecting");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
 }
 
@@ -109,6 +119,16 @@ async fn process_message(
         "TradeHandler: saved TradeRebateK8s ticket={} service={} tenant={}",
         trade.ticket, trade.service_id, tenant_id
     );
+
+    // Unconditional, unlike the points event below: every closed trade is
+    // eligible for rebate. A publish failure only costs latency — the row is
+    // already persisted with `status = 0`, so the cron sweep still picks it up.
+    if let Err(e) = client::publish_rebate_calc(&ctx.jetstream, tenant_id, rebate.id).await {
+        warn!(
+            "TradeHandler: failed to publish rebate calc ticket={} tenant={}, leaving to cron: {:#}",
+            trade.ticket, tenant_id, e
+        );
+    }
 
     // Publish Trade event for point calculation, mirroring MM-Back AddToOtherProcessTradeQueue.
     // Skip market-forced closures (reason 1=stop-loss, 2=margin-call) and scalp trades (<=60s).

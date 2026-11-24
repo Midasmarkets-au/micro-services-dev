@@ -1,10 +1,11 @@
 use anyhow::Result;
+use rust_decimal::prelude::ToPrimitive;
 use sqlx::{MySqlPool, PgPool};
 
 use crate::grpc::idgen_client::IdgenClient;
 use crate::models::rebate::{
     AgentAccount, DirectRule, DirectSchemaItem, MtPrice, NewRebate, TargetAccount, TradeRebateRow,
-    MATTER_TYPE_REBATE, STATE_REBATE_ON_HOLD,
+    MATTER_TYPE_REBATE, STATE_REBATE_ON_HOLD, SYMBOL_TYPE_CATEGORIES,
 };
 
 // ── Table name helpers ────────────────────────────────────────────────────────
@@ -95,11 +96,13 @@ pub async fn get_trade_rebate(
     id: i64,
 ) -> Result<Option<TradeRebateRow>> {
     let row = sqlx::query_as::<_, TradeRebateRow>(&format!(
-        r#"SELECT id, account_id, trade_service_id, ticket, account_number,
-                  currency_id, volume, symbol, refer_path,
-                  closed_on, opened_on, status
-           FROM {table}
-           WHERE id = $1"#
+        r#"SELECT t.id, t.account_id, t.trade_service_id, t.ticket, t.account_number,
+                  t.currency_id, t.volume, t.symbol, t.refer_path,
+                  t.closed_on, t.opened_on, t.status,
+                  a."FundType" AS account_fund_type
+           FROM {table} t
+           LEFT JOIN trd."_Account" a ON a."Id" = t.account_id
+           WHERE t.id = $1"#
     ))
     .bind(id)
     .fetch_optional(pool)
@@ -271,9 +274,12 @@ pub async fn get_target_account(pool: &PgPool, account_id: i64) -> Result<Option
 /// Returns the symbol's category name (e.g. "FOREX", "GOLD", "CRYPTO").
 pub async fn get_symbol_category(pool: &PgPool, symbol_code: &str) -> Result<Option<String>> {
     let row: Option<(String,)> = sqlx::query_as(
-        r#"SELECT "Category" FROM trd."_Symbol" WHERE "Code" = $1 LIMIT 1"#,
+        r#"SELECT "Category" FROM trd."_Symbol"
+           WHERE "Code" = $1 AND "Type" = $2
+           LIMIT 1"#,
     )
     .bind(symbol_code)
+    .bind(SYMBOL_TYPE_CATEGORIES)
     .fetch_optional(pool)
     .await?;
     Ok(row.map(|(c,)| c))
@@ -282,9 +288,12 @@ pub async fn get_symbol_category(pool: &PgPool, symbol_code: &str) -> Result<Opt
 /// Returns the symbol's CategoryId (used for Allocation schema lookup). INT4 in DB.
 pub async fn get_symbol_category_id(pool: &PgPool, symbol_code: &str) -> Result<Option<i32>> {
     let row: Option<(i32,)> = sqlx::query_as(
-        r#"SELECT "CategoryId" FROM trd."_Symbol" WHERE "Code" = $1 LIMIT 1"#,
+        r#"SELECT "CategoryId" FROM trd."_Symbol"
+           WHERE "Code" = $1 AND "Type" = $2
+           LIMIT 1"#,
     )
     .bind(symbol_code)
+    .bind(SYMBOL_TYPE_CATEGORIES)
     .fetch_optional(pool)
     .await?;
     Ok(row.map(|(id,)| id))
@@ -303,6 +312,52 @@ pub async fn get_existing_rebates(
     .fetch_all(pool)
     .await?;
     Ok(rows)
+}
+
+// ── Exchange rate ─────────────────────────────────────────────────────────────
+
+/// Tenant-configured exchange rate, used when MT has no quote for the pair.
+/// Mirrors the tail of mono's `GetMtExchangeRate`: the forward pair's `BuyingRate`
+/// first, then the reverse pair's `SellingRate` inverted. Only positive rates
+/// count as a hit, so an unpopulated row behaves as "not configured".
+pub async fn get_exchange_rate_fallback(
+    pool: &PgPool,
+    from_currency_id: i32,
+    to_currency_id: i32,
+) -> Result<Option<f64>> {
+    let forward: Option<rust_decimal::Decimal> = sqlx::query_scalar(
+        r#"SELECT "BuyingRate" FROM trd."_ExchangeRate"
+           WHERE "FromCurrencyId" = $1 AND "ToCurrencyId" = $2
+           LIMIT 1"#,
+    )
+    .bind(from_currency_id)
+    .bind(to_currency_id)
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(rate) = forward.and_then(|d| d.to_f64()) {
+        if rate > 0.0 {
+            return Ok(Some(rate));
+        }
+    }
+
+    let reverse: Option<rust_decimal::Decimal> = sqlx::query_scalar(
+        r#"SELECT "SellingRate" FROM trd."_ExchangeRate"
+           WHERE "FromCurrencyId" = $1 AND "ToCurrencyId" = $2
+           LIMIT 1"#,
+    )
+    .bind(to_currency_id)
+    .bind(from_currency_id)
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(rate) = reverse.and_then(|d| d.to_f64()) {
+        if rate > 0.0 {
+            return Ok(Some(1.0 / rate));
+        }
+    }
+
+    Ok(None)
 }
 
 // ── MT5 price ─────────────────────────────────────────────────────────────────

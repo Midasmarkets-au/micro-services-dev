@@ -88,11 +88,13 @@ pub async fn run(ctx: AppContext) -> Result<()> {
         STREAM_SEND_MESSAGE
     );
 
+    // See TradeHandler: `messages()` long-polls instead of returning an empty
+    // batch, which removes the idle sleep from every message's latency.
     loop {
-        let mut messages = match consumer.fetch().max_messages(10).messages().await {
+        let mut messages = match consumer.messages().await {
             Ok(m) => m,
             Err(e) => {
-                warn!("SendMessageHandler: fetch error (will retry): {:#}", e);
+                warn!("SendMessageHandler: failed to open message stream (will retry): {:#}", e);
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 continue;
             }
@@ -105,10 +107,14 @@ pub async fn run(ctx: AppContext) -> Result<()> {
                         error!("SendMessageHandler: failed to process message: {:#}", e);
                     }
                 }
-                Err(e) => error!("SendMessageHandler: message error: {:#}", e),
+                Err(e) => {
+                    error!("SendMessageHandler: message stream error: {:#}", e);
+                    break;
+                }
             }
         }
 
+        warn!("SendMessageHandler: message stream ended, reconnecting");
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }

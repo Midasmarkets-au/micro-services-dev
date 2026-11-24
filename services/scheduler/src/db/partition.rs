@@ -435,6 +435,17 @@ pub async fn ensure_parent_tables(pool: &PgPool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // The pending sweep's MIN(id)/MAX(id) is planned as an ordered walk of the
+    // id index with status as a filter, so "nothing pending" — the normal state
+    // once the NATS handlers keep up — costs a full index scan every two
+    // minutes, twice. This partial index makes that case O(1).
+    sqlx::query(
+        r#"CREATE INDEX IF NOT EXISTS ix_trade_rebate_k8s_pending
+           ON trd.trade_rebate_k8s (id) WHERE status IN (0, 5)"#,
+    )
+    .execute(pool)
+    .await?;
+
     // FK: account_id → trd."_Account"("Id")
     sqlx::query(
         r#"DO $$ BEGIN

@@ -17,7 +17,11 @@ export default function DashboardPage() {
   const showSkeleton = isLoading || (!isInitialized && !user);
 
   if (showSkeleton) {
-    return <DashboardSkeleton />;
+    return (
+      <div className="flex w-full min-w-0 flex-col gap-5 md:flex-row">
+        <DashboardSkeleton />
+      </div>
+    );
   }
 
   return (
@@ -26,20 +30,21 @@ export default function DashboardPage() {
 
       {/* 移动端：内容优先，sidebar 在底部 */}
       {/* 桌面端：sidebar - content - notifications */}
+      <div className="flex w-full min-w-0 flex-col gap-5 md:flex-row">
+        {/* 左侧边栏 - 桌面端显示在左侧，移动端显示在内容下方 */}
+        <div className="order-2 md:order-1 md:contents">
+          <DashboardSidebar />
+        </div>
 
-      {/* 左侧边栏 - 桌面端显示在左侧，移动端显示在内容下方 */}
-      <div className="order-2 md:order-1 md:contents">
-        <DashboardSidebar />
-      </div>
+        {/* 中间内容 - 始终显示 */}
+        <div className="order-1 md:order-2 md:contents">
+          <DashboardMainContent />
+        </div>
 
-      {/* 中间内容 - 始终显示 */}
-      <div className="order-1 md:order-2 md:contents">
-        <DashboardMainContent />
-      </div>
-
-      {/* 右侧通知 - 桌面端显示在右侧，移动端显示在最下方 */}
-      <div className="order-3 md:contents">
-        <DashboardNotifications />
+        {/* 右侧通知 - 桌面端显示在右侧，移动端显示在最下方 */}
+        <div className="order-3 md:contents">
+          <DashboardNotifications />
+        </div>
       </div>
     </>
   );
