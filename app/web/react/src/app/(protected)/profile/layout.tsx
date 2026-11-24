@@ -51,14 +51,14 @@ export default function ProfileLayout({
   ];
 
   return (
-    <>
+    <div className="flex w-full min-w-0 flex-col gap-5 md:flex-row">
       {/* 左侧边栏 */}
       <div className="order-2 md:order-1 md:contents">
         <DashboardSidebar />
       </div>
 
       {/* 右侧内容区域 */}
-      <div className="order-1 md:order-2 flex flex-1 flex-col gap-5">
+      <div className="order-1 flex min-w-0 flex-1 flex-col gap-5 md:order-2">
         {/* 导航和内容区域 - 白色背景卡片 */}
         <div className="flex flex-1 flex-col rounded bg-surface p-4 md:p-5">
           {/* Tab 导航 */}
@@ -79,6 +79,6 @@ export default function ProfileLayout({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
