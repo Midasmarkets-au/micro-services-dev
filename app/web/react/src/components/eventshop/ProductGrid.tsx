@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useTheme } from '@/hooks/useTheme';
 import { fetchAction } from '@/lib/api/browser-client';
-import { Button, Tabs } from '@/components/ui';
+import { Button, Pagination, Tabs } from '@/components/ui';
 import type { ShopItem } from '@/types/eventshop';
 import { ShopPoints } from './ShopPoints';
 import { ExchangeModal } from './ExchangeModal';
@@ -20,17 +20,28 @@ interface ProductGridProps {
   onExchangeSuccess?: () => void;
 }
 
+interface ShopItemPage {
+  items: ShopItem[];
+  page: number;
+  size: number;
+  total: number;
+}
+
 export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridProps) {
   const t = useTranslations('eventshop');
+  const tCommon = useTranslations('common');
   const { theme } = useTheme();
   const [categories, setCategories] = useState<CategoryEntry[]>([]);
-  const [items, setItems] = useState<ShopItem[]>([]);
+  const [itemPage, setItemPage] = useState<ShopItemPage | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [exchangeItemId, setExchangeItemId] = useState<string | null>(null);
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const isLoadedRef = useRef(false);
+  const itemRequestRef = useRef(0);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const loadCategories = useCallback(async () => {
     const result = await fetchAction<Record<string, string>>('getShopCategories');
@@ -40,12 +51,14 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
     }
   }, []);
 
-  const loadItems = useCallback(async (category?: string) => {
+  const loadItems = useCallback(async (page: number, category?: string) => {
+    const requestId = ++itemRequestRef.current;
     setIsLoading(true);
+    setHasLoadError(false);
     try {
       const criteria: Record<string, string | number> = {
         type: 0,
-        page: 1,
+        page,
         size: 50,
         sortField: 'createdOn',
         eventKey: 'EventShop',
@@ -53,16 +66,17 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
       if (category) {
         criteria.category = category;
       }
-      const result = await fetchAction<{ items: ShopItem[]; total?: number }>('getShopItems', criteria);
-      if (result.success && result.data?.items) {
-        setItems(result.data.items);
-        const guids = result.data.items
-          .flatMap((item) => item.images || [])
-          .filter(Boolean);
-        loadImages(guids);
+      const result = await fetchAction<ShopItemPage>('getShopItems', criteria);
+      if (requestId !== itemRequestRef.current) return;
+      if (!result.success || !result.data) {
+        setHasLoadError(true);
+        return;
       }
+      setItemPage(result.data);
+      const guids = result.data.items.flatMap((item) => item.images || []).filter(Boolean);
+      loadImages(guids);
     } finally {
-      setIsLoading(false);
+      if (requestId === itemRequestRef.current) setIsLoading(false);
     }
   }, []);
 
@@ -84,16 +98,23 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
     if (isLoadedRef.current) return;
     isLoadedRef.current = true;
     loadCategories();
-    loadItems();
+    loadItems(1);
   }, [loadCategories, loadItems]);
 
   const handleCategoryChange = (category: string) => {
+    if (category !== activeCategory) setItemPage(null);
     setActiveCategory(category);
-    loadItems(category || undefined);
+    loadItems(1, category || undefined);
+  };
+
+  const handlePageChange = (page: number) => {
+    if (!itemPage || page === itemPage.page) return;
+    gridRef.current?.scrollIntoView({ block: 'start' });
+    loadItems(page, activeCategory || undefined);
   };
 
   return (
-    <div className="bg-surface rounded flex-1 flex flex-col gap-5 overflow-hidden p-5">
+    <div ref={gridRef} className="bg-surface rounded flex-1 flex flex-col gap-5 overflow-hidden p-5 scroll-mt-24">
       {/* 分类 Tabs */}
       <Tabs
         tabs={[
@@ -104,6 +125,8 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
         onChange={handleCategoryChange}
         size="lg"
       />
+
+      {hasLoadError && <p role="alert" className="text-sm text-error">{tCommon('error')}</p>}
 
       {/* 商品列表 */}
       {isLoading ? (
@@ -121,7 +144,7 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
             </div>
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : hasLoadError && !itemPage ? null : !itemPage?.items.length ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2.5 py-24">
           <Image
             src={theme === 'dark' ? '/images/data/no-data-night.svg' : '/images/data/no-data-day.svg'}
@@ -133,7 +156,7 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {items.map((item) => (
+          {itemPage.items.map((item) => (
             <div
               key={item.hashId}
               className="border border-border rounded-xl overflow-hidden p-5 md:p-10"
@@ -174,12 +197,21 @@ export function ProductGrid({ userPoints = 0, onExchangeSuccess }: ProductGridPr
         </div>
       )}
 
+      {!isLoading && itemPage && (
+        <Pagination
+          page={itemPage.page}
+          total={itemPage.total}
+          size={itemPage.size}
+          onPageChange={handlePageChange}
+        />
+      )}
+
       <ExchangeModal
         open={exchangeOpen}
         onOpenChange={setExchangeOpen}
         itemHashId={exchangeItemId}
         userPoints={userPoints}
-        onSuccess={() => { loadItems(activeCategory || undefined); onExchangeSuccess?.(); }}
+        onSuccess={() => { loadItems(itemPage?.page ?? 1, activeCategory || undefined); onExchangeSuccess?.(); }}
       />
     </div>
   );
