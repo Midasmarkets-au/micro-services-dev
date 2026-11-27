@@ -34,7 +34,8 @@ import {
   submitDocument,
   logout,
 } from '@/actions';
-import { fetchAction } from '@/lib/api/browser-client';
+import { fetchAction, fetchApiRoute } from '@/lib/api/browser-client';
+import type { UserInfo } from '@/types/user';
 import {
   prepareChunkedUpload,
   createChunkFormData,
@@ -51,6 +52,7 @@ export default function VerificationPage() {
   const { showWarning, showError } = useToast();
   const router = useRouter();
   const user = useUserStore((s) => s.user);
+  const setUser = useUserStore((s) => s.setUser);
   const siteConfig = useUserStore((s) => s.siteConfig);
   const tAccounts = useTranslations('accounts');
   const getCurrencyName = useCurrencyName();
@@ -380,6 +382,9 @@ export default function VerificationPage() {
       if (result.success) {
         addCompletedStep('document');
         setCurrentStep('complete');
+        // 提交认证可能触发自动开户并把角色从 Guest 升为 Client
+        const me = await fetchApiRoute<UserInfo>('/api/user/info');
+        if (me.success && me.data) setUser(me.data);
       }
     } catch (error) {
       console.error('Document upload error:', error);

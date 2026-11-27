@@ -98,7 +98,10 @@ export default function AccountPage() {
     if (isGuest) {
       setActiveTab('DemoAccounts');
       setIsInitialLoading(false);
-    } else if (!isLoadedRef.current) {
+      return;
+    }
+    setActiveTab('RealAccounts');
+    if (!isLoadedRef.current) {
       setIsInitialLoading(true);
       isLoadedRef.current = true;
       loadData();
