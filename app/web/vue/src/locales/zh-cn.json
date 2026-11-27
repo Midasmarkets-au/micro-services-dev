@@ -1041,6 +1041,7 @@
     "paymentAccountNickname": "支付账户昵称",
     "paymentID": "付款ID",
     "paymentId": "支付ID",
+    "paymentIdInvalid": "请输入有效的数字支付 ID。付款编号请填入「付款编号」。",
     "paymentInfo": "付款信息",
     "paymentMethod": "付款方式",
     "paymentMethodNickName": "支付方式昵称",
