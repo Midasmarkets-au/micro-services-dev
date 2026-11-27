@@ -134,9 +134,7 @@ export function DashboardMainContent() {
   // 不需要 ref 守卫：loadData 依赖稳定，正常只会在 isGuest 变化时重跑；
   // StrictMode 下的双跑由 begin() 的 token 机制去重。
   useEffect(() => {
-    if (isGuest) {
-      setActiveTab('DemoAccounts');
-    }
+    setActiveTab(isGuest ? 'DemoAccounts' : 'RealAccounts');
     setIsInitialLoading(true);
     loadData();
   }, [isGuest, loadData]);
