@@ -1024,6 +1024,7 @@
     "paymentAccountNickname": "支付帳戶暱稱",
     "paymentID": "支付 ID",
     "paymentId": "支付ID",
+    "paymentIdInvalid": "請輸入有效的數字支付 ID。付款編號請填入「付款編號」。",
     "paymentInfo": "付款資訊",
     "paymentMethod": "付款方式",
     "paymentMethodNickName": "支付方式暱稱",

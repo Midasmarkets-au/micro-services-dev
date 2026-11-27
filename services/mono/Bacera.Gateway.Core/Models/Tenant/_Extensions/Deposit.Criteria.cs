@@ -34,6 +34,9 @@ partial class Deposit : IEntity
         public AccountRoleTypes? Role { get; set; }
 
         public PaymentStatusTypes? PaymentStateId { get; set; }
+        public long? PaymentId { get; set; }
+        public long? PaymentServiceId { get; set; }
+        public string? PaymentNumber { get; set; }
 
         protected override void OnCollect(ICriteriaPool<M> pool)
         {
@@ -45,6 +48,9 @@ partial class Deposit : IEntity
             pool.Add(x => x.IdNavigation.StatedOn >= From!.Value.ToUniversalTime(), From.IsTangible());
 
             pool.Add(x => x.Payment.Status == (short)PaymentStateId!, PaymentStateId.HasValue);
+            pool.Add(x => x.PaymentId == PaymentId, PaymentId != null);
+            pool.Add(x => x.Payment.PaymentServiceId == PaymentServiceId, PaymentServiceId != null);
+            pool.Add(x => x.Payment.Number.Contains(PaymentNumber!), !string.IsNullOrEmpty(PaymentNumber));
 
             pool.Add(x => x.Party.Email == Email!, Email != null);
             pool.Add(x => x.Party.Accounts.Any(a => a.Status == 0 && a.Role == (int)Role!), Role != null);

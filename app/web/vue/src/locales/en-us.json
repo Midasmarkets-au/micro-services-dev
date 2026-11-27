@@ -1300,6 +1300,7 @@
     "paymentAccountNickname": "Payment Account Nickname",
     "paymentID": "Payment ID",
     "paymentId": "Payment ID",
+    "paymentIdInvalid": "Enter a valid numeric Payment ID. Use Payment No. for payment references.",
     "paymentInfo": "Payment Info",
     "paymentMethod": "Payment Method",
     "paymentMethodNickName": "Payment Method Nickname",

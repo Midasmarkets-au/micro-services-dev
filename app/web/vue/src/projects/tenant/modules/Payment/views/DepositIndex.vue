@@ -55,6 +55,60 @@
           >
           </el-input>
 
+          <div class="w-150px">
+            <el-input
+              v-model="criteria.paymentId"
+              inputmode="numeric"
+              :placeholder="$t('fields.paymentId')"
+              :aria-invalid="isPaymentIdInvalid"
+              :aria-describedby="
+                isPaymentIdInvalid ? 'deposit-payment-id-error' : undefined
+              "
+              clearable
+              :disabled="isLoading"
+            />
+            <div
+              v-if="isPaymentIdInvalid"
+              id="deposit-payment-id-error"
+              class="text-danger small mt-1"
+              role="alert"
+            >
+              {{ $t("fields.paymentIdInvalid") }}
+            </div>
+          </div>
+
+          <el-input
+            v-model="criteria.paymentNumber"
+            class="w-200px"
+            :placeholder="$t('fields.paymentNo')"
+            clearable
+            :disabled="isLoading"
+          />
+
+          <el-select
+            v-model="criteria.paymentServiceId"
+            class="w-250px"
+            :placeholder="$t('title.paymentService')"
+            :loading="isLoadingPaymentServices"
+            :disabled="isLoading"
+            filterable
+            clearable
+            @change="confirmSearch"
+          >
+            <el-option-group
+              v-for="[group, options] in paymentServiceGroups"
+              :key="group"
+              :label="group"
+            >
+              <el-option
+                v-for="option in options"
+                :key="option.id"
+                :value="option.id"
+                :label="option.name"
+              />
+            </el-option-group>
+          </el-select>
+
           <el-button
             plain
             type="primary"
@@ -333,7 +387,15 @@ import PaymentService from "@/projects/tenant/modules/Payment/services/PaymentSe
 import DepositReference from "@/projects/tenant/modules/Payment/modal/DepositReference.vue";
 import HeaderMenu from "../components/HeaderMenu.vue";
 import { ActionType } from "@/core/types/Actions";
-import { ref, onMounted, inject, watch, reactive, provide } from "vue";
+import {
+  computed,
+  ref,
+  onMounted,
+  inject,
+  watch,
+  reactive,
+  provide,
+} from "vue";
 import { CommentType } from "@/core/types/CommentType";
 import { ReportRequestTypes } from "@/core/types/ReportRequestTypes";
 import TinyCopyBox from "@/components/TinyCopyBox.vue";
@@ -387,7 +449,60 @@ const criteria = ref<any>({
   size: 10,
   stateId: tab.value,
   sortField: "createdOn",
+  paymentId: null,
+  paymentNumber: null,
+  paymentServiceId: null,
 });
+
+const maxPaymentId = "9223372036854775807";
+const paymentIdForQuery = computed(() =>
+  String(criteria.value.paymentId ?? "")
+    .trim()
+    .replace(/^0+(?=\d)/, "")
+);
+const isPaymentIdInvalid = computed(() => {
+  const id = paymentIdForQuery.value;
+  return (
+    id !== "" &&
+    (!/^\d+$/.test(id) ||
+      id.length > maxPaymentId.length ||
+      (id.length === maxPaymentId.length && id > maxPaymentId))
+  );
+});
+
+type DepositPaymentService = {
+  id: number;
+  name: string;
+  group?: string | null;
+};
+
+const isLoadingPaymentServices = ref(false);
+const paymentServices = ref<DepositPaymentService[]>([]);
+const paymentServiceGroups = computed(() => {
+  const groups = new Map<string, DepositPaymentService[]>();
+  for (const service of paymentServices.value) {
+    const group = service.group?.trim() || "System Manual";
+    const options = groups.get(group) ?? [];
+    options.push({
+      ...service,
+      name: service.name?.trim() || `#${service.id}`,
+    });
+    groups.set(group, options);
+  }
+  return groups;
+});
+
+const loadPaymentServices = async () => {
+  isLoadingPaymentServices.value = true;
+  try {
+    const services = await PaymentService.getDepositPaymentMethodsV2();
+    paymentServices.value = Array.isArray(services) ? services : [];
+  } catch (error) {
+    MsgPrompt.error(error);
+  } finally {
+    isLoadingPaymentServices.value = false;
+  }
+};
 
 const dealingCriteria = ref<any>({
   page: 1,
@@ -433,13 +548,25 @@ const actualAmount = (amount: any) => {
 };
 
 const fetchData = async (_page?: number) => {
+  if (isPaymentIdInvalid.value) return;
   if (_page) criteria.value.page = _page;
 
   isLoading.value = true;
-  const res = await PaymentService.queryDeposits(criteria.value);
-  criteria.value = res.criteria;
-  data.value = res.data;
-  isLoading.value = false;
+  try {
+    const { paymentId, paymentNumber } = criteria.value;
+    const res = await PaymentService.queryDeposits({
+      ...criteria.value,
+      paymentId: paymentIdForQuery.value || undefined,
+      paymentNumber: paymentNumber || undefined,
+    });
+    // Keep the typed ID because JSON numbers can lose Int64 precision.
+    criteria.value = { ...res.criteria, paymentId };
+    data.value = res.data;
+  } catch (error) {
+    MsgPrompt.error(error);
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 const fetchDealingData = async (_page?: number) => {
@@ -503,6 +630,7 @@ watch(
   }
 );
 const confirmSearch = () => {
+  if (isPaymentIdInvalid.value) return;
   if (tab.value != TabStatus.All) {
     headerMenuRef.value?.changeTab(TabStatus.All);
   } else {
@@ -516,6 +644,9 @@ const clearSearchFilterCriteria = () => {
     size: 10,
     SortField: "updatedOn",
     stateId: tab.value,
+    paymentId: null,
+    paymentNumber: null,
+    paymentServiceId: null,
   };
   if (tab.value == TabStatus.All) {
     criteria.value.stateId = null;
@@ -714,6 +845,7 @@ const copyAddress = (_walletAddress) => {
 
 onMounted(() => {
   fetchAll();
+  loadPaymentServices();
 });
 </script>
 
